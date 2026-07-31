@@ -135,7 +135,7 @@ const movementGuide = [
   {
     title: 'How Movement Works',
     items: [
-      'The map is divided into zones (fountain, base, lanes, jungle, river)',
+      'The map is divided into zones (fountain, base, lanes, silt, river)',
       `You walk one zone per cycle (${tickSeconds} seconds) — but you can order a move to ANY zone and your hero auto-paths there, cycle by cycle`,
       'Type move <zone-id> to move (e.g., move chaff-base, move mid-t3-chaff), or tap any zone on the map',
       'Issuing any new action cancels the walk; a new move order redirects it',
@@ -147,7 +147,7 @@ const movementGuide = [
     items: [
       'Lanes: top-t1-chaff, mid-t2-audit, bot-t3-chaff (lane-tier-team)',
       'River: top-river, mid-river, bot-river (neutral crossings)',
-      'Jungle: silt-chaff-top, silt-audit-bot (jungle-team-side)',
+      'Silt: silt-chaff-top, silt-audit-bot (silt-team-side)',
       'Base & Fountain: chaff-base, chaff-fountain, audit-base, audit-fountain',
       'Special: hollow, cache-top, cache-bot',
     ],
@@ -268,7 +268,7 @@ const targeting = [
   },
   {
     format: 'neutral:<index>',
-    desc: 'Target a jungle camp wave standing in your zone',
+    desc: 'Target a silt camp wave standing in your zone',
     example: 'attack neutral:0',
   },
   {

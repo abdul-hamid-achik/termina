@@ -4,7 +4,7 @@ import { filterStateForPlayer } from '~~/server/game/engine/VisionCalculator'
 import type { GameState, PlayerState, Buff, FoggedPlayer } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeTenant } from '~~/server/game/map/spawner'
-import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
+import { initializeTerminals } from '~~/server/game/engine/TerminalSystem'
 
 /**
  * Effect-assertions for mechanics that were DEAD/BROKEN until fixed (the
@@ -62,7 +62,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     waves: [],
     neutrals: [],
     ice: initializeIce(),
-    terminals: initializeAncients(),
+    terminals: initializeTerminals(),
     caches: [],
     tenant: initializeTenant(),
     backup: null,

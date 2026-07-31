@@ -22,7 +22,7 @@ const BY_TYPE = computed(() => {
           ? 'crossings & caches'
           : z.type === 'objective'
             ? 'objectives'
-            : z.type === 'jungle'
+            : z.type === 'silt'
               ? 'the Silt'
               : `${z.lane ?? '?'} route`
     ;(groups[key] ??= []).push(z.id)

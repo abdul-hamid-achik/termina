@@ -4,7 +4,7 @@ import TraceRail from '~~/app/components/game/TraceRail.vue'
 import { buildTrace } from '~~/app/components/game/traceModel'
 import type { TerminalState, TeamId } from '~~/shared/types/game'
 
-const ANCIENTS: Record<TeamId, TerminalState> = {
+const TERMINALS: Record<TeamId, TerminalState> = {
   chaff: { team: 'chaff', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
   audit: { team: 'audit', integ: 4200, maxInteg: 6000, alive: true, vulnerable: true },
 }
@@ -18,7 +18,7 @@ function mountRail(
     playerZone,
     playerTeam,
     contacts,
-    terminals: ANCIENTS,
+    terminals: TERMINALS,
   })
   return mount(TraceRail, { props: { trace } })
 }

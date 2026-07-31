@@ -5,7 +5,7 @@ import {
   enforceWaveZoneCap,
   type WaveAction,
 } from '~~/server/game/engine/WaveAI'
-import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
+import { initializeTerminals } from '~~/server/game/engine/TerminalSystem'
 import type { GameState, PlayerState, WaveUnitState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import {
@@ -75,15 +75,15 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     zones: initializeZoneStates(),
     waves: [],
     ice: initializeIce(),
-    terminals: initializeAncients(),
+    terminals: initializeTerminals(),
     events: [],
     ...overrides,
   }
 }
 
-/** Ancients with the audit one vulnerable (a audit T3 is presumed down). */
-function vulnerableAuditAncients() {
-  const terminals = initializeAncients()
+/** Terminals with the audit one vulnerable (a audit T3 is presumed down). */
+function vulnerableAuditTerminals() {
+  const terminals = initializeTerminals()
   return { chaff: terminals.chaff, audit: { ...terminals.audit, vulnerable: true } }
 }
 
@@ -626,22 +626,22 @@ describe('WaveAI', () => {
     })
   })
 
-  describe('Ancient breach behavior', () => {
-    it('attacks a vulnerable enemy Ancient from the enemy base', () => {
+  describe('Terminal breach behavior', () => {
+    it('attacks a vulnerable enemy Terminal from the enemy base', () => {
       const state = makeGameState({
-        terminals: vulnerableAuditAncients(),
+        terminals: vulnerableAuditTerminals(),
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'audit-base' })],
       })
 
       const actions = runWaveAI(state)
       expect(actions).toHaveLength(1)
-      expect(actions[0]!.action).toBe('attack_ancient')
+      expect(actions[0]!.action).toBe('attack_terminal')
       expect(actions[0]!.damage).toBe(LINE_UNIT_ATTACK)
     })
 
-    it('prefers the vulnerable Ancient over enemy heroes in base', () => {
+    it('prefers the vulnerable Terminal over enemy heroes in base', () => {
       const state = makeGameState({
-        terminals: vulnerableAuditAncients(),
+        terminals: vulnerableAuditTerminals(),
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'audit-base' })],
         players: {
           p1: makePlayer({ id: 'p1', team: 'audit', zone: 'audit-base' }),
@@ -649,12 +649,12 @@ describe('WaveAI', () => {
       })
 
       const actions = runWaveAI(state)
-      expect(actions[0]!.action).toBe('attack_ancient')
+      expect(actions[0]!.action).toBe('attack_terminal')
     })
 
-    it('still fights enemy waves before the Ancient', () => {
+    it('still fights enemy waves before the Terminal', () => {
       const state = makeGameState({
-        terminals: vulnerableAuditAncients(),
+        terminals: vulnerableAuditTerminals(),
         waves: [
           makeWave({ id: 'c1', team: 'chaff', zone: 'audit-base' }),
           makeWave({ id: 'c2', team: 'audit', zone: 'audit-base' }),
@@ -666,7 +666,7 @@ describe('WaveAI', () => {
       expect(c1Action!.action).toBe('attack_wave')
     })
 
-    it('does not attack an invulnerable Ancient — attacks heroes instead', () => {
+    it('does not attack an invulnerable Terminal — attacks heroes instead', () => {
       const state = makeGameState({
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'audit-base' })],
         players: {
@@ -679,8 +679,8 @@ describe('WaveAI', () => {
       expect(actions[0]!.targetId).toBe('p1')
     })
 
-    it('does not attack a dead Ancient', () => {
-      const terminals = initializeAncients()
+    it('does not attack a dead Terminal', () => {
+      const terminals = initializeTerminals()
       const state = makeGameState({
         terminals: {
           chaff: terminals.chaff,
@@ -690,17 +690,17 @@ describe('WaveAI', () => {
       })
 
       const actions = runWaveAI(state)
-      expect(actions[0]!.action).not.toBe('attack_ancient')
+      expect(actions[0]!.action).not.toBe('attack_terminal')
     })
 
-    it('applies Ancient damage and emits events via applyWaveActions', () => {
+    it('applies Terminal damage and emits events via applyWaveActions', () => {
       const state = makeGameState({
-        terminals: vulnerableAuditAncients(),
+        terminals: vulnerableAuditTerminals(),
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'audit-base' })],
       })
 
       const actions: WaveAction[] = [
-        { waveId: 'c1', action: 'attack_ancient', damage: LINE_UNIT_ATTACK },
+        { waveId: 'c1', action: 'attack_terminal', damage: LINE_UNIT_ATTACK },
       ]
 
       const result = applyWaveActions(state, actions)
@@ -711,8 +711,8 @@ describe('WaveAI', () => {
       expect(result.events[0]!._tag).toBe('damage')
     })
 
-    it('destroys the Ancient and emits a dedicated terminal_destroyed event', () => {
-      const terminals = initializeAncients()
+    it('destroys the Terminal and emits a dedicated terminal_destroyed event', () => {
+      const terminals = initializeTerminals()
       const state = makeGameState({
         terminals: {
           chaff: terminals.chaff,
@@ -722,7 +722,7 @@ describe('WaveAI', () => {
       })
 
       const actions: WaveAction[] = [
-        { waveId: 'c1', action: 'attack_ancient', damage: LINE_UNIT_ATTACK },
+        { waveId: 'c1', action: 'attack_terminal', damage: LINE_UNIT_ATTACK },
       ]
 
       const result = applyWaveActions(state, actions)
@@ -734,13 +734,13 @@ describe('WaveAI', () => {
       expect(killEvent).toMatchObject({ team: 'audit', killerTeam: 'chaff' })
     })
 
-    it('does not damage an invulnerable Ancient even if an action sneaks through', () => {
+    it('does not damage an invulnerable Terminal even if an action sneaks through', () => {
       const state = makeGameState({
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'audit-base' })],
       })
 
       const actions: WaveAction[] = [
-        { waveId: 'c1', action: 'attack_ancient', damage: LINE_UNIT_ATTACK },
+        { waveId: 'c1', action: 'attack_terminal', damage: LINE_UNIT_ATTACK },
       ]
 
       const result = applyWaveActions(state, actions)
@@ -797,9 +797,9 @@ describe('WaveAI', () => {
       expect(result.state.waves.find((c) => c.id === 'c2')).toBeDefined()
     })
 
-    it('does not idle-despawn while the vulnerable Ancient is attackable', () => {
+    it('does not idle-despawn while the vulnerable Terminal is attackable', () => {
       const state = makeGameState({
-        terminals: vulnerableAuditAncients(),
+        terminals: vulnerableAuditTerminals(),
         waves: [
           makeWave({
             id: 'c1',
@@ -811,7 +811,7 @@ describe('WaveAI', () => {
       })
 
       const actions = runWaveAI(state)
-      expect(actions[0]!.action).toBe('attack_ancient')
+      expect(actions[0]!.action).toBe('attack_terminal')
     })
   })
 

@@ -3,7 +3,7 @@ import { buildTrace, routeOfZone, hopIndexOf } from '~~/app/components/game/trac
 import { LANE_ROUTES_CORE } from '~~/shared/constants/lanes'
 import type { TerminalState, TeamId } from '~~/shared/types/game'
 
-function ancient(over: Partial<TerminalState> = {}): TerminalState {
+function terminal(over: Partial<TerminalState> = {}): TerminalState {
   return {
     team: 'chaff',
     integ: 6000,
@@ -14,9 +14,9 @@ function ancient(over: Partial<TerminalState> = {}): TerminalState {
   }
 }
 
-const ANCIENTS: Record<TeamId, TerminalState> = {
-  chaff: ancient({ team: 'chaff' }),
-  audit: ancient({ team: 'audit', vulnerable: true, integ: 4200 }),
+const TERMINALS: Record<TeamId, TerminalState> = {
+  chaff: terminal({ team: 'chaff' }),
+  audit: terminal({ team: 'audit', vulnerable: true, integ: 4200 }),
 }
 
 describe('traceModel', () => {
@@ -39,7 +39,7 @@ describe('traceModel', () => {
       playerZone: 'top-t1-chaff',
       playerTeam: 'chaff',
       contacts: [],
-      terminals: ANCIENTS,
+      terminals: TERMINALS,
     })
     expect(model.currentRoute).toBe('top')
     expect(model.hopIndex).toBe(2)
@@ -70,7 +70,7 @@ describe('traceModel', () => {
         { id: 'a1', name: 'Ally1', zone: 'mid-t1-chaff', team: 'chaff', alive: true },
         { id: 'e4', name: 'Enemy4', zone: 'mid-t1-audit', team: 'audit', alive: false },
       ],
-      terminals: ANCIENTS,
+      terminals: TERMINALS,
     })
     const mid = model.routes.find((r) => r.route === 'mid')!
     const bot = model.routes.find((r) => r.route === 'bot')!
@@ -85,7 +85,7 @@ describe('traceModel', () => {
       playerZone: 'mid-river',
       playerTeam: 'chaff',
       contacts: [],
-      terminals: ANCIENTS,
+      terminals: TERMINALS,
     })
     expect(model.terminals).toHaveLength(2)
     const audit = model.terminals.find((t) => t.team === 'audit')!
@@ -100,7 +100,7 @@ describe('traceModel', () => {
       playerZone: 'hollow',
       playerTeam: 'chaff',
       contacts: [],
-      terminals: ANCIENTS,
+      terminals: TERMINALS,
     })
     expect(model.currentRoute).toBeNull()
     expect(model.hopIndex).toBe(-1)

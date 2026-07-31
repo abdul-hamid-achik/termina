@@ -288,8 +288,8 @@ describe('Economy through resolution', () => {
       expect(r2.state.players['kx_r1']!.xp - assistXpBefore).toBe(assistXp)
     })
 
-    it('a hero kill emits gold_change for the killer AND each assister, matching the scrip paid', async () => {
-      // The bounty was awarded but never announced: the ONLY gold_change the
+    it('a hero kill emits scrip_change for the killer AND each assister, matching the scrip paid', async () => {
+      // The bounty was awarded but never announced: the ONLY scrip_change the
       // engine ever emitted was an empty win sentinel, so the biggest payout in
       // the game — and every assist — landed in total silence.
       const gameId = uid('killgold')
@@ -314,7 +314,7 @@ describe('Economy through resolution', () => {
       expect(r2.state.players['kg_d0']!.alive).toBe(false)
 
       const scrip = r2.events.filter(
-        (e): e is Extract<GameEngineEvent, { _tag: 'gold_change' }> => e._tag === 'gold_change',
+        (e): e is Extract<GameEngineEvent, { _tag: 'scrip_change' }> => e._tag === 'scrip_change',
       )
       const bounty = scrip.find((e) => e.playerId === 'kg_r0')
       const assist = scrip.find((e) => e.playerId === 'kg_r1')

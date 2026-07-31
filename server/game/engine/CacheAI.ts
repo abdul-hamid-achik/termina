@@ -144,9 +144,9 @@ export function processCacheBuffs(state: GameState): GameState {
     if (crontab) {
       integ = Math.min(player.maxInteg, integ + crontab.stacks)
     }
-    const crontabMana = player.buffs.find((b) => b.id === 'crontabMana')
-    if (crontabMana) {
-      bw = Math.min(player.maxBw, bw + crontabMana.stacks)
+    const crontabBw = player.buffs.find((b) => b.id === 'crontabBw')
+    if (crontabBw) {
+      bw = Math.min(player.maxBw, bw + crontabBw.stacks)
     }
 
     // Haste cache is handled via movement (can't be rooted/stunned)

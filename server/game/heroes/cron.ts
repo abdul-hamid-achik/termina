@@ -42,7 +42,7 @@ const R_HEAL_PER_TICK = [75, 110, 145] as const
 const R_MANA = abilityBwTable('cron', 'r')
 const R_COOLDOWN = 55
 const R_DURATION = 4
-const R_MP_PER_TICK = 15
+const R_BW_PER_CYCLE = 15
 
 const PASSIVE_HEAL = 40
 const PASSIVE_TICK_INTERVAL = 4
@@ -287,11 +287,11 @@ function resolveR(
 
     const healPerTick = scaleValue(R_HEAL_PER_TICK, level)
 
-    // Apply crontabHeal + crontabMana buffs to self and all allies in zone. Both
+    // Apply crontabHeal + crontabBw buffs to self and all allies in zone. Both
     // are over-time regen buffs whose per-cycle amount rides in `stacks`; the heal
     // is processed in processCacheBuffs (CacheAI). The mana half was advertised
-    // (R_MP_PER_TICK, the mpPerTick event payload, the ability description) but
-    // never actually applied until the matching crontabMana buff + consumer.
+    // (R_BW_PER_CYCLE, the bwPerCycle event payload, the ability description) but
+    // never actually applied until the matching crontabBw buff + consumer.
     const allies = getAlliesInZone(state, player)
     const allAffected = [caster, ...allies].map((p) => {
       const healed = applyBuff(p, {
@@ -301,8 +301,8 @@ function resolveR(
         source: player.id,
       })
       return applyBuff(healed, {
-        id: 'crontabMana',
-        stacks: R_MP_PER_TICK,
+        id: 'crontabBw',
+        stacks: R_BW_PER_CYCLE,
         cyclesRemaining: R_DURATION,
         source: player.id,
       })
@@ -318,7 +318,7 @@ function resolveR(
             playerId: player.id,
             ability: 'r',
             healPerTick,
-            mpPerTick: R_MP_PER_TICK,
+            bwPerCycle: R_BW_PER_CYCLE,
             duration: R_DURATION,
             targets: allAffected.map((a) => a.id),
           },

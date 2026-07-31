@@ -4,7 +4,7 @@ import StatusLines from '~~/app/components/game/StatusLines.vue'
 import { buildTrace } from '~~/app/components/game/traceModel'
 import type { TerminalState, TeamId } from '~~/shared/types/game'
 
-const ANCIENTS: Record<TeamId, TerminalState> = {
+const TERMINALS: Record<TeamId, TerminalState> = {
   chaff: { team: 'chaff', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
   audit: { team: 'audit', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
 }
@@ -14,7 +14,7 @@ function mountLines(over: Partial<Parameters<typeof mount>[0]> = {}) {
     playerZone: 'mid-t2-chaff',
     playerTeam: 'chaff',
     contacts: [],
-    terminals: ANCIENTS,
+    terminals: TERMINALS,
   })
   return mount(StatusLines, {
     props: {
@@ -65,7 +65,7 @@ describe('StatusLines', () => {
       playerZone: 'hollow',
       playerTeam: 'chaff',
       contacts: [],
-      terminals: ANCIENTS,
+      terminals: TERMINALS,
     })
     const wrapper = mount(StatusLines, {
       props: {

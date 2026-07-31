@@ -51,7 +51,7 @@ export const FACTION_META: Record<TeamId, FactionMeta> = {
 /** ICE are ICE. The T3 guarding the base is BLACK ICE. */
 export const STRUCTURE_LABELS = {
   ice: { 1: 'ICE', 2: 'ICE', 3: 'BLACK ICE' },
-  mainframe: 'Terminal',
+  terminal: 'Terminal',
 } as const
 
 /** The five cache types as cache drops, plus the pit objectives. */

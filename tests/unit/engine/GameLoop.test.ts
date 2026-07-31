@@ -4,7 +4,7 @@ import { processCycle, submitAction } from '~~/server/game/engine/GameLoop'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { resetWaveIdCounter, initializeTenant } from '~~/server/game/map/spawner'
-import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
+import { initializeTerminals } from '~~/server/game/engine/TerminalSystem'
 import {
   DAY_DURATION_CYCLES,
   NIGHT_DURATION_CYCLES,
@@ -64,7 +64,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     waves: [],
     neutrals: [],
     ice: initializeIce(),
-    terminals: initializeAncients(),
+    terminals: initializeTerminals(),
     caches: [],
     tenant: initializeTenant(),
     backup: null,
@@ -184,8 +184,8 @@ describe('GameLoop', () => {
       expect(p1.zone).toBe('chaff-fountain')
     })
 
-    it('should detect chaff win when the audit Ancient is destroyed', () => {
-      const terminals = initializeAncients()
+    it('should detect chaff win when the audit Terminal is destroyed', () => {
+      const terminals = initializeTerminals()
       const state = makeGameState({
         terminals: {
           chaff: terminals.chaff,
@@ -202,7 +202,7 @@ describe('GameLoop', () => {
       expect(result.state.winner).toBe('chaff')
     })
 
-    it('should NOT end the game when all enemy ice are destroyed but the Ancient stands', () => {
+    it('should NOT end the game when all enemy ice are destroyed but the Terminal stands', () => {
       const ice = initializeIce().map((t) =>
         t.team === 'audit' ? { ...t, integ: 0, alive: false } : t,
       )
@@ -217,11 +217,11 @@ describe('GameLoop', () => {
 
       const result = Effect.runSync(processCycle('game6b', state))
       expect(result.state.phase).toBe('playing')
-      // But the audit Ancient must now be vulnerable (its T3s are down)
+      // But the audit Terminal must now be vulnerable (its T3s are down)
       expect(result.state.terminals.audit.vulnerable).toBe(true)
     })
 
-    it('should mark an Ancient vulnerable when one of its T3 ice falls', () => {
+    it('should mark a Terminal vulnerable when one of its T3 ice falls', () => {
       const ice = initializeIce().map((t) =>
         t.zone === 'mid-t3-audit' ? { ...t, integ: 0, alive: false } : t,
       )
@@ -232,7 +232,7 @@ describe('GameLoop', () => {
       expect(result.state.terminals.chaff.vulnerable).toBe(false)
     })
 
-    it('should keep Ancients invulnerable while only T1/T2 ice are down', () => {
+    it('should keep Terminals invulnerable while only T1/T2 ice are down', () => {
       const ice = initializeIce().map((t) =>
         t.zone === 'mid-t1-audit' || t.zone === 'mid-t2-audit'
           ? { ...t, integ: 0, alive: false }
@@ -384,7 +384,7 @@ describe('GameLoop', () => {
     })
 
     it('should not process actions when game is ended', () => {
-      const terminals = initializeAncients()
+      const terminals = initializeTerminals()
       const state = makeGameState({
         terminals: {
           chaff: terminals.chaff,
@@ -400,8 +400,8 @@ describe('GameLoop', () => {
       expect(result.state.phase).toBe('ended')
     })
 
-    it('should detect audit win when the chaff Ancient is destroyed', () => {
-      const terminals = initializeAncients()
+    it('should detect audit win when the chaff Terminal is destroyed', () => {
+      const terminals = initializeTerminals()
       const state = makeGameState({
         terminals: {
           chaff: { ...terminals.chaff, integ: 0, alive: false, vulnerable: true },
@@ -418,7 +418,7 @@ describe('GameLoop', () => {
       expect(result.state.winner).toBe('audit')
     })
 
-    it('should not end game when both Ancients are alive', () => {
+    it('should not end game when both Terminals are alive', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1' }),
@@ -579,9 +579,9 @@ describe('GameLoop', () => {
     })
   })
 
-  describe('Ancient breach and wave cleanup', () => {
-    it('waves in the enemy base damage a vulnerable Ancient via processCycle', () => {
-      const terminals = initializeAncients()
+  describe('Terminal breach and wave cleanup', () => {
+    it('waves in the enemy base damage a vulnerable Terminal via processCycle', () => {
+      const terminals = initializeTerminals()
       const state = makeGameState({
         terminals: {
           chaff: terminals.chaff,
@@ -597,18 +597,18 @@ describe('GameLoop', () => {
         ],
       })
 
-      const result = Effect.runSync(processCycle('game-ancient-breach', state))
+      const result = Effect.runSync(processCycle('game-terminal-breach', state))
       const audit = result.state.terminals.audit
       expect(audit.integ).toBeLessThan(audit.maxInteg)
-      // Damage events against the ancient should be emitted
-      const ancientDamage = result.events.filter(
+      // Damage events against the terminal should be emitted
+      const terminalDamage = result.events.filter(
         (e) => e._tag === 'damage' && e.targetId === 'terminal_audit',
       )
-      expect(ancientDamage.length).toBe(2)
+      expect(terminalDamage.length).toBe(2)
     })
 
-    it('game ends via Ancient destruction by waves', () => {
-      const terminals = initializeAncients()
+    it('game ends via Terminal destruction by waves', () => {
+      const terminals = initializeTerminals()
       const state = makeGameState({
         terminals: {
           chaff: terminals.chaff,
@@ -620,18 +620,18 @@ describe('GameLoop', () => {
         waves: [{ id: 'c1', team: 'chaff', zone: 'audit-base', integ: 400, type: 'line' }],
       })
 
-      const result = Effect.runSync(processCycle('game-ancient-end', state))
+      const result = Effect.runSync(processCycle('game-terminal-end', state))
       expect(result.state.terminals.audit.alive).toBe(false)
       expect(result.state.phase).toBe('ended')
       expect(result.state.winner).toBe('chaff')
     })
 
-    it('waves idling in base with an invulnerable Ancient are garbage collected', () => {
+    it('waves idling in base with an invulnerable Terminal are garbage collected', () => {
       let state = makeGameState({
         waves: [{ id: 'c1', team: 'chaff', zone: 'audit-base', integ: 400, type: 'line' }],
       })
 
-      // Ancient is invulnerable (all ice alive), no heroes in base.
+      // Terminal is invulnerable (all ice alive), no heroes in base.
       // Wave should idle and despawn after WAVE_BASE_IDLE_DESPAWN_CYCLES.
       for (let i = 0; i < 3; i++) {
         state = Effect.runSync(processCycle('game-wave-gc', state)).state
@@ -663,7 +663,7 @@ describe('GameLoop', () => {
 
     it('ensureTerminals backfills states without terminals (old snapshots)', () => {
       const state = makeGameState()
-      // Simulate a pre-Ancient snapshot
+      // Simulate a pre-Terminal snapshot
       const legacy = { ...state } as Partial<GameState>
       delete legacy.terminals
 

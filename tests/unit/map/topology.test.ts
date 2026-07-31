@@ -153,9 +153,9 @@ describe('Topology', () => {
       expect(lanes).toHaveLength(18)
     })
 
-    it('returns jungle zones', () => {
-      const jungles = getZonesByType('jungle')
-      expect(jungles).toHaveLength(4)
+    it('returns silt zones', () => {
+      const silts = getZonesByType('silt')
+      expect(silts).toHaveLength(4)
     })
 
     it('returns river zones', () => {

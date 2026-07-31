@@ -67,7 +67,7 @@ describe('one-lane map', () => {
     expect(s.waves.some((c) => c.zone.startsWith('top-') || c.zone.startsWith('bot-'))).toBe(false)
   })
 
-  it('has no jungle neutrals or river caches, and ticks cleanly past their interval', async () => {
+  it('has no silt dwellers or river caches, and ticks cleanly past their interval', async () => {
     const game = await seedGame('fresh', { mapId: 'one_lane' })
     await game.tick(64) // past the 60-tick neutral + cache interval — they must no-op
     const s = await game.state()

@@ -104,13 +104,13 @@ function makePlayers(prefix: string, perTeam: number): PlayerSetup[] {
 
 describe('Game Flow Integration', () => {
   describe('Full Game Lifecycle', () => {
-    it('completes a full game — destroying the enemy Ancient ends it', async () => {
+    it('completes a full game — destroying the enemy Terminal ends it', async () => {
       const gameId = uid('full')
       const sm = await startGame(gameId, makePlayers('fg', 1))
 
       // Arrange the end-game: a audit T3 ice is already down (which makes
-      // the audit Ancient vulnerable), the chaff hero has sieged into the
-      // enemy base, and the Ancient is low so the test stays fast.
+      // the audit Terminal vulnerable), the chaff hero has sieged into the
+      // enemy base, and the Terminal is low so the test stays fast.
       await arrange(sm, gameId, (s) => {
         const sieged = setPlayer(s, 'fg_r0', { zone: 'audit-base' })
         return {
@@ -147,7 +147,7 @@ describe('Game Flow Integration', () => {
       expect(endState.terminals.audit.integ).toBe(0)
       expect(endState.terminals.chaff.alive).toBe(true)
 
-      // Hero damage was routed to the Ancient and its destruction was
+      // Hero damage was routed to the Terminal and its destruction was
       // announced via the dedicated terminal_destroyed event (not a reused
       // ice_kill, which would render a misleading "ice in <base>" line).
       expect(allEvents.some((e) => e._tag === 'damage' && e.targetId === 'terminal_audit')).toBe(

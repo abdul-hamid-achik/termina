@@ -1,4 +1,4 @@
-export type ZoneType = 'base' | 'fountain' | 'lane' | 'jungle' | 'river' | 'objective'
+export type ZoneType = 'base' | 'fountain' | 'lane' | 'silt' | 'river' | 'objective'
 
 /** Ice tier (1 = outermost, 3 = innermost, 4 = base/sweep). Undefined = no ice. */
 export type IceTier = 1 | 2 | 3 | 4

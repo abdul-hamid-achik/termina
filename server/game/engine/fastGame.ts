@@ -1,14 +1,14 @@
 /**
  * TERMINA_TEST_FAST_GAME — dev/test-only game accelerator.
  *
- * Real bot games end via Ancient destruction, which takes 35-50 minutes of
+ * Real bot games end via Terminal destruction, which takes 35-50 minutes of
  * wall-clock time at the production 4s tick. That makes "play a game to the
  * end" e2e specs (game-over, smoke) impossible to run honestly. Setting
  * TERMINA_TEST_FAST_GAME=<factor> (e.g. 8) on the server process:
  *
  *   - runs the game loop at CYCLE_DURATION_MS / factor (engine logic is
  *     tick-based and deterministic, so nothing else changes),
- *   - divides Ancient INTEG by the factor, and
+ *   - divides Terminal INTEG by the factor, and
  *   - halves ice INTEG when the factor is >= 4,
  *
  * so a full bot game ends in ~2-4 minutes of real time. The hook is ignored
@@ -36,13 +36,13 @@ export function scaledTickIntervalMs(baseMs: number): number {
   return Math.max(100, Math.round(baseMs / fastGameFactor()))
 }
 
-/** Effective Ancient max INTEG. */
+/** Effective Terminal max INTEG. */
 export function scaledTerminalHp(baseHp: number): number {
   return Math.max(1, Math.ceil(baseHp / fastGameFactor()))
 }
 
 /**
- * Effective ice max INTEG. ICE gate the whole game — the enemy Ancient only
+ * Effective ice max INTEG. ICE gate the whole game — the enemy Terminal only
  * becomes vulnerable once a T3 falls, so slow sieging drags games out. In
  * dev/test the loop is CPU-bound (~1s/tick, not the nominal interval), so the
  * old flat /2 left games running 400-900 ticks (15-20 real minutes). We shrink

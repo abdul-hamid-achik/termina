@@ -567,7 +567,7 @@ watch(
           }
           break
         // Farming — the loop the player spends most of the match in. The scrip
-        // cue used to hang off `gold_change`, whose only emitter is a win
+        // cue used to hang off `scrip_change`, whose only emitter is a win
         // sentinel carrying an empty playerId, so last-hitting was silent.
         case 'wave_strip':
         case 'wave_burn':
@@ -760,7 +760,7 @@ const killFeed = computed<KillFeedEntry[]>(() =>
   deriveKillFeed(gameStore.events, narrativeCtx.value),
 )
 
-// Ancients (team cores) live in the game store — shown on the base zones of the map.
+// Terminals live in the game store — shown on the base zones of the map.
 const terminals = computed(() => gameStore.terminals)
 
 // ── STREAM header drama + low-INTEG danger framing ───────────────────
@@ -1777,7 +1777,7 @@ function handleReturnToMenu() {
     />
 
     <!-- Transient action-feedback toast: surfaces server rejections (out of
-         range, juked target, firewalled Ancient, not enough BW, …) that would
+         range, juked target, firewalled Terminal, not enough BW, …) that would
          otherwise die silently in the store -->
     <AnnouncementToast
       :text="latestAnnouncement"
@@ -2219,7 +2219,7 @@ function handleReturnToMenu() {
 
 /* Overlay lanes, stacked below the measured HUD bar (--hud-bar-h, published from
    the script). The fixed 4.25rem both of these used to sit at is 68px at the
-   root font size — squarely on the focus banner and the cycle/gold/KDA row. The
+   root font size — squarely on the focus banner and the cycle/scrip/KDA row. The
    fallback keeps the old placement if the measurement never arrives. */
 .game-grid__killfeed {
   position: absolute;

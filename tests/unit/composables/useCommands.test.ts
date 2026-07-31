@@ -286,7 +286,7 @@ describe('useCommands', () => {
         expect(result.error).toContain('Usage: attack')
       })
 
-      // Tenant and the jungle camps are fully resolved server-side and farmed by
+      // Tenant and the silt camps are fully resolved server-side and farmed by
       // bots every match; without these two branches a human could not express
       // either intent at all.
       it('parses attack tenant (and the rosh shorthand)', () => {
@@ -1178,7 +1178,7 @@ describe('useCommands', () => {
 
       // The offered index must be the position in the whole neutrals array.
       // Re-indexing the in-zone survivors would send the attack at the camp
-      // sitting at that position in some other jungle.
+      // sitting at that position in some other silt.
       it('suggests in-zone neutrals by their global index', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
@@ -2254,7 +2254,7 @@ describe('informational readouts', () => {
       expect(all, `help should mention "${verb}"`).toContain(verb)
     }
     // It explains the objective so a new player knows what to do after the verbs.
-    expect(all.toLowerCase()).toMatch(/terminal|mainframe|destroy/)
+    expect(all.toLowerCase()).toMatch(/terminal|destroy/)
     // The `ss` reflex shortcut for the missing callout is discoverable here.
     expect(all).toContain('ss = missing')
     // One log line per group, each non-empty.

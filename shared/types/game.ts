@@ -76,7 +76,7 @@ export interface WaveUnitState {
   maxInteg?: number
   type: 'line' | 'sweep' | 'breach'
   /**
-   * Ticks spent idle in a base zone (no target, invulnerable Ancient).
+   * Ticks spent idle in a base zone (no target, invulnerable Terminal).
    * Once it reaches WAVE_BASE_IDLE_DESPAWN_CYCLES the wave is garbage
    * collected. Optional so spawners/tests don't have to set it.
    */
@@ -155,7 +155,7 @@ export interface GameState {
   tenant: TenantState
   backup: { zone: string; cycle: number; holderId: string | null } | null
   events: GameEvent[]
-  winner?: TeamId | null // set when the game ends (Ancient destroyed or surrender)
+  winner?: TeamId | null // set when the game ends (Terminal destroyed or surrender)
   surrenderVotes: { chaff: Set<string>; audit: Set<string> }
   timeOfDay: 'day' | 'night'
   dayNightCycle: number

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import Stream from '~~/app/components/game/Stream.vue'
 import {
-  ancientLabel,
+  terminalLabel,
   isStructureTarget,
   teamLabel,
   collapseStructureDamage,
@@ -114,20 +114,20 @@ describe('Stream', () => {
 })
 
 describe('combatLog helpers', () => {
-  describe('ancientLabel', () => {
-    it('resolves ancient ids to readable Terminal names', () => {
-      expect(ancientLabel('terminal_chaff')).toBe('the CHAFF Terminal')
-      expect(ancientLabel('terminal_audit')).toBe('the AUDIT Terminal')
+  describe('terminalLabel', () => {
+    it('resolves terminal ids to readable Terminal names', () => {
+      expect(terminalLabel('terminal_chaff')).toBe('the CHAFF Terminal')
+      expect(terminalLabel('terminal_audit')).toBe('the AUDIT Terminal')
     })
 
     it('falls back to a generic Terminal label for unknown teams', () => {
-      expect(ancientLabel('terminal_neutral')).toBe('the neutral Terminal')
+      expect(terminalLabel('terminal_neutral')).toBe('the neutral Terminal')
     })
 
-    it('returns null for non-ancient ids', () => {
-      expect(ancientLabel('ice_mid-t1-chaff')).toBeNull()
-      expect(ancientLabel('github_7379966')).toBeNull()
-      expect(ancientLabel('creep_3')).toBeNull()
+    it('returns null for non-terminal ids', () => {
+      expect(terminalLabel('ice_mid-t1-chaff')).toBeNull()
+      expect(terminalLabel('github_7379966')).toBeNull()
+      expect(terminalLabel('creep_3')).toBeNull()
     })
   })
 

@@ -434,7 +434,7 @@ export function dealAbilityDamage(
  * and neutrals, which are hostile to both teams. Until this existed no ability
  * could touch a wave, so standing in lane with a wave in front of you and no
  * enemy hero present made all four of your abilities dead weight: no waveclear,
- * no jungle clearing, no securing a last hit with a nuke.
+ * no silt clearing, no securing a last hit with a nuke.
  *
  * Waves carry no plate or ice stat, so the target-side mitigation
  * in `dealDamage` has nothing to read — only the CASTER-side amplifier
@@ -444,7 +444,7 @@ export function dealAbilityDamage(
  * Dead NPCs are left in the array at 0 INTEG (`alive: false` for neutrals) rather
  * than filtered out: the cast bridge credits the kill by diffing INTEG against the
  * pre-cast buffer, and WaveAI reaps them at the end of the same tick. ICE,
- * Tenant and the Ancient are deliberately untouched — a second pass.
+ * Tenant and the Terminal are deliberately untouched — a second pass.
  */
 export function damageEnemyNpcsInZone(
   state: GameState,

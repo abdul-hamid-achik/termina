@@ -56,7 +56,7 @@ function formatTimeRemaining(cycle: number, timeOfDay: string): string {
 // ── Macro row (team score / net worth / ice / Core INTEG) ──────
 const lead = computed(() => scripLead(props.netWorthChaff ?? 0, props.netWorthAudit ?? 0))
 
-function corePct(a: TerminalState | undefined): number {
+function terminalPct(a: TerminalState | undefined): number {
   if (!a || a.maxInteg <= 0) return 0
   return Math.round((a.integ / a.maxInteg) * 100)
 }
@@ -154,12 +154,12 @@ function corePct(a: TerminalState | undefined): number {
           <span class="t-caption">TERMINAL</span>
           <span
             :class="terminals.chaff.vulnerable ? 'text-warn animate-pulse font-bold' : 'text-chaff'"
-            >{{ FACTION_META.chaff.short }} {{ corePct(terminals.chaff) }}%</span
+            >{{ FACTION_META.chaff.short }} {{ terminalPct(terminals.chaff) }}%</span
           >
           <span class="text-text-muted">/</span>
           <span
             :class="terminals.audit.vulnerable ? 'text-warn animate-pulse font-bold' : 'text-audit'"
-            >{{ FACTION_META.audit.short }} {{ corePct(terminals.audit) }}%</span
+            >{{ FACTION_META.audit.short }} {{ terminalPct(terminals.audit) }}%</span
           >
         </span>
       </template>

@@ -209,7 +209,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         farmKind: 'burn',
       }
 
-    case 'gold_change': {
+    case 'scrip_change': {
       const reason = str(p.reason)
       // Drop scrip lines a dedicated line already narrates (last-hits, burns,
       // passive trickle) — the dominant source of farming-phase noise.
@@ -526,7 +526,7 @@ export function buildCombatLines(
 
 // ── Kill feed ───────────────────────────────────────────────────────
 
-export type KillCategory = 'hero' | 'ice' | 'tenant' | 'core'
+export type KillCategory = 'hero' | 'ice' | 'tenant' | 'terminal'
 
 export interface KillFeedEntry {
   cycle: number
@@ -624,7 +624,7 @@ export function deriveKillFeed(events: GameEvent[], ctx: NarrativeContext): Kill
     if (e.type === 'terminal_destroyed') {
       out.push({
         cycle: e.cycle,
-        category: 'core',
+        category: 'terminal',
         assisters: [],
         text: `${teamLabel(str(p.killerTeam))} CORE DUMPED the ${teamLabel(str(p.team))} Terminal`,
       })

@@ -4,7 +4,7 @@
  * These are deliberately store-free so they can be unit-tested in isolation.
  * The Vue component (GameScreen.vue) resolves entity ids to readable labels and
  * the per-event text, then delegates the structural concerns (the readable name
- * for a team's Ancient, and collapsing repeated structure-damage spam) here.
+ * for a team's Terminal, and collapsing repeated structure-damage spam) here.
  */
 
 import { FACTION_META } from '~~/shared/constants/world'
@@ -48,7 +48,7 @@ export interface CombatLine {
   count?: number
   /**
    * When set, consecutive lines sharing this key collapse into one running line.
-   * Only structure-damage lines (hero/wave → ice/ancient) set this; combat
+   * Only structure-damage lines (hero/wave → ice/terminal) set this; combat
    * between heroes, kills, abilities, etc. leave it undefined so they never merge.
    */
   dedupKey?: string
@@ -78,11 +78,11 @@ interface RunningLine extends CombatLine {
 
 /**
  * Resolve a raw target id to the readable name for a team's win structure —
- * the "Terminal" in Termina's terminal world — or null when the id is not an
- * ancient id. Mirrors the `terminal_<team>` ids produced by
- * TerminalSystem.terminalTargetId (the internal name stays "ancient").
+ * the "Terminal" in Termina's terminal world — or null when the id is not
+ * a terminal id. Mirrors the `terminal_<team>` ids produced by
+ * TerminalSystem.terminalTargetId.
  */
-export function ancientLabel(id: string): string | null {
+export function terminalLabel(id: string): string | null {
   if (!id.startsWith('terminal_')) return null
   const team = id.slice('terminal_'.length)
   if (team === 'chaff' || team === 'audit') {
@@ -91,7 +91,7 @@ export function ancientLabel(id: string): string | null {
   return `the ${team} Terminal`
 }
 
-/** True when a damage target id names a structure (ice or ancient). */
+/** True when a damage target id names a structure (ice or terminal). */
 export function isStructureTarget(targetId: unknown): boolean {
   return (
     typeof targetId === 'string' && (targetId.startsWith('ice') || targetId.startsWith('terminal_'))

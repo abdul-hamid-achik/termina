@@ -30,8 +30,8 @@ const JUNGLE_ZONES = [
   'silt-audit-bot',
 ] as const
 
-/** Spawn neutral waves in jungle camps. `hasZone` skips camps a subset map
- *  doesn't have (one-lane has no jungle). `existingNeutrals` is used to enforce
+/** Spawn neutral waves in silt camps. `hasZone` skips camps a subset map
+ *  doesn't have (one-lane has no silt). `existingNeutrals` is used to enforce
  *  MAX_NEUTRALS_PER_CAMP — camps at cap are skipped (no new spawns). */
 export function spawnSiltDwellers(
   cycle: number,

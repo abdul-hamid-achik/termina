@@ -5,7 +5,7 @@ import { registerBots, cleanupGame, getBotLane } from '~~/server/game/ai/BotMana
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { resetWaveIdCounter, initializeTenant } from '~~/server/game/map/spawner'
-import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
+import { initializeTerminals } from '~~/server/game/engine/TerminalSystem'
 import { zonesForMap } from '~~/shared/constants/maps'
 
 /**
@@ -66,7 +66,7 @@ function oneLaneState(players: Record<string, PlayerState>): GameState {
     neutrals: [],
     waves: [],
     ice: initializeIce(zones),
-    terminals: initializeAncients(),
+    terminals: initializeTerminals(),
     caches: [],
     tenant: initializeTenant(),
     backup: null,

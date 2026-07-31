@@ -160,7 +160,7 @@ describe('learn page', () => {
     }
   })
 
-  it('uses the real jungle zone naming (jungle-team-side)', () => {
+  it('uses the real silt zone naming (silt-team-side)', () => {
     const text = mountLearn().text()
     expect(text).toContain('silt-chaff-top')
     expect(text).toContain('silt-audit-bot')
@@ -180,7 +180,7 @@ describe('learn page', () => {
     expect(text).not.toContain('4 ticks to reach mid river')
   })
 
-  it('documents the jungle and Tenant target forms the parser accepts', () => {
+  it('documents the silt and Tenant target forms the parser accepts', () => {
     const text = mountLearn().text()
     expect(text).toContain('neutral:<index>')
     expect(text).toContain('attack neutral:0')

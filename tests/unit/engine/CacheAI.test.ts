@@ -388,7 +388,7 @@ describe('CacheAI', () => {
       expect(result.players['p1']!.integ).toBe(510)
     })
 
-    it('restores BW from Cron’s crontabMana buff (the advertised BW half of Crontab)', () => {
+    it('restores BW from Cron’s crontabBw buff (the advertised BW half of Crontab)', () => {
       const state = makeGameState({
         cycle: 60,
         players: {
@@ -396,14 +396,14 @@ describe('CacheAI', () => {
             id: 'p1',
             bw: 200,
             maxBw: 1000,
-            buffs: [{ id: 'crontabMana', stacks: 15, cyclesRemaining: 4, source: 'cron' }],
+            buffs: [{ id: 'crontabBw', stacks: 15, cyclesRemaining: 4, source: 'cron' }],
           }),
         },
       })
 
       const result = processCacheBuffs(state)
-      // Crontab's mpPerTick (15) was advertised in the event + description but
-      // never applied; the crontabMana buff now restores `stacks` BW per cycle.
+      // Crontab's bwPerCycle (15) was advertised in the event + description but
+      // never applied; the crontabBw buff now restores `stacks` BW per cycle.
       expect(result.players['p1']!.bw).toBe(215)
     })
 

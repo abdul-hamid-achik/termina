@@ -451,7 +451,7 @@ describe('GameScreen overlays', () => {
     }
 
     it('pays the farming loop a scrip cue and an amber +Ng float', async () => {
-      // REGRESSION: the scrip cue hung off `gold_change`, whose only emitter is a
+      // REGRESSION: the scrip cue hung off `scrip_change`, whose only emitter is a
       // win sentinel carrying an empty playerId — so last-hitting, the core
       // economic loop of the whole match, was completely silent.
       seedActiveGame()
@@ -472,7 +472,7 @@ describe('GameScreen overlays', () => {
       wrapper.unmount()
     })
 
-    it('pays a burn and a jungle camp the same cue', async () => {
+    it('pays a burn and a silt camp the same cue', async () => {
       seedActiveGame()
       const wrapper = mountGameScreen()
 

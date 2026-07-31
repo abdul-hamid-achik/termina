@@ -390,17 +390,17 @@ describe('Cron Hero', () => {
       expect(buff!.cyclesRemaining).toBe(4)
     })
 
-    it('also applies the crontabMana buff (the BW-over-time half) to self and allies', () => {
+    it('also applies the crontabBw buff (the BW-over-time half) to self and allies', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const ally = makeAlly()
       const state = makeState([player, ally])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
-      expect(hasBuff(result.state.players['p1']!, 'crontabMana')).toBe(true)
-      expect(hasBuff(result.state.players['a1']!, 'crontabMana')).toBe(true)
-      const mana = result.state.players['p1']!.buffs.find((b) => b.id === 'crontabMana')
-      expect(mana!.stacks).toBe(15) // R_MP_PER_TICK
+      expect(hasBuff(result.state.players['p1']!, 'crontabBw')).toBe(true)
+      expect(hasBuff(result.state.players['a1']!, 'crontabBw')).toBe(true)
+      const mana = result.state.players['p1']!.buffs.find((b) => b.id === 'crontabBw')
+      expect(mana!.stacks).toBe(15) // R_BW_PER_CYCLE
       expect(mana!.cyclesRemaining).toBe(4)
     })
 

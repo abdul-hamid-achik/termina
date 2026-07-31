@@ -284,7 +284,7 @@ export const ZONES: readonly Zone[] = [
   {
     id: 'silt-chaff-top',
     name: 'Chaff Upper Silt',
-    type: 'jungle',
+    type: 'silt',
     adjacentTo: ['top-t2-chaff', 'top-t1-chaff', 'mid-t2-chaff', 'cache-top'],
     team: 'chaff',
     ice: false,
@@ -293,7 +293,7 @@ export const ZONES: readonly Zone[] = [
   {
     id: 'silt-chaff-bot',
     name: 'Chaff Lower Silt',
-    type: 'jungle',
+    type: 'silt',
     adjacentTo: ['bot-t2-chaff', 'bot-t1-chaff', 'mid-t2-chaff', 'cache-bot'],
     team: 'chaff',
     ice: false,
@@ -302,7 +302,7 @@ export const ZONES: readonly Zone[] = [
   {
     id: 'silt-audit-top',
     name: 'Audit Upper Silt',
-    type: 'jungle',
+    type: 'silt',
     adjacentTo: ['top-t1-audit', 'top-t2-audit', 'mid-t2-audit', 'cache-top'],
     team: 'audit',
     ice: false,
@@ -311,7 +311,7 @@ export const ZONES: readonly Zone[] = [
   {
     id: 'silt-audit-bot',
     name: 'Audit Lower Silt',
-    type: 'jungle',
+    type: 'silt',
     adjacentTo: ['bot-t1-audit', 'bot-t2-audit', 'mid-t2-audit', 'cache-bot'],
     team: 'audit',
     ice: false,

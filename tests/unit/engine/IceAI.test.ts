@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { runIceAI, applyIceActions, type IceAction } from '~~/server/game/engine/IceAI'
-import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
+import { initializeTerminals } from '~~/server/game/engine/TerminalSystem'
 import type { GameState, PlayerState, WaveUnitState } from '~~/shared/types/game'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
@@ -62,7 +62,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     zones: initializeZoneStates(),
     waves: [],
     ice: initializeIce(),
-    terminals: initializeAncients(),
+    terminals: initializeTerminals(),
     events: [],
     ...overrides,
   }

@@ -25,7 +25,7 @@ import type { WaveUnitState, GameState, PlayerState } from '~~/shared/types/game
 import { HEROES } from '~~/shared/constants/heroes'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeTenant } from '~~/server/game/map/spawner'
-import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
+import { initializeTerminals } from '~~/server/game/engine/TerminalSystem'
 
 function statsAtLevel(heroId: string, level: number) {
   const hero = HEROES[heroId]!
@@ -94,7 +94,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     waves: [],
     neutrals: [],
     ice: initializeIce(),
-    terminals: initializeAncients(),
+    terminals: initializeTerminals(),
     caches: [],
     tenant: initializeTenant(),
     backup: null,
@@ -665,7 +665,7 @@ describe('cast bridge: abilities vs waves and neutrals', () => {
     expect(cleared.events.some((e) => e._tag === 'wave_strip')).toBe(true)
   })
 
-  it('clears a jungle camp and pays the neutral bounty', () => {
+  it('clears a silt camp and pays the neutral bounty', () => {
     const camp = 'silt-chaff-top'
     const state = makeGameState({
       players: { p1: makeHero('mutex', { id: 'p1', zone: camp }) },
@@ -686,7 +686,7 @@ describe('cast bridge: abilities vs waves and neutrals', () => {
   it('casts against the LIVE neutral buffer, not a stale copy from the tick start', () => {
     // REGRESSION: the bridge built its temp state from `state.neutrals`, so a
     // cast resolving after the attack phase handed the resolver a pre-attack
-    // jungle — and the array it returned silently reverted every neutral the
+    // silt — and the array it returned silently reverted every neutral the
     // attack phase had just damaged.
     const camp = 'silt-chaff-top'
     const state = makeGameState({

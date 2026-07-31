@@ -8,7 +8,7 @@ import {
   processSpecialActions,
 } from '~~/server/game/engine/GameLoop'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
+import { initializeTerminals } from '~~/server/game/engine/TerminalSystem'
 import {
   HARDEN_DURATION_CYCLES,
   DAY_DURATION_CYCLES,
@@ -43,7 +43,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     waves: [],
     neutrals: [],
     ice: initializeIce(),
-    terminals: initializeAncients(),
+    terminals: initializeTerminals(),
     caches: [],
     tenant: { alive: false, integ: 0, maxInteg: 5000, deathCycle: null },
     backup: null,

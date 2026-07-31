@@ -24,9 +24,9 @@ import type { StateManagerApi } from './StateManager'
 import { scaledTickIntervalMs, scaledRespawnTicks, fastGameFactor } from './fastGame'
 import { resolveActions, validateAction, type PlayerAction } from './ActionResolver'
 import { advanceTutorialAfterTick, TUTORIAL_STEP_COUNT } from '~~/server/game/modes/tutorial'
-import { distributePassiveGold, awardKill, xpComebackMultiplier } from './ScripDistributor'
+import { distributePassiveScrip, awardKill, xpComebackMultiplier } from './ScripDistributor'
 import { runWaveAI, applyWaveActions, enforceWaveZoneCap } from './WaveAI'
-import { ensureTerminals, updateAncientVulnerability, checkTerminalWin } from './TerminalSystem'
+import { ensureTerminals, updateTerminalVulnerability, checkTerminalWin } from './TerminalSystem'
 import { runIceAI, applyIceActions } from './IceAI'
 import { runTenantAI, processTenantDamage } from './TenantAI'
 import { removeExpiredCaches, processCacheBuffs } from './CacheAI'
@@ -269,7 +269,7 @@ export function processCycle(
 }> {
   return Effect.gen(function* () {
     // ensureTerminals backfills `terminals` on states created before the
-    // Ancient existed (resumed snapshots, older fixtures).
+    // Terminal existed (resumed snapshots, older fixtures).
     let currentState: GameState = ensureTerminals({ ...state, cycle: state.cycle + 1, events: [] })
     const allEvents: GameEngineEvent[] = []
     const rejectedActions: Array<{ playerId: string; reason: string }> = []
@@ -418,7 +418,7 @@ export function processCycle(
       // 225 (15 min) and the tutorial ends around tick 60 — no way to quit for
       // another ~11 minutes. Closing the tab was the only real option. End the
       // game on graduation instead: the win block below preserves an
-      // already-set winner, so onGameOver fires exactly as an Ancient kill
+      // already-set winner, so onGameOver fires exactly as a Terminal kill
       // would and the player lands on the post-game screen.
       const team = humanId ? currentState.players[humanId]?.team : undefined
       if (graduated && team) {
@@ -455,21 +455,21 @@ export function processCycle(
     currentState = npcResult.state
     allEvents.push(...npcResult.events)
 
-    // 5.65. Being shot by a ice, a wave wave or a jungle camp is combat too —
+    // 5.65. Being shot by ice, a wave or a silt dweller is combat too —
     // it must gate fountain regen and the "out of combat" item passives exactly
     // as a hero attack does. Runs a second time (step 3.6 only sees the hero
     // phase, which resolves before NPCs act); the buff refresh is idempotent.
     currentState = applyInCombatBuffs(currentState, npcResult.events)
 
-    // 5.7. Recompute Ancient vulnerability after all ice damage this cycle
+    // 5.7. Recompute Terminal vulnerability after all ice damage this cycle
     // (hero attacks in resolveActions + wave attacks in NPC AI).
-    currentState = updateAncientVulnerability(currentState)
+    currentState = updateTerminalVulnerability(currentState)
 
     // 6–7. Spawn waves / neutrals / caches; expire caches + wards
     currentState = runSpawning(currentState)
 
     // 8. Distribute passive scrip
-    currentState = distributePassiveGold(currentState)
+    currentState = distributePassiveScrip(currentState)
 
     // 9. Handle respawns
     currentState = handleRespawns(currentState)
@@ -551,7 +551,7 @@ export function processCycle(
 
     // 13.1. Test-mode progress monitor. Only when the fast-game hook is active
     // (dev/test, never production) and every 25 ticks, log how the game is
-    // converging toward an Ancient kill — ice standing per team and Ancient
+    // converging toward a Terminal kill — ice standing per team and Terminal
     // HP/vulnerability — so a watcher can see whether games end on time.
     if (fastGameFactor() > 1 && currentState.cycle % 25 === 0) {
       const iceUp = (team: string) =>
@@ -561,8 +561,8 @@ export function processCycle(
         gameId,
         cycle: currentState.cycle,
         ice: `R${iceUp('chaff')}:D${iceUp('audit')}`,
-        chaffAncient: `${anc?.chaff.integ ?? '?'}${anc?.chaff.vulnerable ? '!' : ''}`,
-        auditAncient: `${anc?.audit.integ ?? '?'}${anc?.audit.vulnerable ? '!' : ''}`,
+        chaffTerminal: `${anc?.chaff.integ ?? '?'}${anc?.chaff.vulnerable ? '!' : ''}`,
+        auditTerminal: `${anc?.audit.integ ?? '?'}${anc?.audit.vulnerable ? '!' : ''}`,
         winner: winner ?? 'none',
       })
     }
@@ -1212,7 +1212,7 @@ export function runNPCAI(
   let s = state
   const events: GameEngineEvent[] = []
 
-  // Waves (may damage/destroy the enemy Ancient — events carry that)
+  // Waves (may damage/destroy the enemy Terminal — events carry that)
   const waveResult = applyWaveActions(s, runWaveAI(s))
   s = waveResult.state
   events.push(...waveResult.events)
@@ -1273,14 +1273,14 @@ export function runNPCAI(
 }
 
 /**
- * Spawn periodic content for the cycle: wave waves, jungle neutrals, caches;
+ * Spawn periodic content for the cycle: wave units, silt dwellers, caches;
  * and clean up expired caches and wards. Pure: same state object if nothing
  * spawned and nothing expired.
  */
 export function runSpawning(state: GameState): GameState {
   let s = state
   // Gate wave/neutral/cache spawning to the zones THIS game's map actually has,
-  // so subset maps (one-lane) don't spawn into uninitialized top/bot/jungle zones.
+  // so subset maps (one-lane) don't spawn into uninitialized top/bot/silt zones.
   const hasZone = (zoneId: string) => zoneId in s.zones
 
   const newWaves = spawnWaveUnits(s.cycle, hasZone)
@@ -1620,7 +1620,7 @@ function handleDeaths(
           const gained = (players[id]?.scrip ?? 0) - before
           if (gained > 0) {
             events.push({
-              _tag: 'gold_change',
+              _tag: 'scrip_change',
               cycle: state.cycle,
               playerId: id,
               amount: gained,
@@ -1764,8 +1764,8 @@ function trackIceKills(
 }
 
 /**
- * A team wins by destroying the enemy Ancient ("the Terminal"). The
- * Ancient becomes attackable once any of its team's T3 ice is down —
+ * A team wins by destroying the enemy Terminal ("the Terminal"). The
+ * Terminal becomes attackable once any of its team's T3 ice is down —
  * see TerminalSystem for the vulnerability/attack rules.
  */
 function checkWinCondition(state: GameState): TeamId | null {

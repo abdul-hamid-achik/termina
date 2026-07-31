@@ -4,7 +4,7 @@ import { ZONES, ZONE_MAP, ZONE_IDS, isShopZoneFor } from '~~/shared/constants/zo
 describe('Zone Constants', () => {
   describe('zone count and structure', () => {
     it('has the expected total number of zones', () => {
-      // 2 bases + 2 fountains + 18 lane + 4 jungle + 5 river + 1 objective = 32
+      // 2 bases + 2 fountains + 18 lane + 4 silt + 5 river + 1 objective = 32
       expect(ZONES.length).toBe(32)
     })
 
@@ -42,9 +42,9 @@ describe('Zone Constants', () => {
       expect(lanes).toHaveLength(18)
     })
 
-    it('has exactly 4 jungle zones', () => {
-      const jungles = ZONES.filter((z) => z.type === 'jungle')
-      expect(jungles).toHaveLength(4)
+    it('has exactly 4 silt zones', () => {
+      const silts = ZONES.filter((z) => z.type === 'silt')
+      expect(silts).toHaveLength(4)
     })
 
     it('has exactly 5 river zones', () => {
@@ -173,7 +173,7 @@ describe('Zone Constants', () => {
       expect(rosh.adjacentTo).toEqual(['cache-top'])
     })
 
-    it('cache spots connect to river crossings and jungles', () => {
+    it('cache spots connect to river crossings and silts', () => {
       const cacheTop = ZONE_MAP['cache-top']!
       expect(cacheTop.adjacentTo).toContain('top-river')
       expect(cacheTop.adjacentTo).toContain('mid-river')
@@ -211,7 +211,7 @@ describe('Zone Constants', () => {
 
   // A bot-vs-bot game (same AI both sides) should trend ~50/50 only if the two
   // halves of the map are structurally identical. Lock that fairness invariant —
-  // a missing ice, extra jungle, or lop-sided connection on one side would show
+  // a missing ice, extra silt, or lop-sided connection on one side would show
   // up as a real side bias in the simulator, so guard it deterministically here.
   describe('chaff/audit structural symmetry (fairness)', () => {
     const teamZones = (team: 'chaff' | 'audit') => ZONES.filter((z) => z.team === team)

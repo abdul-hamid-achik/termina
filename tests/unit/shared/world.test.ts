@@ -75,7 +75,7 @@ describe('world lexicon', () => {
 
   it('labels the structure tiers, wards, actions and currency', () => {
     expect(STRUCTURE_LABELS.ice[3]).toBe('BLACK ICE')
-    expect(STRUCTURE_LABELS.mainframe).toBe('Terminal')
+    expect(STRUCTURE_LABELS.terminal).toBe('Terminal')
     expect(OBJECTIVE_LABELS.tenant).toBe('THE TENANT')
     expect(OBJECTIVE_LABELS.backup).toBe('BACKUP')
     expect(WARD_LABELS).toEqual({ observer: 'CAMTAP', sentry: 'SNIFFER' })

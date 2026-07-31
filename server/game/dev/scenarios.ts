@@ -44,8 +44,8 @@ export function applyScenario(
       }
     }
 
-    case 'core_vulnerable':
-      // As if a Audit T3 fell — the enemy Ancient is now attackable; the macro
+    case 'terminal_vulnerable':
+      // As if a Audit T3 fell — the enemy Terminal is now attackable; the macro
       // strip should flag it urgent.
       return {
         ...state,
@@ -120,7 +120,7 @@ export const KNOWN_SCENARIOS = [
   'laning',
   'laning_combat',
   'tenant_dead',
-  'core_vulnerable',
+  'terminal_vulnerable',
   'night',
   'self_dead',
   'talent_ready',

@@ -20,7 +20,7 @@ import { getItem } from '~~/shared/constants/items'
 import { ZONES } from '~~/shared/constants/zones'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { findPath } from '~~/server/game/map/topology'
-import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
+import { initializeTerminals } from '~~/server/game/engine/TerminalSystem'
 
 /**
  * Build a synthetic ability def for targeting tests. `targetType` is widened to
@@ -91,7 +91,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     waves: [],
     neutrals: [],
     ice: initializeIce(),
-    terminals: initializeAncients(),
+    terminals: initializeTerminals(),
     caches: [],
     tenant: { alive: true, integ: 5000, maxInteg: 5000, deathCycle: null },
     backup: null,
@@ -1115,8 +1115,8 @@ describe('BotAI - decideBotAction', () => {
     })
   })
 
-  describe('ancient push', () => {
-    it('attacks the enemy ancient when in the enemy base and it is vulnerable', () => {
+  describe('terminal push', () => {
+    it('attacks the enemy terminal when in the enemy base and it is vulnerable', () => {
       const bot = makePlayer({
         zone: 'audit-base',
         integ: 400,
@@ -1124,7 +1124,7 @@ describe('BotAI - decideBotAction', () => {
         bw: 0,
         cooldowns: { q: 1, w: 1, e: 1, r: 1 },
       })
-      const terminals = initializeAncients()
+      const terminals = initializeTerminals()
       const state = makeGameState({
         players: { [bot.id]: bot },
         terminals: { ...terminals, audit: { ...terminals.audit, vulnerable: true } },
@@ -1133,7 +1133,7 @@ describe('BotAI - decideBotAction', () => {
       expect(action).toEqual({ type: 'attack', target: { kind: 'terminal' } })
     })
 
-    it('does not attack the ancient while it is invulnerable', () => {
+    it('does not attack the terminal while it is invulnerable', () => {
       const bot = makePlayer({
         zone: 'audit-base',
         integ: 400,
@@ -1146,7 +1146,7 @@ describe('BotAI - decideBotAction', () => {
       expect(action).not.toEqual({ type: 'attack', target: { kind: 'terminal' } })
     })
 
-    it('fights defending heroes before the ancient', () => {
+    it('fights defending heroes before the terminal', () => {
       const bot = makePlayer({
         zone: 'audit-base',
         integ: 400,
@@ -1155,7 +1155,7 @@ describe('BotAI - decideBotAction', () => {
         cooldowns: { q: 1, w: 1, e: 1, r: 1 },
       })
       const defender = makePlayer({ id: 'enemy1', team: 'audit', zone: 'audit-base', integ: 300 })
-      const terminals = initializeAncients()
+      const terminals = initializeTerminals()
       const state = makeGameState({
         players: { [bot.id]: bot, enemy1: defender },
         terminals: { ...terminals, audit: { ...terminals.audit, vulnerable: true } },

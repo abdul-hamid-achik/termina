@@ -5,7 +5,7 @@ import { resolveAbility } from '~~/server/game/heroes/_base'
 import type { GameState, PlayerState, Buff } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeTenant } from '~~/server/game/map/spawner'
-import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
+import { initializeTerminals } from '~~/server/game/engine/TerminalSystem'
 // Register regex so its Q resolver runs for the talent mana-refund test.
 import '~~/server/game/heroes/regex'
 
@@ -62,7 +62,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     waves: [],
     neutrals: [],
     ice: initializeIce(),
-    terminals: initializeAncients(),
+    terminals: initializeTerminals(),
     caches: [],
     tenant: initializeTenant(),
     backup: null,

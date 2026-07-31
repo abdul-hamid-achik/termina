@@ -37,8 +37,8 @@ describe('applyScenario (dev seed scenarios)', () => {
     expect(s.tenant.deathCycle).toBe(7)
   })
 
-  it('core_vulnerable marks only the Audit Ancient vulnerable', () => {
-    const s = applyScenario(baseState(), 'core_vulnerable')
+  it('terminal_vulnerable marks only the Audit Terminal vulnerable', () => {
+    const s = applyScenario(baseState(), 'terminal_vulnerable')
     expect(s.terminals.audit.vulnerable).toBe(true)
     expect(s.terminals.chaff.vulnerable).toBe(false)
   })
@@ -151,7 +151,7 @@ describe('applyScenario (dev seed scenarios)', () => {
 
   it('KNOWN_SCENARIOS lists the shapeable scenarios', () => {
     expect(KNOWN_SCENARIOS).toContain('tenant_dead')
-    expect(KNOWN_SCENARIOS).toContain('core_vulnerable')
+    expect(KNOWN_SCENARIOS).toContain('terminal_vulnerable')
     expect(KNOWN_SCENARIOS).toContain('laning_combat')
   })
 })

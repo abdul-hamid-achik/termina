@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  distributePassiveGold,
+  distributePassiveScrip,
   awardLastHit,
   awardKill,
   awardIceKill,
@@ -80,7 +80,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
 }
 
 describe('ScripDistributor', () => {
-  describe('distributePassiveGold', () => {
+  describe('distributePassiveScrip', () => {
     it('should give passive scrip to alive players', () => {
       const state = makeGameState({
         players: {
@@ -89,7 +89,7 @@ describe('ScripDistributor', () => {
         },
       })
 
-      const result = distributePassiveGold(state)
+      const result = distributePassiveScrip(state)
       expect(result.players['p1']!.scrip).toBe(100 + PASSIVE_SCRIP_PER_CYCLE)
       expect(result.players['p2']!.scrip).toBe(200 + PASSIVE_SCRIP_PER_CYCLE)
     })
@@ -102,14 +102,14 @@ describe('ScripDistributor', () => {
         },
       })
 
-      const result = distributePassiveGold(state)
+      const result = distributePassiveScrip(state)
       expect(result.players['p1']!.scrip).toBe(100)
       expect(result.players['p2']!.scrip).toBe(200 + PASSIVE_SCRIP_PER_CYCLE)
     })
 
     it('should handle empty player list', () => {
       const state = makeGameState({ players: {} })
-      const result = distributePassiveGold(state)
+      const result = distributePassiveScrip(state)
       expect(Object.keys(result.players)).toHaveLength(0)
     })
   })

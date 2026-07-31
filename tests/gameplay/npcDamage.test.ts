@@ -56,7 +56,7 @@ describe('NPC damage is visible', () => {
     ])
   })
 
-  it('a jungle camp attacking a hero emits a damage event naming the neutral', async () => {
+  it('a silt camp attacking a hero emits a damage event naming the neutral', async () => {
     const game = await seedGame('fresh', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,

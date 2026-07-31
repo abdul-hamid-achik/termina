@@ -138,7 +138,7 @@ describe('objectives: caches', () => {
   })
 })
 
-describe('objectives: jungle neutrals', () => {
+describe('objectives: silt dwellers', () => {
   it('a hero in the camp last-hits a neutral — it dies, awards its bounty, emits neutral_killed', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({

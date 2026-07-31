@@ -414,7 +414,7 @@ describe('combat', () => {
     expect(after.integ).toBeLessThan(before + Math.floor(after.maxInteg * 0.1))
   })
 
-  it('a hero standing in the enemy base destroys a vulnerable Ancient and wins', async () => {
+  it('a hero standing in the enemy base destroys a vulnerable Terminal and wins', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => {
       const me = s.players[HUMAN]!
@@ -443,10 +443,10 @@ describe('combat', () => {
     // The win used to also push a playerless scrip sentinel, which the feed
     // rendered as the literal line "? earned 0sc (game_over:chaff)" at the
     // exact moment of victory. Nothing consumed it.
-    expect(game.lastEvents.filter((e) => e._tag === 'gold_change')).toEqual([])
+    expect(game.lastEvents.filter((e) => e._tag === 'scrip_change')).toEqual([])
   })
 
-  it('the Ancient is firewalled until a T3 falls — attacks bounce off while invulnerable', async () => {
+  it('the Terminal is firewalled until a T3 falls — attacks bounce off while invulnerable', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => {
       const me = s.players[HUMAN]!
@@ -467,10 +467,10 @@ describe('combat', () => {
 
     const me = await game.me()
     const enemyTeam = me.team === 'chaff' ? 'audit' : 'chaff'
-    const ancient = (await game.state()).terminals[enemyTeam]
-    // Firewalled: the attack is rejected, so the Ancient takes no damage and lives.
-    expect(ancient.alive).toBe(true)
-    expect(ancient.integ).toBe(500)
+    const terminal = (await game.state()).terminals[enemyTeam]
+    // Firewalled: the attack is rejected, so the Terminal takes no damage and lives.
+    expect(terminal.alive).toBe(true)
+    expect(terminal.integ).toBe(500)
     expect((await game.state()).winner).toBeFalsy()
     // The firewall reason now reaches the player (previously server-logged only),
     // so the endgame "why won't it take damage?" moment isn't a mystery.
@@ -524,12 +524,12 @@ describe('combat', () => {
     ).toBe(true)
   })
 
-  it('destroying a T3 ice lifts the enemy Ancient firewall (vulnerable flips true)', async () => {
+  it('destroying a T3 ice lifts the enemy Terminal firewall (vulnerable flips true)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me = await game.me()
     const enemyTeam = me.team === 'chaff' ? 'audit' : 'chaff'
 
-    // Precondition: with every T3 standing, the enemy Ancient is firewalled.
+    // Precondition: with every T3 standing, the enemy Terminal is firewalled.
     expect((await game.state()).terminals[enemyTeam].vulnerable).toBe(false)
 
     // Drop one of the enemy's T3 ice; the next cycle recomputes vulnerability.

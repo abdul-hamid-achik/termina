@@ -6,8 +6,8 @@ import { makeTeamState, makeTerminal } from '~~/app/stories/fixtures'
 /**
  * Covers GameStateBar branches the existing test skips: the day/night clock
  * (formatTimeRemaining for both phases), the connection indicator's three
- * states, the net-worth "even"/audit-leader branches, and corePct's
- * missing-ancient guard.
+ * states, the net-worth "even"/audit-leader branches, and terminalPct's
+ * missing-terminal guard.
  */
 
 const baseProps = {
@@ -83,7 +83,7 @@ describe('GameStateBar net-worth lead', () => {
 })
 
 describe('GameStateBar core INTEG', () => {
-  it('renders Terminal percentages from ancient INTEG, flagging the vulnerable team', () => {
+  it('renders Terminal percentages from terminal INTEG, flagging the vulnerable team', () => {
     const terminals = {
       chaff: makeTerminal('chaff', { integ: 4500, maxInteg: 4500, vulnerable: false }),
       audit: makeTerminal('audit', { integ: 2250, maxInteg: 4500, vulnerable: true }),

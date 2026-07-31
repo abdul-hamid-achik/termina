@@ -20,7 +20,7 @@ interface PinnedEntry {
   id: string
   def: ItemDef
   affordable: boolean
-  goldNeeded: number
+  scripNeeded: number
 }
 
 // When nothing is pinned, fall back to the first few role recommendations so the
@@ -38,8 +38,8 @@ const entries = computed<PinnedEntry[]>(() => {
     .map((id) => {
       const def = ITEMS[id]
       if (!def) return null
-      const goldNeeded = Math.max(0, def.cost - props.scrip)
-      return { id, def, affordable: props.scrip >= def.cost, goldNeeded }
+      const scripNeeded = Math.max(0, def.cost - props.scrip)
+      return { id, def, affordable: props.scrip >= def.cost, scripNeeded }
     })
     .filter((e): e is PinnedEntry => e !== null)
 })
@@ -64,7 +64,7 @@ const entries = computed<PinnedEntry[]>(() => {
       >
         <span class="font-bold">{{ entry.def.name }}</span>
         <span v-if="entry.affordable" class="text-gold">{{ entry.def.cost }}sc</span>
-        <span v-else class="text-audit">-{{ entry.goldNeeded }}sc</span>
+        <span v-else class="text-audit">-{{ entry.scripNeeded }}sc</span>
         <button
           v-if="entry.affordable && canBuy"
           class="touch-target text-chaff hover:underline"

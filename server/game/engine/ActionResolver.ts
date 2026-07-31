@@ -48,7 +48,7 @@ import { buyItem, sellItem, useItem } from '~~/server/game/items/shop'
 import { awardLastHit, awardIceKill } from './ScripDistributor'
 import { pickupBackup } from './TenantAI'
 import { pickupCache } from './CacheAI'
-import { resolveAncientAttack, TERMINAL_ZONES } from './TerminalSystem'
+import { resolveTerminalAttack, TERMINAL_ZONES } from './TerminalSystem'
 import { ITEMS } from '~~/shared/constants/items'
 import {
   WAVE_XP,
@@ -640,7 +640,7 @@ function resolveDenyPhase(
 }
 
 /**
- * Phase 3b: Attacks — hero/wave/ice/Tenant/neutral/Ancient, all simultaneous.
+ * Phase 3b: Attacks — hero/wave/ice/Tenant/neutral/Terminal, all simultaneous.
  * This is the largest phase (~440 lines): crit stacking, item on-hit effects
  * (MKB magic, Maelstrom chain, Skull Basher stun), plate mitigation (Desolator
  * shred, Assault Cuirass aura, Vanguard block), shield/phaseShift, Spite Plate
@@ -1167,20 +1167,20 @@ function resolveAttackPhase(
     } else if (cmd.target.kind === 'terminal') {
       const enemyTeam: TeamId = attacker.team === 'chaff' ? 'audit' : 'chaff'
       if (attacker.zone !== TERMINAL_ZONES[enemyTeam]) {
-        miss('You must be in the enemy base to attack the Ancient')
+        miss('You must be in the enemy base to attack the Terminal')
         continue
       }
 
       const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
       const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
 
-      const result = resolveAncientAttack(
+      const result = resolveTerminalAttack(
         { ...state, players, waves, ice, terminals },
         action.playerId,
         attackDamage,
       )
       if (result.rejected) {
-        wsLog.debug('Ancient attack rejected', {
+        wsLog.debug('Terminal attack rejected', {
           playerId: action.playerId,
           reason: result.rejected,
         })
@@ -1807,7 +1807,7 @@ function resolvePostShopPhases(
       const gained = (awarded.players[id]?.scrip ?? 0) - (players[id]?.scrip ?? 0)
       if (gained > 0) {
         events.push({
-          _tag: 'gold_change',
+          _tag: 'scrip_change',
           cycle: state.cycle,
           playerId: id,
           amount: gained,

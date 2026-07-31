@@ -216,7 +216,7 @@ export const BREACH_UNIT_ATTACK = 50
 /**
  * Wave escalation — the match-length lever.
  *
- * Ice and Ancient INTEG are fixed while wave output never scaled, so a wave
+ * Ice and Terminal INTEG are fixed while wave output never scaled, so a wave
  * that could not break a T1 at minute 5 still could not break it at minute 45:
  * `bun run sim 16` measured 31–73m, median 60m. Every
  * WAVE_ESCALATION_INTERVAL_CYCLES, wave INTEG and wave damage each gain one
@@ -275,7 +275,7 @@ export function waveUnitAttack(type: WaveUnitState['type'], cycle: number): numb
 
 export const SILT_DWELLER_INTERVAL_CYCLES = 60 // Spawn neutrals every 60 ticks
 
-/** Max live neutrals per jungle camp zone. Prevents unbounded accumulation
+/** Max live neutrals per silt camp zone. Prevents unbounded accumulation
  *  if a camp is never cleared (unlike lane waves which have enforceWaveZoneCap). */
 export const MAX_NEUTRALS_PER_CAMP = 4
 
@@ -287,7 +287,7 @@ export const SILT_DWELLERS = {
   watchdog: { integ: 550, attack: 25, scrip: 40, xp: 50 },
   // Large camp
   warden: { integ: 900, attack: 40, scrip: 60, xp: 80 },
-  // Ancient
+  // Terminal
   orphan: { integ: 1500, attack: 75, scrip: 150, xp: 200 },
   zombie: { integ: 2000, attack: 60, scrip: 200, xp: 250 },
 } as const
@@ -302,17 +302,17 @@ export const ICE_HP_T3 = 2500
 export const ICE_ATTACK = 120
 export const ICE_DEFENSE = 20
 
-// ── Ancients (core structures) ───────────────────────────────────
+// ── Terminals (core structures) ───────────────────────────────────
 
 /**
- * The Ancient ("Terminal") — each team's win-condition structure in its
+ * The Terminal ("Terminal") — each team's win-condition structure in its
  * base zone. Invulnerable until at least one of the owning team's T3
- * ice is destroyed; the game ends when an Ancient falls.
+ * ice is destroyed; the game ends when a Terminal falls.
  */
 export const TERMINAL_HP = 6000
 
 /**
- * Waves stuck in a base zone with nothing to attack (Ancient still
+ * Waves stuck in a base zone with nothing to attack (Terminal still
  * invulnerable) are despawned ("garbage collected") after this many idle
  * ticks — prevents unbounded wave pileups in base.
  */

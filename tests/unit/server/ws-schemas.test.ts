@@ -91,11 +91,11 @@ describe('targetRefSchema (via commandSchema attack)', () => {
     })
   })
 
-  describe('ancient', () => {
-    it('accepts a bare ancient target (new win-condition variant)', () => {
+  describe('terminal', () => {
+    it('accepts a bare terminal target (new win-condition variant)', () => {
       ok(commandSchema, attack({ kind: 'terminal' }))
     })
-    it('strips extra fields on ancient target', () => {
+    it('strips extra fields on terminal target', () => {
       const result = commandSchema.safeParse(attack({ kind: 'terminal', sneaky: true }))
       expect(result.success).toBe(true)
       if (result.success && result.data.type === 'attack') {

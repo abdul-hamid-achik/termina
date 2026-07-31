@@ -42,8 +42,8 @@ function teamStats(state: GameState, team: TeamId) {
     avgLevel: players.reduce((sum, p) => sum + p.level, 0) / players.length,
     iceAlive: state.ice.filter((t) => t.team === team && t.alive).length,
     waves: state.waves.filter((c) => c.team === team).length,
-    ancientHp: state.terminals?.[team]?.integ ?? -1,
-    ancientAlive: state.terminals?.[team]?.alive ?? true,
+    terminalHp: state.terminals?.[team]?.integ ?? -1,
+    terminalAlive: state.terminals?.[team]?.alive ?? true,
   }
 }
 
@@ -115,7 +115,7 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
           `lvl ${chaff.avgLevel.toFixed(1)}:${audit.avgLevel.toFixed(1)} | ` +
           `ice ${chaff.iceAlive}:${audit.iceAlive} | ` +
           `waves ${chaff.waves}:${audit.waves} | ` +
-          `ancient ${chaff.ancientHp}:${audit.ancientHp}`,
+          `terminal ${chaff.terminalHp}:${audit.terminalHp}`,
       )
       if (process.env.SIM_DUMP_ZONES === '1') {
         for (const p of Object.values(state.players)) {
@@ -138,18 +138,18 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
   const chaff = teamStats(state, 'chaff')
   const audit = teamStats(state, 'audit')
   const winner =
-    state.winner ?? (!chaff.ancientAlive ? 'audit' : !audit.ancientAlive ? 'chaff' : null)
+    state.winner ?? (!chaff.terminalAlive ? 'audit' : !audit.terminalAlive ? 'chaff' : null)
 
   console.log(
     winner
-      ? `  RESULT: ${winner} wins at ${fmtMin(state.cycle)} (cycle ${state.cycle}) — ancient destroyed: ${!chaff.ancientAlive ? 'chaff' : !audit.ancientAlive ? 'audit' : 'none (surrender?)'}`
+      ? `  RESULT: ${winner} wins at ${fmtMin(state.cycle)} (cycle ${state.cycle}) — terminal destroyed: ${!chaff.terminalAlive ? 'chaff' : !audit.terminalAlive ? 'audit' : 'none (surrender?)'}`
       : `  RESULT: NO WINNER after ${fmtMin(state.cycle)} — game stalled`,
   )
   console.log(
     `  final: kills ${chaff.kills}:${audit.kills} (${totalKills} total) | ` +
       `deaths ${chaff.deaths + audit.deaths} total | ` +
       `networth ${chaff.netWorth}:${audit.netWorth} | ice ${chaff.iceAlive}:${audit.iceAlive} | ` +
-      `waves ${chaff.waves}:${audit.waves} | ancient ${chaff.ancientHp}:${audit.ancientHp}`,
+      `waves ${chaff.waves}:${audit.waves} | terminal ${chaff.terminalHp}:${audit.terminalHp}`,
   )
 
   // K/D/A spread per player

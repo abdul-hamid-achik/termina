@@ -3,11 +3,11 @@ import {
   TERMINAL_ZONES,
   terminalTargetId,
   parseTerminalTargetId,
-  initializeAncients,
+  initializeTerminals,
   ensureTerminals,
-  isAncientVulnerable,
-  updateAncientVulnerability,
-  resolveAncientAttack,
+  isTerminalVulnerable,
+  updateTerminalVulnerability,
+  resolveTerminalAttack,
   checkTerminalWin,
 } from '~~/server/game/engine/TerminalSystem'
 import type { GameState, PlayerState, WaveUnitState } from '~~/shared/types/game'
@@ -71,7 +71,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     waves: [],
     neutrals: [],
     ice: initializeIce(),
-    terminals: initializeAncients(),
+    terminals: initializeTerminals(),
     caches: [],
     tenant: { alive: false, integ: 0, maxInteg: 5000, deathCycle: null },
     backup: null,
@@ -93,9 +93,9 @@ function withDeadT3(state: GameState, team: 'chaff' | 'audit'): GameState {
 }
 
 describe('TerminalSystem', () => {
-  describe('initializeAncients', () => {
-    it('creates two full-INTEG, invulnerable, alive Ancients', () => {
-      const terminals = initializeAncients()
+  describe('initializeTerminals', () => {
+    it('creates two full-INTEG, invulnerable, alive Terminals', () => {
+      const terminals = initializeTerminals()
       for (const team of ['chaff', 'audit'] as const) {
         expect(terminals[team].team).toBe(team)
         expect(terminals[team].integ).toBe(TERMINAL_HP)
@@ -107,7 +107,7 @@ describe('TerminalSystem', () => {
   })
 
   describe('target ids', () => {
-    it('round-trips ancient target ids', () => {
+    it('round-trips terminal target ids', () => {
       expect(parseTerminalTargetId(terminalTargetId('chaff'))).toBe('chaff')
       expect(parseTerminalTargetId(terminalTargetId('audit'))).toBe('audit')
       expect(parseTerminalTargetId('ice_mid-t1-chaff')).toBeNull()
@@ -140,14 +140,14 @@ describe('TerminalSystem', () => {
   describe('vulnerability', () => {
     it('is invulnerable while all own T3 ice stand', () => {
       const state = makeGameState()
-      expect(isAncientVulnerable(state, 'chaff')).toBe(false)
-      expect(isAncientVulnerable(state, 'audit')).toBe(false)
+      expect(isTerminalVulnerable(state, 'chaff')).toBe(false)
+      expect(isTerminalVulnerable(state, 'audit')).toBe(false)
     })
 
     it('becomes vulnerable when one own T3 ice is dead', () => {
       const state = withDeadT3(makeGameState(), 'audit')
-      expect(isAncientVulnerable(state, 'audit')).toBe(true)
-      expect(isAncientVulnerable(state, 'chaff')).toBe(false)
+      expect(isTerminalVulnerable(state, 'audit')).toBe(true)
+      expect(isTerminalVulnerable(state, 'chaff')).toBe(false)
     })
 
     it('is not made vulnerable by dead T1/T2 ice', () => {
@@ -158,43 +158,43 @@ describe('TerminalSystem', () => {
             : t,
         ),
       })
-      expect(isAncientVulnerable(state, 'audit')).toBe(false)
+      expect(isTerminalVulnerable(state, 'audit')).toBe(false)
     })
 
-    it('updateAncientVulnerability flips the flag and is a no-op otherwise', () => {
+    it('updateTerminalVulnerability flips the flag and is a no-op otherwise', () => {
       const unchanged = makeGameState()
-      expect(updateAncientVulnerability(unchanged)).toBe(unchanged)
+      expect(updateTerminalVulnerability(unchanged)).toBe(unchanged)
 
       const state = withDeadT3(makeGameState(), 'audit')
-      const updated = updateAncientVulnerability(state)
+      const updated = updateTerminalVulnerability(state)
       expect(updated).not.toBe(state)
       expect(updated.terminals.audit.vulnerable).toBe(true)
       expect(updated.terminals.chaff.vulnerable).toBe(false)
     })
   })
 
-  describe('resolveAncientAttack', () => {
+  describe('resolveTerminalAttack', () => {
     function vulnerableState(overrides: Partial<GameState> = {}): GameState {
-      return updateAncientVulnerability(withDeadT3(makeGameState(overrides), 'audit'))
+      return updateTerminalVulnerability(withDeadT3(makeGameState(overrides), 'audit'))
     }
 
-    it('rejects attacks while the Ancient is invulnerable', () => {
+    it('rejects attacks while the Terminal is invulnerable', () => {
       const state = makeGameState({
         players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'audit-base' }) },
       })
 
-      const result = resolveAncientAttack(state, 'p1', 100)
+      const result = resolveTerminalAttack(state, 'p1', 100)
       expect(result.rejected).toBeDefined()
       expect(result.state.terminals.audit.integ).toBe(TERMINAL_HP)
       expect(result.events).toHaveLength(0)
     })
 
-    it('applies hero damage to the enemy Ancient when vulnerable', () => {
+    it('applies hero damage to the enemy Terminal when vulnerable', () => {
       const state = vulnerableState({
         players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'audit-base' }) },
       })
 
-      const result = resolveAncientAttack(state, 'p1', 100)
+      const result = resolveTerminalAttack(state, 'p1', 100)
       expect(result.rejected).toBeUndefined()
       expect(result.state.terminals.audit.integ).toBe(TERMINAL_HP - 100)
       expect(result.state.terminals.audit.alive).toBe(true)
@@ -212,12 +212,12 @@ describe('TerminalSystem', () => {
         waves: [makeWave({ id: 'c9', team: 'chaff', zone: 'audit-base' })],
       })
 
-      const result = resolveAncientAttack(state, 'c9', 20)
+      const result = resolveTerminalAttack(state, 'c9', 20)
       expect(result.rejected).toBeUndefined()
       expect(result.state.terminals.audit.integ).toBe(TERMINAL_HP - 20)
     })
 
-    it('destroys the Ancient at 0 INTEG and emits a dedicated terminal_destroyed event', () => {
+    it('destroys the Terminal at 0 INTEG and emits a dedicated terminal_destroyed event', () => {
       const base = vulnerableState({
         players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'audit-base' }) },
       })
@@ -226,10 +226,10 @@ describe('TerminalSystem', () => {
         terminals: { ...base.terminals, audit: { ...base.terminals.audit, integ: 50 } },
       }
 
-      const result = resolveAncientAttack(state, 'p1', 100)
+      const result = resolveTerminalAttack(state, 'p1', 100)
       expect(result.state.terminals.audit.integ).toBe(0)
       expect(result.state.terminals.audit.alive).toBe(false)
-      // No ice_kill reuse — the Ancient has its own event so the UI does not
+      // No ice_kill reuse — the Terminal has its own event so the UI does not
       // render a misleading "destroyed ice in <base>" line.
       expect(result.events.some((e) => e._tag === 'ice_kill')).toBe(false)
       const killEvent = result.events.find((e) => e._tag === 'terminal_destroyed')
@@ -237,7 +237,7 @@ describe('TerminalSystem', () => {
       expect(killEvent).toMatchObject({ team: 'audit', killerTeam: 'chaff' })
     })
 
-    it('rejects attacks on an already-destroyed Ancient', () => {
+    it('rejects attacks on an already-destroyed Terminal', () => {
       const base = vulnerableState({
         players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'audit-base' }) },
       })
@@ -249,36 +249,36 @@ describe('TerminalSystem', () => {
         },
       }
 
-      const result = resolveAncientAttack(state, 'p1', 100)
+      const result = resolveTerminalAttack(state, 'p1', 100)
       expect(result.rejected).toBeDefined()
       expect(result.events).toHaveLength(0)
     })
 
     it('rejects unknown attackers', () => {
       const state = vulnerableState()
-      const result = resolveAncientAttack(state, 'ghost', 100)
+      const result = resolveTerminalAttack(state, 'ghost', 100)
       expect(result.rejected).toBeDefined()
       expect(result.state).toBe(state)
     })
 
-    it('audit attackers damage the chaff Ancient', () => {
+    it('audit attackers damage the chaff Terminal', () => {
       const base = makeGameState({
         players: { p1: makePlayer({ id: 'p1', team: 'audit', zone: 'chaff-base' }) },
       })
-      const state = updateAncientVulnerability(withDeadT3(base, 'chaff'))
+      const state = updateTerminalVulnerability(withDeadT3(base, 'chaff'))
 
-      const result = resolveAncientAttack(state, 'p1', 100)
+      const result = resolveTerminalAttack(state, 'p1', 100)
       expect(result.state.terminals.chaff.integ).toBe(TERMINAL_HP - 100)
       expect(result.state.terminals.audit.integ).toBe(TERMINAL_HP)
     })
   })
 
   describe('checkTerminalWin', () => {
-    it('returns null while both Ancients stand', () => {
+    it('returns null while both Terminals stand', () => {
       expect(checkTerminalWin(makeGameState())).toBeNull()
     })
 
-    it('returns the winning team when an Ancient falls', () => {
+    it('returns the winning team when a Terminal falls', () => {
       const state = makeGameState()
       const auditDown: GameState = {
         ...state,

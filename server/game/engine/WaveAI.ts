@@ -7,7 +7,7 @@ import {
 } from '~~/shared/constants/balance'
 import { resolveKineticHit } from './CombatResolver'
 import { awardZoneXp } from './XpDistributor'
-import { resolveAncientAttack } from './TerminalSystem'
+import { resolveTerminalAttack } from './TerminalSystem'
 import { LANE_ROUTES_CORE } from '~~/shared/constants/lanes'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
@@ -73,7 +73,7 @@ export interface WaveAction {
     | 'attack_wave'
     | 'attack_hero'
     | 'attack_ice'
-    | 'attack_ancient'
+    | 'attack_terminal'
     | 'wait_in_base'
     | 'despawn'
   targetId?: string
@@ -86,13 +86,13 @@ export interface WaveAction {
  *
  * Wave behavior:
  * - If enemy waves in same zone: attack
- * - In the enemy base with a vulnerable Ancient: breach the Ancient
+ * - In the enemy base with a vulnerable Terminal: breach the Terminal
  *   (above heroes — the wave commits to the objective, which also keeps
  *   base waves from grinding down every respawning hero)
  * - If enemy heroes in same zone: attack
  * - If enemy ice in zone: attack ice
  * - Otherwise: move toward enemy base along lane (1 zone per cycle)
- * - Stuck in the enemy base with an invulnerable Ancient and nothing to
+ * - Stuck in the enemy base with an invulnerable Terminal and nothing to
  *   attack: idle, then get garbage collected after
  *   WAVE_BASE_IDLE_DESPAWN_CYCLES idle ticks
  */
@@ -121,11 +121,11 @@ export function runWaveAI(state: GameState): WaveAction[] {
       continue
     }
 
-    // Priority 2 (enemy base only): breach the Ancient when it's vulnerable
+    // Priority 2 (enemy base only): breach the Terminal when it's vulnerable
     if (inEnemyBase && enemyTerminal && enemyTerminal.alive && enemyTerminal.vulnerable) {
       actions.push({
         waveId: wave.id,
-        action: 'attack_ancient',
+        action: 'attack_terminal',
         damage,
       })
       continue
@@ -187,7 +187,7 @@ function enemyTeam(team: TeamId): TeamId {
 
 /**
  * Apply wave actions to the game state. Returns updated state plus any
- * events to emit (hero damage, Ancient damage / destruction).
+ * events to emit (hero damage, Terminal damage / destruction).
  */
 export function applyWaveActions(
   state: GameState,
@@ -268,10 +268,10 @@ export function applyWaveActions(
         }
         break
       }
-      case 'attack_ancient': {
+      case 'attack_terminal': {
         // Route through the shared helper so wave and hero attacks follow
         // identical vulnerability/destruction rules.
-        const result = resolveAncientAttack(
+        const result = resolveTerminalAttack(
           { ...state, waves, terminals },
           action.waveId,
           action.damage ?? 0,

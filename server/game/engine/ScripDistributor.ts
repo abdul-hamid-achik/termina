@@ -76,8 +76,8 @@ export function xpComebackMultiplier(state: GameState, team: TeamId): number {
   return 1 + ratio * XP_COMEBACK_PENALTY_MAX
 }
 
-/** Award passive scrip to all alive players. +1g per cycle. */
-export function distributePassiveGold(state: GameState): GameState {
+/** Award passive scrip to all alive players. +1 sc per cycle. */
+export function distributePassiveScrip(state: GameState): GameState {
   const updatedPlayers = { ...state.players }
 
   for (const [pid, player] of Object.entries(updatedPlayers)) {

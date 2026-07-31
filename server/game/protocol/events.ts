@@ -47,10 +47,10 @@ export interface IceKillEvent {
   readonly killerTeam: TeamId
 }
 
-export interface AncientDestroyedEvent {
+export interface TerminalDestroyedEvent {
   readonly _tag: 'terminal_destroyed'
   readonly cycle: number
-  /** The team whose Ancient (Core) fell. */
+  /** The team whose Terminal fell. */
   readonly team: TeamId
   /** The team that destroyed it (the winner). */
   readonly killerTeam: TeamId
@@ -74,8 +74,8 @@ export interface WaveBurnEvent {
   readonly scripAwarded: number
 }
 
-export interface GoldChangeEvent {
-  readonly _tag: 'gold_change'
+export interface ScripChangeEvent {
+  readonly _tag: 'scrip_change'
   readonly cycle: number
   readonly playerId: string
   readonly amount: number
@@ -336,10 +336,10 @@ export type GameEngineEvent =
   | KillEvent
   | DeathEvent
   | IceKillEvent
-  | AncientDestroyedEvent
+  | TerminalDestroyedEvent
   | WaveStripEvent
   | WaveBurnEvent
-  | GoldChangeEvent
+  | ScripChangeEvent
   | LevelUpEvent
   | AbilityUsedEvent
   | StatusAppliedEvent

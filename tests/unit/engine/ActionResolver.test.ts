@@ -11,7 +11,7 @@ import { SILT_DWELLERS } from '~~/shared/constants/balance'
 import { HEROES } from '~~/shared/constants/heroes'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeTenant } from '~~/server/game/map/spawner'
-import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
+import { initializeTerminals } from '~~/server/game/engine/TerminalSystem'
 import { cycleAllBuffs } from '~~/server/game/heroes/_base'
 // Register echo so its Q resolver runs (the spell-block tests cast a real spell).
 import '../../../server/game/heroes/echo'
@@ -67,7 +67,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     waves: [],
     neutrals: [],
     ice: initializeIce(),
-    terminals: initializeAncients(),
+    terminals: initializeTerminals(),
     caches: [],
     tenant: initializeTenant(),
     backup: null,
@@ -365,7 +365,7 @@ describe('ActionResolver', () => {
       }
     })
 
-    it('awards the neutral bounty (scrip + xp) and emits neutral_killed on a jungle kill', () => {
+    it('awards the neutral bounty (scrip + xp) and emits neutral_killed on a silt camp kill', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
@@ -795,7 +795,7 @@ describe('ActionResolver', () => {
 
       // …and says so. The payout was silent, so razing a ice read as a pure
       // objective with no reward.
-      const scrip = result.events.filter((e) => e._tag === 'gold_change')
+      const scrip = result.events.filter((e) => e._tag === 'scrip_change')
       expect(scrip).toHaveLength(1)
       expect(scrip[0]).toMatchObject({
         playerId: 'p1',
@@ -1083,17 +1083,17 @@ describe('ActionResolver', () => {
     })
   })
 
-  describe('ancient attacks', () => {
-    function stateWithVulnerableAuditAncient(playerZone: string, vulnerable = true): GameState {
-      const terminals = initializeAncients()
+  describe('terminal attacks', () => {
+    function stateWithVulnerableAuditTerminal(playerZone: string, vulnerable = true): GameState {
+      const terminals = initializeTerminals()
       return makeGameState({
         players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: playerZone }) },
         terminals: { ...terminals, audit: { ...terminals.audit, vulnerable } },
       })
     }
 
-    it('damages the vulnerable enemy ancient from the enemy base', () => {
-      const state = stateWithVulnerableAuditAncient('audit-base')
+    it('damages the vulnerable enemy terminal from the enemy base', () => {
+      const state = stateWithVulnerableAuditTerminal('audit-base')
       const result = Effect.runSync(
         resolveActions(state, [
           { playerId: 'p1', command: { type: 'attack', target: { kind: 'terminal' } } },
@@ -1109,8 +1109,8 @@ describe('ActionResolver', () => {
       expect(result.state.players['p1']!.iceDamageDealt).toBeGreaterThan(0)
     })
 
-    it('does not damage an invulnerable ancient', () => {
-      const state = stateWithVulnerableAuditAncient('audit-base', false)
+    it('does not damage an invulnerable terminal', () => {
+      const state = stateWithVulnerableAuditTerminal('audit-base', false)
       const result = Effect.runSync(
         resolveActions(state, [
           { playerId: 'p1', command: { type: 'attack', target: { kind: 'terminal' } } },
@@ -1122,7 +1122,7 @@ describe('ActionResolver', () => {
     })
 
     it('requires the attacker to be in the enemy base zone', () => {
-      const state = stateWithVulnerableAuditAncient('mid-river')
+      const state = stateWithVulnerableAuditTerminal('mid-river')
       const result = Effect.runSync(
         resolveActions(state, [
           { playerId: 'p1', command: { type: 'attack', target: { kind: 'terminal' } } },

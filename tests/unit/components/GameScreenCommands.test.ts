@@ -305,7 +305,7 @@ describe('GameScreen commands', () => {
       late.unmount()
     })
   })
-  describe('jungle + Tenant targeting (W1-2)', () => {
+  describe('silt dweller + Tenant targeting (W1-2)', () => {
     // `attack neutral:<i>` resolves against the WHOLE neutrals array server-side
     // (it reaches the client unfiltered), unlike the zone-local wave index. With
     // the zone panel gone (R3-08), targeting goes through the command path: the

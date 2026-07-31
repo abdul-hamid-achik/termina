@@ -10,7 +10,7 @@ import {
 import {
   collapseStructureDamage,
   buildTickStoryView,
-  ancientLabel,
+  terminalLabel,
   isStructureTarget,
   teamLabel,
   type CombatLine,
@@ -178,15 +178,15 @@ describe('eventToLine: kills', () => {
 describe('eventToLine: scrip noise suppression', () => {
   it('drops redundant last-hit scrip lines', () => {
     expect(
-      eventToLine(ev('gold_change', { playerId: 'me', amount: 40, reason: 'wave last hit' }), ctx),
+      eventToLine(ev('scrip_change', { playerId: 'me', amount: 40, reason: 'wave last hit' }), ctx),
     ).toBeNull()
     expect(
-      eventToLine(ev('gold_change', { playerId: 'me', amount: 4, reason: 'passive' }), ctx),
+      eventToLine(ev('scrip_change', { playerId: 'me', amount: 4, reason: 'passive' }), ctx),
     ).toBeNull()
   })
   it('keeps meaningful scrip lines', () => {
     const line = eventToLine(
-      ev('gold_change', { playerId: 'me', amount: -150, reason: 'buyback' }),
+      ev('scrip_change', { playerId: 'me', amount: -150, reason: 'buyback' }),
       ctx,
     )!
     expect(line.text).toContain('lost 150sc')
@@ -289,7 +289,7 @@ describe('buildCombatLines', () => {
         { sourceId: 'me', targetId: 'ice_mid-t1-audit', amount: 70, damageType: 'kinetic' },
         2,
       ),
-      ev('gold_change', { playerId: 'me', amount: 40, reason: 'wave last hit' }, 2),
+      ev('scrip_change', { playerId: 'me', amount: 40, reason: 'wave last hit' }, 2),
       ev('kill', { killerId: 'me', victimId: 'enemy1', assisters: [] }, 3),
     ]
     const lines = buildCombatLines(events, ctx, collapseStructureDamage)
@@ -356,7 +356,7 @@ describe('deriveKillFeed', () => {
       ],
       ctx,
     )
-    expect(feed.map((f) => f.category)).toEqual(['ice', 'tenant', 'core'])
+    expect(feed.map((f) => f.category)).toEqual(['ice', 'tenant', 'terminal'])
     expect(feed[2]!.text).toContain('CORE DUMPED')
   })
 
@@ -677,16 +677,16 @@ describe('narration drift guard', () => {
 })
 
 describe('combatLog label helpers', () => {
-  it('ancientLabel resolves the team Terminal, or null for non-ancient ids', () => {
-    expect(ancientLabel('terminal_chaff')).toBe('the CHAFF Terminal')
-    expect(ancientLabel('terminal_audit')).toBe('the AUDIT Terminal')
+  it('terminalLabel resolves the team Terminal, or null for non-terminal ids', () => {
+    expect(terminalLabel('terminal_chaff')).toBe('the CHAFF Terminal')
+    expect(terminalLabel('terminal_audit')).toBe('the AUDIT Terminal')
     // Unknown team falls back to a readable label rather than null/crash.
-    expect(ancientLabel('terminal_neutral')).toBe('the neutral Terminal')
-    expect(ancientLabel('ice_mid-t1-chaff')).toBeNull()
-    expect(ancientLabel('hero_echo')).toBeNull()
+    expect(terminalLabel('terminal_neutral')).toBe('the neutral Terminal')
+    expect(terminalLabel('ice_mid-t1-chaff')).toBeNull()
+    expect(terminalLabel('hero_echo')).toBeNull()
   })
 
-  it('isStructureTarget is true only for ice/ancient string ids', () => {
+  it('isStructureTarget is true only for ice/terminal string ids', () => {
     expect(isStructureTarget('ice_mid-t1-chaff')).toBe(true)
     expect(isStructureTarget('terminal_audit')).toBe(true)
     expect(isStructureTarget('hero_echo')).toBe(false)

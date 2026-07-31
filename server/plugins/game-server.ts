@@ -102,7 +102,7 @@ export function isEventVisibleToPlayer(
       return !!(srcZone && visibleZones.has(srcZone)) || !!(tgtZone && visibleZones.has(tgtZone))
     }
     case 'wave_strip':
-    case 'gold_change':
+    case 'scrip_change':
     case 'item_purchased':
     case 'item_sold':
       if (event.playerId === playerId) return true
@@ -136,7 +136,7 @@ export function isEventVisibleToPlayer(
     case 'neutral_killed':
       if (event.playerId === playerId) return true
       if (state.players[event.playerId]?.team === playerTeam) return true
-      // An enemy farming the jungle only shows if you can see that camp —
+      // An enemy farming the silt only shows if you can see that camp —
       // otherwise it leaks where they are.
       return visibleZones.has(event.zone)
     case 'talent_selected':
@@ -338,7 +338,7 @@ export function getGameRuntime(): GameRuntime | null {
  * picks this up on its next cycle — its win-condition block (GameLoop.ts ~282)
  * sees `phase === 'ended'` with a winner and fires `callbacks.onGameOver`,
  * which persists the match and broadcasts `game_over` to clients. So forcing
- * the state ends the game cleanly, exactly as an Ancient kill would.
+ * the state ends the game cleanly, exactly as a Terminal kill would.
  *
  * Returns false if no such live game exists (e.g. on another instance, or
  * already ended). HARD no-op in production — never end real matches.
@@ -458,7 +458,7 @@ export function stopDevGame(gameId: string): void {
 }
 
 // ── Production liveGames reaper ──────────────────────────────────
-// A game whose loop dies without firing onGameOver (fiber crash, ancient
+// A game whose loop dies without firing onGameOver (fiber crash, terminal
 // never dies, bug) leaks forever in liveGames + recentEvents + bot combo
 // states. The dev reaper only touches dev_* games. This sweep runs every 60s
 // and force-cleans entries whose lastCycleAt is stale beyond a grace window.
@@ -1033,7 +1033,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         forceLane: opts.mapId === 'one_lane' ? 'mid' : undefined,
         // Tutorial bots play gently by default — 'easy' lowers their cast rate and
         // last-hit accuracy, makes them retreat earlier and slower (reactionDelay),
-        // and drops cache/jungle/threat awareness — so a new player isn't punished
+        // and drops cache/silt/threat awareness — so a new player isn't punished
         // while learning the verbs. An explicit difficulty overrides it.
         difficulty: opts.difficulty ?? (opts.mode === 'tutorial' ? 'easy' : undefined),
       },

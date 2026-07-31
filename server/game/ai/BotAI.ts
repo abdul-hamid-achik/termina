@@ -984,7 +984,7 @@ function tryPlaceSentryWard(state: GameState, bot: PlayerState): Command | null 
     (p) => p.team !== bot.team && p.alive && p.heroId && INVIS_HEROES.has(p.heroId),
   )
   if (!hasInvisEnemy) return null
-  // Place on the current zone or an adjacent river/jungle zone
+  // Place on the current zone or an adjacent river/silt zone
   const candidates = [
     bot.zone,
     ...Object.values(state.zones)
@@ -1134,7 +1134,7 @@ function tryBackup(
 
 /** Buyback — when dead and the game is still winnable, buy back if the bot
  *  has enough scrip and the cooldown is clear. Only when there's a fight to
- *  join (enemies near our structures) or the Ancient is threatened. */
+ *  join (enemies near our structures) or the Terminal is threatened. */
 function tryBuyback(
   state: GameState,
   bot: PlayerState,
@@ -1147,7 +1147,7 @@ function tryBuyback(
   if (bot.scrip < bot.buybackCost) return null
   // Don't buyback if respawn is imminent (within 2 ticks)
   if (bot.respawnCycle - state.cycle <= 2) return null
-  // Buyback when the Ancient is under threat or allies are fighting near our base
+  // Buyback when the Terminal is under threat or allies are fighting near our base
   const enemyTeam: TeamId = bot.team === 'chaff' ? 'audit' : 'chaff'
   const ourBaseZone = bot.team === 'chaff' ? 'chaff-base' : 'audit-base'
   const enemyNearBase = Object.values(state.players).some(
@@ -1210,7 +1210,7 @@ const DEFEND_MAX_DISTANCE = 3
  * in progress — and, perversely, a HUMAN doing the right thing (running back to
  * defend) was the thing that told the bots to stay in lane.
  *
- * Deliberately still ice-anchored: an ally outnumbered mid-jungle gets nothing
+ * Deliberately still ice-anchored: an ally outnumbered mid-silt gets nothing
  * from this. Bounded by distance so a bot never crosses the map for it.
  */
 function tryDefendIce(
@@ -1341,13 +1341,13 @@ function pickWaveTarget(
   return byHp[1]!
 }
 
-/** Attack the enemy Ancient when in the enemy base and it is vulnerable. */
-function tryAttackAncient(state: GameState, bot: PlayerState): Command | null {
+/** Attack the enemy Terminal when in the enemy base and it is vulnerable. */
+function tryAttackTerminal(state: GameState, bot: PlayerState): Command | null {
   const enemyTeam: TeamId = bot.team === 'chaff' ? 'audit' : 'chaff'
   if (bot.zone !== TERMINAL_ZONES[enemyTeam]) return null
-  // Optional chaining guards old snapshots/fixtures created before Ancients existed
-  const ancient = state.terminals?.[enemyTeam]
-  if (!ancient || !ancient.alive || !ancient.vulnerable) return null
+  // Optional chaining guards old snapshots/fixtures created before Terminals existed
+  const terminal = state.terminals?.[enemyTeam]
+  if (!terminal || !terminal.alive || !terminal.vulnerable) return null
   return { type: 'attack', target: { kind: 'terminal' } }
 }
 
@@ -1477,7 +1477,7 @@ export function decideBotAction(
   // through zones that don't exist in this match.
   const hasZone = (id: string) => id in state.zones
   if (!bot.alive) {
-    // Buyback when the game needs us (Ancient threatened or allies teamfighting)
+    // Buyback when the game needs us (Terminal threatened or allies teamfighting)
     const buybackCmd = tryBuyback(state, bot, hasZone)
     if (buybackCmd) return buybackCmd
     if (bot.respawnCycle !== null && state.cycle >= bot.respawnCycle) {
@@ -1612,9 +1612,9 @@ export function decideBotAction(
     const target = enemyHeroes.reduce((a, b) => (a.integ < b.integ ? a : b))
     return { type: 'attack', target: { kind: 'hero', name: target.id } }
   }
-  // Win condition: hit the enemy Ancient when standing in their base and it's exposed
-  const ancientCmd = tryAttackAncient(state, bot)
-  if (ancientCmd) return ancientCmd
+  // Win condition: hit the enemy Terminal when standing in their base and it's exposed
+  const terminalCmd = tryAttackTerminal(state, bot)
+  if (terminalCmd) return terminalCmd
 
   // In fast-game/test mode the loop is sped up to make matches end in minutes,
   // so bots push and breach DECISIVELY rather than last-hitting waves forever —
@@ -1623,7 +1623,7 @@ export function decideBotAction(
   // real game no longer depends on it for forward progress.
   const aggressivePush = fastGameFactor() > 1
 
-  // Close out a won game: if the enemy Ancient is exposed, march straight to
+  // Close out a won game: if the enemy Terminal is exposed, march straight to
   // their base to finish it. The retreat-from-threat check already ran above,
   // so a low-INTEG bot still backs off rather than feeding into base defenses.
   const enemyTeamForClose: TeamId = bot.team === 'chaff' ? 'audit' : 'chaff'

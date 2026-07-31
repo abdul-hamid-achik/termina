@@ -215,7 +215,7 @@ function addZoneWithAdjacent(
   const threatRank = (z: string): number => {
     const team = ZONE_MAP[z]?.team
     if (team === enemyTeam) return 2 // enemy territory — drop first
-    if (team === 'neutral') return 1 // neutral (river/jungle) — drop second
+    if (team === 'neutral') return 1 // neutral (river/silt) — drop second
     return 0 // own territory — keep
   }
   // Sort ascending (lowest threat first); slice off the end to drop the
@@ -439,7 +439,7 @@ export function filterStateForPlayer(
     waves: filteredWaves,
     neutrals: state.neutrals ?? [], // Neutrals are visible in their zones (public info)
     ice: state.ice, // ICE are always visible (global info)
-    terminals: state.terminals, // Ancients are always visible (global info)
+    terminals: state.terminals, // Terminals are always visible (global info)
     caches: state.caches ?? [],
     tenant: state.tenant,
     backup: state.backup,

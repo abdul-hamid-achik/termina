@@ -421,9 +421,8 @@ const ZONE_ALIASES: Record<string, string> = {
 
 function parseTarget(raw: string): TargetRef | null {
   if (raw === 'self') return { kind: 'self' }
-  // The enemy team's core structure ("the Terminal"; typed as terminal/mainframe/ancient/core)
-  if (raw === 'ancient' || raw === 'mainframe' || raw === 'terminal' || raw === 'core')
-    return { kind: 'terminal' }
+  // The enemy team's win-condition structure.
+  if (raw === 'terminal') return { kind: 'terminal' }
   if (raw.startsWith('hero:')) return { kind: 'hero', name: raw.slice(5) }
   if (raw.startsWith('wave:')) {
     const idx = Number.parseInt(raw.slice(5), 10)
@@ -1314,10 +1313,7 @@ export function useCommands() {
 
     // Suggest the enemy Terminal when standing in the enemy base
     const enemyBase = context.player.team === 'chaff' ? 'audit-base' : 'chaff-base'
-    if (
-      context.player.zone === enemyBase &&
-      ('terminal'.includes(partial) || 'mainframe'.includes(partial))
-    ) {
+    if (context.player.zone === enemyBase && 'terminal'.includes(partial)) {
       suggestions.push({ text: 'terminal', description: 'Enemy Terminal (win the game!)' })
     }
 

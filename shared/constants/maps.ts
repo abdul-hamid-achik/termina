@@ -38,7 +38,7 @@ export const ONE_LANE_ZONES: readonly Zone[] = ZONES.filter((z) => ONE_LANE_IDS.
  * Two-lane map — top + mid lanes (no bot), for quick 3v3. Like one_lane it is a
  * strict, SELF-CONTAINED subgraph: same zone IDs as the full map, but each
  * zone's `adjacentTo` is pruned to only these (bases drop their bot-t3 edge,
- * mid-t2 drops its bot-jungle edge, mid-river drops cache-bot, etc.). Keeps the
+ * mid-t2 drops its bot-silt edge, mid-river drops cache-bot, etc.). Keeps the
  * top-side river objectives (cache-top + hollow) so a 3v3 still has caches and
  * Tenant; cache-bot is dropped because it only reaches the removed bot lane.
  */
@@ -64,7 +64,7 @@ const TWO_LANE_IDS = new Set<string>([
   'mid-t1-audit',
   'mid-t2-audit',
   'mid-t3-audit',
-  // Top-side jungles (serve both surviving lanes)
+  // Top-side silts (serve both surviving lanes)
   'silt-chaff-top',
   'silt-audit-top',
   // Top-side river objectives

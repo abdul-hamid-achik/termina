@@ -59,7 +59,7 @@ const cluster = [
 
 const coreDown = [
   entry({
-    category: 'core',
+    category: 'terminal',
     killerHeroId: undefined,
     victimHeroId: undefined,
     text: 'CHAFF CORE DUMPED the AUDIT Terminal',

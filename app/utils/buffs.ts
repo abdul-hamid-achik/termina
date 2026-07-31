@@ -77,7 +77,7 @@ const BUFF_META: Record<string, BuffMeta> = {
   uptimeAtk: { label: 'Uptime', kind: 'positive' },
   uptimeDef: { label: 'Uptime', kind: 'positive' },
   crontabHeal: { label: 'Crontab', kind: 'positive' },
-  crontabMana: { label: 'Crontab', kind: 'positive' },
+  crontabBw: { label: 'Crontab', kind: 'positive' },
   packetInspection: { label: 'Packet Inspection', kind: 'positive', permanent: true },
   middleman: { label: 'Middleman', kind: 'positive', permanent: true },
   returnMark: { label: 'Return', kind: 'positive' },

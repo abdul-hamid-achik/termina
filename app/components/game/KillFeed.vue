@@ -32,7 +32,7 @@ const categoryClass: Record<KillCategory, string> = {
   hero: 'border-audit/60 text-audit bloom-audit',
   ice: 'border-gold/50 text-gold',
   tenant: 'border-gold/70 text-gold bloom-gold',
-  core: 'border-gold/80 text-gold bloom-gold',
+  terminal: 'border-gold/80 text-gold bloom-gold',
 }
 
 function entryKey(e: KillFeedEntry): string {

@@ -4,7 +4,7 @@ import { STARTING_SCRIP } from '~~/shared/constants/balance'
 import { HEROES } from '~~/shared/constants/heroes'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeTenant } from '~~/server/game/map/spawner'
-import { initializeAncients } from './TerminalSystem'
+import { initializeTerminals } from './TerminalSystem'
 import { zonesForMap, DEFAULT_MAP_ID } from '~~/shared/constants/maps'
 
 // ── Error types ────────────────────────────────────────────────
@@ -135,7 +135,7 @@ function createInitialGameState(
     waves: [],
     neutrals: [],
     ice: initializeIce(zones),
-    terminals: initializeAncients(),
+    terminals: initializeTerminals(),
     caches: [],
     tenant: initializeTenant(),
     backup: null,

@@ -21,7 +21,7 @@ export type TalentType =
   | 'stat_bonus' // +X to a stat
   | 'ability_boost' // Enhances specific ability
   | 'cooldown_reduce' // -Xs cooldown on ability
-  | 'mana_cost_reduce' // -X% BW cost
+  | 'bw_cost_reduce' // -X% BW cost
   | 'damage_boost' // +X% damage
   | 'special' // Unique hero-specific effect
 
@@ -225,7 +225,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           id: 'daemon_15_left',
           name: 'Inject Costs 35% Less BW',
           description: 'Reduces Inject BW cost by 35%',
-          type: 'mana_cost_reduce',
+          type: 'bw_cost_reduce',
           tier: 15,
           abilityId: 'q',
           bwCostReduction: 35,
@@ -309,7 +309,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           id: 'kernel_15_left',
           name: 'Interrupt Costs 40% Less BW',
           description: 'Reduces Interrupt BW cost by 40%',
-          type: 'mana_cost_reduce',
+          type: 'bw_cost_reduce',
           tier: 15,
           abilityId: 'q',
           bwCostReduction: 40,
@@ -400,7 +400,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           id: 'regex_15_right',
           name: 'Match Costs 15% Less BW',
           description: 'Reduces Match BW cost by 15%',
-          type: 'mana_cost_reduce',
+          type: 'bw_cost_reduce',
           tier: 15,
           abilityId: 'q',
           bwCostReduction: 15,
@@ -477,7 +477,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           id: 'firewall_15_left',
           name: 'Port Block Costs 30% Less BW',
           description: 'Reduces Port Block BW cost by 30%',
-          type: 'mana_cost_reduce',
+          type: 'bw_cost_reduce',
           tier: 15,
           abilityId: 'q',
           bwCostReduction: 30,
@@ -568,7 +568,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           id: 'proxy_15_right',
           name: 'Cache Shield Costs 20% Less BW',
           description: 'Reduces Cache Shield BW cost by 20%',
-          type: 'mana_cost_reduce',
+          type: 'bw_cost_reduce',
           tier: 15,
           abilityId: 'w',
           bwCostReduction: 20,
@@ -823,7 +823,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           id: 'sentry_15_right',
           name: '-35% Barrier BW',
           description: 'Refunds 35% of Barrier (W) mana — sustain more shields',
-          type: 'mana_cost_reduce',
+          type: 'bw_cost_reduce',
           tier: 15,
           abilityId: 'w',
           bwCostReduction: 35,
@@ -1128,7 +1128,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
   // Lambda — a combo-chaining code-burst mage (Closure rewards rapid casting).
   // Invoke (Q), Map (E) and Reduce (R) all deal INSTANT code damage at cast, so
   // damage_boost lives on Q/E/R. Return (W) is a delayed self-teleport (no damage) —
-  // it only ever gets cooldown_reduce / mana_cost_reduce, never damage_boost.
+  // it only ever gets cooldown_reduce / bw_cost_reduce, never damage_boost.
   lambda: {
     heroId: 'lambda',
     tiers: {
@@ -1272,7 +1272,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           id: 'cron_20_right',
           name: '-40% Kill Signal BW',
           description: 'Kill Signal (E) refunds 40% of its BW — spam the taunt cheaply',
-          type: 'mana_cost_reduce',
+          type: 'bw_cost_reduce',
           tier: 20,
           abilityId: 'e',
           bwCostReduction: 40,
@@ -1359,7 +1359,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           id: 'traceroute_20_right',
           name: '-40% Probe BW Cost',
           description: 'Probe (Q) refunds 40% BW — spam the trace without running dry',
-          type: 'mana_cost_reduce',
+          type: 'bw_cost_reduce',
           tier: 20,
           abilityId: 'q',
           bwCostReduction: 40,
