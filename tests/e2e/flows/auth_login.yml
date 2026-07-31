@@ -1,11 +1,12 @@
 version: 1
 name: auth_login
 intent: >
-  The /login Login tab renders the credentials form (a username input, a password input, and a LOGIN
-  button). With both fields empty the LOGIN button is disabled. Submitting bogus credentials
-  surfaces an [ERR] error message instead of logging in. (The /api/auth/login 401 status contract is
-  covered by the hitspec API suite; a real successful credential login is covered by the login-as
-  dev hook elsewhere and is intentionally not exercised here.)
+  The /login Login tab renders the credentials form (a username input, a
+  password input, and a LOGIN button). With both fields empty the LOGIN button
+  is disabled. Submitting bogus credentials surfaces an [ERR] error message
+  instead of logging in. (The /api/auth/login 401 status contract is covered by
+  the hitspec API suite; a real successful credential login is covered by the
+  login-as dev hook elsewhere and is intentionally not exercised here.)
 mode: normal
 metadata:
   feature: auth

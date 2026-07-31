@@ -1,7 +1,8 @@
 version: 1
 name: legal_privacy
-intent: The public /privacy page renders the Privacy Policy — the heading, the data-collection
-  section, and the third-party processors list (including Resend for email).
+intent: The public /privacy page renders the Privacy Policy — the heading, the
+  data-collection section, and the third-party processors list (including Resend
+  for email).
 mode: normal
 metadata:
   feature: legal

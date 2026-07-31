@@ -1,8 +1,9 @@
 version: 1
 name: profile_view
-intent: A logged-in dev user viewing /profile/me sees their own profile (the whois line for their
-  username), the own-profile [EDIT] link pointing at /profile/settings, and the empty "No matches
-  played yet." state for a fresh account.
+intent: A logged-in dev user viewing /profile/me sees their own profile (the
+  whois line for their username), the own-profile [EDIT] link pointing at
+  /profile/settings, and the empty "No matches played yet." state for a fresh
+  account.
 mode: normal
 metadata:
   feature: profile
@@ -20,7 +21,8 @@ outcomes:
       text:
         contains: whois ${vars.testUser}
   - id: edit_link_points_to_settings
-    description: the own-profile [EDIT] link is rendered exactly once and targets /profile/settings
+    description: the own-profile [EDIT] link is rendered exactly once and targets
+      /profile/settings
     verify:
       count:
         selector: a.text-ability[href="/profile/settings"]

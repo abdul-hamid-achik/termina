@@ -1,7 +1,8 @@
 version: 1
 name: leaderboard_public
-intent: The /leaderboard is public — an anonymous visitor sees the ranking table (header + columns)
-  without logging in, and the page renders without requiring a session.
+intent: The /leaderboard is public — an anonymous visitor sees the ranking table
+  (header + columns) without logging in, and the page renders without requiring
+  a session.
 mode: normal
 metadata:
   feature: leaderboard

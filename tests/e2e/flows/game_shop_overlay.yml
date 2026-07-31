@@ -48,17 +48,17 @@ steps:
     wait:
       selector: '[data-testid="game-screen"]'
       timeoutMs: 20000
-  # Inventory-strip [SHOP] (aria-label) — ActionRow's SCORE/SHOP can sit under
-  # the fold or under the command strip on the tutorial shell.
-  - id: scroll_to_shop
-    scroll:
-      to:
-        by: selector
-        selector: 'button[aria-label="Toggle shop"]'
+  # Desktop (pointer:fine) hides ActionRow — the prompt is primary (R3-09).
+  # The inventory-strip [SHOP] was removed as a duplicate of ActionRow's SHOP;
+  # dispatch a synthetic click on the (display:none) SHOP chip instead — it
+  # still fires the Vue handler (same pattern as game_scoreboard_overlay).
   - id: open_shop
-    click:
-      by: selector
-      selector: 'button[aria-label="Toggle shop"]'
+    eval:
+      js: |
+        const el = document.querySelector('[data-testid="action-shop"]');
+        if (!el) return { ok: false, reason: 'action-shop missing' };
+        el.click();
+        return { ok: true };
   - id: await_shop
     wait:
       selector: '[data-testid="item-shop"]'

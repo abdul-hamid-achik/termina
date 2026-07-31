@@ -1,7 +1,7 @@
 version: 1
 name: legal_terms
-intent: The public /terms page renders the Terms of Service — the heading, the Fair Play /
-  Acceptable Use section, and a link to the Privacy Policy.
+intent: The public /terms page renders the Terms of Service — the heading, the
+  Fair Play / Acceptable Use section, and a link to the Privacy Policy.
 mode: normal
 metadata:
   feature: legal
@@ -26,8 +26,8 @@ outcomes:
       script:
         run: >
           const a = Array.from(document.querySelectorAll('a')).find(a =>
-          /\/privacy$/.test(a.getAttribute('href') || '')); return { ok: !!a, evidence: a ? 'privacy
-          link present' : 'no /privacy link found' };
+          /\/privacy$/.test(a.getAttribute('href') || '')); return { ok: !!a,
+          evidence: a ? 'privacy link present' : 'no /privacy link found' };
 steps:
   - id: open_terms
     open: /terms

@@ -1,13 +1,15 @@
 version: 1
 name: lobby_queue
 intent: >
-  The /lobby Matchmaking panel shows a FIND MATCH control while idle. Clicking it enters the
-  searching state, rendering the MatchQueue (data-testid match-queue) with an "N/10 Players Found"
-  header and a CANCEL control. Clicking CANCEL returns the lobby to idle with FIND MATCH visible
-  again. This covers the idle to searching to cancel UI journey for a solo-queued dev user. (The
-  /api/queue/join and /api/queue/leave status contracts are covered by the hitspec API suite.) Match
-  completion (hero-pick draft and match-to-game handoff) is driven by the matchmaker over WebSocket
-  and is NOT exercised here, as there is no dev hook to seed a draft state.
+  The /lobby Matchmaking panel shows a FIND MATCH control while idle. Clicking
+  it enters the searching state, rendering the MatchQueue (data-testid
+  match-queue) with an "N/10 Players Found" header and a CANCEL control.
+  Clicking CANCEL returns the lobby to idle with FIND MATCH visible again. This
+  covers the idle to searching to cancel UI journey for a solo-queued dev user.
+  (The /api/queue/join and /api/queue/leave status contracts are covered by the
+  hitspec API suite.) Match completion (hero-pick draft and match-to-game
+  handoff) is driven by the matchmaker over WebSocket and is NOT exercised here,
+  as there is no dev hook to seed a draft state.
 mode: normal
 metadata:
   feature: lobby
@@ -20,7 +22,8 @@ imports:
   - ../actions/login.yml
 outcomes:
   - id: find_match_visible_after_cancel
-    description: after cancelling the queue the lobby returns to idle with the FIND MATCH control visible
+    description: after cancelling the queue the lobby returns to idle with the FIND
+      MATCH control visible
     verify:
       text:
         contains: FIND MATCH

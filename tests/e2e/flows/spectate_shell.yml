@@ -1,7 +1,8 @@
 version: 1
 name: spectate_shell
-intent: The /spectate/[gameId] page renders its live-spectator shell — the "spectator · live" header
-  and the requested gameId — on mount, without needing a live game to stream.
+intent: The /spectate/[gameId] page renders its live-spectator shell — the
+  "spectator · live" header and the requested gameId — on mount, without needing
+  a live game to stream.
 mode: normal
 metadata:
   feature: spectate

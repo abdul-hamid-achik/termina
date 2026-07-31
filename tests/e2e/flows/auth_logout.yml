@@ -1,7 +1,8 @@
 version: 1
 name: auth_logout
-intent: Clicking [LOGOUT] in the header clears the session and redirects to /login. Once logged out,
-  visiting a protected route (/lobby) bounces back to /login.
+intent: Clicking [LOGOUT] in the header clears the session and redirects to
+  /login. Once logged out, visiting a protected route (/lobby) bounces back to
+  /login.
 mode: normal
 metadata:
   feature: auth
@@ -19,7 +20,8 @@ outcomes:
       url:
         matches: /login
   - id: login_control_visible_after_logout
-    description: the header shows the [LOGIN] control (not [LOGOUT]) once the session is cleared
+    description: the header shows the [LOGIN] control (not [LOGOUT]) once the
+      session is cleared
     verify:
       text:
         contains: "[LOGIN]"

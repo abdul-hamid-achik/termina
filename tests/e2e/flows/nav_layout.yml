@@ -1,11 +1,12 @@
 version: 1
 name: nav_layout
 intent: >
-  The default layout's header nav adapts to auth state. While unauthenticated on /, the nav shows
-  the public links PLAY / LEARN / LEADERBOARD plus LOGIN, and hides the auth-only entries PROFILE /
-  SETTINGS / LOGOUT (gated by the anon-phase wait steps). After a dev session is minted and / is
-  reloaded, the nav swaps LOGIN for the authenticated set: it now also shows PROFILE, SETTINGS and
-  LOGOUT alongside PLAY.
+  The default layout's header nav adapts to auth state. While unauthenticated on
+  /, the nav shows the public links PLAY / LEARN / LEADERBOARD plus LOGIN, and
+  hides the auth-only entries PROFILE / SETTINGS / LOGOUT (gated by the
+  anon-phase wait steps). After a dev session is minted and / is reloaded, the
+  nav swaps LOGIN for the authenticated set: it now also shows PROFILE, SETTINGS
+  and LOGOUT alongside PLAY.
 mode: normal
 metadata:
   feature: navigation
@@ -22,19 +23,23 @@ outcomes:
     verify:
       script:
         run: >
-          const nav = document.querySelector('nav'); const t = nav ? nav.innerText : ''; const
-          missing = ['[PLAY]','[LEARN]','[LEADERBOARD]'].filter(l => !t.includes(l)); return { ok:
-          missing.length === 0, evidence: 'missing=' + JSON.stringify(missing) + ' nav=' +
-          JSON.stringify(t) };
+          const nav = document.querySelector('nav'); const t = nav ?
+          nav.innerText : ''; const missing =
+          ['[PLAY]','[LEARN]','[LEADERBOARD]'].filter(l => !t.includes(l));
+          return { ok: missing.length === 0, evidence: 'missing=' +
+          JSON.stringify(missing) + ' nav=' + JSON.stringify(t) };
   - id: auth_nav_adds_profile_settings_logout
-    description: after login, the nav adds PROFILE, SETTINGS and LOGOUT and no longer shows LOGIN
+    description: after login, the nav adds PROFILE, SETTINGS and LOGOUT and no
+      longer shows LOGIN
     verify:
       script:
         run: >
-          const nav = document.querySelector('nav'); const t = nav ? nav.innerText : ''; const
-          present = ['[PLAY]','[PROFILE]','[SETTINGS]','[LOGOUT]'].every(l => t.includes(l)); const
-          loginGone = !t.includes('[LOGIN]'); return { ok: present && loginGone, evidence:
-          'present=' + present + ' loginGone=' + loginGone + ' nav=' + JSON.stringify(t) };
+          const nav = document.querySelector('nav'); const t = nav ?
+          nav.innerText : ''; const present =
+          ['[PLAY]','[PROFILE]','[SETTINGS]','[LOGOUT]'].every(l =>
+          t.includes(l)); const loginGone = !t.includes('[LOGIN]'); return { ok:
+          present && loginGone, evidence: 'present=' + present + ' loginGone=' +
+          loginGone + ' nav=' + JSON.stringify(t) };
   - id: no_console_errors
     description: navigating the layout in both auth states produces no console errors
     verify:

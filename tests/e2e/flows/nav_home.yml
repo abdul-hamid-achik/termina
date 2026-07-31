@@ -1,8 +1,8 @@
 version: 1
 name: nav_home
-intent: The public home page renders the ASCII TERMINA logo and tagline, and offers two nav links —
-  "ENTER THE TERMINAL" pointing at /lobby and "LEARN COMMANDS" pointing at /learn. No login is
-  required.
+intent: The public home page renders the ASCII TERMINA logo and tagline, and
+  offers two nav links — "ENTER THE TERMINAL" pointing at /lobby and "LEARN
+  COMMANDS" pointing at /learn. No login is required.
 mode: normal
 metadata:
   feature: navigation

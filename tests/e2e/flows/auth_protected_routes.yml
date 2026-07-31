@@ -1,9 +1,10 @@
 version: 1
 name: auth_protected_routes
 intent: >
-  Without a session, the auth middleware guards the app: opening /play, /profile/settings, and
-  /lobby each redirects to the /login page, while the public pages /, /learn, and /leaderboard
-  render without redirecting. No login step runs in this flow.
+  Without a session, the auth middleware guards the app: opening /play,
+  /profile/settings, and /lobby each redirects to the /login page, while the
+  public pages /, /learn, and /leaderboard render without redirecting. No login
+  step runs in this flow.
 mode: normal
 metadata:
   feature: auth
@@ -24,7 +25,8 @@ outcomes:
       text:
         contains: authenticate to continue
   - id: public_routes_do_not_redirect
-    description: the public routes /, /learn, /leaderboard respond without redirecting to /login
+    description: the public routes /, /learn, /leaderboard respond without
+      redirecting to /login
     verify:
       script:
         run: >

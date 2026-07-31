@@ -1,7 +1,8 @@
 version: 1
 name: error_404
-intent: An unknown route renders the terminal-themed error page (ERROR 404 — segment not found) with
-  a recovery link, instead of a bare default error screen.
+intent: An unknown route renders the terminal-themed error page (ERROR 404 —
+  segment not found) with a recovery link, instead of a bare default error
+  screen.
 mode: normal
 metadata:
   feature: navigation

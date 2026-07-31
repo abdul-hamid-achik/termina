@@ -1,7 +1,8 @@
 version: 1
 name: replay_unavailable
-intent: The /replay/[gameId] page renders its shell and degrades to a graceful "REPLAY UNAVAILABLE"
-  state (not a crash or blank page) when the requested replay does not exist.
+intent: The /replay/[gameId] page renders its shell and degrades to a graceful
+  "REPLAY UNAVAILABLE" state (not a crash or blank page) when the requested
+  replay does not exist.
 mode: normal
 metadata:
   feature: replay
