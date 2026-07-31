@@ -108,12 +108,27 @@ jobs:
           node-version: 24
 
       - name: Install tvault
+        env:
+          # Unauthenticated api.github.com from shared runner IPs often 403s
+          # (secondary rate limit). The job token is enough for public releases.
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          ver=$(curl -fsSL https://api.github.com/repos/abdul-hamid-achik/tinyvault/releases/latest \
+          ver=$(curl -fsSL \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/abdul-hamid-achik/tinyvault/releases/latest \
             | grep -oE '"tag_name": *"v[^"]+"' | grep -oE '[0-9.]+' | head -1)
+          if [ -z "${ver}" ]; then
+            echo "::error::Could not resolve latest tvault release tag"
+            exit 1
+          fi
           tmp=$(mktemp -d)
-          curl -fsSL "https://github.com/abdul-hamid-achik/tinyvault/releases/download/v${ver}/tvault_${ver}_linux_amd64.tar.gz" | tar -xz -C "$tmp"
+          # Public release assets don't need auth; only the releases API does.
+          curl -fsSL \
+            "https://github.com/abdul-hamid-achik/tinyvault/releases/download/v${ver}/tvault_${ver}_linux_amd64.tar.gz" \
+            | tar -xz -C "$tmp"
           mkdir -p "$HOME/.local/bin"
           install -m755 "$(find "$tmp" -name tvault -type f | head -1)" "$HOME/.local/bin/tvault"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
