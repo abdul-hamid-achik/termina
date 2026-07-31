@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { TraceModel } from '~/components/game/traceModel'
 import { FACTION_META } from '~~/shared/constants/world'
+import type { TeamId } from '~~/shared/types/game'
 
 /**
  * The TRACE rail (C1a): your route as hop depth, one line per other route,
@@ -10,6 +11,12 @@ import { FACTION_META } from '~~/shared/constants/world'
  * still stand.
  */
 const props = defineProps<{ trace: TraceModel }>()
+
+function teamTextClass(team: TeamId): string {
+  return team === 'chaff' ? 'text-chaff' : 'text-audit'
+}
+
+const currentRouteClass = computed(() => teamTextClass(props.trace.playerTeam))
 
 const currentLine = computed(() => {
   const active = props.trace.routes.find((r) => r.active)
@@ -22,7 +29,7 @@ const currentLine = computed(() => {
   <div class="flex flex-col gap-1 font-mono t-hud-sm" data-testid="trace-rail">
     <!-- Your route, as depth -->
     <div class="flex items-baseline gap-2" data-testid="trace-current">
-      <span class="text-chaff">▸ {{ currentLine }}</span>
+      <span :class="currentRouteClass">▸ {{ currentLine }}</span>
       <span v-if="trace.currentRoute" class="text-text-dim">
         {{ '┄'.repeat(Math.max(0, trace.hopIndex)) }}├┤{{ '┄'.repeat(2) }}
       </span>
@@ -60,7 +67,7 @@ const currentLine = computed(() => {
       <span
         v-for="t in trace.terminals"
         :key="t.team"
-        :class="t.alive ? 'text-chaff' : 'text-audit line-through'"
+        :class="[teamTextClass(t.team), { 'line-through': !t.alive }]"
         :data-testid="`trace-terminal-${t.team}`"
       >
         {{ FACTION_META[t.team].short }}

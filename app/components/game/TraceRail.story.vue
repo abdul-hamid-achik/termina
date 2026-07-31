@@ -3,6 +3,7 @@ import type { TraceModel } from '~/components/game/traceModel'
 import TraceRail from './TraceRail.vue'
 
 const sample: TraceModel = {
+  playerTeam: 'chaff',
   currentRoute: 'mid',
   hopIndex: 2,
   routes: [

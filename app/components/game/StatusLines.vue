@@ -16,7 +16,7 @@ const props = defineProps<{
   alive: boolean
   /** Net lead text (e.g. "CHF +1.2k" or "even"). */
   netLead: string
-  /** Ms until the next cycle commits (client countdown). */
+  /** Milliseconds until the next cycle commits (client countdown). */
   nextCycleIn: number
   cycle: number
   canAct: boolean
@@ -43,7 +43,8 @@ const hopLine = computed(() => {
 
 const clockLine = computed(() => {
   const t = formatTickClock(props.cycle, true)
-  return props.canAct ? `${t} · AWAITING ORDERS` : `${t} · resolving in ${props.nextCycleIn}s`
+  const seconds = Math.ceil(Math.max(0, props.nextCycleIn) / 1000)
+  return props.canAct ? `${t} · AWAITING ORDERS` : `${t} · resolving in ${seconds}s`
 })
 </script>
 
@@ -52,12 +53,16 @@ const clockLine = computed(() => {
     class="flex flex-col gap-0.5 border-b border-border px-2 py-1 font-mono t-hud-sm"
     data-testid="status-lines"
   >
-    <div class="flex justify-between gap-2">
-      <span class="text-chaff" data-testid="status-hop">{{ hopLine }}</span>
-      <span class="text-gold" data-testid="status-net">NET {{ netLead }}</span>
+    <div class="flex min-w-0 flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+      <span class="min-w-0 flex-1 break-words text-chaff" data-testid="status-hop">{{
+        hopLine
+      }}</span>
+      <span class="max-w-full shrink-0 break-words text-right text-gold" data-testid="status-net"
+        >NET {{ netLead }}</span
+      >
     </div>
-    <div class="flex justify-between gap-2 text-text-dim">
-      <span data-testid="status-clock">{{ clockLine }}</span>
+    <div class="flex min-w-0 justify-between gap-2 text-text-dim">
+      <span class="min-w-0 break-words" data-testid="status-clock">{{ clockLine }}</span>
     </div>
   </div>
 </template>

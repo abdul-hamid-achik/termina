@@ -324,12 +324,12 @@ watchEffect(() => {
               v-if="lead.leader"
               class="t-caption mt-1 t-mono-num"
               :class="lead.leader === 'chaff' ? 'text-chaff' : 'text-audit'"
-              data-testid="replay-gold-lead"
+              data-testid="replay-scrip-lead"
             >
               {{ lead.leader === 'chaff' ? 'CHAFF' : 'AUDIT' }} +{{ formatScripShort(lead.amount) }}
               net worth
             </div>
-            <div v-else class="t-caption mt-1 text-text-dim" data-testid="replay-gold-lead">
+            <div v-else class="t-caption mt-1 text-text-dim" data-testid="replay-scrip-lead">
               net worth even
             </div>
           </div>

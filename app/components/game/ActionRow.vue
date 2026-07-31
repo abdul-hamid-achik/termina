@@ -85,6 +85,8 @@ const STATIC_ARIA: Record<string, string> = {
             ['Q', 'W', 'E', 'R'].includes(cmd) && !abilities[cmd]?.ready,
           'border-self text-self': cmd === 'SCORE',
         }"
+        :disabled="['Q', 'W', 'E', 'R'].includes(cmd) && !abilities[cmd]?.ready"
+        :title="cmd === 'SHOP' ? 'Shop — click, or press Esc then S' : undefined"
         :aria-label="['Q', 'W', 'E', 'R'].includes(cmd) ? abilityAria(cmd) : STATIC_ARIA[cmd]"
         :aria-disabled="
           ['Q', 'W', 'E', 'R'].includes(cmd) && !abilities[cmd]?.ready ? 'true' : undefined

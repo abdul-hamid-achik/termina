@@ -44,7 +44,7 @@ function respawnCountdown(player: ScoreboardEntry): string {
   return ticks > 0 ? `${ticks}t` : ''
 }
 
-function teamTotalGold(team: TeamId): number {
+function teamTotalScrip(team: TeamId): number {
   return props.players
     .filter((p) => p.team === team && !p.fogged)
     .reduce((sum, p) => sum + p.scrip, 0)
@@ -210,7 +210,7 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentCycle, tru
       <div class="scoreboard__team-total scoreboard__team-total--chaff">
         <span class="scoreboard__total-label">TOTAL</span>
         <span class="text-chaff">{{ teams.chaff.kills }}K</span>
-        <span class="text-gold">{{ formatScrip(teamTotalGold('chaff')) }}sc</span>
+        <span class="text-gold">{{ formatScrip(teamTotalScrip('chaff')) }}sc</span>
         <span class="text-text-dim">{{ teams.chaff.iceKills }}T</span>
       </div>
       <div class="scoreboard__footer-center">
@@ -221,7 +221,7 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentCycle, tru
       <div class="scoreboard__team-total scoreboard__team-total--audit">
         <span class="scoreboard__total-label">TOTAL</span>
         <span class="text-audit">{{ teams.audit.kills }}K</span>
-        <span class="text-gold">{{ formatScrip(teamTotalGold('audit')) }}sc</span>
+        <span class="text-gold">{{ formatScrip(teamTotalScrip('audit')) }}sc</span>
         <span class="text-text-dim">{{ teams.audit.iceKills }}T</span>
       </div>
     </div>

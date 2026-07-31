@@ -22,7 +22,7 @@ function mountLines(over: Partial<Parameters<typeof mount>[0]> = {}) {
       hpFraction: 0.8,
       alive: true,
       netLead: 'CHF +1.2k',
-      nextCycleIn: 3,
+      nextCycleIn: 3000,
       cycle: 240,
       canAct: true,
       enemyCount: 0,
@@ -51,8 +51,13 @@ describe('StatusLines', () => {
   })
 
   it('renders the resolving countdown when the player already acted', () => {
-    const wrapper = mountLines({ props: { canAct: false, nextCycleIn: 2 } })
+    const wrapper = mountLines({ props: { canAct: false, nextCycleIn: 2000 } })
     expect(wrapper.get('[data-testid="status-clock"]').text()).toContain('resolving in 2s')
+  })
+
+  it('rounds the millisecond countdown up to the next visible second', () => {
+    const wrapper = mountLines({ props: { canAct: false, nextCycleIn: 2500 } })
+    expect(wrapper.get('[data-testid="status-clock"]').text()).toContain('resolving in 3s')
   })
 
   it('reads off route when the player is off all three routes', () => {
@@ -68,7 +73,7 @@ describe('StatusLines', () => {
         hpFraction: 1,
         alive: true,
         netLead: 'even',
-        nextCycleIn: 3,
+        nextCycleIn: 3000,
         cycle: 240,
         canAct: true,
         enemyCount: 0,

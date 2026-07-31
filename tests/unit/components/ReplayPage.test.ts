@@ -276,7 +276,7 @@ describe('replay page', () => {
       },
     ]
     const wrapper = await mountReplay()
-    const leadEl = wrapper.find('[data-testid="replay-gold-lead"]')
+    const leadEl = wrapper.find('[data-testid="replay-scrip-lead"]')
     expect(leadEl.exists()).toBe(true)
     expect(leadEl.text()).toContain('CHAFF')
     expect(leadEl.text()).toContain('2.0k') // 3000 − 1000 = 2000

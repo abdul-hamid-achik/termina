@@ -35,6 +35,8 @@ export interface RouteLine {
 }
 
 export interface TraceModel {
+  /** The player's faction, used for team-colored TRACE accents. */
+  playerTeam: TeamId
   /** The player's current route, or null when off all three (Silt/Hollow/base). */
   currentRoute: RouteId | null
   /** Hop index along the current route (0-based). -1 when off-route. */
@@ -126,7 +128,7 @@ export function buildTrace(input: {
     }
   })
 
-  return { currentRoute, hopIndex, routes, contacts, terminals: terminalList }
+  return { playerTeam, currentRoute, hopIndex, routes, contacts, terminals: terminalList }
 }
 
 /** Per-zone display payload (was asciiMapModel's ZoneDisplay — kept because the

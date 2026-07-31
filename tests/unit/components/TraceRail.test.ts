@@ -12,10 +12,11 @@ const ANCIENTS: Record<TeamId, TerminalState> = {
 function mountRail(
   playerZone = 'mid-t2-chaff',
   contacts: Parameters<typeof buildTrace>[0]['contacts'] = [],
+  playerTeam: TeamId = 'chaff',
 ) {
   const trace = buildTrace({
     playerZone,
-    playerTeam: 'chaff',
+    playerTeam,
     contacts,
     terminals: ANCIENTS,
   })
@@ -51,6 +52,13 @@ describe('TraceRail', () => {
     const audit = wrapper.get('[data-testid="trace-terminal-audit"]')
     expect(audit.text()).toContain('4200/6000')
     expect(audit.text()).toContain('⚠')
+  })
+
+  it('uses terminal and player team identity for faction colors', () => {
+    const wrapper = mountRail('mid-t2-audit', [], 'audit')
+    expect(wrapper.get('[data-testid="trace-current"] span').classes()).toContain('text-audit')
+    expect(wrapper.get('[data-testid="trace-terminal-chaff"]').classes()).toContain('text-chaff')
+    expect(wrapper.get('[data-testid="trace-terminal-audit"]').classes()).toContain('text-audit')
   })
 
   it('reads off-route when the player is off all three routes', () => {

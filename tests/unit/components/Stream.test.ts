@@ -45,7 +45,7 @@ describe('Stream', () => {
       expect(eventElements[0]?.text()).toContain('[KILL]')
       expect(eventElements[1]?.text()).toContain('[DAMAGE]')
       expect(eventElements[2]?.text()).toContain('[HEAL]')
-      expect(eventElements[3]?.text()).toContain('[GOLD]')
+      expect(eventElements[3]?.text()).toContain('[SCRIP]')
     })
 
     it('should be readable by screen readers', () => {
@@ -319,6 +319,16 @@ describe('Stream filters + density', () => {
     await wrapper.get('[data-testid="log-filter-me"]').trigger('click')
     expect(wrapper.text()).toContain('I hit them')
     expect(wrapper.text()).not.toContain('bystander chip')
+  })
+
+  it('marks the selected filter with aria-pressed', async () => {
+    const wrapper = mount(Stream, { props: { events } })
+    expect(wrapper.get('[data-testid="log-filter-all"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('[data-testid="log-filter-me"]').attributes('aria-pressed')).toBe('false')
+
+    await wrapper.get('[data-testid="log-filter-me"]').trigger('click')
+    expect(wrapper.get('[data-testid="log-filter-all"]').attributes('aria-pressed')).toBe('false')
+    expect(wrapper.get('[data-testid="log-filter-me"]').attributes('aria-pressed')).toBe('true')
   })
 
   it('story mode (default) folds farm-tagged lines into one digest per cycle', () => {

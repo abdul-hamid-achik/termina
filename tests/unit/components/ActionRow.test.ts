@@ -175,6 +175,7 @@ describe('ActionRow', () => {
     })
     const q = wrapper.find('[data-testid="action-q"]')
     expect(q.attributes('aria-disabled')).toBe('true')
+    expect(q.attributes('disabled')).toBeDefined()
   })
 
   /**

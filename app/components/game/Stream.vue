@@ -162,7 +162,7 @@ function typePrefix(type: CombatLineType): string {
     damage: '[DAMAGE]',
     healing: '[HEAL]',
     kill: '[KILL]',
-    scrip: '[GOLD]',
+    scrip: '[SCRIP]',
     system: '[SYS]',
     ability: '[ABILITY]',
     victory: '[VICTORY]',
@@ -244,6 +244,7 @@ function eventAriaLabel(line: CombatLine): string {
             : 'border-transparent text-text-muted hover:text-text-dim'
         "
         :data-testid="`log-filter-${f.id}`"
+        :aria-pressed="filter === f.id"
         @click="filter = f.id"
       >
         {{ f.label }}

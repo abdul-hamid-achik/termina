@@ -3,6 +3,7 @@ import type { TraceModel } from '~/components/game/traceModel'
 import StatusLines from './StatusLines.vue'
 
 const trace: TraceModel = {
+  playerTeam: 'chaff',
   currentRoute: 'mid',
   hopIndex: 2,
   routes: [
@@ -27,7 +28,7 @@ const trace: TraceModel = {
           :hp-fraction="0.72"
           :alive="true"
           net-lead="CHF +1.2k"
-          :next-cycle-in="3"
+          :next-cycle-in="3000"
           :cycle="240"
           :can-act="true"
           :enemy-count="1"

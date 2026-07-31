@@ -549,7 +549,7 @@ describe('GameScreen commands', () => {
       seedActiveGame()
       const wrapper = mountGameScreen()
 
-      const shop = wrapper.findAll('button').find((b) => b.text() === '[SHOP]')
+      const shop = wrapper.findAll('.hud-action-btn').find((b) => b.text() === 'SHOP')
       expect(shop?.attributes('title')).toContain('Esc then S')
       wrapper.unmount()
     })

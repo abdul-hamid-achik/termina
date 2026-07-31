@@ -2076,16 +2076,6 @@ function handleReturnToMenu() {
           @buy="handleBuyItem"
           @unpin="unpinItem"
         />
-        <button
-          class="ml-auto whitespace-nowrap border border-border bg-bg-secondary px-2 py-1 font-mono t-hud-sm text-gold hover:text-text-primary active:bg-border"
-          :class="{ 'border-gold': gameStore.canBuy }"
-          title="Shop — click, or press Esc then S"
-          aria-label="Toggle shop"
-          :aria-pressed="showShop"
-          @click="showShop = !showShop"
-        >
-          [SHOP]
-        </button>
       </div>
       <ActionRow
         :move-zones="movePickerZones"
