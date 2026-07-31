@@ -99,8 +99,7 @@ const integrityNotice = computed(() => {
   if (integrity.truncated) {
     const from = integrity.firstLoggedCycle
     const to = integrity.lastLoggedCycle
-    const range =
-      from != null && to != null ? ` Retained log covers cycles ${from}–${to}.` : ''
+    const range = from != null && to != null ? ` Retained log covers cycles ${from}–${to}.` : ''
     return `INCOMPLETE REPLAY — action log was truncated.${range} End-state dump only; scrubber frames were not reconstructed.`
   }
   if (integrity.readFailed) {

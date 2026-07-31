@@ -94,7 +94,15 @@ const { readSnapshot } = await import('~~/server/game/engine/StateSnapshot')
 const { readActionLog } = await import('~~/server/game/engine/ActionLog')
 const { submitReplayAction } = await import('~~/server/game/engine/GameLoop')
 
-function endedSnap(over: Record<string, unknown> = {}) {
+function endedSnap(
+  over: {
+    cycle?: number
+    phase?: string
+    mapId?: string
+    mode?: string
+    meta?: Record<string, unknown>
+  } = {},
+) {
   return {
     savedAt: 100,
     state: {
@@ -108,7 +116,7 @@ function endedSnap(over: Record<string, unknown> = {}) {
       players: [{ playerId: 'p1', team: 'chaff', heroId: 'echo', mmr: 1000 }],
       mapId: 'seawall',
       mode: 'tutorial',
-      ...((over.meta as object) ?? {}),
+      ...over.meta,
     },
   }
 }

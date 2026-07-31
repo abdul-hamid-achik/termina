@@ -76,7 +76,9 @@ interface StoredLogMeta {
   entryCount: number
 }
 
-function completeIntegrity(partial: Omit<ActionLogIntegrity, 'complete' | 'initialSnapshotCycle'>): ActionLogIntegrity {
+function completeIntegrity(
+  partial: Omit<ActionLogIntegrity, 'complete' | 'initialSnapshotCycle'>,
+): ActionLogIntegrity {
   return {
     ...partial,
     initialSnapshotCycle: 0,

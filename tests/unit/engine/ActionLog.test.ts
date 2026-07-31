@@ -9,7 +9,10 @@ import {
   deleteActionLog,
 } from '~~/server/game/engine/ActionLog'
 
-function makeMockRedis(): RedisServiceApi & { _list: Map<string, string[]>; _store: Map<string, string> } {
+function makeMockRedis(): RedisServiceApi & {
+  _list: Map<string, string[]>
+  _store: Map<string, string>
+} {
   const lists = new Map<string, string[]>()
   const store = new Map<string, string>()
   return {
