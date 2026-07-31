@@ -768,13 +768,13 @@ const THEATER_BAR_WIDTH = 24
 
 /** Wide countdown bar that drains over the 4s cycle — the Theater heartbeat. */
 const theaterBar = computed(() => {
-  const remaining = Math.max(0, Math.min(CYCLE_DURATION_MS, gameStore.nextTickIn))
+  const remaining = Math.max(0, Math.min(CYCLE_DURATION_MS, gameStore.nextCycleIn))
   const filled = Math.round((remaining / CYCLE_DURATION_MS) * THEATER_BAR_WIDTH)
   return '█'.repeat(filled) + '░'.repeat(THEATER_BAR_WIDTH - filled)
 })
 
 /** Anticipation: the last ~1s before resolution. */
-const tickImminent = computed(() => gameStore.nextTickIn > 0 && gameStore.nextTickIn < 1000)
+const cycleImminent = computed(() => gameStore.nextCycleIn > 0 && gameStore.nextCycleIn < 1000)
 
 /** Theater header label: planning vs already-committed-and-waiting. */
 const theaterStatus = computed(() => {
@@ -1940,7 +1940,7 @@ function handleReturnToMenu() {
         "
         :alive="gameStore.isAlive"
         :net-lead="netLeadText"
-        :next-cycle-in="gameStore.nextTickIn"
+        :next-cycle-in="gameStore.nextCycleIn"
         :cycle="gameStore.cycle"
         :can-act="gameStore.canAct"
         :enemy-count="rigEnemyCount"

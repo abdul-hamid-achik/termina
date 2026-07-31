@@ -2,7 +2,7 @@
 import { useGameStore } from '~/stores/game'
 import { useSettingsStore } from '~/stores/settings'
 import {
-  makeTickMessage,
+  makeCycleMessage,
   makeRoster,
   makePlayer,
   makePlayerEndStats,
@@ -21,7 +21,7 @@ import GameScreen from './GameScreen.vue'
 // game from the seeded tick state. (Seeding gameId would schedule a harmless but
 // noisy reconnect loop against a non-existent server.)
 //
-// State is seeded the canonical way: store.updateFromCycle(makeTickMessage(...)),
+// State is seeded the canonical way: store.updateFromCycle(makeCycleMessage(...)),
 // which populates players, zones, teams, ice, terminals, tenant, scoreboard,
 // net-worth history and the live tick countdown. We add a few combat events so
 // the STREAM header / combat log has content.
@@ -32,7 +32,7 @@ function seedActive() {
   const store = useGameStore()
   store.reset()
   store.playerId = 'p1'
-  store.updateFromCycle(makeTickMessage({ cycle: 240 }))
+  store.updateFromCycle(makeCycleMessage({ cycle: 240 }))
   store.addEvents(SAMPLE_EVENTS)
 }
 
@@ -54,7 +54,7 @@ function seedDead() {
     scrip: 1200,
     buybackCost: 900,
   })
-  store.updateFromCycle(makeTickMessage({ cycle: 240, players }))
+  store.updateFromCycle(makeCycleMessage({ cycle: 240, players }))
   store.addEvents([
     ...SAMPLE_EVENTS,
     { cycle: 240, type: 'kill', payload: { killerId: 'e1', victimId: 'p1', zone: 'chaff-base' } },
@@ -66,7 +66,7 @@ function seedGameOver() {
   const store = useGameStore()
   store.reset()
   store.playerId = 'p1'
-  store.updateFromCycle(makeTickMessage({ cycle: 300 }))
+  store.updateFromCycle(makeCycleMessage({ cycle: 300 }))
   const stats: Record<string, ReturnType<typeof makePlayerEndStats>> = {}
   for (const p of Object.values(makeRoster())) {
     stats[p.id] = makePlayerEndStats({

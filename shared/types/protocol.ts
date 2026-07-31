@@ -178,7 +178,7 @@ export interface GameNotFoundMessage {
   gameId: string
 }
 
-export interface SpectatorTickMessage {
+export interface SpectatorCycleMessage {
   type: 'spectator_tick'
   cycle: number
   /**
@@ -234,7 +234,7 @@ export type ServerMessage =
   | PingMapBroadcastMessage
   | FullStateMessage
   | GameNotFoundMessage
-  | SpectatorTickMessage
+  | SpectatorCycleMessage
   | SpectatorAckMessage
   | PlayerDisconnectMessage
   | PlayerReconnectMessage

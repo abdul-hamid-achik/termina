@@ -4,7 +4,7 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { useGameStore } from '~~/app/stores/game'
 import {
-  makeTickMessage,
+  makeCycleMessage,
   makeRoster,
   makePlayer,
   makePlayerEndStats,
@@ -99,7 +99,7 @@ const stubs = {
   // the header assertions still hold under shallow stubbing.
   StatusLines: {
     name: 'StatusLines',
-    props: ['trace', 'canAct', 'nextTickIn', 'cycle', 'netLead', 'alive'],
+    props: ['trace', 'canAct', 'nextCycleIn', 'cycle', 'netLead', 'alive'],
     template:
       "<div data-testid=\"theater-header\">{{ !alive ? 'DOWN' : canAct ? 'AWAITING ORDERS' : 'RESOLVING' }}</div>",
   },
@@ -144,7 +144,7 @@ function seedActiveGame(overrides: Partial<GameState> = {}) {
   const store = useGameStore()
   store.gameId = 'game_test_1'
   store.playerId = 'p1'
-  store.updateFromCycle(makeTickMessage(overrides))
+  store.updateFromCycle(makeCycleMessage(overrides))
   return store
 }
 
@@ -200,7 +200,7 @@ describe('GameScreen overlays', () => {
         integ: 0,
         respawnCycle: 270,
       })
-      store.updateFromCycle(makeTickMessage({ cycle: 240, players: roster }))
+      store.updateFromCycle(makeCycleMessage({ cycle: 240, players: roster }))
       return store
     }
 
@@ -284,7 +284,7 @@ describe('GameScreen overlays', () => {
         integ: 0,
         respawnCycle: 252,
       })
-      store.updateFromCycle(makeTickMessage({ cycle: 240, players: roster }))
+      store.updateFromCycle(makeCycleMessage({ cycle: 240, players: roster }))
       const wrapper = mountGameScreen()
 
       // 12 cycles left → 48 seconds.
@@ -306,7 +306,7 @@ describe('GameScreen overlays', () => {
         respawnCycle: 270,
         buybackCooldown: 330, // 90 ticks out = 6 minutes
       })
-      store.updateFromCycle(makeTickMessage({ cycle: 240, players: roster }))
+      store.updateFromCycle(makeCycleMessage({ cycle: 240, players: roster }))
       const wrapper = mountGameScreen()
 
       const overlay = wrapper.find('[data-testid="death-overlay"]')
@@ -400,7 +400,7 @@ describe('GameScreen overlays', () => {
       store.gameId = 'game_test_over'
       store.playerId = 'p1'
       // Populate the roster so postGamePlayers + scoreboard have content.
-      store.updateFromCycle(makeTickMessage())
+      store.updateFromCycle(makeCycleMessage())
       const stats: Record<string, ReturnType<typeof makePlayerEndStats>> = {}
       for (const id of Object.keys(makeRoster())) stats[id] = makePlayerEndStats()
       store.setGameOver(winner, stats)
@@ -571,11 +571,11 @@ describe('GameScreen overlays', () => {
 
       const dead = makeRoster()
       dead.p1 = { ...dead.p1!, alive: false, integ: 0, respawnCycle: 250 }
-      store.updateFromCycle(makeTickMessage({ cycle: 240, players: dead }))
+      store.updateFromCycle(makeCycleMessage({ cycle: 240, players: dead }))
       await wrapper.vm.$nextTick()
       audio.playSound.mockClear()
 
-      store.updateFromCycle(makeTickMessage({ cycle: 250 }))
+      store.updateFromCycle(makeCycleMessage({ cycle: 250 }))
       await wrapper.vm.$nextTick()
 
       expect(audio.playSound).toHaveBeenCalledWith('respawn')
@@ -595,7 +595,7 @@ describe('GameScreen overlays', () => {
       store.playerId = 'p1'
       const wrapper = mountGameScreen()
 
-      store.updateFromCycle(makeTickMessage())
+      store.updateFromCycle(makeCycleMessage())
       await wrapper.vm.$nextTick()
 
       expect(audio.playSound).not.toHaveBeenCalledWith('respawn')
@@ -611,7 +611,7 @@ describe('GameScreen overlays', () => {
       store.playerId = 'p1'
       const zones: Record<string, ZoneRuntimeState> = {}
       for (const id of ['mid-river', 'mid-t1-chaff']) zones[id] = makeZone(id)
-      store.updateFromCycle(makeTickMessage({ cycle: 240, zones }))
+      store.updateFromCycle(makeCycleMessage({ cycle: 240, zones }))
       const wrapper = mountGameScreen()
 
       wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move mid-t1-chaff')

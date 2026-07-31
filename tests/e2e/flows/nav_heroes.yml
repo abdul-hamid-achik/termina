@@ -15,7 +15,7 @@ outcomes:
     description: the training console renders (advance-tick control present)
     verify:
       text:
-        contains: ADVANCE TICK
+        contains: ADVANCE CYCLE
   - id: cast_prints_to_log
     description: casting the Q ability prints a "casts" line to the log
     verify:
@@ -107,4 +107,4 @@ steps:
     wait:
       text: combo landed
       timeoutMs: 10000
-contractHash: sha256:1ff3612aaf82724680a115518b124c439dc47d2b4e892ab383efe9efe9fa5d32
+contractHash: sha256:649325ddf85e8a2b1242d93f90dd08d5577d4708fcff4d83339da749bea61882

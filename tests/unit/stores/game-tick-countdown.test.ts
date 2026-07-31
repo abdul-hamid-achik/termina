@@ -14,7 +14,7 @@ function makeTeams(): { chaff: TeamState; audit: TeamState } {
   }
 }
 
-function makeTickMessage(cycle: number): CycleStateMessage {
+function makeCycleMessage(cycle: number): CycleStateMessage {
   return {
     type: 'cycle_state',
     cycle,
@@ -42,74 +42,74 @@ describe('Game Store — cycle countdown', () => {
   it('anchors the countdown when a cycle arrives', () => {
     const store = useGameStore()
 
-    store.updateFromCycle(makeTickMessage(1))
+    store.updateFromCycle(makeCycleMessage(1))
 
     expect(store.lastCycleAt).toBe(Date.now())
-    expect(store.nextTickIn).toBe(CYCLE_DURATION_MS)
+    expect(store.nextCycleIn).toBe(CYCLE_DURATION_MS)
   })
 
   it('counts down as wall-clock time passes', () => {
     const store = useGameStore()
-    store.updateFromCycle(makeTickMessage(1))
+    store.updateFromCycle(makeCycleMessage(1))
 
     vi.advanceTimersByTime(1000)
-    expect(store.nextTickIn).toBe(CYCLE_DURATION_MS - 1000)
+    expect(store.nextCycleIn).toBe(CYCLE_DURATION_MS - 1000)
 
     vi.advanceTimersByTime(1500)
-    expect(store.nextTickIn).toBe(CYCLE_DURATION_MS - 2500)
+    expect(store.nextCycleIn).toBe(CYCLE_DURATION_MS - 2500)
   })
 
   it('clamps at zero when the cycle is late', () => {
     const store = useGameStore()
-    store.updateFromCycle(makeTickMessage(1))
+    store.updateFromCycle(makeCycleMessage(1))
 
     vi.advanceTimersByTime(CYCLE_DURATION_MS + 2000)
 
-    expect(store.nextTickIn).toBe(0)
+    expect(store.nextCycleIn).toBe(0)
   })
 
   it('re-anchors when the next cycle arrives', () => {
     const store = useGameStore()
-    store.updateFromCycle(makeTickMessage(1))
+    store.updateFromCycle(makeCycleMessage(1))
 
     vi.advanceTimersByTime(3000)
-    expect(store.nextTickIn).toBe(CYCLE_DURATION_MS - 3000)
+    expect(store.nextCycleIn).toBe(CYCLE_DURATION_MS - 3000)
 
-    store.updateFromCycle(makeTickMessage(2))
-    expect(store.nextTickIn).toBe(CYCLE_DURATION_MS)
+    store.updateFromCycle(makeCycleMessage(2))
+    expect(store.nextCycleIn).toBe(CYCLE_DURATION_MS)
   })
 
   it('does not stack intervals across multiple ticks', () => {
     const store = useGameStore()
-    store.updateFromCycle(makeTickMessage(1))
-    store.updateFromCycle(makeTickMessage(2))
-    store.updateFromCycle(makeTickMessage(3))
+    store.updateFromCycle(makeCycleMessage(1))
+    store.updateFromCycle(makeCycleMessage(2))
+    store.updateFromCycle(makeCycleMessage(3))
 
     expect(vi.getTimerCount()).toBe(1)
   })
 
   it('stopTickCountdown halts and zeroes the countdown', () => {
     const store = useGameStore()
-    store.updateFromCycle(makeTickMessage(1))
+    store.updateFromCycle(makeCycleMessage(1))
 
     store.stopTickCountdown()
 
-    expect(store.nextTickIn).toBe(0)
+    expect(store.nextCycleIn).toBe(0)
     expect(store.lastCycleAt).toBeNull()
     expect(vi.getTimerCount()).toBe(0)
   })
 
   it('reset stops the countdown timer', () => {
     const store = useGameStore()
-    store.updateFromCycle(makeTickMessage(1))
+    store.updateFromCycle(makeCycleMessage(1))
 
     store.reset()
 
-    expect(store.nextTickIn).toBe(0)
+    expect(store.nextCycleIn).toBe(0)
     expect(vi.getTimerCount()).toBe(0)
 
     vi.advanceTimersByTime(2000)
-    expect(store.nextTickIn).toBe(0)
+    expect(store.nextCycleIn).toBe(0)
   })
 })
 
@@ -146,7 +146,7 @@ describe('Game Store — buffered command', () => {
     const store = useGameStore()
 
     store.bufferCommand('cast q')
-    store.updateFromCycle(makeTickMessage(5))
+    store.updateFromCycle(makeCycleMessage(5))
 
     expect(store.bufferedCommand).toBe('cast q')
     store.stopTickCountdown()

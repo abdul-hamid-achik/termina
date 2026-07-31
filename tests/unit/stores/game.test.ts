@@ -48,7 +48,7 @@ function makeZone(id: string): ZoneRuntimeState {
   return { id, wards: [], waves: [] }
 }
 
-function makeTickMessage(
+function makeCycleMessage(
   overrides: Partial<{
     cycle: number
     phase: string
@@ -93,7 +93,7 @@ describe('Game Store', () => {
       expect(store.waves).toEqual([])
       expect(store.events).toEqual([])
       expect(store.announcements).toEqual([])
-      expect(store.nextTickIn).toBe(0)
+      expect(store.nextCycleIn).toBe(0)
       expect(store.scoreboard).toEqual([])
       expect(store.gameOverStats).toBeNull()
       expect(store.winner).toBeNull()
@@ -104,7 +104,7 @@ describe('Game Store', () => {
     it('retains phase + teams when a steady-state delta omits them', () => {
       const store = useGameStore()
       // Full cycle first (server always sends phase + teams on a full/changed cycle).
-      store.updateFromCycle(makeTickMessage({ phase: 'playing' }))
+      store.updateFromCycle(makeCycleMessage({ phase: 'playing' }))
       expect(store.phase).toBe('playing')
       expect(store.teams).not.toBeNull()
 
@@ -158,7 +158,7 @@ describe('Game Store', () => {
         const store = useGameStore()
         store.playerId = 'p1'
         store.updateFromCycle(
-          makeTickMessage({
+          makeCycleMessage({
             players: { p1: makePlayer({ zone: 'chaff-fountain' }) },
           }),
         )
@@ -172,7 +172,7 @@ describe('Game Store', () => {
         const store = useGameStore()
         store.playerId = 'p1'
         store.updateFromCycle(
-          makeTickMessage({
+          makeCycleMessage({
             players: { p1: makePlayer({ zone: 'nonexistent-zone' }) },
           }),
         )
@@ -191,7 +191,7 @@ describe('Game Store', () => {
         const store = useGameStore()
         store.playerId = 'p1'
         store.updateFromCycle(
-          makeTickMessage({
+          makeCycleMessage({
             players: { p1: makePlayer({ alive: true }) },
           }),
         )
@@ -203,7 +203,7 @@ describe('Game Store', () => {
         const store = useGameStore()
         store.playerId = 'p1'
         store.updateFromCycle(
-          makeTickMessage({
+          makeCycleMessage({
             players: { p1: makePlayer({ alive: false }) },
           }),
         )
@@ -220,7 +220,7 @@ describe('Game Store', () => {
         const store = useGameStore()
         store.playerId = 'p1'
         store.updateFromCycle(
-          makeTickMessage({ cycle: 12, players: { p1: makePlayer({ alive: true }) } }),
+          makeCycleMessage({ cycle: 12, players: { p1: makePlayer({ alive: true }) } }),
         )
         return store
       }
@@ -249,7 +249,7 @@ describe('Game Store', () => {
         expect(store.canUseItem).toBe(false)
 
         store.updateFromCycle(
-          makeTickMessage({ cycle: 13, players: { p1: makePlayer({ alive: true }) } }),
+          makeCycleMessage({ cycle: 13, players: { p1: makePlayer({ alive: true }) } }),
         )
         expect(store.canAct).toBe(true)
         expect(store.canUseItem).toBe(true)
@@ -259,7 +259,7 @@ describe('Game Store', () => {
         const store = useGameStore()
         store.playerId = 'p1'
         store.updateFromCycle(
-          makeTickMessage({ cycle: 12, players: { p1: makePlayer({ alive: false }) } }),
+          makeCycleMessage({ cycle: 12, players: { p1: makePlayer({ alive: false }) } }),
         )
         expect(store.canUseItem).toBe(false)
       })
@@ -275,7 +275,7 @@ describe('Game Store', () => {
         const store = useGameStore()
         store.playerId = 'p1'
         store.updateFromCycle(
-          makeTickMessage({
+          makeCycleMessage({
             players: { p1: makePlayer({ zone: 'chaff-fountain', alive: true }) },
           }),
         )
@@ -287,7 +287,7 @@ describe('Game Store', () => {
         const store = useGameStore()
         store.playerId = 'p1'
         store.updateFromCycle(
-          makeTickMessage({
+          makeCycleMessage({
             players: { p1: makePlayer({ zone: 'mid-t1-chaff', alive: true }) },
           }),
         )
@@ -299,7 +299,7 @@ describe('Game Store', () => {
         const store = useGameStore()
         store.playerId = 'p1'
         store.updateFromCycle(
-          makeTickMessage({
+          makeCycleMessage({
             players: { p1: makePlayer({ zone: 'chaff-fountain', alive: false }) },
           }),
         )
@@ -318,7 +318,7 @@ describe('Game Store', () => {
         const store = useGameStore()
         store.playerId = 'p1'
         store.updateFromCycle(
-          makeTickMessage({
+          makeCycleMessage({
             players: { p1: makePlayer({ kills: 5, deaths: 2, assists: 7 }) },
           }),
         )
@@ -337,7 +337,7 @@ describe('Game Store', () => {
         const store = useGameStore()
         store.playerId = 'p1'
         store.updateFromCycle(
-          makeTickMessage({
+          makeCycleMessage({
             players: { p1: makePlayer({ level: 8 }) },
           }),
         )
@@ -379,7 +379,7 @@ describe('Game Store', () => {
         })
 
         store.updateFromCycle(
-          makeTickMessage({
+          makeCycleMessage({
             players: {
               p1: makePlayer(),
               e1: enemy,
@@ -405,7 +405,7 @@ describe('Game Store', () => {
         })
 
         store.updateFromCycle(
-          makeTickMessage({
+          makeCycleMessage({
             players: { p1: makePlayer(), e1: deadEnemy },
           }),
         )
@@ -433,7 +433,7 @@ describe('Game Store', () => {
         })
 
         store.updateFromCycle(
-          makeTickMessage({
+          makeCycleMessage({
             players: { p1: makePlayer(), a1: ally },
           }),
         )
@@ -449,7 +449,7 @@ describe('Game Store', () => {
         const deadAlly = makePlayer({ id: 'a1', team: 'chaff', zone: 'mid-t1-chaff', alive: false })
 
         store.updateFromCycle(
-          makeTickMessage({
+          makeCycleMessage({
             players: { p1: makePlayer(), a1: deadAlly },
           }),
         )
@@ -463,7 +463,7 @@ describe('Game Store', () => {
     describe('updateFromCycle', () => {
       it('updates cycle number and phase', () => {
         const store = useGameStore()
-        store.updateFromCycle(makeTickMessage({ cycle: 42, phase: 'playing' }))
+        store.updateFromCycle(makeCycleMessage({ cycle: 42, phase: 'playing' }))
 
         expect(store.cycle).toBe(42)
         expect(store.phase).toBe('playing')
@@ -474,7 +474,7 @@ describe('Game Store', () => {
         store.playerId = 'p1'
 
         const player = makePlayer({ integ: 123, scrip: 999 })
-        store.updateFromCycle(makeTickMessage({ players: { p1: player } }))
+        store.updateFromCycle(makeCycleMessage({ players: { p1: player } }))
 
         expect(store.player).not.toBeNull()
         expect(store.player!.integ).toBe(123)
@@ -485,7 +485,7 @@ describe('Game Store', () => {
         const store = useGameStore()
         store.playerId = 'missing'
 
-        store.updateFromCycle(makeTickMessage({ players: { p1: makePlayer() } }))
+        store.updateFromCycle(makeCycleMessage({ players: { p1: makePlayer() } }))
 
         expect(store.player).toBeNull()
       })
@@ -501,7 +501,7 @@ describe('Game Store', () => {
         }
         const teams = makeTeams()
 
-        store.updateFromCycle(makeTickMessage({ players: { p1, p2 }, zones, teams }))
+        store.updateFromCycle(makeCycleMessage({ players: { p1, p2 }, zones, teams }))
 
         expect(Object.keys(store.allPlayers)).toHaveLength(2)
         expect(Object.keys(store.visibleZones)).toHaveLength(2)
@@ -511,7 +511,7 @@ describe('Game Store', () => {
       it('updates ice and waves when present', () => {
         const store = useGameStore()
 
-        const msg = makeTickMessage()
+        const msg = makeCycleMessage()
         ;(msg.state as unknown as Record<string, unknown>).ice = [
           { team: 'chaff', zone: 'mid-t1-chaff', integ: 1500, maxInteg: 2000, alive: true },
         ]
@@ -528,7 +528,7 @@ describe('Game Store', () => {
       it('stores ice in game store and persists across updates', () => {
         const store = useGameStore()
 
-        const msg1 = makeTickMessage({ cycle: 1 })
+        const msg1 = makeCycleMessage({ cycle: 1 })
         ;(msg1.state as unknown as Record<string, unknown>).ice = [
           { team: 'chaff', zone: 'mid-t1-chaff', integ: 1500, maxInteg: 2000, alive: true },
           { team: 'audit', zone: 'mid-t1-audit', integ: 2000, maxInteg: 2000, alive: true },
@@ -544,7 +544,7 @@ describe('Game Store', () => {
       it('updates ice from cycle_state', () => {
         const store = useGameStore()
 
-        const msg1 = makeTickMessage({ cycle: 1 })
+        const msg1 = makeCycleMessage({ cycle: 1 })
         ;(msg1.state as unknown as Record<string, unknown>).ice = [
           { team: 'chaff', zone: 'mid-t1-chaff', integ: 2000, maxInteg: 2000, alive: true },
         ]
@@ -553,7 +553,7 @@ describe('Game Store', () => {
         expect(store.ice).toHaveLength(1)
         expect(store.ice[0]!.integ).toBe(2000)
 
-        const msg2 = makeTickMessage({ cycle: 2 })
+        const msg2 = makeCycleMessage({ cycle: 2 })
         ;(msg2.state as unknown as Record<string, unknown>).ice = [
           { team: 'chaff', zone: 'mid-t1-chaff', integ: 1500, maxInteg: 2000, alive: true },
         ]
@@ -567,7 +567,7 @@ describe('Game Store', () => {
         const store = useGameStore()
 
         const p1 = makePlayer({ kills: 3, deaths: 1, assists: 2, scrip: 500, level: 5 })
-        store.updateFromCycle(makeTickMessage({ players: { p1 } }))
+        store.updateFromCycle(makeCycleMessage({ players: { p1 } }))
 
         expect(store.scoreboard).toHaveLength(1)
         expect(store.scoreboard[0]).toMatchObject({
@@ -598,7 +598,7 @@ describe('Game Store', () => {
           items: ['boots'],
         }
 
-        const msg = makeTickMessage({ players: { e1: foggedPlayer as unknown as PlayerState } })
+        const msg = makeCycleMessage({ players: { e1: foggedPlayer as unknown as PlayerState } })
         store.updateFromCycle(msg)
 
         expect(store.scoreboard).toHaveLength(1)
@@ -618,7 +618,7 @@ describe('Game Store', () => {
 
         const alive = makePlayer({ id: 'p1', alive: true, respawnCycle: null })
         const dead = makePlayer({ id: 'p2', alive: false, respawnCycle: 20, team: 'audit' })
-        store.updateFromCycle(makeTickMessage({ cycle: 15, players: { p1: alive, p2: dead } }))
+        store.updateFromCycle(makeCycleMessage({ cycle: 15, players: { p1: alive, p2: dead } }))
 
         const p1Entry = store.scoreboard.find((e) => e.id === 'p1')
         const p2Entry = store.scoreboard.find((e) => e.id === 'p2')
@@ -648,7 +648,7 @@ describe('Game Store', () => {
         const normalPlayer = makePlayer({ id: 'p1' })
 
         store.updateFromCycle(
-          makeTickMessage({
+          makeCycleMessage({
             players: { e1: foggedPlayer as unknown as PlayerState, p1: normalPlayer },
           }),
         )
@@ -662,7 +662,7 @@ describe('Game Store', () => {
       it('team stats (kills, iceKills, scrip) are accessible', () => {
         const store = useGameStore()
         const teams = makeTeams()
-        store.updateFromCycle(makeTickMessage({ teams }))
+        store.updateFromCycle(makeCycleMessage({ teams }))
 
         expect(store.teams!.chaff.kills).toBe(5)
         expect(store.teams!.chaff.iceKills).toBe(1)
@@ -676,7 +676,7 @@ describe('Game Store', () => {
         const store = useGameStore()
 
         const dead = makePlayer({ id: 'p1', alive: false, respawnCycle: 25 })
-        store.updateFromCycle(makeTickMessage({ cycle: 20, players: { p1: dead } }))
+        store.updateFromCycle(makeCycleMessage({ cycle: 20, players: { p1: dead } }))
 
         const entry = store.scoreboard.find((e) => e.id === 'p1')!
         const remainingTicks = entry.respawnCycle! - store.cycle
@@ -778,7 +778,7 @@ describe('Game Store', () => {
         store.gameId = 'game-1'
         store.playerId = 'p1'
         store.setPhase('playing')
-        store.updateFromCycle(makeTickMessage({ cycle: 50 }))
+        store.updateFromCycle(makeCycleMessage({ cycle: 50 }))
         store.addEvents([{ cycle: 1, type: 'test', payload: {} }])
         store.addAnnouncement('Test')
         store.setGameOver('chaff', {})
@@ -797,7 +797,7 @@ describe('Game Store', () => {
         expect(store.waves).toEqual([])
         expect(store.events).toEqual([])
         expect(store.announcements).toEqual([])
-        expect(store.nextTickIn).toBe(0)
+        expect(store.nextCycleIn).toBe(0)
         expect(store.scoreboard).toEqual([])
         expect(store.gameOverStats).toBeNull()
         expect(store.winner).toBeNull()
@@ -817,11 +817,11 @@ describe('Game Store', () => {
       expect(store.phase).toBe('picking')
 
       // Picking complete
-      store.updateFromCycle(makeTickMessage({ phase: 'playing', cycle: 1 }))
+      store.updateFromCycle(makeCycleMessage({ phase: 'playing', cycle: 1 }))
       expect(store.phase).toBe('playing')
 
       // Multiple ticks
-      store.updateFromCycle(makeTickMessage({ phase: 'playing', cycle: 50 }))
+      store.updateFromCycle(makeCycleMessage({ phase: 'playing', cycle: 50 }))
       expect(store.cycle).toBe(50)
 
       // Game ends
@@ -886,12 +886,12 @@ describe('Game Store — overhaul state (fog-safe lastSeen / net worth / objecti
     store.playerId = 'me'
     const me = makePlayer({ id: 'me', team: 'chaff', zone: 'mid-river' })
     const enemyVisible = makePlayer({ id: 'e1', team: 'audit', zone: 'top-river' })
-    store.updateFromCycle(makeTickMessage({ cycle: 10, players: { me, e1: enemyVisible } }))
+    store.updateFromCycle(makeCycleMessage({ cycle: 10, players: { me, e1: enemyVisible } }))
     expect(store.lastSeen['e1']).toEqual({ zone: 'top-river', cycle: 10 })
 
     // e1 now fogged (no zone) — last-seen must stay at the last observed position.
     store.updateFromCycle(
-      makeTickMessage({ cycle: 14, players: { me, e1: fogged('e1', 'audit') } }),
+      makeCycleMessage({ cycle: 14, players: { me, e1: fogged('e1', 'audit') } }),
     )
     expect(store.lastSeen['e1']).toEqual({ zone: 'top-river', cycle: 10 })
   })
@@ -901,12 +901,12 @@ describe('Game Store — overhaul state (fog-safe lastSeen / net worth / objecti
     store.playerId = 'me'
     const me = makePlayer({ id: 'me', team: 'chaff' })
     const enemy = makePlayer({ id: 'e1', team: 'audit', scrip: 1000, items: [] })
-    store.updateFromCycle(makeTickMessage({ cycle: 10, players: { me, e1: enemy } }))
+    store.updateFromCycle(makeCycleMessage({ cycle: 10, players: { me, e1: enemy } }))
     const auditBefore = store.netWorth.audit
     expect(auditBefore).toBe(1000)
 
     store.updateFromCycle(
-      makeTickMessage({ cycle: 14, players: { me, e1: fogged('e1', 'audit') } }),
+      makeCycleMessage({ cycle: 14, players: { me, e1: fogged('e1', 'audit') } }),
     )
     expect(store.netWorth.audit).toBe(auditBefore) // carried forward, not 0
   })
@@ -917,7 +917,9 @@ describe('Game Store — overhaul state (fog-safe lastSeen / net worth / objecti
     const me = makePlayer({ id: 'me', team: 'chaff' })
     // The audit enemy is fogged from the very first cycle — never observed, so it
     // has no last-known worth to carry. It must read 0, not crash or guess.
-    store.updateFromCycle(makeTickMessage({ cycle: 1, players: { me, e1: fogged('e1', 'audit') } }))
+    store.updateFromCycle(
+      makeCycleMessage({ cycle: 1, players: { me, e1: fogged('e1', 'audit') } }),
+    )
     expect(store.netWorth.audit).toBe(0)
   })
 
@@ -925,14 +927,14 @@ describe('Game Store — overhaul state (fog-safe lastSeen / net worth / objecti
     const store = useGameStore()
     const me = makePlayer({ id: 'me' })
     for (let t = 1; t <= 45; t++) {
-      store.updateFromCycle(makeTickMessage({ cycle: t, players: { me } }))
+      store.updateFromCycle(makeCycleMessage({ cycle: t, players: { me } }))
     }
     expect(store.netWorthHistory.chaff.length).toBe(40)
   })
 
   it('ingests tenant/caches/backup and clears backup when null', () => {
     const store = useGameStore()
-    const base = makeTickMessage({ cycle: 10 })
+    const base = makeCycleMessage({ cycle: 10 })
     const s = base.state as unknown as Record<string, unknown>
     s.tenant = { alive: false, integ: 0, maxInteg: 5000, deathCycle: 10 }
     s.caches = [{ zone: 'cache-top', type: 'haste', cycle: 10 }]
@@ -942,7 +944,7 @@ describe('Game Store — overhaul state (fog-safe lastSeen / net worth / objecti
     expect(store.caches).toHaveLength(1)
     expect(store.backup?.zone).toBe('hollow')
 
-    const next = makeTickMessage({ cycle: 14 })
+    const next = makeCycleMessage({ cycle: 14 })
     ;(next.state as unknown as Record<string, unknown>).backup = null
     store.updateFromCycle(next)
     expect(store.backup).toBeNull()
@@ -955,7 +957,7 @@ describe('Game Store — overhaul state (fog-safe lastSeen / net worth / objecti
     const me = makePlayer({ id: 'me', team: 'chaff' })
     const ally = makePlayer({ id: 'a1', team: 'chaff' })
     store.updateFromCycle(
-      makeTickMessage({ cycle: 10, players: { me, a1: ally, e1: fogged('e1', 'audit') } }),
+      makeCycleMessage({ cycle: 10, players: { me, a1: ally, e1: fogged('e1', 'audit') } }),
     )
     expect(store.enemyPlayers.map((p) => p.id)).toEqual(['e1'])
     expect(store.allyPlayers.map((p) => p.id)).toEqual(['a1'])

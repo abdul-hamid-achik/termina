@@ -103,7 +103,7 @@ export const useGameStore = defineStore('game', () => {
   // Severity of the latest announcement, so the toast can colour it correctly
   // (info messages like "Reconnected" must NOT read as amber warnings).
   const lastAnnouncementLevel = ref<AnnouncementLevel>('warning')
-  const nextTickIn = ref(0)
+  const nextCycleIn = ref(0)
   const lastCycleAt = ref<number | null>(null)
   const scoreboard = ref<ScoreboardEntry[]>([])
   const gameOverStats = ref<Record<string, PlayerEndStats> | null>(null)
@@ -217,14 +217,14 @@ export const useGameStore = defineStore('game', () => {
   /** Recompute the ms remaining until the next cycle from wall-clock time. */
   function _updateCountdown() {
     if (lastCycleAt.value == null) {
-      nextTickIn.value = 0
+      nextCycleIn.value = 0
       return
     }
-    nextTickIn.value = Math.max(0, CYCLE_DURATION_MS - (Date.now() - lastCycleAt.value))
+    nextCycleIn.value = Math.max(0, CYCLE_DURATION_MS - (Date.now() - lastCycleAt.value))
   }
 
   /**
-   * Start the ~100ms client interval that keeps `nextTickIn` live between
+   * Start the ~100ms client interval that keeps `nextCycleIn` live between
    * cycle_state arrivals. Idempotent — safe to call on every cycle.
    */
   function _ensureCountdownTimer() {
@@ -238,7 +238,7 @@ export const useGameStore = defineStore('game', () => {
       countdownTimer = null
     }
     lastCycleAt.value = null
-    nextTickIn.value = 0
+    nextCycleIn.value = 0
   }
 
   /** Buffer a command typed while waiting; it is sent on the next cycle. */
@@ -503,7 +503,7 @@ export const useGameStore = defineStore('game', () => {
     announcements,
     announcementSeq,
     lastAnnouncementLevel,
-    nextTickIn,
+    nextCycleIn,
     lastCycleAt,
     pendingCommand,
     bufferedCommand,

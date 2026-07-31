@@ -7,7 +7,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useGameStore } from '~~/app/stores/game'
 import { useSettingsStore } from '~~/app/stores/settings'
 import {
-  makeTickMessage,
+  makeCycleMessage,
   makeRoster,
   makePlayer,
   makeZone,
@@ -102,7 +102,7 @@ const stubs = {
   // the header assertions still hold under shallow stubbing.
   StatusLines: {
     name: 'StatusLines',
-    props: ['trace', 'canAct', 'nextTickIn', 'cycle', 'netLead', 'alive'],
+    props: ['trace', 'canAct', 'nextCycleIn', 'cycle', 'netLead', 'alive'],
     template:
       "<div data-testid=\"theater-header\">{{ !alive ? 'DOWN' : canAct ? 'AWAITING ORDERS' : 'RESOLVING' }}</div>",
   },
@@ -147,7 +147,7 @@ function seedActiveGame(overrides: Partial<GameState> = {}) {
   const store = useGameStore()
   store.gameId = 'game_test_1'
   store.playerId = 'p1'
-  store.updateFromCycle(makeTickMessage(overrides))
+  store.updateFromCycle(makeCycleMessage(overrides))
   return store
 }
 
@@ -343,7 +343,7 @@ describe('GameScreen', () => {
         heroId: SAMPLE_HEROES.echo,
         level: 1,
       })
-      store.updateFromCycle(makeTickMessage({ players: roster }))
+      store.updateFromCycle(makeCycleMessage({ players: roster }))
       const wrapper = mountGameScreen()
 
       const r = wrapper.findAll('.hud-action-btn').find((b) => b.text().startsWith('R'))
@@ -426,7 +426,7 @@ describe('GameScreen', () => {
       players.p1 = { ...players.p1!, zone, moveTarget: null }
       const zones: Record<string, ZoneRuntimeState> = {}
       for (const id of CORRIDOR) zones[id] = makeZone(id)
-      store.updateFromCycle(makeTickMessage({ cycle: 240, players, zones, ...overrides }))
+      store.updateFromCycle(makeCycleMessage({ cycle: 240, players, zones, ...overrides }))
       return store
     }
 

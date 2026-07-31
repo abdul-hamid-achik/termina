@@ -16,8 +16,8 @@ const props = defineProps<{
   alive: boolean
   /** Net lead text (e.g. "CHF +1.2k" or "even"). */
   netLead: string
-  /** Ticks until the next cycle commits. */
-  nextTickIn: number
+  /** Ms until the next cycle commits (client countdown). */
+  nextCycleIn: number
   cycle: number
   canAct: boolean
   enemyCount: number
@@ -43,7 +43,7 @@ const hopLine = computed(() => {
 
 const clockLine = computed(() => {
   const t = formatTickClock(props.cycle, true)
-  return props.canAct ? `${t} · AWAITING ORDERS` : `${t} · resolving in ${props.nextTickIn}s`
+  return props.canAct ? `${t} · AWAITING ORDERS` : `${t} · resolving in ${props.nextCycleIn}s`
 })
 </script>
 

@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { useGameStore } from '~~/app/stores/game'
-import { makeTickMessage, makeRoster, makeZone } from '~~/app/stories/fixtures'
+import { makeCycleMessage, makeRoster, makeZone } from '~~/app/stories/fixtures'
 import type { GameState, ZoneRuntimeState } from '~~/shared/types/game'
 
 // ── useGameSocket mock ────────────────────────────────────────────────
@@ -92,7 +92,7 @@ const stubs = {
   // the header assertions still hold under shallow stubbing.
   StatusLines: {
     name: 'StatusLines',
-    props: ['trace', 'canAct', 'nextTickIn', 'cycle', 'netLead', 'alive'],
+    props: ['trace', 'canAct', 'nextCycleIn', 'cycle', 'netLead', 'alive'],
     template:
       "<div data-testid=\"theater-header\">{{ !alive ? 'DOWN' : canAct ? 'AWAITING ORDERS' : 'RESOLVING' }}</div>",
   },
@@ -137,7 +137,7 @@ function seedActiveGame(overrides: Partial<GameState> = {}) {
   const store = useGameStore()
   store.gameId = 'game_test_1'
   store.playerId = 'p1'
-  store.updateFromCycle(makeTickMessage(overrides))
+  store.updateFromCycle(makeCycleMessage(overrides))
   return store
 }
 
@@ -294,12 +294,12 @@ describe('GameScreen commands', () => {
       store.gameId = 'g'
       store.playerId = 'p1'
 
-      store.updateFromCycle(makeTickMessage({ cycle: 10 })) // before SURRENDER_MIN_CYCLE (225)
+      store.updateFromCycle(makeCycleMessage({ cycle: 10 })) // before SURRENDER_MIN_CYCLE (225)
       const early = mountGameScreen()
       expect(early.find('[data-testid="situational-surrender"]').exists()).toBe(false)
       early.unmount()
 
-      store.updateFromCycle(makeTickMessage({ cycle: 240 })) // past the gate
+      store.updateFromCycle(makeCycleMessage({ cycle: 240 })) // past the gate
       const late = mountGameScreen()
       expect(late.find('[data-testid="situational-surrender"]').exists()).toBe(true)
       late.unmount()
@@ -391,7 +391,7 @@ describe('GameScreen commands', () => {
       players.p1 = { ...players.p1!, zone, moveTarget: null, ...extra }
       const zones: Record<string, ZoneRuntimeState> = {}
       for (const id of CORRIDOR) zones[id] = makeZone(id)
-      store.updateFromCycle(makeTickMessage({ cycle, players, zones }))
+      store.updateFromCycle(makeCycleMessage({ cycle, players, zones }))
       return store
     }
 
@@ -482,7 +482,7 @@ describe('GameScreen commands', () => {
       players.p1 = { ...players.p1!, zone }
       const zones: Record<string, ZoneRuntimeState> = {}
       for (const id of CORRIDOR) zones[id] = makeZone(id)
-      store.updateFromCycle(makeTickMessage({ cycle: 240, players, zones }))
+      store.updateFromCycle(makeCycleMessage({ cycle: 240, players, zones }))
       return store
     }
 

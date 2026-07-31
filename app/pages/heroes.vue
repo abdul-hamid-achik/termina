@@ -78,7 +78,7 @@ const {
   maxBw,
   bw,
   cooldowns,
-  tick,
+  cycle,
   log,
   dummyHp,
   dots,
@@ -432,7 +432,7 @@ const {
         <div class="flex flex-col gap-1 border border-border p-2.5">
           <div class="flex items-center justify-between text-[0.7rem] text-text-dim">
             <span><span class="text-ability">bw</span> {{ bw }} / {{ maxBw }}</span>
-            <span>cycle {{ tick }}</span>
+            <span>cycle {{ cycle }}</span>
           </div>
           <div class="h-1.5 w-full bg-bg-secondary">
             <div class="h-full bg-ability transition-all" :style="{ width: `${bwPct}%` }" />
@@ -446,7 +446,7 @@ const {
           </div>
           <div class="mt-1 flex flex-wrap gap-2">
             <AsciiButton label="CAST COMBO (C)" variant="primary" @click="castCombo" />
-            <AsciiButton label="ADVANCE TICK (4s)" @click="advanceCycle" />
+            <AsciiButton label="ADVANCE CYCLE (4s)" @click="advanceCycle" />
             <AsciiButton label="RESET" variant="ghost" @click="reset" />
           </div>
           <p class="text-[0.6rem] leading-snug text-text-dim" data-testid="console-refill-note">

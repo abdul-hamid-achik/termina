@@ -158,7 +158,7 @@ function attackTargetLabel(t: TargetRef): string {
       return `ice in ${t.zone}`
     case 'tenant':
       return 'Tenant'
-    case 'ancient':
+    case 'terminal':
       return 'the enemy Terminal'
     case 'zone':
       return `everything in ${t.zone}`

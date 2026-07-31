@@ -5,14 +5,14 @@ A text-based MOBA you play right in your browser — deep 5v5 strategy where
 jump into a match against bots any time (a guided tutorial shows you the ropes),
 or queue for ranked when you're ready. Built for players who love MOBA depth but
 want it **accessible and at their own pace** — every command is one keystroke,
-every tick is a decision.
+every cycle is a decision.
 
 **▶ Play it live: [www.terminamoba.com](https://www.terminamoba.com)** — or learn first: [meet the heroes](https://www.terminamoba.com/heroes) · [browse items](https://www.terminamoba.com/items) · [learn the commands](https://www.terminamoba.com/learn) · [read the lore](https://www.terminamoba.com/lore)
 
 ## 🎮 Features
 
 ### Core Gameplay
-- **5v5 Strategic Battles** - Turn-based combat with 4-second ticks
+- **5v5 Strategic Battles** - Batch combat with 4-second cycles
 - **18 Unique Heroes** - Programming-themed champions with distinct abilities
 - **40+ Items** - Complete item system with passives and actives
 - **Draft Phase** - Alternating hero picks (snake draft)
@@ -20,7 +20,7 @@ every tick is a decision.
 
 ### Strategic Mechanics
 - **Burn System** - Burn allied waves below 50% HP to deny the enemy scrip/XP
-- **Buyback** - Instant respawn for gold (100 + 25×level)
+- **Buyback** - Instant respawn for scrip (100 + 25×level)
 - **Surrender Voting** - 60% majority required after 15 minutes
 - **Vision Game** - Ward placement + missing enemy detection
 - **Cooldown Tracking** - See enemy ability timers
@@ -33,7 +33,7 @@ every tick is a decision.
 - **Stat Validation** - Detect impossible states
 
 ### Infrastructure
-- **State Persistence** - Redis snapshots every 60s (15 ticks)
+- **State Persistence** - Redis snapshots every 60s (15 cycles)
 - **Auto-Recovery** - Restore games after server restart
 - **Effect-TS** - Type-safe functional programming
 - **WebSocket** - Real-time communication
@@ -202,20 +202,20 @@ Level 25: Double Echo (Q casts twice, 25%) OR +250 Max HP
 ### Deny Mechanics
 
 - **When**: Allied wave below 50% HP
-- **Reward**: 50% gold + 50% XP
+- **Reward**: 50% scrip + 50% XP
 - **Prevention**: Enemy gets nothing
 - **Command**: `burn <wave_index>`
 
 ### Buyback System
 
 - **Cost**: 100 + (25 × level) + (10 × deaths)
-- **Cooldown**: 90 ticks (6 minutes)
+- **Cooldown**: 90 cycles (6 minutes)
 - **Effect**: Instant respawn at fountain, full HP/MP
 - **Command**: `buyback`
 
 ### Leaver Penalties
 
-- **Detection**: 30 ticks (2 minutes) without actions
+- **Detection**: 30 cycles (2 minutes) without actions
 - **Penalty**: +10 leaver score per incident
 - **Threshold**: 30 score = low-priority queue
 - **Clear**: Complete 3 low-priority games
@@ -249,7 +249,7 @@ YAML flows that drive the **real app** — each flow registers/logs in a user
 through the UI, navigates, and asserts on what renders. There are **no test seed
 hooks**: the flows cover UI + auth + navigation journeys (auth, nav, lobby queue,
 profile, mobile), while gameplay/engine truth lives in the in-process `bun run
-test:gameplay` harness (seed scenario → act → advance ticks → assert engine
+test:gameplay` harness (seed scenario → act → advance cycles → assert engine
 truth, no browser). The easy path is `bun run test:e2e`, which is just `cairn run
 tests/e2e/flows --config … --cold-start`: cairn's `webServer:` config block
 (cairntrace ≥1.11.0) builds the app and boots a **production preview server**
@@ -335,7 +335,7 @@ for the full runbook):
   instance** (in-memory game state + a fixed-timestep loop), with Redis used for
   pub/sub matchmaking handoff and snapshot persistence. Horizontal scaling is
   not currently wired — a single instance comfortably hosts many concurrent
-  games, and slow ticks are logged so the ceiling is observable.
+  games, and slow cycles are logged so the ceiling is observable.
 
 The DigitalOcean side is **infrastructure-as-code with Pulumi (TypeScript)** in
 [`infra/`](infra/) — an isolated project (own deps/tsconfig, excluded from the
@@ -383,7 +383,7 @@ are used) and falls back to Pulumi config otherwise.
 ### Current Capabilities
 - **Tick Rate**: 4 seconds (250ms planned for future)
 - **Players per Game**: 10 (5v5)
-- **Concurrent Games**: ~50 per server instance (estimate — slow ticks are
+- **Concurrent Games**: ~50 per server instance (estimate — slow cycles are
   logged with their duration so the real ceiling is observable)
 - **Memory**: ~100MB per active game
 

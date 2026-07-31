@@ -11,7 +11,7 @@
  *  - props-driven stories pass `makePlayer()` / `makeScoreboardEntry()` etc.
  *    straight into a component's props.
  *  - store-coupled stories seed the Pinia game store via
- *    `store.updateFromCycle(makeTickMessage(...))`, or assign the lighter
+ *    `store.updateFromCycle(makeCycleMessage(...))`, or assign the lighter
  *    `makeGameState()` pieces directly onto the store's refs.
  */
 import type {
@@ -345,7 +345,7 @@ export const SAMPLE_EVENTS: GameEvent[] = [
 
 /**
  * A fully-valid {@link GameState}. Mostly useful as a base for
- * {@link makeTickMessage}; the store's `updateFromCycle` only reads a subset, but
+ * {@link makeCycleMessage}; the store's `updateFromCycle` only reads a subset, but
  * this keeps the whole shape type-correct for stories that need it directly.
  */
 export function makeGameState(overrides: Partial<GameState> = {}): GameState {
@@ -384,7 +384,7 @@ export function makeGameState(overrides: Partial<GameState> = {}): GameState {
  * superset of the fields it reads, so a cast keeps this both ergonomic and
  * type-honest for story seeding.
  */
-export function makeTickMessage(overrides: Partial<GameState> = {}): CycleStateMessage {
+export function makeCycleMessage(overrides: Partial<GameState> = {}): CycleStateMessage {
   const state = makeGameState(overrides)
   return {
     type: 'cycle_state',
