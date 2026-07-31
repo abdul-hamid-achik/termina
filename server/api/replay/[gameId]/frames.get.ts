@@ -1,9 +1,9 @@
 import { Effect } from 'effect'
 import { getGameRuntime } from '~~/server/plugins/game-server'
 import { readSnapshot } from '~~/server/game/engine/StateSnapshot'
-import { readActions } from '~~/server/game/engine/ActionLog'
+import { readActionLog } from '~~/server/game/engine/ActionLog'
 import { createInMemoryStateManager } from '~~/server/game/engine/StateManager'
-import { processCycle, submitAction } from '~~/server/game/engine/GameLoop'
+import { processCycle, submitReplayAction } from '~~/server/game/engine/GameLoop'
 import type { GameState } from '~~/shared/types/game'
 
 /**
@@ -15,13 +15,20 @@ import type { GameState } from '~~/shared/types/game'
  * because the bot's submitted actions are already in the action log — see
  * the "no registerBots" comment below.
  *
+ * Integrity (V1 decision):
+ * - Reconstruction always starts at cycle 0 (`createGame`). A truncated
+ *   action log (LTRIM discarded the head) cannot rebuild an honest timeline,
+ *   so this endpoint rejects with 409 rather than serving a plausible-but-
+ *   wrong scrubber.
+ * - A Redis read failure is 503 (not an empty complete replay).
+ *
  * Caveats (deliberate trade-offs for V1):
  * - World-side AI (wave waves, neutrals, tenant, caches) uses Math.random
  *   and will diverge from the original game. Player-side evolution (INTEG,
  *   scrip, items, K/D/A, position) follows the recorded action stream and
  *   is the only thing the scrubber UI relies on today.
  * - The replay is bounded by the action log's cycle range, so a game with
- *   no logged actions returns an empty `frames` array.
+ *   no logged actions returns an empty `frames` array (still `complete`).
  */
 
 interface FramePlayer {
@@ -101,11 +108,27 @@ export default defineEventHandler(async (event) => {
   if (!snap) {
     throw createError({ statusCode: 404, message: 'Replay not found' })
   }
+  if (snap.state.phase !== 'ended') {
+    throw createError({ statusCode: 403, message: 'Replay available after the game ends' })
+  }
   if (!snap.meta) {
     throw createError({ statusCode: 422, message: 'Replay missing setup metadata' })
   }
 
-  const actions = await Effect.runPromise(readActions(runtime.redisService, gameId))
+  const { actions, integrity } = await Effect.runPromise(
+    readActionLog(runtime.redisService, gameId),
+  )
+  if (integrity.readFailed) {
+    throw createError({ statusCode: 503, message: 'Replay action log unavailable' })
+  }
+  if (integrity.truncated || !integrity.complete) {
+    throw createError({
+      statusCode: 409,
+      message: 'Replay incomplete — action log was truncated; cannot reconstruct from cycle 1',
+      data: { integrity },
+    })
+  }
+
   // The last persisted cycle caps the replay length. Snapshots may run a few
   // ticks ahead of the action log if the log was trimmed, so use whichever
   // is bigger as an upper bound.
@@ -123,7 +146,12 @@ export default defineEventHandler(async (event) => {
     team: p.team,
     heroId: p.heroId,
   }))
-  await Effect.runPromise(sm.createGame(replayId, setup))
+  await Effect.runPromise(
+    sm.createGame(replayId, setup, {
+      mapId: snap.meta.mapId ?? snap.state.mapId,
+      mode: snap.meta.mode ?? snap.state.mode,
+    }),
+  )
   await Effect.runPromise(sm.updateState(replayId, (s) => ({ ...s, phase: 'playing' as const })))
 
   // Bucket actions by their cycle for O(1) lookup as we step forward.
@@ -143,7 +171,7 @@ export default defineEventHandler(async (event) => {
   for (let t = 1; t <= lastCycle; t++) {
     const tickActions = actionsByTick.get(t) ?? []
     for (const a of tickActions) {
-      submitAction(replayId, a.playerId, a.command)
+      submitReplayAction(replayId, a.playerId, a.command, a.synthesized)
     }
     const result = await Effect.runPromise(processCycle(replayId, current))
     current = result.state
@@ -159,5 +187,6 @@ export default defineEventHandler(async (event) => {
     totalTicks: frames.length - 1,
     frames,
     meta: snap.meta,
+    integrity,
   }
 })

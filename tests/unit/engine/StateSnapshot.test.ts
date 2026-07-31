@@ -2,7 +2,12 @@ import { describe, it, expect, vi } from 'vitest'
 import { Effect } from 'effect'
 import type { GameState } from '~~/shared/types/game'
 import type { RedisServiceApi } from '~~/server/services/RedisService'
-import { writeSnapshot, readSnapshot, deleteSnapshot } from '~~/server/game/engine/StateSnapshot'
+import {
+  SNAPSHOT_SCHEMA_VERSION,
+  writeSnapshot,
+  readSnapshot,
+  deleteSnapshot,
+} from '~~/server/game/engine/StateSnapshot'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 
 function makeGameState(): GameState {
@@ -71,6 +76,9 @@ describe('StateSnapshot', () => {
     const state = makeGameState()
 
     await Effect.runPromise(writeSnapshot(redis, 'g1', state))
+    expect(JSON.parse(redis._store.get('gamesnap2:g1')!).schemaVersion).toBe(
+      SNAPSHOT_SCHEMA_VERSION,
+    )
     const result = await Effect.runPromise(readSnapshot(redis, 'g1'))
 
     expect(result).not.toBeNull()
@@ -104,6 +112,60 @@ describe('StateSnapshot', () => {
     redis._store.set('gamesnap2:bad', 'not-json{')
     const result = await Effect.runPromise(readSnapshot(redis, 'bad'))
     expect(result).toBeNull()
+  })
+
+  it('accepts a snapshot with the current schema version', async () => {
+    const redis = makeMockRedis()
+    await Effect.runPromise(writeSnapshot(redis, 'current', makeGameState()))
+
+    const result = await Effect.runPromise(readSnapshot(redis, 'current'))
+
+    expect(result).not.toBeNull()
+  })
+
+  it('rejects a snapshot with a missing schema version', async () => {
+    const redis = makeMockRedis()
+    await Effect.runPromise(writeSnapshot(redis, 'missing-version', makeGameState()))
+    const payload = JSON.parse(redis._store.get('gamesnap2:missing-version')!) as Record<
+      string,
+      unknown
+    >
+    delete payload.schemaVersion
+    redis._store.set('gamesnap2:missing-version', JSON.stringify(payload))
+
+    const result = await Effect.runPromise(readSnapshot(redis, 'missing-version'))
+
+    expect(result).toBeNull()
+  })
+
+  it('rejects a stale snapshot schema version', async () => {
+    const redis = makeMockRedis()
+    await Effect.runPromise(writeSnapshot(redis, 'stale-version', makeGameState()))
+    const payload = JSON.parse(redis._store.get('gamesnap2:stale-version')!) as Record<
+      string,
+      unknown
+    >
+    payload.schemaVersion = SNAPSHOT_SCHEMA_VERSION - 1
+    redis._store.set('gamesnap2:stale-version', JSON.stringify(payload))
+
+    const result = await Effect.runPromise(readSnapshot(redis, 'stale-version'))
+
+    expect(result).toBeNull()
+  })
+
+  it('persists mapId and mode on snapshot meta for honest replay setup', async () => {
+    const redis = makeMockRedis()
+    const state = { ...makeGameState(), mapId: 'classic', mode: 'normal' as const }
+    await Effect.runPromise(
+      writeSnapshot(redis, 'meta', state, {
+        players: [{ playerId: 'p1', team: 'chaff', heroId: 'echo', mmr: 1000 }],
+        mapId: 'seawall',
+        mode: 'tutorial',
+      }),
+    )
+
+    const result = await Effect.runPromise(readSnapshot(redis, 'meta'))
+    expect(result?.meta).toMatchObject({ mapId: 'seawall', mode: 'tutorial' })
   })
 
   it('deletes the snapshot key', async () => {

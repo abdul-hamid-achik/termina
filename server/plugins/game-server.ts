@@ -25,6 +25,7 @@ import {
   type PlayerFarm,
 } from '~~/server/game/engine/GameLoop'
 import { playerNetWorth } from '~~/server/game/engine/ScripDistributor'
+import { shouldApplyDerivedMatchStats } from '~~/server/game/engine/matchPersistence'
 import {
   deleteSnapshot,
   readSnapshot,
@@ -780,7 +781,11 @@ export default defineNitroPlugin(async (nitroApp) => {
 
             await managedRuntime.runPromise(
               Effect.gen(function* () {
-                yield* db.recordMatch(matchRecord, matchPlayerRecords)
+                const matchPersisted = yield* db.recordMatch(matchRecord, matchPlayerRecords)
+                if (!shouldApplyDerivedMatchStats(matchPersisted)) {
+                  gameLog.error('Match was not persisted; skipping derived stats', { gameId: gId })
+                  return
+                }
 
                 for (const p of realPlayers) {
                   const isWinner = p.team === winner
@@ -938,7 +943,14 @@ export default defineNitroPlugin(async (nitroApp) => {
         // Start the game loop as a fiber within the managed runtime.
         // The snapshot meta lets the resume path rebuild the same callbacks
         // after a process restart.
-        const snapshotMeta: SnapshotMeta = { players: gameData.players }
+        const snapshotMeta: SnapshotMeta = {
+          players: gameData.players,
+          mapId,
+          // Queue modes (ranked_5v5, quick_3v3, 1v1) are not GameMode values;
+          // the state itself uses normal/tutorial while mapId carries the map
+          // variant. Never persist the queue label as a replay mode.
+          mode: gameData.mode === 'tutorial' ? 'tutorial' : 'normal',
+        }
         startGameLoop(gameId, stateManager, callbacks, managedRuntime, redis, snapshotMeta)
         setLiveGameMeta(gameId, snapshotMeta)
       } catch (err) {
@@ -1028,7 +1040,11 @@ export default defineNitroPlugin(async (nitroApp) => {
     )
     setPlayerGame(opts.humanId, gameId)
     const callbacks = buildCallbacks(players, stateManager)
-    const snapshotMeta: SnapshotMeta = { players }
+    const snapshotMeta: SnapshotMeta = {
+      players,
+      mapId: opts.mapId,
+      mode: opts.mode === 'tutorial' ? 'tutorial' : 'normal',
+    }
     startGameLoop(gameId, stateManager, callbacks, managedRuntime, redis, snapshotMeta)
     setLiveGameMeta(gameId, snapshotMeta)
     gameLog.info('Dev game created', {
@@ -1084,7 +1100,11 @@ export default defineNitroPlugin(async (nitroApp) => {
       }
 
       const callbacks = buildCallbacks(snap.meta.players, stateManager)
-      const snapshotMeta: SnapshotMeta = { players: snap.meta.players }
+      const snapshotMeta: SnapshotMeta = {
+        players: snap.meta.players,
+        mapId: snap.meta.mapId ?? snap.state.mapId,
+        mode: snap.meta.mode ?? snap.state.mode,
+      }
       startGameLoop(gameId, stateManager, callbacks, managedRuntime, redis, snapshotMeta)
       setLiveGameMeta(gameId, snapshotMeta)
 

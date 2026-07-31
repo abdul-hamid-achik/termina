@@ -12,12 +12,15 @@
  */
 
 import { Effect } from 'effect'
-import type { GameState, TeamId } from '~~/shared/types/game'
+import type { GameMode, GameState, TeamId } from '~~/shared/types/game'
 import type { RedisServiceApi } from '~~/server/services/RedisService'
 import { engineLog } from '~~/server/utils/log'
 
 /** Take a snapshot every Nth tick. 15 ticks = 60s at 4s/tick. */
 export const SNAPSHOT_EVERY_N_TICKS = 15
+
+/** Increment when the serialized snapshot shape changes incompatibly. */
+export const SNAPSHOT_SCHEMA_VERSION = 1
 
 /** Snapshot TTL — long enough to survive a deploy + a few hours of debugging. */
 const SNAPSHOT_TTL_SECONDS = 60 * 60 * 8
@@ -34,9 +37,12 @@ function snapshotKey(gameId: string): string {
  */
 export interface SnapshotMeta {
   players: { playerId: string; team: TeamId; heroId: string; mmr: number }[]
+  mapId?: string
+  mode?: GameMode
 }
 
 interface SnapshotPayload {
+  schemaVersion: number
   gameId: string
   savedAt: number
   state: SerializedGameState
@@ -76,10 +82,17 @@ export function writeSnapshot(
 ): Effect.Effect<void> {
   return Effect.gen(function* () {
     const payload: SnapshotPayload = {
+      schemaVersion: SNAPSHOT_SCHEMA_VERSION,
       gameId,
       savedAt: Date.now(),
       state: serialize(state),
-      meta,
+      meta: meta
+        ? {
+            ...meta,
+            mapId: meta.mapId ?? state.mapId,
+            mode: meta.mode ?? state.mode,
+          }
+        : undefined,
     }
     yield* redis.set(snapshotKey(gameId), JSON.stringify(payload), SNAPSHOT_TTL_SECONDS)
   }).pipe(
@@ -99,6 +112,9 @@ export function readSnapshot(
     const raw = yield* redis.get(snapshotKey(gameId))
     if (!raw) return null
     const parsed = yield* Effect.try(() => JSON.parse(raw) as SnapshotPayload)
+    if (parsed.schemaVersion !== SNAPSHOT_SCHEMA_VERSION) {
+      throw new Error(`Unsupported snapshot schema version: ${String(parsed.schemaVersion)}`)
+    }
     return {
       state: deserialize(parsed.state),
       savedAt: parsed.savedAt,

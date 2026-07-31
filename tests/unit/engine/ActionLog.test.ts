@@ -1,16 +1,28 @@
 import { describe, it, expect, vi } from 'vitest'
 import { Effect } from 'effect'
 import type { RedisServiceApi } from '~~/server/services/RedisService'
-import { appendActions, readActions, deleteActionLog } from '~~/server/game/engine/ActionLog'
+import {
+  ACTION_LOG_MAX,
+  appendActions,
+  readActions,
+  readActionLog,
+  deleteActionLog,
+} from '~~/server/game/engine/ActionLog'
 
-function makeMockRedis(): RedisServiceApi & { _list: Map<string, string[]> } {
+function makeMockRedis(): RedisServiceApi & { _list: Map<string, string[]>; _store: Map<string, string> } {
   const lists = new Map<string, string[]>()
+  const store = new Map<string, string>()
   return {
     _list: lists,
-    get: vi.fn(() => Effect.succeed(null)),
-    set: vi.fn(() => Effect.void),
+    _store: store,
+    get: vi.fn((key: string) => Effect.succeed(store.get(key) ?? null)),
+    set: vi.fn((key: string, value: string) => {
+      store.set(key, value)
+      return Effect.void
+    }),
     del: vi.fn((key: string) => {
       lists.delete(key)
+      store.delete(key)
       return Effect.void
     }),
     rpush: vi.fn((key: string, value: string) => {
@@ -52,7 +64,7 @@ function makeMockRedis(): RedisServiceApi & { _list: Map<string, string[]> } {
     expire: vi.fn(() => Effect.void),
     eval: vi.fn(() => Effect.succeed(null)),
     shutdown: vi.fn(() => Effect.void),
-  } as RedisServiceApi & { _list: Map<string, string[]> }
+  } as RedisServiceApi & { _list: Map<string, string[]>; _store: Map<string, string> }
 }
 
 describe('ActionLog', () => {
@@ -105,13 +117,82 @@ describe('ActionLog', () => {
     expect(redis.rpush).not.toHaveBeenCalled()
   })
 
-  it('returns an empty array for a missing log', async () => {
+  it('returns an empty complete log for a missing key', async () => {
     const redis = makeMockRedis()
-    const result = await Effect.runPromise(readActions(redis, 'nonexistent'))
-    expect(result).toEqual([])
+    const result = await Effect.runPromise(readActionLog(redis, 'nonexistent'))
+    expect(result.actions).toEqual([])
+    expect(result.integrity).toMatchObject({
+      complete: true,
+      truncated: false,
+      readFailed: false,
+      entryCount: 0,
+      firstLoggedCycle: null,
+      lastLoggedCycle: null,
+      initialSnapshotCycle: 0,
+    })
   })
 
-  it('deletes the log key', async () => {
+  it('reports complete integrity for a retained head-to-tail log', async () => {
+    const redis = makeMockRedis()
+    await Effect.runPromise(
+      appendActions(redis, 'g1', [
+        { cycle: 1, playerId: 'p1', command: { type: 'move', zone: 'a' } },
+        { cycle: 4, playerId: 'p1', command: { type: 'move', zone: 'b' } },
+      ]),
+    )
+
+    const result = await Effect.runPromise(readActionLog(redis, 'g1'))
+    expect(result.integrity).toMatchObject({
+      complete: true,
+      truncated: false,
+      readFailed: false,
+      entryCount: 2,
+      firstLoggedCycle: 1,
+      lastLoggedCycle: 4,
+      initialSnapshotCycle: 0,
+    })
+  })
+
+  it('marks integrity truncated once LTRIM discards the head', async () => {
+    const redis = makeMockRedis()
+    const seeded = Array.from({ length: ACTION_LOG_MAX }, (_, i) =>
+      JSON.stringify({
+        cycle: i + 1,
+        playerId: 'p1',
+        command: { type: 'move', zone: 'a' },
+      }),
+    )
+    redis._list.set('gamelog:g1', seeded)
+
+    await Effect.runPromise(
+      appendActions(redis, 'g1', [
+        { cycle: ACTION_LOG_MAX + 1, playerId: 'p1', command: { type: 'move', zone: 'b' } },
+      ]),
+    )
+
+    const result = await Effect.runPromise(readActionLog(redis, 'g1'))
+    expect(result.actions).toHaveLength(ACTION_LOG_MAX)
+    expect(result.integrity.truncated).toBe(true)
+    expect(result.integrity.complete).toBe(false)
+    expect(result.integrity.firstLoggedCycle).toBeGreaterThan(1)
+    expect(result.integrity.lastLoggedCycle).toBe(ACTION_LOG_MAX + 1)
+    expect(JSON.parse(redis._store.get('gamelogmeta:g1')!).truncated).toBe(true)
+  })
+
+  it('surfaces readFailed instead of a silent empty complete log', async () => {
+    const redis = makeMockRedis()
+    redis.lrange = vi.fn(() => Effect.fail(new Error('redis down') as never))
+
+    const result = await Effect.runPromise(readActionLog(redis, 'g1'))
+    expect(result.actions).toEqual([])
+    expect(result.integrity).toMatchObject({
+      complete: false,
+      readFailed: true,
+      truncated: false,
+    })
+  })
+
+  it('deletes the log and integrity meta keys', async () => {
     const redis = makeMockRedis()
     await Effect.runPromise(
       appendActions(redis, 'g1', [
@@ -119,9 +200,11 @@ describe('ActionLog', () => {
       ]),
     )
     expect(redis._list.has('gamelog:g1')).toBe(true)
+    expect(redis._store.has('gamelogmeta:g1')).toBe(true)
 
     await Effect.runPromise(deleteActionLog(redis, 'g1'))
     expect(redis._list.has('gamelog:g1')).toBe(false)
+    expect(redis._store.has('gamelogmeta:g1')).toBe(false)
   })
 
   it('does not throw when Redis fails — best-effort', async () => {

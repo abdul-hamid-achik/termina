@@ -192,7 +192,12 @@ export function getFarmStats(gameId: string): Record<string, PlayerFarm> {
 }
 
 /** Submit an action for the current tick (single-instance, in-process queue). */
-export function submitAction(gameId: string, playerId: string, command: Command): void {
+function enqueueAction(
+  gameId: string,
+  playerId: string,
+  command: Command,
+  synthesized = false,
+): void {
   let queue = gameActionQueues.get(gameId)
   if (!queue) {
     queue = []
@@ -209,10 +214,24 @@ export function submitAction(gameId: string, playerId: string, command: Command)
       dropped,
       replacedWith: command.type,
     })
-    queue[existing] = { playerId, command }
+    queue[existing] = { playerId, command, ...(synthesized ? { synthesized: true } : {}) }
   } else {
-    queue.push({ playerId, command })
+    queue.push({ playerId, command, ...(synthesized ? { synthesized: true } : {}) })
   }
+}
+
+export function submitAction(gameId: string, playerId: string, command: Command): void {
+  enqueueAction(gameId, playerId, command)
+}
+
+/** Replay ingress preserves whether the original action was synthesized. */
+export function submitReplayAction(
+  gameId: string,
+  playerId: string,
+  command: Command,
+  synthesized = false,
+): void {
+  enqueueAction(gameId, playerId, command, synthesized)
 }
 
 /** Whether a player already has a command of this type queued for the tick. */
@@ -734,7 +753,12 @@ function buildGameLoop(
         appendActions(
           redis,
           gameId,
-          actions.map((a) => ({ cycle: newState.cycle, playerId: a.playerId, command: a.command })),
+          actions.map((a) => ({
+            cycle: newState.cycle,
+            playerId: a.playerId,
+            command: a.command,
+            ...(a.synthesized ? { synthesized: true } : {}),
+          })),
         ),
       )
     }

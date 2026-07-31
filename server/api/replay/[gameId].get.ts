@@ -1,7 +1,7 @@
 import { Effect } from 'effect'
 import { getGameRuntime } from '~~/server/plugins/game-server'
 import { readSnapshot } from '~~/server/game/engine/StateSnapshot'
-import { readActions } from '~~/server/game/engine/ActionLog'
+import { readActionLog } from '~~/server/game/engine/ActionLog'
 import { checkScopedRateLimit } from '~~/server/utils/RateLimiter'
 
 /**
@@ -10,6 +10,11 @@ import { checkScopedRateLimit } from '~~/server/utils/RateLimiter'
  *
  * Sets in GameState (surrenderVotes) are converted back to arrays for JSON
  * transport — the replay UI will reconstruct them when needed.
+ *
+ * Integrity metadata is always included. A truncated log is still returned
+ * here (raw dump for debugging) but marked `complete: false` so the UI must
+ * not present it as an exact full-match replay. Frame reconstruction
+ * (`/frames`) rejects truncated logs with 409.
  */
 export default defineEventHandler(async (event) => {
   const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'unknown'
@@ -27,9 +32,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Game ID required' })
   }
 
-  // readSnapshot/readActions are best-effort — they swallow Redis failures
-  // and return null/[] respectively. So a 404 here means the game truly has
-  // no snapshot, not that Redis is unreachable.
+  // readSnapshot is best-effort — Redis failures return null. So a 404 here
+  // means the game truly has no snapshot, not that Redis is unreachable.
   const snap = await Effect.runPromise(readSnapshot(runtime.redisService, gameId))
   if (!snap) {
     throw createError({ statusCode: 404, message: 'Replay not found' })
@@ -43,7 +47,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, message: 'Replay available after the game ends' })
   }
 
-  const actions = await Effect.runPromise(readActions(runtime.redisService, gameId))
+  const { actions, integrity } = await Effect.runPromise(
+    readActionLog(runtime.redisService, gameId),
+  )
+  if (integrity.readFailed) {
+    throw createError({ statusCode: 503, message: 'Replay action log unavailable' })
+  }
 
   return {
     gameId,
@@ -58,5 +67,6 @@ export default defineEventHandler(async (event) => {
     },
     meta: snap.meta,
     actions,
+    integrity,
   }
 })
