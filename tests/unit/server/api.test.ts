@@ -78,7 +78,7 @@ const mockRuntime = {
     ),
     getMatchHistory: vi.fn(() => Effect.succeed([])),
     getHeroStats: vi.fn(() => Effect.succeed([])),
-    recordMatch: vi.fn(() => Effect.succeed(undefined)),
+    recordMatch: vi.fn(() => Effect.succeed(true)),
     getPlayerStats: vi.fn(() => Effect.succeed(null)),
   },
 }
@@ -117,6 +117,20 @@ vi.mock('~~/server/game/engine/StateSnapshot', () => ({
 
 vi.mock('~~/server/game/engine/ActionLog', () => ({
   readActions: vi.fn(() => Effect.succeed([])),
+  readActionLog: vi.fn(() =>
+    Effect.succeed({
+      actions: [],
+      integrity: {
+        complete: true,
+        truncated: false,
+        readFailed: false,
+        entryCount: 0,
+        firstLoggedCycle: null,
+        lastLoggedCycle: null,
+        initialSnapshotCycle: 0,
+      },
+    }),
+  ),
 }))
 
 // ── Subjects ────────────────────────────────────────────────────────
@@ -140,7 +154,7 @@ const { getPlayerGame, clearPlayerGame, sendToPeer } =
 const { getPlayerLobby } = await import('~~/server/game/matchmaking/lobby')
 const { checkScopedRateLimit } = await import('~~/server/utils/RateLimiter')
 const { readSnapshot } = await import('~~/server/game/engine/StateSnapshot')
-const { readActions } = await import('~~/server/game/engine/ActionLog')
+const { readActions, readActionLog } = await import('~~/server/game/engine/ActionLog')
 
 // ── Tests ──────────────────────────────────────────────────────────
 
@@ -157,6 +171,20 @@ describe('API endpoints', () => {
     vi.mocked(checkScopedRateLimit).mockReturnValue(true)
     vi.mocked(readSnapshot).mockReturnValue(Effect.succeed(null))
     vi.mocked(readActions).mockReturnValue(Effect.succeed([]))
+    vi.mocked(readActionLog).mockReturnValue(
+      Effect.succeed({
+        actions: [],
+        integrity: {
+          complete: true,
+          truncated: false,
+          readFailed: false,
+          entryCount: 0,
+          firstLoggedCycle: null,
+          lastLoggedCycle: null,
+          initialSnapshotCycle: 0,
+        },
+      }),
+    )
   })
 
   afterEach(() => {
@@ -532,12 +560,89 @@ describe('API endpoints', () => {
           meta: { players: [] },
         } as never),
       )
-      vi.mocked(readActions).mockReturnValue(Effect.succeed([{ cycle: 1 }] as never))
+      vi.mocked(readActionLog).mockReturnValue(
+        Effect.succeed({
+          actions: [{ cycle: 1 }] as never,
+          integrity: {
+            complete: true,
+            truncated: false,
+            readFailed: false,
+            entryCount: 1,
+            firstLoggedCycle: 1,
+            lastLoggedCycle: 1,
+            initialSnapshotCycle: 0,
+          },
+        }),
+      )
       const result = await replayHandler(makeEvent('GET', '/api/replay/g1'))
       expect(result.gameId).toBe('g1')
       expect(result.savedAt).toBe(123)
       expect(result.state.surrenderVotes).toEqual({ chaff: ['p1'], audit: [] })
       expect(result.actions).toEqual([{ cycle: 1 }])
+      expect(result.integrity).toMatchObject({ complete: true, truncated: false })
+    })
+
+    it('503 when the action log read failed', async () => {
+      routerParam = 'g1'
+      vi.mocked(readSnapshot).mockReturnValue(
+        Effect.succeed({
+          savedAt: 123,
+          state: {
+            cycle: 9,
+            phase: 'ended',
+            surrenderVotes: { chaff: new Set(), audit: new Set() },
+          },
+          meta: { players: [] },
+        } as never),
+      )
+      vi.mocked(readActionLog).mockReturnValue(
+        Effect.succeed({
+          actions: [],
+          integrity: {
+            complete: false,
+            truncated: false,
+            readFailed: true,
+            entryCount: 0,
+            firstLoggedCycle: null,
+            lastLoggedCycle: null,
+            initialSnapshotCycle: 0,
+          },
+        }),
+      )
+      await expect(replayHandler(makeEvent('GET', '/api/replay/g1'))).rejects.toThrow()
+      expect(thrownError?.statusCode).toBe(503)
+    })
+
+    it('labels a truncated log as incomplete instead of presenting it as exact', async () => {
+      routerParam = 'g1'
+      vi.mocked(readSnapshot).mockReturnValue(
+        Effect.succeed({
+          savedAt: 123,
+          state: {
+            cycle: 900,
+            phase: 'ended',
+            surrenderVotes: { chaff: new Set(), audit: new Set() },
+          },
+          meta: { players: [], mapId: 'classic', mode: 'normal' },
+        } as never),
+      )
+      vi.mocked(readActionLog).mockReturnValue(
+        Effect.succeed({
+          actions: [{ cycle: 500 }] as never,
+          integrity: {
+            complete: false,
+            truncated: true,
+            readFailed: false,
+            entryCount: 10000,
+            firstLoggedCycle: 500,
+            lastLoggedCycle: 900,
+            initialSnapshotCycle: 0,
+          },
+        }),
+      )
+      const result = await replayHandler(makeEvent('GET', '/api/replay/g1'))
+      expect(result.integrity).toMatchObject({ complete: false, truncated: true })
+      expect(result.meta).toMatchObject({ mapId: 'classic', mode: 'normal' })
     })
   })
 

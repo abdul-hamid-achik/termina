@@ -20,9 +20,11 @@ webServer:
   build: bun run build # rebuilt on every fresh boot; skipped when a server is reused
   # Flush the test Redis db (db1) BEFORE the server starts: on boot the game
   # server resumes in-progress games from db1 snapshots, so a stale seeded game
-  # would come back as a zombie. `exec` hands signals straight to node for clean
-  # teardown. (The command already runs under `/bin/sh -c`.)
-  command: 'redis-cli -p 6380 -n 1 flushdb >/dev/null 2>&1 || true; exec node .output/server/index.mjs'
+  # would come back as a zombie. Local e2e always uses the disposable termina_test
+  # database on the compose host port; CI keeps its injected NUXT_DATABASE_URL.
+  # `exec` hands signals straight to node for clean teardown. (The command already
+  # runs under `/bin/sh -c`.)
+  command: 'redis-cli -p 6380 -n 1 flushdb >/dev/null 2>&1 || true; if [ -n "${CI:-}" ] && [ -n "${NUXT_DATABASE_URL:-}" ]; then :; else export NUXT_DATABASE_URL="postgresql://termina:termina@localhost:5433/termina_test"; fi; exec node .output/server/index.mjs'
   url: http://127.0.0.1:3000 # readiness probe (and where specs are addressed)
   readyTimeoutMs: 90000 # prod server boot headroom (covers boot, not the build)
   env:
@@ -43,10 +45,9 @@ webServer:
     # inert in production). In-game UI flows (feed digest, shop, scoreboard) would
     # otherwise wait 4s per tick for anything to happen.
     TERMINA_TEST_FAST_GAME: "8"
-    # NUXT_DATABASE_URL is intentionally NOT pinned: locally the app's compiled
-    # runtimeConfig default (…localhost:5433/termina) applies; in CI the runner
-    # exports its own (termina_test), and an inherited env value wins since it's
-    # absent from this map.
+    # The command above pins local runs to the disposable termina_test database
+    # (the same localhost:5433 convention used by test:db). In CI, an injected
+    # NUXT_DATABASE_URL is preserved instead, so the runner's host/credentials win.
 
 # In-game flows click while the WS tick stream keeps the page busy — the
 # fold-a-networkidle-settle-into-every-click default can time out there even
@@ -59,6 +60,9 @@ environments:
   # drive the REAL app (register/login through the UI, navigate, assert) — no
   # seeding hooks. Game-internal truth is covered separately by `bun run test:gameplay`.
   local:
+    # Before a local cold start, ensure the disposable DB exists and has schema:
+    # `bun run test:db` (or push with DATABASE_URL=…/termina_test). Do not push
+    # the e2e schema to the development `termina` database.
     # 127.0.0.1, NOT localhost: the Nuxt server binds IPv6 (::1) by default, and
     # on a Linux CI runner `localhost` can resolve to IPv4 first — so a Bun
     # `fetch` (cairn's request transport) hits a dead address and hangs. The

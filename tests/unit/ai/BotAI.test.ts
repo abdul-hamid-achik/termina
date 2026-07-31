@@ -17,6 +17,7 @@ import type { GameState, PlayerState, WaveUnitState } from '~~/shared/types/game
 import type { AbilityDef, AbilityEffect } from '~~/shared/types/hero'
 import { HEROES } from '~~/shared/constants/heroes'
 import { getItem } from '~~/shared/constants/items'
+import { ZONES } from '~~/shared/constants/zones'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { findPath } from '~~/server/game/map/topology'
 import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
@@ -2124,16 +2125,16 @@ describe('isOwnSide — the rename guard', () => {
     // full zone-id rename. The old endsWith('-chaff')/startsWith('silt-chaff')
     // ladder read every renamed zone as enemy-side and inverted the bots'
     // entire spatial model with no type error and no test failure.
-    expect(isOwnSide('chaff-base', 'chaff')).toBe(true)
-    expect(isOwnSide('top-t1-chaff', 'chaff')).toBe(true)
-    expect(isOwnSide('silt-chaff-top', 'chaff')).toBe(true)
-    expect(isOwnSide('top-t1-chaff', 'audit')).toBe(false)
-    expect(isOwnSide('audit-base', 'audit')).toBe(true)
-    expect(isOwnSide('silt-audit-bot', 'audit')).toBe(true)
-    // Rivers/caches/tenant are neutral — own for neither side.
-    expect(isOwnSide('mid-river', 'chaff')).toBe(false)
-    expect(isOwnSide('mid-river', 'audit')).toBe(false)
-    expect(isOwnSide('hollow', 'chaff')).toBe(false)
+    for (const zone of ZONES) {
+      expect(isOwnSide(zone.id, 'chaff')).toBe(zone.team === 'chaff')
+      expect(isOwnSide(zone.id, 'audit')).toBe(zone.team === 'audit')
+
+      if (zone.team === 'neutral') {
+        expect(isOwnSide(zone.id, 'chaff')).toBe(false)
+        expect(isOwnSide(zone.id, 'audit')).toBe(false)
+      }
+    }
+
     // An id the map does not know is own for NOBODY (never defaults to a side).
     expect(isOwnSide('seawall-ice-1-chf', 'chaff')).toBe(false)
     expect(isOwnSide('seawall-ice-1-chf', 'audit')).toBe(false)
