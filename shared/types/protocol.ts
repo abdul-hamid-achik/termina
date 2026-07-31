@@ -154,6 +154,11 @@ export interface HeartbeatAckMessage {
   timestamp: number
 }
 
+/** Server-side liveness probe for adapters without native ping/pong. */
+export interface HeartbeatProbeMessage {
+  type: 'heartbeat'
+}
+
 export interface ChatBroadcastMessage {
   type: 'chat'
   playerId: string
@@ -230,6 +235,7 @@ export type ServerMessage =
   | QueueRosterMessage
   | QueueFillingMessage
   | HeartbeatAckMessage
+  | HeartbeatProbeMessage
   | ChatBroadcastMessage
   | PingMapBroadcastMessage
   | FullStateMessage

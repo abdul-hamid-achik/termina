@@ -22,6 +22,7 @@ import {
 import {
   registerPeer,
   unregisterPeer,
+  getPeer,
   getPlayerGame,
   getPlayerTeam,
   sendToPeer,
@@ -74,16 +75,23 @@ const TEST_SECRET = 'unit-test-session-secret-0123456789'
 vi.stubGlobal('defineWebSocketHandler', (hooks: unknown) => hooks)
 vi.stubGlobal('useRuntimeConfig', () => ({ session: { password: TEST_SECRET } }))
 
-const handler = (await import('~~/server/routes/ws')).default as unknown as {
+const wsRoute = await import('~~/server/routes/ws')
+const handler = wsRoute.default as unknown as {
   open: (peer: unknown) => void
   message: (peer: unknown, message: unknown) => void
   close: (peer: unknown, details: unknown) => void
   error: (peer: unknown, error: unknown) => void
 }
+const { startPingSweep, stopPingSweep } = wsRoute
 
 interface MockPeer {
   request: { url: string; __authSession?: { user: { id: string } } | null }
-  websocket: { send: ReturnType<typeof vi.fn>; url?: string }
+  websocket: {
+    send: ReturnType<typeof vi.fn>
+    url?: string
+    ping?: ReturnType<typeof vi.fn>
+    on?: ReturnType<typeof vi.fn>
+  }
   send: ReturnType<typeof vi.fn>
   close: ReturnType<typeof vi.fn>
 }
@@ -157,6 +165,7 @@ beforeEach(() => {
   vi.mocked(getPlayerGame).mockReturnValue(undefined)
   vi.mocked(getPlayerLobby).mockReturnValue(undefined)
   vi.mocked(getLobby).mockReturnValue(undefined)
+  vi.mocked(getPeer).mockReturnValue(undefined)
   vi.mocked(checkRateLimit).mockReturnValue(true)
   vi.mocked(checkScopedRateLimit).mockReturnValue(true)
   vi.mocked(getGameRuntime).mockReturnValue(null)
@@ -164,6 +173,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  stopPingSweep()
   vi.useRealTimers()
   vi.unstubAllEnvs()
 })
@@ -316,6 +326,93 @@ describe('ws route — heartbeat', () => {
     const msg = lastMessage(peer)
     expect(msg).toMatchObject({ type: 'heartbeat_ack' })
     expect(typeof msg?.timestamp).toBe('number')
+  })
+})
+
+describe('ws route — ping sweep', () => {
+  it('sends a protocol heartbeat probe when the adapter has no native ping', async () => {
+    vi.useFakeTimers()
+    startPingSweep()
+    const peer = openAuthedPeer('p_probe')
+    peer.send.mockClear()
+
+    await vi.advanceTimersByTimeAsync(30_000)
+
+    expect(peer.send).toHaveBeenCalledWith(JSON.stringify({ type: 'heartbeat', serverProbe: true }))
+  })
+
+  it('closes a peer that never answers the protocol probe', async () => {
+    vi.useFakeTimers()
+    startPingSweep()
+    const peer = openAuthedPeer('p_dead')
+    peer.send.mockClear()
+
+    // Sweep only evaluates timeouts on the interval (every 30s). Probe at 30s,
+    // age crosses PONG_TIMEOUT_MS=45s on the tick at 90s.
+    await vi.advanceTimersByTimeAsync(30_000)
+    await vi.advanceTimersByTimeAsync(60_000)
+
+    expect(unregisterPeer).toHaveBeenCalledWith('p_dead', peer)
+    expect(peer.close).toHaveBeenCalledWith(4000, 'Heartbeat timeout')
+  })
+
+  it('keeps a peer alive when it answers the probe with a heartbeat', async () => {
+    vi.useFakeTimers()
+    startPingSweep()
+    const peer = openAuthedPeer('p_alive')
+    peer.send.mockClear()
+
+    await vi.advanceTimersByTimeAsync(30_000)
+    sendMsg(peer, { type: 'heartbeat' })
+    await vi.advanceTimersByTimeAsync(60_000)
+
+    expect(peer.close).not.toHaveBeenCalled()
+    expect(unregisterPeer).not.toHaveBeenCalledWith('p_alive', peer)
+  })
+
+  it('uses native websocket ping when available and clears on pong', async () => {
+    vi.useFakeTimers()
+    startPingSweep()
+    const peer = createPeer({ sessionPlayerId: 'p_native' })
+    const pongListeners: Array<() => void> = []
+    peer.websocket.ping = vi.fn()
+    peer.websocket.on = vi.fn((event: string, listener: () => void) => {
+      if (event === 'pong') pongListeners.push(listener)
+    })
+    handler.open(peer)
+    peer.send.mockClear()
+
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(peer.websocket.ping).toHaveBeenCalled()
+    expect(peer.send).not.toHaveBeenCalledWith(
+      JSON.stringify({ type: 'heartbeat', serverProbe: true }),
+    )
+
+    for (const listener of pongListeners) listener()
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(peer.close).not.toHaveBeenCalled()
+  })
+
+  it('does not close a replacement peer when an older probe times out', async () => {
+    vi.useFakeTimers()
+    startPingSweep()
+    const oldPeer = openAuthedPeer('p_race')
+    oldPeer.send.mockClear()
+
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(oldPeer.send).toHaveBeenCalledWith(
+      JSON.stringify({ type: 'heartbeat', serverProbe: true }),
+    )
+
+    // Registry already points at the replacement while liveness still holds
+    // the older peer until the next open overwrites it.
+    const replacement = createPeer({ sessionPlayerId: 'p_race' })
+    vi.mocked(getPeer).mockReturnValue(replacement as never)
+
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(oldPeer.close).not.toHaveBeenCalled()
+    expect(replacement.close).not.toHaveBeenCalled()
+    expect(unregisterPeer).not.toHaveBeenCalledWith('p_race', oldPeer)
   })
 })
 

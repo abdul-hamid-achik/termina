@@ -71,7 +71,7 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
     message: z.string().min(1).max(500),
   }),
   z.object({ type: z.literal('ping_map'), zone: zoneId }),
-  z.object({ type: z.literal('heartbeat') }),
+  z.object({ type: z.literal('heartbeat'), serverProbe: z.boolean().optional() }),
   z.object({
     type: z.literal('reconnect'),
     gameId: shortId,
@@ -80,6 +80,7 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('join_game'), gameId: shortId }),
   z.object({ type: z.literal('hero_pick'), lobbyId: shortId, heroId: shortId }),
+  z.object({ type: z.literal('hero_ban'), lobbyId: shortId, heroId: shortId }),
   z.object({ type: z.literal('request_state') }),
   z.object({ type: z.literal('spectate'), gameId: shortId }),
   z.object({ type: z.literal('unspectate') }),

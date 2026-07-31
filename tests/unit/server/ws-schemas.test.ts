@@ -435,6 +435,9 @@ describe('clientMessageSchema', () => {
         expect(result.data).toEqual({ type: 'heartbeat' })
       }
     })
+    it('accepts a server liveness probe marker', () => {
+      ok(clientMessageSchema, { type: 'heartbeat', serverProbe: true })
+    })
   })
 
   describe('reconnect', () => {
@@ -482,6 +485,19 @@ describe('clientMessageSchema', () => {
       bad(clientMessageSchema, { type: 'hero_pick', lobbyId: 'lobby_1' })
       bad(clientMessageSchema, { type: 'hero_pick', lobbyId: '', heroId: 'axe' })
       bad(clientMessageSchema, { type: 'hero_pick', lobbyId: str(129), heroId: 'axe' })
+    })
+  })
+
+  describe('hero_ban', () => {
+    it('accepts valid lobby and hero ids', () => {
+      ok(clientMessageSchema, { type: 'hero_ban', lobbyId: 'lobby_1', heroId: 'axe' })
+      ok(clientMessageSchema, { type: 'hero_ban', lobbyId: str(128), heroId: str(128) })
+    })
+    it('rejects missing, empty, or oversized ids', () => {
+      bad(clientMessageSchema, { type: 'hero_ban', heroId: 'axe' })
+      bad(clientMessageSchema, { type: 'hero_ban', lobbyId: 'lobby_1' })
+      bad(clientMessageSchema, { type: 'hero_ban', lobbyId: '', heroId: 'axe' })
+      bad(clientMessageSchema, { type: 'hero_ban', lobbyId: str(129), heroId: 'axe' })
     })
   })
 

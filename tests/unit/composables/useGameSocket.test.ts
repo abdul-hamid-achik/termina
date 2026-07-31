@@ -418,6 +418,16 @@ describe('useGameSocket', () => {
   })
 
   describe('heartbeat', () => {
+    it('answers a server liveness probe with a heartbeat', async () => {
+      const { connect } = useGameSocket()
+      connect('game-1', 'player-1')
+      await vi.advanceTimersByTimeAsync(1)
+
+      MockWebSocket.last!._receive({ type: 'heartbeat' })
+
+      expect(MockWebSocket.last!.send).toHaveBeenCalledWith(JSON.stringify({ type: 'heartbeat' }))
+    })
+
     it('measures latency from the heartbeat round-trip on heartbeat_ack', async () => {
       const { connect, latency } = useGameSocket()
       connect('game-1', 'player-1')

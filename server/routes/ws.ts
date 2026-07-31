@@ -70,22 +70,108 @@ const DEV_GAME_RECONNECT_MS = 3_000
 const PING_INTERVAL_MS = 30_000
 const PONG_TIMEOUT_MS = 45_000
 let pingSweepTimer: ReturnType<typeof setInterval> | null = null
-const lastPongAt = new Map<string, number>()
+interface PeerSocket {
+  ping?: () => void
+  on?: (event: 'pong', listener: () => void) => void
+}
+
+interface PeerLiveness {
+  peer: object
+  lastPongAt: number
+  pingSentAt: number | null
+}
+
+const lastPongAt = new Map<string, PeerLiveness>()
+
+function peerSocket(peer: object): PeerSocket {
+  return (peer as { websocket?: PeerSocket }).websocket ?? {}
+}
+
+function isCurrentPeer(playerId: string, peer: object): boolean {
+  const registered = getPeer(playerId)
+  return registered === undefined || registered === peer
+}
+
+/** Record a successful protocol pong or any client traffic. */
+function touchPeer(playerId: string, peer: object): void {
+  const liveness = lastPongAt.get(playerId)
+  if (!liveness || liveness.peer !== peer) return
+  liveness.lastPongAt = Date.now()
+  liveness.pingSentAt = null
+}
+
+function registerPeerLiveness(playerId: string, peer: object): void {
+  lastPongAt.set(playerId, { peer, lastPongAt: Date.now(), pingSentAt: null })
+  const socket = peerSocket(peer)
+  socket.on?.('pong', () => touchPeer(playerId, peer))
+}
+
+/** Close a dead peer while leaving the normal close handler to apply the
+ * reconnect grace period and game cleanup. The identity check prevents a
+ * stale sweep from closing a replacement connection. */
+function closeDeadPeer(playerId: string, liveness: PeerLiveness): void {
+  if (lastPongAt.get(playerId) !== liveness || !isCurrentPeer(playerId, liveness.peer)) {
+    return
+  }
+  lastPongAt.delete(playerId)
+  unregisterPeer(playerId, liveness.peer as { send: (data: string) => void })
+  try {
+    ;(liveness.peer as { close?: (code?: number, reason?: string) => void }).close?.(
+      4000,
+      'Heartbeat timeout',
+    )
+  } catch (error) {
+    wsLog.warn('Dead peer close failed', { playerId, error: String(error) })
+  }
+}
 
 /** Start the periodic ping sweep. Called once on Nitro boot. Idempotent. */
 export function startPingSweep(): void {
   if (pingSweepTimer) return
   pingSweepTimer = setInterval(() => {
     const now = Date.now()
-    // Update pong timestamps for peers that recently sent a heartbeat/chat.
-    // Peers that haven't responded in PONG_TIMEOUT_MS are considered dead.
-    for (const [pid, ts] of lastPongAt) {
-      if (now - ts > PONG_TIMEOUT_MS) {
-        wsLog.warn('Peer pong timeout — marking dead', { playerId: pid, age: now - ts })
-        lastPongAt.delete(pid)
-        // The actual peer removal happens via the close handler path; here we
-        // just clear the game association so broadcasts stop reaching a zombie.
-        // PeerRegistry's sendToPeerRaw will also clean up on the next failed send.
+    for (const [pid, liveness] of lastPongAt) {
+      if (liveness.pingSentAt !== null) {
+        if (now - liveness.pingSentAt > PONG_TIMEOUT_MS) {
+          wsLog.warn('Peer pong timeout — closing dead peer', {
+            playerId: pid,
+            age: now - liveness.pingSentAt,
+          })
+          closeDeadPeer(pid, liveness)
+        }
+        continue
+      }
+
+      const socket = peerSocket(liveness.peer)
+      if (typeof socket.ping === 'function') {
+        try {
+          socket.ping()
+          liveness.pingSentAt = now
+        } catch (error) {
+          wsLog.warn('Peer ping failed — closing dead peer', {
+            playerId: pid,
+            error: String(error),
+          })
+          closeDeadPeer(pid, liveness)
+        }
+      } else {
+        // Crossws adapters without a native ping still get a write probe. A
+        // synchronous send failure enters the same close/grace cleanup path.
+        try {
+          ;(liveness.peer as { send: (data: string) => void }).send(
+            JSON.stringify({ type: 'heartbeat', serverProbe: true }),
+          )
+          // Protocol heartbeats from the browser clear this probe via
+          // touchPeer(). Without recording the probe, adapters lacking native
+          // ping/pong would write forever without ever detecting a dead peer.
+          liveness.pingSentAt = now
+        } catch (error) {
+          wsLog.warn('Peer heartbeat failed — closing dead peer', {
+            playerId: pid,
+            error: String(error),
+          })
+          closeDeadPeer(pid, liveness)
+        }
       }
     }
   }, PING_INTERVAL_MS)
@@ -102,11 +188,6 @@ export function stopPingSweep(): void {
     pingSweepTimer = null
   }
   lastPongAt.clear()
-}
-
-/** Record that a peer is alive (called on heartbeat or any message). */
-function touchPeer(playerId: string): void {
-  lastPongAt.set(playerId, Date.now())
 }
 
 export default defineWebSocketHandler({
@@ -171,6 +252,7 @@ export default defineWebSocketHandler({
       send: (data: string | ArrayBuffer | Uint8Array) => number | undefined
     } | null
     registerPeer(playerId, peer, rawWs)
+    registerPeerLiveness(playerId, peer)
     wsLog.info('Peer connected', { playerId })
 
     const timer = disconnectTimers.get(playerId)
@@ -273,6 +355,8 @@ export default defineWebSocketHandler({
       return
     }
 
+    touchPeer(ctx.playerId, peer)
+
     // Reject oversized frames before parsing — valid messages are <1KB (chat
     // caps at 500 chars). Defense-in-depth at the handler; the complete cap is a
     // server-level ws maxPayload (tracked in the prod-readiness checklist).
@@ -312,7 +396,8 @@ export default defineWebSocketHandler({
 
     switch (parsed.type) {
       case 'heartbeat':
-        touchPeer(ctx.playerId)
+        // Both browser heartbeats and adapter fallback probes use the same
+        // acknowledgement. `touchPeer` above records the response as liveness.
         peer.send(JSON.stringify({ type: 'heartbeat_ack', timestamp: Date.now() }))
         break
 
@@ -718,9 +803,10 @@ export default defineWebSocketHandler({
     wsLog.info('Peer disconnected', { playerId, gameId })
     unregisterPeer(playerId, peer)
     removeSpectator(playerId)
-    // Heartbeat timestamp is dead the moment the socket closes; drop it now
-    // rather than waiting for the ping sweep (a reconnect re-touches it).
-    lastPongAt.delete(playerId)
+    // Heartbeat timestamp is dead the moment the socket closes; don't delete a
+    // replacement peer's liveness record if this is a stale close callback.
+    const liveness = lastPongAt.get(playerId)
+    if (!liveness || liveness.peer === peer) lastPongAt.delete(playerId)
 
     const existingTimer = disconnectTimers.get(playerId)
     if (existingTimer) {

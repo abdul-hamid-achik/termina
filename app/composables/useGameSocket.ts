@@ -124,6 +124,15 @@ export function useGameSocket() {
       // Any message proves the link is alive
       missedHeartbeats = 0
 
+      // Adapters without native ping/pong receive a protocol probe from the
+      // server. Answer it through the normal client heartbeat path so the
+      // server can clear its liveness timeout without adding a second wire
+      // message shape.
+      if (msg.type === 'heartbeat') {
+        send({ type: 'heartbeat' })
+        return
+      }
+
       // Measure latency from the heartbeat round-trip
       if (msg.type === 'heartbeat_ack') {
         if (lastPingTime) {
