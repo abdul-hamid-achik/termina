@@ -69,7 +69,7 @@ describe('AnnouncementToast', () => {
     expect(wrapper.text()).not.toContain('[ERROR]')
   })
 
-  it('renders the objective severity as gold with a ★ icon', async () => {
+  it('renders the objective severity as scrip with a ★ icon', async () => {
     const wrapper = mount(AnnouncementToast, {
       props: { text: 'Tenant has been slain!', seq: 1, level: 'objective' },
     })

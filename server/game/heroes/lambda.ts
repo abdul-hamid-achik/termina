@@ -113,7 +113,7 @@ function resolveQ(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -153,10 +153,10 @@ function resolveW(
 
     caster = applyBuff(caster, {
       id: 'returnMark',
-      // "After 2 ticks, teleport back": the snap fires when ticksRemaining hits 1
-      // (tickAllBuffs), so 3 → away for 2 ticks, then return. (Was 6 — a ~5-tick
+      // "After 2 ticks, teleport back": the snap fires when cyclesRemaining hits 1
+      // (cycleAllBuffs), so 3 → away for 2 ticks, then return. (Was 6 — a ~5-tick
       // delay that contradicted the description + effects array.)
-      ticksRemaining: 3,
+      cyclesRemaining: 3,
       stacks: 1,
       source: player.id,
       destination: player.zone, // snap the caster back here when the mark expires
@@ -166,7 +166,7 @@ function resolveW(
       state: updatePlayer(state, caster),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -211,7 +211,7 @@ function resolveE(
       updated = applyBuff(updated, {
         id: 'slow',
         stacks: E_SLOW_PERCENT,
-        ticksRemaining: E_SLOW_DURATION,
+        cyclesRemaining: E_SLOW_DURATION,
         source: player.id,
       })
       return updated
@@ -226,7 +226,7 @@ function resolveE(
       ),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -283,8 +283,8 @@ function resolveR(
       updatedTarget = applyBuff(updatedTarget, {
         id: 'stun',
         stacks: 1,
-        // 2 = one gated action: reaped same-tick by tickAllBuffs (see applyBuff note)
-        ticksRemaining: 2,
+        // 2 = one gated action: reaped same-tick by cycleAllBuffs (see applyBuff note)
+        cyclesRemaining: 2,
         source: player.id,
       })
     }
@@ -299,7 +299,7 @@ function resolveR(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -338,14 +338,14 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
     updated = applyBuff(player, {
       id: 'closureActive',
       stacks: 1,
-      ticksRemaining: 10, // generous window to use it
+      cyclesRemaining: 10, // generous window to use it
       source: playerId,
     })
     // Keep closureCasts to track state but reset
     updated = applyBuff(updated, {
       id: 'closureCasts',
       stacks: CLOSURE_CASTS_REQUIRED,
-      ticksRemaining: CLOSURE_WINDOW_TICKS,
+      cyclesRemaining: CLOSURE_WINDOW_TICKS,
       source: playerId,
     })
   } else {
@@ -353,7 +353,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
     updated = applyBuff(player, {
       id: 'closureCasts',
       stacks: newCasts,
-      ticksRemaining: CLOSURE_WINDOW_TICKS,
+      cyclesRemaining: CLOSURE_WINDOW_TICKS,
       source: playerId,
     })
   }

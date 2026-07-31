@@ -11,7 +11,7 @@ import { describe, it, expect } from 'vitest'
  *  (b) adjacent ramp steps are separated by a minimum LUMINANCE delta (a dim
  *      line and a bright one must never read as the same row);
  *  (c) the pairs the combat log renders side by side (damage vs the accent,
- *      healing vs a team line, self vs ability, gold vs warn) must NOT land
+ *      healing vs a team line, self vs ability, scrip vs warn) must NOT land
  *      on the SAME ramp step.
  *
  * Reads the shipped CSS rather than a duplicated table, so a future edit to
@@ -93,7 +93,7 @@ describe('the phosphor contract (C3a)', () => {
       ['damage', 'audit'], // chip vs death/alarm
       ['healing', 'chaff'], // heal vs a team line
       ['self', 'ability'], // ►YOU vs the [ABILITY] tag
-      ['gold', 'warn'], // bank balance vs the alarm
+      ['gold', 'warn'], // scrip meter uses --color-gold token vs the alarm
       ['system', 'chaff'], // dim system line vs a team line
     ]
     for (const [a, b] of pairs) {

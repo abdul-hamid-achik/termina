@@ -28,12 +28,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 300,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -47,7 +47,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -71,11 +71,11 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     playerMap[p.id] = p
   }
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -103,7 +103,7 @@ describe('Daemon Hero', () => {
 
       // Tick 1
       state = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'tick_end',
         payload: {},
       })
@@ -112,7 +112,7 @@ describe('Daemon Hero', () => {
 
       // Tick 2
       state = resolvePassive(state, 'p1', {
-        tick: 11,
+        cycle: 11,
         type: 'tick_end',
         payload: {},
       })
@@ -124,19 +124,19 @@ describe('Daemon Hero', () => {
       player = applyBuff(player, {
         id: 'stealth',
         stacks: 1,
-        ticksRemaining: 99,
+        cyclesRemaining: 99,
         source: 'p1',
       })
       player = applyBuff(player, {
         id: 'stealthIdle',
         stacks: 3,
-        ticksRemaining: 99,
+        cyclesRemaining: 99,
         source: 'p1',
       })
       let state = makeState([player])
 
       state = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'p1', targetId: 'e1' },
       })
@@ -147,13 +147,18 @@ describe('Daemon Hero', () => {
 
     it('breaks stealth when taking damage (per "or taking damage")', () => {
       let player = makePlayer()
-      player = applyBuff(player, { id: 'stealth', stacks: 1, ticksRemaining: 99, source: 'p1' })
-      player = applyBuff(player, { id: 'stealthIdle', stacks: 3, ticksRemaining: 99, source: 'p1' })
+      player = applyBuff(player, { id: 'stealth', stacks: 1, cyclesRemaining: 99, source: 'p1' })
+      player = applyBuff(player, {
+        id: 'stealthIdle',
+        stacks: 3,
+        cyclesRemaining: 99,
+        source: 'p1',
+      })
       let state = makeState([player])
 
       // A 'damage_taken' event where p1 is the victim is synthesized by the engine.
       state = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'damage_taken',
         payload: { targetId: 'p1', attackerId: 'e1', amount: 50 },
       })
@@ -167,13 +172,13 @@ describe('Daemon Hero', () => {
       player = applyBuff(player, {
         id: 'stealthIdle',
         stacks: 1,
-        ticksRemaining: 99,
+        cyclesRemaining: 99,
         source: 'p1',
       })
       let state = makeState([player])
 
       state = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'ability_cast',
         payload: { playerId: 'p1' },
       })
@@ -193,8 +198,8 @@ describe('Daemon Hero', () => {
       const updatedEnemy = result.state.players['e1']!
       const dot = updatedEnemy.buffs.find((b) => b.id === 'inject_dot')
       expect(dot).toBeDefined()
-      expect(dot!.ticksRemaining).toBe(3)
-      expect(dot!.stacks).toBe(20) // 60 total / 3 ticks = 20 per tick at level 1
+      expect(dot!.cyclesRemaining).toBe(3)
+      expect(dot!.stacks).toBe(20) // 60 total / 3 ticks = 20 per cycle at level 1
     })
 
     it('scales DoT damage with level', () => {
@@ -205,7 +210,7 @@ describe('Daemon Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const dot = result.state.players['e1']!.buffs.find((b) => b.id === 'inject_dot')
-      expect(dot!.stacks).toBe(60) // 180 total / 3 ticks = 60 per tick at level 4
+      expect(dot!.stacks).toBe(60) // 180 total / 3 ticks = 60 per cycle at level 4
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -225,7 +230,7 @@ describe('Daemon Hero', () => {
       player = applyBuff(player, {
         id: 'stealth',
         stacks: 1,
-        ticksRemaining: 99,
+        cyclesRemaining: 99,
         source: 'p1',
       })
       const enemy = makeEnemy()
@@ -367,7 +372,7 @@ describe('Daemon Hero', () => {
       player = applyBuff(player, {
         id: 'stealth',
         stacks: 1,
-        ticksRemaining: 99,
+        cyclesRemaining: 99,
         source: 'p1',
       })
       const state = makeState([player])

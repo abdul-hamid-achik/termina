@@ -31,7 +31,7 @@ export const HEROES: Record<string, HeroDef> = {
       description:
         'Each consecutive attack on the same target deals 8% more damage, stacking up to 5 times.',
       bwCost: 0,
-      cooldownTicks: 0,
+      cooldownCycles: 0,
       targetType: 'none',
       effects: [{ type: 'buff', value: 8, description: 'Damage amplification per stack' }],
     },
@@ -43,7 +43,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Fire a projectile dealing kinetic damage to target and bouncing to 1 nearby enemy for 50% damage.',
         bwCost: 40,
         bwCostByLevel: [40, 50, 60, 70],
-        cooldownTicks: 6,
+        cooldownCycles: 6,
         targetType: 'hero',
         damageType: 'kinetic',
         effects: [
@@ -58,7 +58,7 @@ export const HEROES: Record<string, HeroDef> = {
         description: 'Phase out to dodge the next incoming attack.',
         bwCost: 50,
         bwCostByLevel: [50, 60, 70, 80],
-        cooldownTicks: 12,
+        cooldownCycles: 12,
         targetType: 'self',
         effects: [{ type: 'buff', value: 1, duration: 1, description: 'Dodge 1 attack' }],
       },
@@ -68,7 +68,7 @@ export const HEROES: Record<string, HeroDef> = {
         description:
           'Passive: Attacks store 10 INTEG as feedback stacks. Active: Consume stacks to deal 2x as burst damage.',
         bwCost: 0,
-        cooldownTicks: 8,
+        cooldownCycles: 8,
         targetType: 'hero',
         damageType: 'kinetic',
         effects: [
@@ -87,7 +87,7 @@ export const HEROES: Record<string, HeroDef> = {
         description: 'Unleash 6 attacks on a target, each dealing kinetic damage.',
         bwCost: 150,
         bwCostByLevel: [150, 175, 200],
-        cooldownTicks: 50,
+        cooldownCycles: 50,
         targetType: 'hero',
         damageType: 'kinetic',
         effects: [
@@ -127,7 +127,7 @@ export const HEROES: Record<string, HeroDef> = {
       description:
         'Grants vision of adjacent zones. Allied heroes in the same zone gain 5 bonus plate.',
       bwCost: 0,
-      cooldownTicks: 0,
+      cooldownCycles: 0,
       targetType: 'none',
       effects: [
         { type: 'reveal', value: 1, description: 'Adjacent zone vision' },
@@ -140,7 +140,7 @@ export const HEROES: Record<string, HeroDef> = {
         name: 'Mend Protocol',
         description: 'Heal an allied hero.',
         bwCost: 80,
-        cooldownTicks: 6,
+        cooldownCycles: 6,
         targetType: 'ally',
         effects: [{ type: 'heal', value: 80 }],
       },
@@ -149,7 +149,7 @@ export const HEROES: Record<string, HeroDef> = {
         name: 'Barrier',
         description: 'Grant a shield to an ally that absorbs damage for 3 cycles.',
         bwCost: 100,
-        cooldownTicks: 10,
+        cooldownCycles: 10,
         targetType: 'ally',
         effects: [{ type: 'shield', value: 100, duration: 3 }],
       },
@@ -158,7 +158,7 @@ export const HEROES: Record<string, HeroDef> = {
         name: 'Scan Pulse',
         description: 'Reveal zone and slow enemies 30% for 2 cycles.',
         bwCost: 70,
-        cooldownTicks: 12,
+        cooldownCycles: 12,
         targetType: 'none',
         effects: [
           { type: 'reveal', value: 1, duration: 2 },
@@ -170,7 +170,7 @@ export const HEROES: Record<string, HeroDef> = {
         name: 'Fortify',
         description: 'Grant allies in your zone +3 plate and 150 shield for 4 cycles.',
         bwCost: 250,
-        cooldownTicks: 60,
+        cooldownCycles: 60,
         targetType: 'none',
         effects: [
           { type: 'shield', value: 150, duration: 4 },
@@ -210,7 +210,7 @@ export const HEROES: Record<string, HeroDef> = {
       description:
         'After 2 cycles without attacking or taking damage, become invisible. First attack from stealth deals 50% bonus damage.',
       bwCost: 0,
-      cooldownTicks: 0,
+      cooldownCycles: 0,
       targetType: 'none',
       effects: [
         { type: 'buff', value: 2, description: 'Ticks to stealth' },
@@ -224,7 +224,7 @@ export const HEROES: Record<string, HeroDef> = {
         description: 'Apply a DoT debuff on the target, dealing code damage over 3 cycles.',
         bwCost: 50,
         bwCostByLevel: [50, 70, 90, 110],
-        cooldownTicks: 7,
+        cooldownCycles: 7,
         targetType: 'hero',
         damageType: 'code',
         effects: [
@@ -243,7 +243,7 @@ export const HEROES: Record<string, HeroDef> = {
         description:
           'Create a decoy in the target zone for 3 cycles, granting vision of that zone.',
         bwCost: 100,
-        cooldownTicks: 18,
+        cooldownCycles: 18,
         targetType: 'zone',
         effects: [{ type: 'reveal', value: 3, duration: 3, description: 'Zone vision via decoy' }],
       },
@@ -254,7 +254,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Execute a target below 30% INTEG with black damage. Fails if target is above the threshold.',
         bwCost: 150,
         bwCostByLevel: [150, 200, 250],
-        cooldownTicks: 20,
+        cooldownCycles: 20,
         targetType: 'hero',
         damageType: 'black',
         effects: [
@@ -268,7 +268,7 @@ export const HEROES: Record<string, HeroDef> = {
         description: 'Teleport to any zone on the map.',
         bwCost: 200,
         bwCostByLevel: [200, 300, 400],
-        cooldownTicks: 60,
+        cooldownCycles: 60,
         targetType: 'zone',
         effects: [{ type: 'teleport', value: 1, description: 'Global teleport' }],
       },
@@ -304,7 +304,7 @@ export const HEROES: Record<string, HeroDef> = {
       name: 'Hardened',
       description: 'Permanently take 10% reduced damage from all sources.',
       bwCost: 0,
-      cooldownTicks: 0,
+      cooldownCycles: 0,
       targetType: 'none',
       effects: [{ type: 'buff', value: 1, description: 'Defense per 5% INTEG missing' }],
     },
@@ -315,7 +315,7 @@ export const HEROES: Record<string, HeroDef> = {
         description: 'Interrupt a target enemy hero in your zone, stunning them for 1 cycle.',
         bwCost: 80,
         bwCostByLevel: [80, 90, 100, 110],
-        cooldownTicks: 10,
+        cooldownCycles: 10,
         targetType: 'hero',
         effects: [{ type: 'stun', value: 1, duration: 1 }],
       },
@@ -325,7 +325,7 @@ export const HEROES: Record<string, HeroDef> = {
         description: 'Buffer incoming damage with a self shield that absorbs damage for 3 cycles.',
         bwCost: 100,
         bwCostByLevel: [100, 120, 140, 160],
-        cooldownTicks: 14,
+        cooldownCycles: 14,
         targetType: 'self',
         effects: [{ type: 'shield', value: 150, duration: 3 }],
       },
@@ -335,7 +335,7 @@ export const HEROES: Record<string, HeroDef> = {
         description: 'Force all enemy heroes in the zone to attack Kernel for 2 cycles.',
         bwCost: 120,
         bwCostByLevel: [120, 140, 160, 180],
-        cooldownTicks: 18,
+        cooldownCycles: 18,
         targetType: 'none',
         effects: [{ type: 'taunt', value: 1, duration: 2 }],
       },
@@ -346,7 +346,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Trigger a kernel panic, displacing all enemy heroes in the zone to a random adjacent zone and fearing them.',
         bwCost: 200,
         bwCostByLevel: [200, 300, 400],
-        cooldownTicks: 50,
+        cooldownCycles: 50,
         targetType: 'none',
         effects: [
           { type: 'fear', value: 1, duration: 1, description: 'Displace to random adjacent zone' },
@@ -385,7 +385,7 @@ export const HEROES: Record<string, HeroDef> = {
       description:
         'Casting an ability on the same target within 3 cycles deals 15% bonus code damage.',
       bwCost: 0,
-      cooldownTicks: 0,
+      cooldownCycles: 0,
       targetType: 'none',
       effects: [{ type: 'buff', value: 15, description: 'Bonus code damage %' }],
     },
@@ -396,7 +396,7 @@ export const HEROES: Record<string, HeroDef> = {
         description:
           'Launch a pattern bolt that deals code damage and marks the target, increasing code damage taken by 15% for 3 cycles.',
         bwCost: 60,
-        cooldownTicks: 5,
+        cooldownCycles: 5,
         targetType: 'hero',
         damageType: 'code',
         effects: [
@@ -409,7 +409,7 @@ export const HEROES: Record<string, HeroDef> = {
         name: 'Capture Group',
         description: 'Root an enemy hero in place for 2 cycles, dealing code damage over time.',
         bwCost: 90,
-        cooldownTicks: 10,
+        cooldownCycles: 10,
         targetType: 'hero',
         damageType: 'code',
         effects: [
@@ -429,7 +429,7 @@ export const HEROES: Record<string, HeroDef> = {
         description:
           'Swap positions with a target hero (ally or enemy). Both are stunned for 1 cycle.',
         bwCost: 100,
-        cooldownTicks: 15,
+        cooldownCycles: 15,
         targetType: 'hero',
         effects: [
           { type: 'teleport', value: 1, description: 'Position swap' },
@@ -442,7 +442,7 @@ export const HEROES: Record<string, HeroDef> = {
         description:
           'Deal damage to a target based on their missing BW. Each 100 missing BW deals 50 damage. Also silences for 2 cycles.',
         bwCost: 300,
-        cooldownTicks: 60,
+        cooldownCycles: 60,
         targetType: 'hero',
         damageType: 'code',
         effects: [
@@ -483,7 +483,7 @@ export const HEROES: Record<string, HeroDef> = {
       description:
         'Basic attacks grant vision of the target and apply a link stack. At 3 stacks, the target is slowed by 20% for 2 cycles.',
       bwCost: 0,
-      cooldownTicks: 0,
+      cooldownCycles: 0,
       targetType: 'none',
       effects: [
         { type: 'debuff', value: 3, description: 'Stacks to trigger' },
@@ -497,7 +497,7 @@ export const HEROES: Record<string, HeroDef> = {
         description: 'Latch onto an enemy hero in your zone, rooting them in place for 2 cycles.',
         bwCost: 80,
         bwCostByLevel: [80, 100, 120, 140],
-        cooldownTicks: 12,
+        cooldownCycles: 12,
         targetType: 'hero',
         effects: [{ type: 'root', value: 1, duration: 2 }],
       },
@@ -508,7 +508,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Place an invisible trap in your current zone that damages and reveals the first enemy to enter.',
         bwCost: 60,
         bwCostByLevel: [60, 80, 100, 120],
-        cooldownTicks: 16,
+        cooldownCycles: 16,
         targetType: 'none',
         damageType: 'code',
         effects: [
@@ -522,7 +522,7 @@ export const HEROES: Record<string, HeroDef> = {
         description: 'Pull an enemy hero from an adjacent zone one step toward you.',
         bwCost: 100,
         bwCostByLevel: [100, 130, 160, 190],
-        cooldownTicks: 20,
+        cooldownCycles: 20,
         targetType: 'hero',
         effects: [{ type: 'teleport', value: 1, description: 'Pull target one zone closer' }],
       },
@@ -533,7 +533,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Broadcast a slowing signal across the map, reducing the move speed of all enemy heroes for 3 cycles.',
         bwCost: 200,
         bwCostByLevel: [200, 300, 400],
-        cooldownTicks: 55,
+        cooldownCycles: 55,
         targetType: 'none',
         effects: [
           {
@@ -577,7 +577,7 @@ export const HEROES: Record<string, HeroDef> = {
       description:
         'Redirects 12% of damage dealt to the nearest ally within the same zone to Proxy instead.',
       bwCost: 0,
-      cooldownTicks: 0,
+      cooldownCycles: 0,
       targetType: 'none',
       effects: [{ type: 'buff', value: 12, description: 'Damage redirect %' }],
     },
@@ -589,7 +589,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Hurl a redirected packet at an enemy, dealing code damage and slowing them for 2 cycles.',
         bwCost: 70,
         bwCostByLevel: [70, 90, 110, 130],
-        cooldownTicks: 8,
+        cooldownCycles: 8,
         targetType: 'hero',
         damageType: 'code',
         effects: [
@@ -604,7 +604,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Grant an allied hero a cached response shield that absorbs damage for 3 cycles.',
         bwCost: 90,
         bwCostByLevel: [90, 110, 130, 150],
-        cooldownTicks: 12,
+        cooldownCycles: 12,
         targetType: 'ally',
         effects: [{ type: 'shield', value: 140, duration: 3 }],
       },
@@ -615,7 +615,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Split healing evenly among all allied heroes in the zone, restoring INTEG to each.',
         bwCost: 100,
         bwCostByLevel: [100, 130, 160, 190],
-        cooldownTicks: 10,
+        cooldownCycles: 10,
         targetType: 'none',
         effects: [{ type: 'heal', value: 180, description: 'Total healing split among allies' }],
       },
@@ -626,7 +626,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Swap positions with an allied hero, granting both brief invulnerability for 1 cycle.',
         bwCost: 200,
         bwCostByLevel: [200, 300, 400],
-        cooldownTicks: 50,
+        cooldownCycles: 50,
         targetType: 'ally',
         effects: [
           { type: 'teleport', value: 1, description: 'Position swap with ally' },
@@ -666,7 +666,7 @@ export const HEROES: Record<string, HeroDef> = {
       description:
         'Gain +1 bonus attack damage for every 100 scrip currently held, up to +40 (at 4000 scrip).',
       bwCost: 0,
-      cooldownTicks: 0,
+      cooldownCycles: 0,
       targetType: 'none',
       effects: [{ type: 'buff', value: 1, description: 'Attack per 100 scrip' }],
     },
@@ -677,7 +677,7 @@ export const HEROES: Record<string, HeroDef> = {
         description: 'Allocate additional resources, buffing attack damage by 25 for 3 cycles.',
         bwCost: 60,
         bwCostByLevel: [60, 80, 100, 120],
-        cooldownTicks: 8,
+        cooldownCycles: 8,
         targetType: 'self',
         effects: [{ type: 'buff', value: 25, duration: 3, description: 'Bonus attack damage' }],
       },
@@ -688,7 +688,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Deallocate a target, dealing kinetic damage. Deals 40% bonus damage if the target is below 30% INTEG.',
         bwCost: 70,
         bwCostByLevel: [70, 90, 110, 130],
-        cooldownTicks: 7,
+        cooldownCycles: 7,
         targetType: 'hero',
         damageType: 'kinetic',
         effects: [
@@ -707,7 +707,7 @@ export const HEROES: Record<string, HeroDef> = {
         description: 'Dash to a target enemy, closing the gap and stunning them for 1 cycle.',
         bwCost: 80,
         bwCostByLevel: [80, 100, 120, 140],
-        cooldownTicks: 12,
+        cooldownCycles: 12,
         targetType: 'hero',
         damageType: 'kinetic',
         effects: [
@@ -722,7 +722,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Overflow the stack with raw power, dealing massive kinetic damage to all enemies in the zone. Costs 20% of current INTEG.',
         bwCost: 150,
         bwCostByLevel: [150, 250, 350],
-        cooldownTicks: 50,
+        cooldownCycles: 50,
         targetType: 'none',
         damageType: 'kinetic',
         effects: [{ type: 'damage', value: 280, damageType: 'kinetic', description: 'AOE damage' }],
@@ -760,7 +760,7 @@ export const HEROES: Record<string, HeroDef> = {
       description:
         "Each attack reduces the target's plate by 2 for 3 cycles, stacking up to 4 times.",
       bwCost: 0,
-      cooldownTicks: 0,
+      cooldownCycles: 0,
       targetType: 'none',
       effects: [
         { type: 'debuff', value: 2, duration: 3, description: 'Defense reduction per stack' },
@@ -774,7 +774,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Strike with an XOR-encoded blade, dealing bonus code damage on top of the kinetic attack.',
         bwCost: 50,
         bwCostByLevel: [50, 65, 80, 95],
-        cooldownTicks: 5,
+        cooldownCycles: 5,
         targetType: 'hero',
         damageType: 'code',
         effects: [
@@ -789,7 +789,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Encrypt self, becoming invisible for 2 cycles. Taking damage or attacking breaks stealth.',
         bwCost: 80,
         bwCostByLevel: [80, 100, 120, 140],
-        cooldownTicks: 14,
+        cooldownCycles: 14,
         targetType: 'self',
         effects: [{ type: 'buff', value: 1, duration: 2, description: 'Stealth' }],
       },
@@ -800,7 +800,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Decrypt a target enemy, revealing them for 3 cycles and silencing them for 1 cycle.',
         bwCost: 90,
         bwCostByLevel: [90, 110, 130, 150],
-        cooldownTicks: 12,
+        cooldownCycles: 12,
         targetType: 'hero',
         effects: [
           { type: 'reveal', value: 1, duration: 3 },
@@ -814,7 +814,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Unleash 6 rapid strikes of code damage on a target, applying Encryption Key stacks (-2 plate each, max 4) for 3 cycles.',
         bwCost: 220,
         bwCostByLevel: [220, 320, 420],
-        cooldownTicks: 45,
+        cooldownCycles: 45,
         targetType: 'hero',
         damageType: 'code',
         effects: [
@@ -854,7 +854,7 @@ export const HEROES: Record<string, HeroDef> = {
       name: 'Packet Inspection',
       description: 'Reflect 8% of all damage taken back to the attacker as code damage.',
       bwCost: 0,
-      cooldownTicks: 0,
+      cooldownCycles: 0,
       targetType: 'none',
       effects: [{ type: 'damage', value: 8, damageType: 'code', description: 'Damage reflect %' }],
     },
@@ -866,7 +866,7 @@ export const HEROES: Record<string, HeroDef> = {
           "Block a target's ports, dealing kinetic damage and stunning them for 1 cycle.",
         bwCost: 70,
         bwCostByLevel: [70, 90, 110, 130],
-        cooldownTicks: 8,
+        cooldownCycles: 8,
         targetType: 'hero',
         damageType: 'kinetic',
         effects: [
@@ -881,7 +881,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Create a demilitarized zone shield around self that absorbs damage for 3 cycles. When the shield expires or breaks, it explodes dealing code damage to nearby enemies.',
         bwCost: 80,
         bwCostByLevel: [80, 100, 120, 140],
-        cooldownTicks: 14,
+        cooldownCycles: 14,
         targetType: 'self',
         effects: [
           { type: 'shield', value: 200, duration: 3 },
@@ -895,7 +895,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Enforce access control in the zone, taunting all enemies to attack Firewall for 2 cycles.',
         bwCost: 60,
         bwCostByLevel: [60, 80, 100, 120],
-        cooldownTicks: 16,
+        cooldownCycles: 16,
         targetType: 'none',
         effects: [{ type: 'taunt', value: 1, duration: 2 }],
       },
@@ -906,7 +906,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Perform deep inspection on all enemies in the zone, rooting them for 2 cycles and dealing code damage over time.',
         bwCost: 250,
         bwCostByLevel: [250, 350, 450],
-        cooldownTicks: 55,
+        cooldownCycles: 55,
         targetType: 'none',
         damageType: 'code',
         effects: [
@@ -951,7 +951,7 @@ export const HEROES: Record<string, HeroDef> = {
       name: 'Void Drain',
       description: 'On kill, restore 15% max BW and reduce all ability cooldowns by 2 cycles.',
       bwCost: 0,
-      cooldownTicks: 0,
+      cooldownCycles: 0,
       targetType: 'none',
       effects: [
         { type: 'heal', value: 15, description: 'BW restore % on kill' },
@@ -966,7 +966,7 @@ export const HEROES: Record<string, HeroDef> = {
           "Fire a bolt of void energy that deals code damage and shreds the target's iceance by 5 for 3 cycles.",
         bwCost: 55,
         bwCostByLevel: [55, 70, 85, 100],
-        cooldownTicks: 5,
+        cooldownCycles: 5,
         targetType: 'hero',
         damageType: 'code',
         effects: [
@@ -981,7 +981,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Silence a target enemy hero for 2 cycles, preventing them from casting abilities.',
         bwCost: 80,
         bwCostByLevel: [80, 95, 110, 125],
-        cooldownTicks: 12,
+        cooldownCycles: 12,
         targetType: 'hero',
         effects: [{ type: 'silence', value: 1, duration: 2 }],
       },
@@ -992,7 +992,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Create a zone of null space, dealing code damage over time to all enemies in the zone for 3 cycles and revealing them.',
         bwCost: 90,
         bwCostByLevel: [90, 105, 120, 135],
-        cooldownTicks: 14,
+        cooldownCycles: 14,
         targetType: 'none',
         damageType: 'code',
         effects: [
@@ -1013,7 +1013,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Unleash a devastating null dereference on all enemies in the zone, dealing massive code damage. Enemies below 25% INTEG take 50% bonus damage.',
         bwCost: 280,
         bwCostByLevel: [280, 360, 440],
-        cooldownTicks: 50,
+        cooldownCycles: 50,
         targetType: 'none',
         damageType: 'code',
         effects: [
@@ -1054,7 +1054,7 @@ export const HEROES: Record<string, HeroDef> = {
       description:
         'Casting 3 abilities within 4 cycles activates Closure: next ability costs no BW and deals 30% bonus damage.',
       bwCost: 0,
-      cooldownTicks: 0,
+      cooldownCycles: 0,
       targetType: 'none',
       effects: [
         { type: 'buff', value: 30, description: 'Bonus damage % when Closure active' },
@@ -1068,7 +1068,7 @@ export const HEROES: Record<string, HeroDef> = {
         description: 'Fire a quick bolt of functional energy, dealing code damage to a target.',
         bwCost: 40,
         bwCostByLevel: [40, 50, 60, 70],
-        cooldownTicks: 5,
+        cooldownCycles: 5,
         targetType: 'hero',
         damageType: 'code',
         effects: [{ type: 'damage', value: 75, damageType: 'code' }],
@@ -1079,7 +1079,7 @@ export const HEROES: Record<string, HeroDef> = {
         description: 'Mark current zone. After 2 cycles, teleport back to the marked zone.',
         bwCost: 70,
         bwCostByLevel: [70, 85, 100, 115],
-        cooldownTicks: 14,
+        cooldownCycles: 14,
         targetType: 'self',
         effects: [{ type: 'teleport', value: 2, description: 'Delayed return after 2 cycles' }],
       },
@@ -1090,7 +1090,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Apply a slowing field to all enemies in the zone, reducing move speed for 2 cycles and dealing code damage.',
         bwCost: 80,
         bwCostByLevel: [80, 95, 110, 125],
-        cooldownTicks: 10,
+        cooldownCycles: 10,
         targetType: 'none',
         damageType: 'code',
         effects: [
@@ -1105,7 +1105,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Channel all accumulated function calls into a single target, dealing massive code damage. Stuns for 1 cycle if Closure is active.',
         bwCost: 250,
         bwCostByLevel: [250, 350, 450],
-        cooldownTicks: 50,
+        cooldownCycles: 50,
         targetType: 'hero',
         damageType: 'code',
         effects: [
@@ -1146,7 +1146,7 @@ export const HEROES: Record<string, HeroDef> = {
       description:
         'Gain +1 plate and +3 attack per cycle while remaining in the same zone, stacking up to 5 times. Moving resets stacks.',
       bwCost: 0,
-      cooldownTicks: 0,
+      cooldownCycles: 0,
       targetType: 'none',
       effects: [
         { type: 'buff', value: 1, description: 'Defense per stack' },
@@ -1161,7 +1161,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Slam the target with a locking mechanism, dealing kinetic damage and rooting them for 1 cycle.',
         bwCost: 60,
         bwCostByLevel: [60, 75, 90, 105],
-        cooldownTicks: 8,
+        cooldownCycles: 8,
         targetType: 'hero',
         damageType: 'kinetic',
         effects: [
@@ -1176,7 +1176,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Enter a critical section, gaining a shield and bonus plate for 2 cycles. Roots self during the duration.',
         bwCost: 70,
         bwCostByLevel: [70, 85, 100, 115],
-        cooldownTicks: 12,
+        cooldownCycles: 12,
         targetType: 'self',
         effects: [
           { type: 'shield', value: 180, duration: 2 },
@@ -1191,7 +1191,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Rapidly strike enemies in the zone 3 times, each hit applying a stacking 10% slow for 2 cycles.',
         bwCost: 50,
         bwCostByLevel: [50, 65, 80, 95],
-        cooldownTicks: 10,
+        cooldownCycles: 10,
         targetType: 'none',
         damageType: 'kinetic',
         effects: [
@@ -1206,7 +1206,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Invert priority in the zone, fearing all enemies for 2 cycles and dealing kinetic damage. Bonus damage for each Deadlock stack.',
         bwCost: 200,
         bwCostByLevel: [200, 280, 360],
-        cooldownTicks: 50,
+        cooldownCycles: 50,
         targetType: 'none',
         damageType: 'kinetic',
         effects: [
@@ -1251,7 +1251,7 @@ export const HEROES: Record<string, HeroDef> = {
       name: 'Latency',
       description: "Basic attacks add +1 cycle to the target's next ability cooldown.",
       bwCost: 0,
-      cooldownTicks: 0,
+      cooldownCycles: 0,
       targetType: 'none',
       effects: [{ type: 'debuff', value: 1, description: 'Cooldown increase per attack' }],
     },
@@ -1263,7 +1263,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Send a probing ping that deals code damage. Can target enemies in adjacent zones for 60% damage.',
         bwCost: 45,
         bwCostByLevel: [45, 60, 75, 90],
-        cooldownTicks: 5,
+        cooldownCycles: 5,
         targetType: 'hero',
         damageType: 'code',
         effects: [
@@ -1283,7 +1283,7 @@ export const HEROES: Record<string, HeroDef> = {
           "Disrupt a target's connection, silencing them for 1 cycle and reducing their attack damage by 20% for 3 cycles.",
         bwCost: 75,
         bwCostByLevel: [75, 90, 105, 120],
-        cooldownTicks: 12,
+        cooldownCycles: 12,
         targetType: 'hero',
         effects: [
           { type: 'silence', value: 1, duration: 1 },
@@ -1297,7 +1297,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Trace the network path, extending your vision one zone further (two hops out) for 3 cycles.',
         bwCost: 60,
         bwCostByLevel: [60, 75, 90, 105],
-        cooldownTicks: 14,
+        cooldownCycles: 14,
         targetType: 'self',
         effects: [
           { type: 'reveal', value: 2, duration: 3, description: 'Zone vision range' },
@@ -1311,7 +1311,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Flood the zone with packets, dealing code damage over time for 3 cycles and slowing enemies who try to leave.',
         bwCost: 200,
         bwCostByLevel: [200, 280, 360],
-        cooldownTicks: 50,
+        cooldownCycles: 50,
         targetType: 'none',
         damageType: 'code',
         effects: [
@@ -1358,7 +1358,7 @@ export const HEROES: Record<string, HeroDef> = {
       description:
         'Every 4th game cycle, automatically heal the lowest INTEG ally in the zone for 40 INTEG.',
       bwCost: 0,
-      cooldownTicks: 0,
+      cooldownCycles: 0,
       targetType: 'none',
       effects: [
         { type: 'heal', value: 40, description: 'Auto-heal amount' },
@@ -1373,7 +1373,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Buff an allied hero, increasing their attack by 15 and plate by 5 for 3 cycles.',
         bwCost: 65,
         bwCostByLevel: [65, 80, 95, 110],
-        cooldownTicks: 8,
+        cooldownCycles: 8,
         targetType: 'ally',
         effects: [
           { type: 'buff', value: 15, duration: 3, description: 'Bonus attack' },
@@ -1387,7 +1387,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Cleanse all debuffs from an allied hero and grant them a shield for 2 cycles.',
         bwCost: 90,
         bwCostByLevel: [90, 105, 120, 135],
-        cooldownTicks: 12,
+        cooldownCycles: 12,
         targetType: 'ally',
         effects: [
           { type: 'buff', value: 1, description: 'Debuff cleanse' },
@@ -1401,7 +1401,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Send a kill signal to an enemy, dealing kinetic damage and taunting them for 1 cycle.',
         bwCost: 55,
         bwCostByLevel: [55, 70, 85, 100],
-        cooldownTicks: 10,
+        cooldownCycles: 10,
         targetType: 'hero',
         damageType: 'kinetic',
         effects: [
@@ -1416,7 +1416,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Install a healing crontab for all allies in the zone, restoring INTEG and BW over 4 cycles.',
         bwCost: 250,
         bwCostByLevel: [250, 340, 430],
-        cooldownTicks: 55,
+        cooldownCycles: 55,
         targetType: 'none',
         effects: [
           { type: 'heal', value: 300, description: 'Total INTEG restored over 4 cycles' },
@@ -1456,7 +1456,7 @@ export const HEROES: Record<string, HeroDef> = {
       description:
         'Moving to a new zone grants +20% bonus damage per zone moved, stacking up to 3 times. Stacks decay after 2 cycles without moving.',
       bwCost: 0,
-      cooldownTicks: 0,
+      cooldownCycles: 0,
       targetType: 'none',
       effects: [
         { type: 'buff', value: 20, description: 'Bonus damage % per hop' },
@@ -1471,7 +1471,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Fire a tracing probe at a target, dealing kinetic damage. Deals 35% bonus damage if the target has no allies in their zone.',
         bwCost: 50,
         bwCostByLevel: [50, 65, 80, 95],
-        cooldownTicks: 8,
+        cooldownCycles: 8,
         targetType: 'hero',
         damageType: 'kinetic',
         effects: [
@@ -1485,7 +1485,7 @@ export const HEROES: Record<string, HeroDef> = {
         description: 'Set a time-to-live trap on a target, rooting them for 2 cycles.',
         bwCost: 70,
         bwCostByLevel: [70, 85, 100, 115],
-        cooldownTicks: 12,
+        cooldownCycles: 12,
         targetType: 'hero',
         effects: [
           { type: 'root', value: 1, duration: 2, description: 'Delayed root after 1 cycle' },
@@ -1498,7 +1498,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Mark your current position with a return shadow for 2 cycles, allowing a quick repositioning hop.',
         bwCost: 60,
         bwCostByLevel: [60, 75, 90, 105],
-        cooldownTicks: 12,
+        cooldownCycles: 12,
         targetType: 'self',
         effects: [{ type: 'buff', value: 2, duration: 2, description: 'Return shadow duration' }],
       },
@@ -1508,7 +1508,7 @@ export const HEROES: Record<string, HeroDef> = {
         description: 'Reveal all enemy heroes for 3 cycles and gain +50% damage for 2 cycles.',
         bwCost: 200,
         bwCostByLevel: [200, 280, 360],
-        cooldownTicks: 60,
+        cooldownCycles: 60,
         targetType: 'none',
         effects: [
           { type: 'reveal', value: 1, duration: 3, description: 'All enemy heroes' },
@@ -1548,7 +1548,7 @@ export const HEROES: Record<string, HeroDef> = {
       description:
         'Basic attacks splash to 1 additional enemy in the zone for 40% damage. At level 10+, splashes to 2 additional enemies.',
       bwCost: 0,
-      cooldownTicks: 0,
+      cooldownCycles: 0,
       targetType: 'none',
       effects: [
         { type: 'damage', value: 40, damageType: 'kinetic', description: 'Splash damage %' },
@@ -1563,7 +1563,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Fork a new thread of power, dealing kinetic damage to a target and buffing own attack by 20 for 3 cycles.',
         bwCost: 55,
         bwCostByLevel: [55, 70, 85, 100],
-        cooldownTicks: 8,
+        cooldownCycles: 8,
         targetType: 'hero',
         damageType: 'kinetic',
         effects: [
@@ -1578,7 +1578,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Create a synchronization barrier shield. Shield strength increases by 40 for each allied hero in the zone.',
         bwCost: 70,
         bwCostByLevel: [70, 85, 100, 115],
-        cooldownTicks: 12,
+        cooldownCycles: 12,
         targetType: 'self',
         effects: [
           { type: 'shield', value: 100, duration: 3, description: 'Base shield + 40 per ally' },
@@ -1591,7 +1591,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Mark a target. The marked target takes 25% bonus damage from all sources for 3 cycles.',
         bwCost: 60,
         bwCostByLevel: [60, 75, 90, 105],
-        cooldownTicks: 10,
+        cooldownCycles: 10,
         targetType: 'hero',
         effects: [{ type: 'debuff', value: 25, duration: 3, description: 'Bonus damage taken %' }],
       },
@@ -1602,7 +1602,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Overclock all threads: for the next 4 cycles, basic attacks hit ALL enemies in the zone.',
         bwCost: 250,
         bwCostByLevel: [250, 340, 430],
-        cooldownTicks: 55,
+        cooldownCycles: 55,
         targetType: 'self',
         effects: [{ type: 'buff', value: 4, duration: 4, description: 'AoE attacks duration' }],
       },
@@ -1639,7 +1639,7 @@ export const HEROES: Record<string, HeroDef> = {
       description:
         'Stores 15% of all damage taken as cached energy, up to 30% of max INTEG. Cached energy can be consumed by abilities.',
       bwCost: 0,
-      cooldownTicks: 0,
+      cooldownCycles: 0,
       targetType: 'none',
       effects: [
         { type: 'buff', value: 15, description: 'Damage stored %' },
@@ -1654,7 +1654,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Strike a target with stored energy, dealing kinetic damage plus 50% of currently cached energy as bonus damage.',
         bwCost: 55,
         bwCostByLevel: [55, 70, 85, 100],
-        cooldownTicks: 8,
+        cooldownCycles: 8,
         targetType: 'hero',
         damageType: 'kinetic',
         effects: [
@@ -1674,7 +1674,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Flush the cache, converting all stored energy into a shield that lasts 3 cycles.',
         bwCost: 60,
         bwCostByLevel: [60, 75, 90, 105],
-        cooldownTicks: 12,
+        cooldownCycles: 12,
         targetType: 'self',
         effects: [
           { type: 'shield', value: 1, duration: 3, description: 'Shield equal to cached energy' },
@@ -1687,7 +1687,7 @@ export const HEROES: Record<string, HeroDef> = {
           "Invalidate a target's healing cache, dealing code damage and applying anti-heal (50% reduced healing) for 3 cycles.",
         bwCost: 65,
         bwCostByLevel: [65, 80, 95, 110],
-        cooldownTicks: 10,
+        cooldownCycles: 10,
         targetType: 'hero',
         damageType: 'code',
         effects: [
@@ -1702,7 +1702,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Evict all cached energy in a devastating burst, dealing black AoE damage equal to 100% of cached energy to all enemies in the zone and slowing them.',
         bwCost: 180,
         bwCostByLevel: [180, 250, 320],
-        cooldownTicks: 50,
+        cooldownCycles: 50,
         targetType: 'none',
         damageType: 'black',
         effects: [

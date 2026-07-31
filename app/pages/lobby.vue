@@ -239,7 +239,7 @@ watch(
 watch(
   () => lobbyStore.countdown,
   (seconds) => {
-    if (seconds > 0 && seconds <= 3) playSound('tick')
+    if (seconds > 0 && seconds <= 3) playSound('cycle')
   },
 )
 

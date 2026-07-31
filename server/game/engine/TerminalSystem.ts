@@ -1,44 +1,44 @@
 /**
- * AncientSystem — each team's core structure (player-facing: "the Terminal";
- * field name `ancients` in state — not renamed until the identifier sweep).
+ * TerminalSystem — each team's core structure (player-facing: "the Terminal";
+ * field name `terminals` in state — not renamed until the identifier sweep).
  *
  * Rules:
  * - One Ancient per team, located in the team's base zone.
  * - Invulnerable until at least one of the owning team's T3 ice is down.
  * - Once vulnerable, both heroes and waves can attack it.
- * - Destroying the enemy Ancient wins the game (see checkAncientWin).
+ * - Destroying the enemy Ancient wins the game (see checkTerminalWin).
  *
  * All functions are pure — no Effect, no I/O — so they can be called from
  * the engine pipeline and from ActionResolver alike.
  */
-import type { AncientState, GameState, TeamId } from '~~/shared/types/game'
-import { ANCIENT_HP } from '~~/shared/constants/balance'
+import type { TerminalState, GameState, TeamId } from '~~/shared/types/game'
+import { TERMINAL_HP } from '~~/shared/constants/balance'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
-import { scaledAncientHp } from './fastGame'
+import { scaledTerminalHp } from './fastGame'
 
 /** The zone each team's Ancient occupies. */
-export const ANCIENT_ZONES: Record<TeamId, string> = {
+export const TERMINAL_ZONES: Record<TeamId, string> = {
   chaff: 'chaff-base',
   audit: 'audit-base',
 }
 
 /** Stable target id for an Ancient, used in damage events and targeting. */
-export function ancientTargetId(team: TeamId): string {
-  return `ancient_${team}`
+export function terminalTargetId(team: TeamId): string {
+  return `terminal_${team}`
 }
 
 /** Parse an ancient target id back to a team, or null if it isn't one. */
-export function parseAncientTargetId(targetId: string): TeamId | null {
-  if (targetId === 'ancient_chaff') return 'chaff'
-  if (targetId === 'ancient_audit') return 'audit'
+export function parseTerminalTargetId(targetId: string): TeamId | null {
+  if (targetId === 'terminal_chaff') return 'chaff'
+  if (targetId === 'terminal_audit') return 'audit'
   return null
 }
 
 /** Fresh Ancients for game start. */
-export function initializeAncients(): { chaff: AncientState; audit: AncientState } {
-  // scaledAncientHp is a no-op (returns ANCIENT_HP) unless the dev/test-only
+export function initializeAncients(): { chaff: TerminalState; audit: TerminalState } {
+  // scaledTerminalHp is a no-op (returns TERMINAL_HP) unless the dev/test-only
   // TERMINA_TEST_FAST_GAME accelerator is active — see fastGame.ts.
-  const integ = scaledAncientHp(ANCIENT_HP)
+  const integ = scaledTerminalHp(TERMINAL_HP)
   return {
     chaff: { team: 'chaff', integ, maxInteg: integ, alive: true, vulnerable: false },
     audit: { team: 'audit', integ, maxInteg: integ, alive: true, vulnerable: false },
@@ -46,12 +46,12 @@ export function initializeAncients(): { chaff: AncientState; audit: AncientState
 }
 
 /**
- * Backfill `ancients` on states created before the Ancient existed (old
+ * Backfill `terminals` on states created before the Ancient existed (old
  * snapshots, test fixtures). Returns the same object when nothing changed.
  */
-export function ensureAncients(state: GameState): GameState {
-  if (state.ancients) return state
-  return { ...state, ancients: initializeAncients() }
+export function ensureTerminals(state: GameState): GameState {
+  if (state.terminals) return state
+  return { ...state, terminals: initializeAncients() }
 }
 
 /** A team's Ancient is vulnerable once any of its own T3 ice is dead. */
@@ -69,17 +69,17 @@ export function updateAncientVulnerability(state: GameState): GameState {
   const auditVulnerable = isAncientVulnerable(state, 'audit')
 
   if (
-    chaffVulnerable === state.ancients.chaff.vulnerable &&
-    auditVulnerable === state.ancients.audit.vulnerable
+    chaffVulnerable === state.terminals.chaff.vulnerable &&
+    auditVulnerable === state.terminals.audit.vulnerable
   ) {
     return state
   }
 
   return {
     ...state,
-    ancients: {
-      chaff: { ...state.ancients.chaff, vulnerable: chaffVulnerable },
-      audit: { ...state.ancients.audit, vulnerable: auditVulnerable },
+    terminals: {
+      chaff: { ...state.terminals.chaff, vulnerable: chaffVulnerable },
+      audit: { ...state.terminals.audit, vulnerable: auditVulnerable },
     },
   }
 }
@@ -104,7 +104,7 @@ export function resolveAncientAttack(
   attackerId: string,
   damage: number,
 ): { state: GameState; events: GameEngineEvent[]; rejected?: string } {
-  if (!state.ancients) {
+  if (!state.terminals) {
     return { state, events: [], rejected: 'No Ancient in this game' }
   }
 
@@ -114,7 +114,7 @@ export function resolveAncientAttack(
   }
 
   const targetTeam: TeamId = attackerTeam === 'chaff' ? 'audit' : 'chaff'
-  const ancient = state.ancients[targetTeam]
+  const ancient = state.terminals[targetTeam]
 
   if (!ancient.alive) {
     return { state, events: [], rejected: 'The enemy Terminal is already destroyed' }
@@ -133,9 +133,9 @@ export function resolveAncientAttack(
   const events: GameEngineEvent[] = [
     {
       _tag: 'damage',
-      tick: state.tick,
+      cycle: state.cycle,
       sourceId: attackerId,
-      targetId: ancientTargetId(targetTeam),
+      targetId: terminalTargetId(targetTeam),
       amount: damage,
       damageType: 'kinetic',
     },
@@ -145,8 +145,8 @@ export function resolveAncientAttack(
     // gets its own event instead of reusing the ice_kill shape (which would
     // render a misleading "destroyed <team> ice in <team>-base" line).
     events.push({
-      _tag: 'ancient_destroyed',
-      tick: state.tick,
+      _tag: 'terminal_destroyed',
+      cycle: state.cycle,
       team: targetTeam,
       killerTeam: attackerTeam,
     })
@@ -155,8 +155,8 @@ export function resolveAncientAttack(
   return {
     state: {
       ...state,
-      ancients: {
-        ...state.ancients,
+      terminals: {
+        ...state.terminals,
         [targetTeam]: { ...ancient, integ: newInteg, alive: !destroyed },
       },
     },
@@ -165,10 +165,10 @@ export function resolveAncientAttack(
 }
 
 /** A team wins when the enemy Ancient is destroyed. */
-export function checkAncientWin(state: GameState): TeamId | null {
-  if (!state.ancients) return null
-  if (!state.ancients.chaff.alive) return 'audit'
-  if (!state.ancients.audit.alive) return 'chaff'
+export function checkTerminalWin(state: GameState): TeamId | null {
+  if (!state.terminals) return null
+  if (!state.terminals.chaff.alive) return 'audit'
+  if (!state.terminals.audit.alive) return 'chaff'
   return null
 }
 

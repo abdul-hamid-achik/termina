@@ -21,11 +21,11 @@ describe('one-lane map', () => {
     expect(s.ice.every((t) => t.zone.startsWith('mid-'))).toBe(true)
   })
 
-  it('spawns the human in its fountain and walks the lane one zone per tick', async () => {
+  it('spawns the human in its fountain and walks the lane one zone per cycle', async () => {
     const game = await seedGame('fresh', { mapId: 'one_lane' })
     expect((await game.me()).zone).toBe('chaff-fountain')
 
-    // fountain → base → down the mid lane to the river, one hop per tick.
+    // fountain → base → down the mid lane to the river, one hop per cycle.
     for (const zone of [
       'chaff-base',
       'mid-t3-chaff',
@@ -58,7 +58,7 @@ describe('one-lane map', () => {
 
   it('spawns wave waves only on the mid lane (no top/bot leakage into dead zones)', async () => {
     const game = await seedGame('fresh', { mapId: 'one_lane' })
-    await game.tick(8) // WAVE_INTERVAL_TICKS — the first wave spawns
+    await game.tick(8) // WAVE_INTERVAL_CYCLES — the first wave spawns
     const s = await game.state()
 
     expect(s.waves.length).toBeGreaterThan(0)

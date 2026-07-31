@@ -66,7 +66,7 @@ export interface AbilityDef {
    * 2.2x for. Absent means the cost is flat.
    */
   bwCostByLevel?: readonly number[]
-  cooldownTicks: number
+  cooldownCycles: number
   targetType: TargetType
   damageType?: DamageType
   effects: AbilityEffect[]

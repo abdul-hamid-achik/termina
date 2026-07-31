@@ -20,12 +20,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 380,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 5,
     ice: 22,
     kills: 0,
@@ -39,7 +39,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -79,11 +79,11 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     playerMap[p.id] = p
   }
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -114,10 +114,10 @@ describe('Cron Hero', () => {
       expect(hasBuff(updatedAlly, 'uptimeDef')).toBe(true)
       const atkBuff = updatedAlly.buffs.find((b) => b.id === 'uptimeAtk')
       expect(atkBuff!.stacks).toBe(15)
-      expect(atkBuff!.ticksRemaining).toBe(3)
+      expect(atkBuff!.cyclesRemaining).toBe(3)
       const defBuff = updatedAlly.buffs.find((b) => b.id === 'uptimeDef')
       expect(defBuff!.stacks).toBe(5)
-      expect(defBuff!.ticksRemaining).toBe(3)
+      expect(defBuff!.cyclesRemaining).toBe(3)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -199,9 +199,9 @@ describe('Cron Hero', () => {
     it('removes debuffs and applies shield to target ally', () => {
       const ally = makeAlly({
         buffs: [
-          { id: 'stun', stacks: 1, ticksRemaining: 2, source: 'enemy' },
-          { id: 'slow', stacks: 25, ticksRemaining: 3, source: 'enemy' },
-          { id: 'uptimeAtk', stacks: 15, ticksRemaining: 2, source: 'p1' },
+          { id: 'stun', stacks: 1, cyclesRemaining: 2, source: 'enemy' },
+          { id: 'slow', stacks: 25, cyclesRemaining: 3, source: 'enemy' },
+          { id: 'uptimeAtk', stacks: 15, cyclesRemaining: 2, source: 'p1' },
         ],
       })
       const player = makePlayer({ level: 1 })
@@ -218,14 +218,14 @@ describe('Cron Hero', () => {
       expect(hasBuff(updatedAlly, 'shield')).toBe(true)
       const shield = updatedAlly.buffs.find((b) => b.id === 'shield')
       expect(shield!.stacks).toBe(130) // Level 1 shield
-      expect(shield!.ticksRemaining).toBe(2)
+      expect(shield!.cyclesRemaining).toBe(2)
     })
 
     it('removes root and silence debuffs', () => {
       const ally = makeAlly({
         buffs: [
-          { id: 'root', stacks: 1, ticksRemaining: 2, source: 'enemy' },
-          { id: 'silence', stacks: 1, ticksRemaining: 3, source: 'enemy' },
+          { id: 'root', stacks: 1, cyclesRemaining: 2, source: 'enemy' },
+          { id: 'silence', stacks: 1, cyclesRemaining: 3, source: 'enemy' },
         ],
       })
       const player = makePlayer({ level: 1 })
@@ -252,7 +252,7 @@ describe('Cron Hero', () => {
     it('can target self', () => {
       const player = makePlayer({
         level: 1,
-        buffs: [{ id: 'slow', stacks: 25, ticksRemaining: 3, source: 'enemy' }],
+        buffs: [{ id: 'slow', stacks: 25, cyclesRemaining: 3, source: 'enemy' }],
       })
       const state = makeState([player])
 
@@ -300,7 +300,7 @@ describe('Cron Hero', () => {
       expect(hasBuff(updatedEnemy, 'taunt')).toBe(true)
       const taunt = updatedEnemy.buffs.find((b) => b.id === 'taunt')
       // raw 2 = one gated action: a cast-applied disable is reaped same-tick.
-      expect(taunt!.ticksRemaining).toBe(2)
+      expect(taunt!.cyclesRemaining).toBe(2)
     })
 
     it('scales damage with level', () => {
@@ -386,8 +386,8 @@ describe('Cron Hero', () => {
       expect(hasBuff(result.state.players['p1']!, 'crontabHeal')).toBe(true)
       expect(hasBuff(result.state.players['a1']!, 'crontabHeal')).toBe(true)
       const buff = result.state.players['p1']!.buffs.find((b) => b.id === 'crontabHeal')
-      expect(buff!.stacks).toBe(75) // Level 1 R heal per tick
-      expect(buff!.ticksRemaining).toBe(4)
+      expect(buff!.stacks).toBe(75) // Level 1 R heal per cycle
+      expect(buff!.cyclesRemaining).toBe(4)
     })
 
     it('also applies the crontabMana buff (the BW-over-time half) to self and allies', () => {
@@ -401,7 +401,7 @@ describe('Cron Hero', () => {
       expect(hasBuff(result.state.players['a1']!, 'crontabMana')).toBe(true)
       const mana = result.state.players['p1']!.buffs.find((b) => b.id === 'crontabMana')
       expect(mana!.stacks).toBe(15) // R_MP_PER_TICK
-      expect(mana!.ticksRemaining).toBe(4)
+      expect(mana!.cyclesRemaining).toBe(4)
     })
 
     it('does not affect allies in different zone', () => {
@@ -415,14 +415,14 @@ describe('Cron Hero', () => {
       expect(hasBuff(result.state.players['a1']!, 'crontabHeal')).toBe(false)
     })
 
-    it('scales heal per tick with R level', () => {
+    it('scales heal per cycle with R level', () => {
       const player = makePlayer({ level: 12, bw: 500 }) // R level 2
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
       const buff = result.state.players['p1']!.buffs.find((b) => b.id === 'crontabHeal')
-      expect(buff!.stacks).toBe(110) // Level 2 R heal per tick
+      expect(buff!.stacks).toBe(110) // Level 2 R heal per cycle
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -450,10 +450,10 @@ describe('Cron Hero', () => {
       const player = makePlayer()
       const ally1 = makeAlly({ integ: 300, maxInteg: 550 })
       const ally2 = makeAlly({ id: 'a2', name: 'Ally2', integ: 200, maxInteg: 550 })
-      const state = makeState([player, ally1, ally2], { tick: 8 })
+      const state = makeState([player, ally1, ally2], { cycle: 8 })
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 8,
+        cycle: 8,
         type: 'tick_end',
         payload: {},
       })
@@ -467,10 +467,10 @@ describe('Cron Hero', () => {
     it('does not heal on ticks not divisible by 4', () => {
       const player = makePlayer()
       const ally = makeAlly({ integ: 300, maxInteg: 550 })
-      const state = makeState([player, ally], { tick: 9 })
+      const state = makeState([player, ally], { cycle: 9 })
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 9,
+        cycle: 9,
         type: 'tick_end',
         payload: {},
       })
@@ -480,10 +480,10 @@ describe('Cron Hero', () => {
 
     it('does nothing when no allies in zone', () => {
       const player = makePlayer()
-      const state = makeState([player], { tick: 8 })
+      const state = makeState([player], { cycle: 8 })
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 8,
+        cycle: 8,
         type: 'tick_end',
         payload: {},
       })
@@ -494,10 +494,10 @@ describe('Cron Hero', () => {
     it('does not heal allies in different zone', () => {
       const player = makePlayer()
       const ally = makeAlly({ integ: 300, maxInteg: 550, zone: 'top-river' })
-      const state = makeState([player, ally], { tick: 8 })
+      const state = makeState([player, ally], { cycle: 8 })
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 8,
+        cycle: 8,
         type: 'tick_end',
         payload: {},
       })
@@ -508,10 +508,10 @@ describe('Cron Hero', () => {
     it('does not trigger on non-tick_end events', () => {
       const player = makePlayer()
       const ally = makeAlly({ integ: 300, maxInteg: 550 })
-      const state = makeState([player, ally], { tick: 8 })
+      const state = makeState([player, ally], { cycle: 8 })
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 8,
+        cycle: 8,
         type: 'attack',
         payload: { attackerId: 'e1', targetId: 'p1' },
       })
@@ -522,10 +522,10 @@ describe('Cron Hero', () => {
     it('does not heal above maxInteg', () => {
       const player = makePlayer()
       const ally = makeAlly({ integ: 540, maxInteg: 550 })
-      const state = makeState([player, ally], { tick: 8 })
+      const state = makeState([player, ally], { cycle: 8 })
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 8,
+        cycle: 8,
         type: 'tick_end',
         payload: {},
       })
@@ -537,7 +537,7 @@ describe('Cron Hero', () => {
   describe('Stun/Silence blocking', () => {
     it('prevents casting when stunned', () => {
       const player = makePlayer({
-        buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 1, source: 'enemy' }],
+        buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 1, source: 'enemy' }],
       })
       const ally = makeAlly()
       const state = makeState([player, ally])
@@ -550,7 +550,7 @@ describe('Cron Hero', () => {
 
     it('prevents casting when silenced', () => {
       const player = makePlayer({
-        buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 2, source: 'enemy' }],
+        buffs: [{ id: 'silence', stacks: 1, cyclesRemaining: 2, source: 'enemy' }],
       })
       const ally = makeAlly()
       const state = makeState([player, ally])

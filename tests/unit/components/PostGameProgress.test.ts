@@ -38,7 +38,7 @@ function cleanStats(over: Partial<PlayerEndStats> = {}): PlayerEndStats {
     kills: 9,
     deaths: 1,
     assists: 7,
-    gold: 200,
+    scrip: 200,
     netWorth: 12_400,
     lastHits: 90,
     burns: 6,
@@ -72,10 +72,10 @@ function adviceIds(wrapper: ReturnType<typeof mountPostGame>): string[] {
 
 describe('PostGame — net worth', () => {
   it('reports net worth, not the unspent wallet balance', () => {
-    // REGRESSION: the tile used to read `gold`, so the player who converted
+    // REGRESSION: the tile used to read `scrip`, so the player who converted
     // every coin into items showed the LOWEST number on the board.
     const wrapper = mountPostGame({
-      stats: { p1: cleanStats({ gold: 200, netWorth: 12_400 }), e1: cleanStats() },
+      stats: { p1: cleanStats({ scrip: 200, netWorth: 12_400 }), e1: cleanStats() },
     })
     const tile = wrapper.get('[data-testid="my-net-worth"]')
     expect(tile.text()).toContain('Net Worth')
@@ -85,8 +85,8 @@ describe('PostGame — net worth', () => {
   })
 
   it('ranks the scoreboard by net worth so the big spender is not last', () => {
-    const spender = cleanStats({ gold: 150, netWorth: 14_000 })
-    const hoarder = cleanStats({ gold: 5000, netWorth: 5000 })
+    const spender = cleanStats({ scrip: 150, netWorth: 14_000 })
+    const hoarder = cleanStats({ scrip: 5000, netWorth: 5000 })
     const wrapper = mountPostGame({ stats: { p1: spender, e1: hoarder } })
     const rows = wrapper.findAll('tbody tr').map((r) => r.text())
     expect(rows[0]).toContain('14,000')
@@ -94,7 +94,7 @@ describe('PostGame — net worth', () => {
   })
 
   it('falls back to the wallet balance when the server sent no net worth', () => {
-    const legacy = makePlayerEndStats({ gold: 6200, netWorth: undefined })
+    const legacy = makePlayerEndStats({ scrip: 6200, netWorth: undefined })
     const wrapper = mountPostGame({ stats: { p1: legacy, e1: legacy } })
     expect(wrapper.get('[data-testid="my-net-worth"]').text()).toContain('6,200')
   })
@@ -117,7 +117,7 @@ describe('PostGame — CS', () => {
   it('states CS as a rate once the match length is known', () => {
     // 60 CS over 10 minutes (150 ticks × 4s) = 6.0/min.
     const wrapper = mountPostGame({
-      durationTicks: 150,
+      durationCycles: 150,
       stats: { p1: cleanStats({ lastHits: 60 }), e1: cleanStats() },
     })
     expect(wrapper.get('[data-testid="my-cs"]').text()).toContain('6.0/min')
@@ -142,8 +142,8 @@ describe('PostGame — what to work on', () => {
   it('judges farm by rate, so the same CS total reads differently at 10m and 40m', () => {
     // 30 last hits: 3.0/min over 10 minutes is fine; 0.75/min over 40 is not.
     const stats = { p1: cleanStats({ lastHits: 30 }), e1: cleanStats() }
-    const short = mountPostGame({ durationTicks: 150, stats })
-    const long = mountPostGame({ durationTicks: 600, stats })
+    const short = mountPostGame({ durationCycles: 150, stats })
+    const long = mountPostGame({ durationCycles: 600, stats })
 
     expect(adviceIds(short)).not.toContain('last-hits')
     expect(adviceIds(long)).toContain('last-hits')
@@ -161,21 +161,21 @@ describe('PostGame — what to work on', () => {
 
   it('tells a hoarder to spend', () => {
     const wrapper = mountPostGame({
-      stats: { p1: cleanStats({ gold: 4200 }), e1: cleanStats() },
+      stats: { p1: cleanStats({ scrip: 4200 }), e1: cleanStats() },
     })
     expect(wrapper.get('[data-advice="unspent"]').text()).toContain('4,200')
   })
 
   it('never renders an empty panel — a clean game gets a next step', () => {
-    const ids = adviceIds(mountPostGame({ durationTicks: 300 }))
+    const ids = adviceIds(mountPostGame({ durationCycles: 300 }))
     expect(ids).toEqual(['next'])
   })
 
   it('shows at most three items so the panel stays readable', () => {
     const wrapper = mountPostGame({
-      durationTicks: 600,
+      durationCycles: 600,
       stats: {
-        p1: cleanStats({ deaths: 11, lastHits: 4, burns: 0, gold: 9000 }),
+        p1: cleanStats({ deaths: 11, lastHits: 4, burns: 0, scrip: 9000 }),
         e1: cleanStats(),
       },
     })

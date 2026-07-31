@@ -9,7 +9,7 @@ import type { GameState } from '~~/shared/types/game'
 import { RedisService, type RedisServiceApi } from './RedisService'
 import { engineLog } from '~~/server/utils/log'
 import { isBot } from '~~/server/game/ai/BotManager'
-import { TICK_DURATION_MS } from '~~/shared/constants/balance'
+import { CYCLE_DURATION_MS } from '~~/shared/constants/balance'
 
 const _mockRedisService = Layer.succeed(RedisService, {
   get: () => Effect.succeed(null),
@@ -44,7 +44,7 @@ const _mockRedisService = Layer.succeed(RedisService, {
 export interface LeaverRecord {
   playerId: string
   gameId: string
-  tick: number
+  cycle: number
   timestamp: number
   reason: 'afk' | 'disconnect' | 'feed' | 'grief'
   duration: number // ticks AFK
@@ -60,7 +60,7 @@ export interface PlayerPenalty {
   lastLeaveTimestamp: number | null
 }
 
-const AFK_THRESHOLD_TICKS = 30 // 2 minutes at 4s/tick
+const AFK_THRESHOLD_TICKS = 30 // 2 minutes at 4s/cycle
 // A CONNECTED player gets double the window before takeover — "no game action
 // for 2 minutes" is normal for someone reading the shop or watching a fight.
 const CONNECTED_AFK_THRESHOLD_TICKS = AFK_THRESHOLD_TICKS * 2
@@ -98,7 +98,7 @@ export function clearClientInput(gameId: string): void {
 
 /**
  * Check for AFK players in the game
- * Called every tick to track player activity
+ * Called every cycle to track player activity
  */
 export function detectAFKPlayers(state: GameState): Array<{ playerId: string; ticksAFK: number }> {
   const afkPlayers: Array<{ playerId: string; ticksAFK: number }> = []
@@ -110,11 +110,11 @@ export function detectAFKPlayers(state: GameState): Array<{ playerId: string; ti
     // it is no longer "AFK". Keeps the takeover + leaver record firing once.
     if (player.aiControlled) continue
 
-    // lastActionTick is stamped in GameLoop when actions are drained.
-    // A player who has never acted counts as AFK since game start (tick 0).
-    const lastActionTick = player.lastActionTick ?? 0
+    // lastActionCycle is stamped in GameLoop when actions are drained.
+    // A player who has never acted counts as AFK since game start (cycle 0).
+    const lastActionCycle = player.lastActionCycle ?? 0
 
-    const ticksSinceAction = state.tick - lastActionTick
+    const ticksSinceAction = state.cycle - lastActionCycle
     if (ticksSinceAction >= AFK_THRESHOLD_TICKS) {
       afkPlayers.push({ playerId, ticksAFK: ticksSinceAction })
     }
@@ -152,12 +152,12 @@ export function shouldConvertAFK(
   )
   if (!hasHumanTeammate) return false
 
-  const ticksSinceAction = state.tick - (player.lastActionTick ?? 0)
+  const ticksSinceAction = state.cycle - (player.lastActionCycle ?? 0)
   if (ticksSinceAction < CONNECTED_AFK_THRESHOLD_TICKS) return false
 
   return (
     presence.msSinceInput == null ||
-    presence.msSinceInput >= CONNECTED_AFK_THRESHOLD_TICKS * TICK_DURATION_MS
+    presence.msSinceInput >= CONNECTED_AFK_THRESHOLD_TICKS * CYCLE_DURATION_MS
   )
 }
 
@@ -200,7 +200,7 @@ export function recordLeaver(
     const record: LeaverRecord = {
       playerId,
       gameId,
-      tick: state.tick,
+      cycle: state.cycle,
       timestamp: Date.now(),
       reason,
       duration:
@@ -347,7 +347,7 @@ export function markPlayerActive(
 ): Effect.Effect<void, never, RedisService> {
   return Effect.gen(function* () {
     const redis = yield* RedisService
-    // Store last action tick in Redis for persistence
+    // Store last action cycle in Redis for persistence
     yield* redis.set(`game:${gameId}:last_action:${playerId}`, Date.now().toString())
   })
 }

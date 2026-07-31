@@ -38,17 +38,17 @@ const ownedNone: (string | null)[] = [null, null, null, null, null, null]
 
 <template>
   <Story title="Game/ItemShop">
-    <!-- Plenty of gold: most items affordable, [BUY] visible on affordable cards. -->
+    <!-- Plenty of scrip: most items affordable, [BUY] visible on affordable cards. -->
     <Variant title="rich (most affordable)">
       <div class="bg-bg-primary p-3" style="width: 520px">
-        <ItemShop :items="items" :gold="9000" :owned-items="ownedNone" :pinned-items="[]" />
+        <ItemShop :items="items" :scrip="9000" :owned-items="ownedNone" :pinned-items="[]" />
       </div>
     </Variant>
 
-    <!-- Low gold: expensive cores dim out and lose their [BUY] button. -->
+    <!-- Low scrip: expensive cores dim out and lose their [BUY] button. -->
     <Variant title="poor (most unaffordable)">
       <div class="bg-bg-primary p-3" style="width: 520px">
-        <ItemShop :items="items" :gold="200" :owned-items="ownedNone" :pinned-items="[]" />
+        <ItemShop :items="items" :scrip="200" :owned-items="ownedNone" :pinned-items="[]" />
       </div>
     </Variant>
 
@@ -57,7 +57,7 @@ const ownedNone: (string | null)[] = [null, null, null, null, null, null]
       <div class="bg-bg-primary p-3" style="width: 520px">
         <ItemShop
           :items="items"
-          :gold="9000"
+          :scrip="9000"
           :owned-items="[SAMPLE_ITEMS.treads, SAMPLE_ITEMS.blades, null, null, null, null]"
           :pinned-items="[SAMPLE_ITEMS.killshot_coil, SAMPLE_ITEMS.bkb]"
         />
@@ -69,7 +69,7 @@ const ownedNone: (string | null)[] = [null, null, null, null, null, null]
       <div class="bg-bg-primary p-3" style="width: 520px">
         <ItemShop
           :items="items"
-          :gold="9000"
+          :scrip="9000"
           :owned-items="ownedNone"
           :pinned-items="[]"
           :recommended-items="[SAMPLE_ITEMS.bkb, SAMPLE_ITEMS.blink, SAMPLE_ITEMS.killshot_coil]"
@@ -80,7 +80,7 @@ const ownedNone: (string | null)[] = [null, null, null, null, null, null]
     <!-- No items to show (e.g. a filter that matched nothing). -->
     <Variant title="empty">
       <div class="bg-bg-primary p-3" style="width: 520px">
-        <ItemShop :items="[]" :gold="9000" :owned-items="ownedNone" :pinned-items="[]" />
+        <ItemShop :items="[]" :scrip="9000" :owned-items="ownedNone" :pinned-items="[]" />
       </div>
     </Variant>
   </Story>

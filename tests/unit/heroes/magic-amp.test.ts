@@ -31,12 +31,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 600,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 0,
     ice: 0,
     kills: 0,
@@ -50,7 +50,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -62,11 +62,11 @@ function makeState(players: PlayerState[]): GameState {
   const playerMap: Record<string, PlayerState> = {}
   for (const p of players) playerMap[p.id] = p
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: { 'mid-river': { id: 'mid-river', wards: [], waves: [] } },
@@ -141,7 +141,7 @@ describe('dealDamage: target-side magic vulnerability', () => {
       id: 't',
       heroId: null,
       ice: 0,
-      buffs: [{ id, stacks, ticksRemaining: 4, source: 'x' }],
+      buffs: [{ id, stacks, cyclesRemaining: 4, source: 'x' }],
     })
   const plainTarget = () => makePlayer({ id: 't', heroId: null, ice: 0 })
 
@@ -159,8 +159,8 @@ describe('dealDamage: target-side magic vulnerability', () => {
       heroId: null,
       ice: 0,
       buffs: [
-        { id: 'magicVulnerability', stacks: 15, ticksRemaining: 3, source: 'x' },
-        { id: 'veil_discord', stacks: 25, ticksRemaining: 4, source: 'x' },
+        { id: 'magicVulnerability', stacks: 15, cyclesRemaining: 3, source: 'x' },
+        { id: 'veil_discord', stacks: 25, cyclesRemaining: 4, source: 'x' },
       ],
     })
     const plainLost = plainTarget().integ - dealDamage(plainTarget(), 100, 'code').integ
@@ -194,7 +194,7 @@ describe('dealDamage: immunity', () => {
       heroId: null,
       ice: 0,
       plate: 0,
-      buffs: [{ id, stacks: 1, ticksRemaining: 2, source: 'x' }],
+      buffs: [{ id, stacks: 1, cyclesRemaining: 2, source: 'x' }],
     })
 
   it('invulnerable takes no damage of any type and keeps the buff', () => {

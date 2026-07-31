@@ -11,15 +11,15 @@ import { ITEMS } from '~~/shared/constants/items'
 import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
 import { formatTickClock } from './gameClock'
 import {
-  TENANT_RESPAWN_TICKS,
-  CACHE_DURATION_TICKS,
-  CACHE_INTERVAL_TICKS,
+  TENANT_RESPAWN_CYCLES,
+  CACHE_DURATION_CYCLES,
+  CACHE_INTERVAL_CYCLES,
 } from '~~/shared/constants/balance'
 import type { TenantState, CacheState, TeamId } from '~~/shared/types/game'
 
 /** Minimal shape needed to value a player — works for PlayerState and fogged players. */
 export interface NetWorthInput {
-  gold?: number
+  scrip?: number
   items?: (string | null)[]
   fogged?: boolean
 }
@@ -27,7 +27,7 @@ export interface NetWorthInput {
 /** True net worth = liquid scrip + the buy cost of every item carried. */
 export function playerNetWorth(p: NetWorthInput): number {
   if (p.fogged) return 0
-  let nw = p.gold ?? 0
+  let nw = p.scrip ?? 0
   for (const id of p.items ?? []) {
     if (id) nw += ITEMS[id]?.cost ?? 0
   }
@@ -48,20 +48,20 @@ export interface GoldLead {
 }
 
 /** Who's ahead on net worth and by how much (leader=null on a dead tie). */
-export function goldLead(chaffNetWorth: number, auditNetWorth: number): GoldLead {
+export function scripLead(chaffNetWorth: number, auditNetWorth: number): GoldLead {
   const diff = chaffNetWorth - auditNetWorth
   if (diff === 0) return { leader: null, amount: 0 }
   return diff > 0 ? { leader: 'chaff', amount: diff } : { leader: 'audit', amount: -diff }
 }
 
 /** Compact scrip: 4200 -> "4.2k", 950 -> "950". */
-export function formatGoldShort(n: number): string {
+export function formatScripShort(n: number): string {
   const abs = Math.abs(n)
   if (abs >= 1000) return `${(n / 1000).toFixed(1)}k`
   return String(Math.round(n))
 }
 
-/** Ticks -> "m:ss" clock (1 tick = 4s). Clamps negatives to 0. */
+/** Ticks -> "m:ss" clock (1 cycle = 4s). Clamps negatives to 0. */
 export function ticksToClock(ticks: number): string {
   return formatTickClock(Math.max(0, ticks))
 }
@@ -80,7 +80,7 @@ export interface TenantReadout {
 
 export function formatTenant(
   tenant: TenantState | null | undefined,
-  currentTick: number,
+  currentCycle: number,
 ): TenantReadout {
   if (!tenant) return { status: 'unknown', respawnIn: 0, label: 'TENANT ?', hpPct: null }
   if (tenant.alive) {
@@ -88,8 +88,8 @@ export function formatTenant(
     return { status: 'up', respawnIn: 0, label: 'TENANT up', hpPct }
   }
   const respawnIn =
-    tenant.deathTick != null
-      ? Math.max(0, tenant.deathTick + TENANT_RESPAWN_TICKS - currentTick)
+    tenant.deathCycle != null
+      ? Math.max(0, tenant.deathCycle + TENANT_RESPAWN_CYCLES - currentCycle)
       : 0
   return {
     status: 'dead',
@@ -109,19 +109,19 @@ export interface CacheReadout {
   label: string
 }
 
-export function formatCaches(caches: CacheState[] | undefined, currentTick: number): CacheReadout {
+export function formatCaches(caches: CacheState[] | undefined, currentCycle: number): CacheReadout {
   const live = (caches ?? [])
     .map((r) => ({
       zone: r.zone,
       type: r.type,
-      expiresIn: Math.max(0, r.tick + CACHE_DURATION_TICKS - currentTick),
+      expiresIn: Math.max(0, r.cycle + CACHE_DURATION_CYCLES - currentCycle),
     }))
     .filter((r) => r.expiresIn > 0)
 
-  // Next spawn is the next multiple of CACHE_INTERVAL_TICKS from now. At an exact
-  // multiple (incl. tick 0) the next spawn is a full interval away — not 0.
-  const sinceLast = currentTick % CACHE_INTERVAL_TICKS
-  const nextIn = sinceLast === 0 ? CACHE_INTERVAL_TICKS : CACHE_INTERVAL_TICKS - sinceLast
+  // Next spawn is the next multiple of CACHE_INTERVAL_CYCLES from now. At an exact
+  // multiple (incl. cycle 0) the next spawn is a full interval away — not 0.
+  const sinceLast = currentCycle % CACHE_INTERVAL_CYCLES
+  const nextIn = sinceLast === 0 ? CACHE_INTERVAL_CYCLES : CACHE_INTERVAL_CYCLES - sinceLast
 
   let label: string
   if (live.length > 0) {
@@ -151,11 +151,11 @@ export interface BackupReadout {
  * non-null `backup` object means it's sitting in the pit, available.
  */
 export function formatBackup(
-  backup: { zone: string; tick: number; holderId: string | null } | null | undefined,
-  holder?: { name: string; ticksRemaining: number } | null,
+  backup: { zone: string; cycle: number; holderId: string | null } | null | undefined,
+  holder?: { name: string; cyclesRemaining: number } | null,
 ): BackupReadout {
   if (holder) {
-    const expiresIn = Math.max(0, holder.ticksRemaining)
+    const expiresIn = Math.max(0, holder.cyclesRemaining)
     return {
       held: true,
       inPit: false,
@@ -184,12 +184,12 @@ export interface VisionReadout {
 export function visionSummary(
   visibleZoneIds: string[],
   wards: Array<{ expiryTick: number }>,
-  currentTick: number,
+  currentCycle: number,
 ): VisionReadout {
   const total = ZONES.length
   const visible = Math.min(visibleZoneIds.length, total)
   const pct = total > 0 ? Math.round((visible / total) * 100) : 0
-  const expiries = wards.map((w) => w.expiryTick - currentTick).filter((t) => t > 0)
+  const expiries = wards.map((w) => w.expiryTick - currentCycle).filter((t) => t > 0)
   return {
     visible,
     total,

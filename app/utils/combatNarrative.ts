@@ -99,7 +99,7 @@ const REDUNDANT_GOLD = /wave|last.?hit|burn|passive|neutral/i
  */
 export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | null {
   const p = e.payload
-  const tick = e.tick
+  const cycle = e.cycle
   const label = ctx.entityLabel.bind(ctx)
   const zname = (z: unknown) => ctx.zoneName?.(str(z)) ?? str(z)
 
@@ -109,11 +109,11 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       const source = label(p.sourceId)
       const victim = label(p.targetId)
       const line: CombatLine = {
-        tick,
+        cycle,
         text: `${source} hit ${victim} for ${num(p.amount)}${dtype ? ` ${dtype}` : ''}`,
         type: 'damage',
         salience: salience(p.sourceId, p.targetId, ctx),
-        // Carried on EVERY damage line, not just structure chip: the per-tick
+        // Carried on EVERY damage line, not just structure chip: the per-cycle
         // recap sums these, and the teamfight digest reports a real total.
         dmgAmount: num(p.amount),
         sourceLabel: source,
@@ -123,7 +123,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       if (isStructureTarget(p.targetId)) {
         line.dedupKey = `dmg:${str(p.sourceId)}->${str(p.targetId)}`
       }
-      // Someone else's wave farming — story mode folds these into the per-tick
+      // Someone else's wave farming — story mode folds these into the per-cycle
       // farm digest. My own hits stay explicit (they're my action's feedback).
       const target = str(p.targetId)
       if (
@@ -137,7 +137,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 
     case 'heal':
       return {
-        tick,
+        cycle,
         text: `${label(p.sourceId)} restored ${num(p.amount)} to ${label(p.targetId)}`,
         type: 'healing',
         salience: salience(p.sourceId, p.targetId, ctx),
@@ -150,7 +150,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         : ''
       const flair = killFlair(num(p.victimStreak), num(p.killerStreak))
       return {
-        tick,
+        cycle,
         text: `${label(p.killerId)} terminated ${label(p.victimId)}${flair}${assistText}`,
         type: 'kill',
         salience: salience(p.killerId, p.victimId, ctx),
@@ -162,9 +162,9 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 
     case 'death': {
       const respawn =
-        p.respawnTick != null ? ` — respawn ${Math.max(0, num(p.respawnTick) - tick)}c` : ''
+        p.respawnCycle != null ? ` — respawn ${Math.max(0, num(p.respawnCycle) - cycle)}c` : ''
       return {
-        tick,
+        cycle,
         // A hero dying is a headline, not chip damage: typed `kill` so it reads
         // at the same weight as the kill line it accompanies (and so the OBJ
         // filter, which is really "what changed the game", keeps it).
@@ -176,33 +176,33 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 
     case 'ice_kill':
       return {
-        tick,
+        cycle,
         text: `${teamLabel(str(p.killerTeam))} razed the ${teamLabel(str(p.team))} ice in ${zname(p.zone)}`,
         type: 'kill',
         salience: ctx.myTeam === str(p.killerTeam) ? 'mine-out' : 'mine-in',
       }
 
-    case 'ancient_destroyed':
+    case 'terminal_destroyed':
       // Keep the exact "destroyed the … Terminal!" phrasing the victory line expects.
       return {
-        tick,
+        cycle,
         text: `${teamLabel(str(p.killerTeam))} destroyed the ${teamLabel(str(p.team))} Terminal!`,
         type: 'victory',
       }
 
     case 'wave_strip':
       return {
-        tick,
-        text: `${label(p.playerId)} last-hit a ${str(p.waveType)} wave (+${num(p.goldAwarded)}g)`,
-        type: 'gold',
+        cycle,
+        text: `${label(p.playerId)} last-hit a ${str(p.waveType)} wave (+${num(p.scripAwarded)}sc)`,
+        type: 'scrip',
         salience: actorSalience(p.playerId, ctx),
         farmKind: 'lasthit',
-        goldAmount: num(p.goldAwarded),
+        scripAmount: num(p.scripAwarded),
       }
 
     case 'wave_burn':
       return {
-        tick,
+        cycle,
         text: `${label(p.playerId)} burned a ${str(p.waveType)} wave`,
         type: 'system',
         salience: actorSalience(p.playerId, ctx),
@@ -211,21 +211,21 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 
     case 'gold_change': {
       const reason = str(p.reason)
-      // Drop gold lines a dedicated line already narrates (last-hits, burns,
+      // Drop scrip lines a dedicated line already narrates (last-hits, burns,
       // passive trickle) — the dominant source of farming-phase noise.
       if (REDUNDANT_GOLD.test(reason)) return null
       const amt = num(p.amount)
       return {
-        tick,
-        text: `${label(p.playerId)} ${amt >= 0 ? 'earned' : 'lost'} ${Math.abs(amt)}g (${reason})`,
-        type: 'gold',
+        cycle,
+        text: `${label(p.playerId)} ${amt >= 0 ? 'earned' : 'lost'} ${Math.abs(amt)}sc (${reason})`,
+        type: 'scrip',
         salience: actorSalience(p.playerId, ctx),
       }
     }
 
     case 'level_up':
       return {
-        tick,
+        cycle,
         // Power-curve beats, not meta-chatter — `[SYS]` grey is reserved for
         // chat, pings and client notices so those stay scannable.
         text: `${label(p.playerId)} reached level ${num(p.newLevel)}`,
@@ -235,7 +235,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 
     case 'ability_used':
       return {
-        tick,
+        cycle,
         text: `${label(p.playerId)} cast ${ctx.abilityLabel(p.abilityId)}${p.targetId ? ` on ${label(p.targetId)}` : ''}`,
         type: 'ability',
         // Source→target, not actor-only: a cast aimed at ME is my business, and
@@ -248,7 +248,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       // Loud and uppercase: being disabled is the single most consequential
       // thing that can happen to you in a teamfight, and it was un-narrated.
       const status = buffLabel(str(p.status)).toUpperCase()
-      const ticks = num(p.ticksRemaining)
+      const ticks = num(p.cyclesRemaining)
       const dur = ticks > 0 ? ` (${ticks}c)` : ''
       // Several abilities disable their own caster (Regex's E roots itself while
       // channelling). Reading those out as "You STUNNED You" is nonsense, so a
@@ -260,7 +260,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
           ? `${victim} ${victim === 'You' ? 'are' : 'is'} ${status}${dur}`
           : `${label(p.sourceId)} ${status} ${victim}${dur}`
       return {
-        tick,
+        cycle,
         text,
         type: 'ability',
         salience: salience(p.sourceId, p.targetId, ctx),
@@ -270,7 +270,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
     case 'double_cast':
       // Tier-25 exotic proc — loud, so the player notices the ability fired twice.
       return {
-        tick,
+        cycle,
         text: `≫ DOUBLE CAST! ${label(p.playerId)}'s ${ctx.abilityLabel(p.abilityId)} fires twice`,
         type: 'ability',
         salience: actorSalience(p.playerId, ctx),
@@ -279,7 +279,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
     case 'power_spike':
       // The engine already writes human prose here — surface it instead of JSON.
       return {
-        tick,
+        cycle,
         text: str(p.message) || `${label(p.playerId)} hit a power spike`,
         type: 'objective',
         salience: actorSalience(p.playerId, ctx),
@@ -287,23 +287,23 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 
     case 'item_purchased':
       return {
-        tick,
-        text: `${label(p.playerId)} acquired ${ctx.itemName(str(p.itemId))} (-${num(p.cost)}g)`,
-        type: 'gold',
+        cycle,
+        text: `${label(p.playerId)} acquired ${ctx.itemName(str(p.itemId))} (-${num(p.cost)}sc)`,
+        type: 'scrip',
         salience: actorSalience(p.playerId, ctx),
       }
 
     case 'item_sold':
       return {
-        tick,
-        text: `${label(p.playerId)} sold ${ctx.itemName(str(p.itemId))} (+${num(p.refund)}g)`,
-        type: 'gold',
+        cycle,
+        text: `${label(p.playerId)} sold ${ctx.itemName(str(p.itemId))} (+${num(p.refund)}sc)`,
+        type: 'scrip',
         salience: actorSalience(p.playerId, ctx),
       }
 
     case 'ward_placed':
       return {
-        tick,
+        cycle,
         text: `${label(p.playerId)} planted a ${str(p.wardType)} ward in ${zname(p.zone)}`,
         type: 'system',
         salience: actorSalience(p.playerId, ctx),
@@ -311,7 +311,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 
     case 'cache_picked':
       return {
-        tick,
+        cycle,
         // buffLabel: 'dd' → 'Double Damage', 'invis' → 'Invisible', etc.
         text: `${label(p.playerId)} grabbed the ${buffLabel(str(p.cacheType))} cache`,
         type: 'objective',
@@ -319,22 +319,22 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       }
 
     case 'tenant_killed':
-      // Two events share this tag: the public one carries killerTeam+gold.
+      // Two events share this tag: the public one carries killerTeam+scrip.
       return p.killerTeam
         ? {
-            tick,
-            text: `${teamLabel(str(p.killerTeam))} slew Tenant (+${num(p.goldAwarded)}g)`,
+            cycle,
+            text: `${teamLabel(str(p.killerTeam))} slew Tenant (+${num(p.scripAwarded)}sc)`,
             type: 'objective',
           }
-        : { tick, text: `Tenant has fallen`, type: 'objective' }
+        : { cycle, text: `Tenant has fallen`, type: 'objective' }
 
     case 'tenant_respawn':
-      return { tick, text: `Tenant has respawned`, type: 'objective' }
+      return { cycle, text: `Tenant has respawned`, type: 'objective' }
 
     case 'tenant_damage':
-      // Chip on Tenant repeats every tick — collapse like structure damage.
+      // Chip on Tenant repeats every cycle — collapse like structure damage.
       return {
-        tick,
+        cycle,
         text: `Tenant takes ${num(p.damage)} (${num(p.integ)}/${num(p.maxInteg)})`,
         type: 'damage',
         salience: 'world',
@@ -344,16 +344,16 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 
     case 'neutral_killed':
       return {
-        tick,
+        cycle,
         text: `${label(p.playerId)} cleared a ${str(p.neutralType).replace(/_/g, ' ')} camp in ${zname(p.zone)}`,
-        type: 'gold',
+        type: 'scrip',
         salience: actorSalience(p.playerId, ctx),
         farmKind: 'camp',
       }
 
     case 'backup_picked':
       return {
-        tick,
+        cycle,
         text: `${label(p.playerId)} claimed the Backup`,
         type: 'objective',
         salience: actorSalience(p.playerId, ctx),
@@ -361,7 +361,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 
     case 'backup_used':
       return {
-        tick,
+        cycle,
         text: `${label(p.playerId)} reincarnated via the Backup`,
         type: 'objective',
         salience: actorSalience(p.playerId, ctx),
@@ -369,7 +369,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 
     case 'talent_selected':
       return {
-        tick,
+        cycle,
         text: `${label(p.playerId)} learned ${str(p.talentName)}`,
         type: 'objective',
         salience: actorSalience(p.playerId, ctx),
@@ -377,7 +377,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 
     case 'teleport_complete':
       return {
-        tick,
+        cycle,
         text:
           p.source === 'next_hop'
             ? `${label(p.playerId)}'s return shadow snapped them back to ${zname(p.destination)}`
@@ -388,10 +388,10 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 
     case 'trap_triggered':
       // Deliberately carries NO dmgAmount: the engine emits a `damage` event for
-      // the same hit, and the per-tick recap sums dmgAmount across lines — so
+      // the same hit, and the per-cycle recap sums dmgAmount across lines — so
       // supplying it here made every trap count twice in "You took N".
       return {
-        tick,
+        cycle,
         text: `${label(p.owner)}'s trap caught ${label(p.targetId)} in ${zname(p.zone)} (-${num(p.damage)})`,
         type: 'damage',
         salience: salience(p.owner, p.targetId, ctx),
@@ -403,7 +403,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
           ? `${label(p.targetId)}'s Mirror Shell reflected ${label(p.casterId)}'s spell${p.reflected ? ` (-${num(p.reflected)})` : ''}`
           : `${label(p.targetId)}'s ${p.source === 'intercept_shell' ? 'Intercept Shell' : 'Ablative Shell'} blocked ${label(p.casterId)}'s spell`
       return {
-        tick,
+        cycle,
         text,
         // A spell that did NOT land is a spell beat — cyan, alongside the cast
         // it negated, rather than lost among the grey notices.
@@ -414,38 +414,38 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 
     case 'teleport_cancelled':
       return {
-        tick,
+        cycle,
         text: `${label(p.playerId)}'s teleport was cancelled (${str(p.reason)})`,
         type: 'ability',
         salience: actorSalience(p.playerId, ctx),
       }
 
     case 'night_falls':
-      return { tick, text: `— NIGHT FALLS · vision reduced —`, type: 'objective' }
+      return { cycle, text: `— NIGHT FALLS · vision reduced —`, type: 'objective' }
 
     case 'day_breaks':
-      return { tick, text: `— DAY BREAKS · full vision —`, type: 'objective' }
+      return { cycle, text: `— DAY BREAKS · full vision —`, type: 'objective' }
 
     case 'harden_used':
       return {
-        tick,
+        cycle,
         text: `${teamLabel(str(p.team))} activated the Harden`,
         type: 'system',
         salience: ctx.myTeam === str(p.team) ? 'ally' : 'world',
       }
 
     case 'breach_opened': {
-      const duration = num(p.durationTicks)
+      const duration = num(p.durationCycles)
       if (duration <= 0) {
         return {
-          tick,
+          cycle,
           text: `${label(p.playerId)} flushed their own BREACH`,
           type: 'system',
           salience: actorSalience(p.playerId, ctx),
         }
       }
       return {
-        tick,
+        cycle,
         text: `${label(p.playerId)} BREACHED ${label(p.targetId)} (${duration}c)`,
         type: 'system',
         salience: actorSalience(p.playerId, ctx),
@@ -454,7 +454,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 
     case 'surrender_vote':
       return {
-        tick,
+        cycle,
         text: `${teamLabel(str(p.team))} surrender vote: ${num(p.votesFor)}/${num(p.votesNeeded)}`,
         type: 'system',
         salience: ctx.myTeam === str(p.team) ? 'ally' : 'world',
@@ -462,14 +462,14 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 
     case 'surrendered':
       return {
-        tick,
+        cycle,
         text: `${teamLabel(str(p.team))} surrendered — ${teamLabel(str(p.winner))} wins!`,
         type: 'victory',
       }
 
     case 'afk_takeover':
       return {
-        tick,
+        cycle,
         text: `${label(p.playerId)} ${str(p.message) || 'went AFK — a bot has taken over'}`,
         type: 'system',
         salience: actorSalience(p.playerId, ctx),
@@ -477,7 +477,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 
     case 'ice_invulnerable':
       return {
-        tick,
+        cycle,
         text: `The ice in ${zname(p.zone)} is Hardened — attacks do nothing until it expires`,
         type: 'system',
         salience: 'world',
@@ -486,7 +486,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
     case 'harden_on_cooldown': {
       const left = num(p.remainingTicks)
       return {
-        tick,
+        cycle,
         text: `Harden is not ready — ${left}c remaining`,
         type: 'system',
         salience: actorSalience(p.playerId, ctx),
@@ -529,7 +529,7 @@ export function buildCombatLines(
 export type KillCategory = 'hero' | 'ice' | 'tenant' | 'core'
 
 export interface KillFeedEntry {
-  tick: number
+  cycle: number
   category: KillCategory
   killerId?: string
   victimId?: string
@@ -574,7 +574,7 @@ export function deriveKillFeed(events: GameEvent[], ctx: NarrativeContext): Kill
   let firstBloodDone = false
   const out: KillFeedEntry[] = []
 
-  const ordered = [...events].sort((a, b) => a.tick - b.tick)
+  const ordered = [...events].sort((a, b) => a.cycle - b.cycle)
 
   for (const e of ordered) {
     const p = e.payload
@@ -596,16 +596,16 @@ export function deriveKillFeed(events: GameEvent[], ctx: NarrativeContext): Kill
 
       const lt = lastKillTick.get(killerId)
       const multi =
-        lt != null && e.tick - lt <= MULTI_KILL_WINDOW ? (multiCount.get(killerId) ?? 1) + 1 : 1
+        lt != null && e.cycle - lt <= MULTI_KILL_WINDOW ? (multiCount.get(killerId) ?? 1) + 1 : 1
       multiCount.set(killerId, multi)
-      lastKillTick.set(killerId, e.tick)
+      lastKillTick.set(killerId, e.cycle)
 
       const firstBlood = !firstBloodDone
       firstBloodDone = true
       const shutdown = victimStreakBefore >= SHUTDOWN_STREAK
 
       out.push({
-        tick: e.tick,
+        cycle: e.cycle,
         category: 'hero',
         killerId,
         victimId,
@@ -621,9 +621,9 @@ export function deriveKillFeed(events: GameEvent[], ctx: NarrativeContext): Kill
       continue
     }
 
-    if (e.type === 'ancient_destroyed') {
+    if (e.type === 'terminal_destroyed') {
       out.push({
-        tick: e.tick,
+        cycle: e.cycle,
         category: 'core',
         assisters: [],
         text: `${teamLabel(str(p.killerTeam))} CORE DUMPED the ${teamLabel(str(p.team))} Terminal`,
@@ -633,7 +633,7 @@ export function deriveKillFeed(events: GameEvent[], ctx: NarrativeContext): Kill
 
     if (e.type === 'tenant_killed' && p.killerTeam) {
       out.push({
-        tick: e.tick,
+        cycle: e.cycle,
         category: 'tenant',
         assisters: [],
         text: `${teamLabel(str(p.killerTeam))} slew TENANT`,
@@ -643,7 +643,7 @@ export function deriveKillFeed(events: GameEvent[], ctx: NarrativeContext): Kill
 
     if (e.type === 'ice_kill') {
       out.push({
-        tick: e.tick,
+        cycle: e.cycle,
         category: 'ice',
         assisters: [],
         text: `${teamLabel(str(p.killerTeam))} razed a ${teamLabel(str(p.team))} ice`,

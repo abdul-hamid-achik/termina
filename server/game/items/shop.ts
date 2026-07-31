@@ -4,8 +4,8 @@ import type { TargetRef } from '~~/shared/types/commands'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import {
   MAX_ITEMS,
-  CAMTAP_DURATION_TICKS,
-  SNIFFER_DURATION_TICKS,
+  CAMTAP_DURATION_CYCLES,
+  SNIFFER_DURATION_CYCLES,
   SELL_REFUND_RATIO,
   WARD_LIMIT_PER_TEAM,
 } from '~~/shared/constants/balance'
@@ -47,7 +47,7 @@ export class ItemNotFoundError extends Data.TaggedError('ItemNotFoundError')<{
 
 export class ItemOnCooldownError extends Data.TaggedError('ItemOnCooldownError')<{
   readonly itemId: string
-  readonly ticksRemaining: number
+  readonly cyclesRemaining: number
 }> {}
 
 export class InvalidTargetError extends Data.TaggedError('InvalidTargetError')<{
@@ -98,10 +98,10 @@ export function buyItem(
       return yield* Effect.fail(new ItemNotFoundError({ itemId }))
     }
 
-    // Check gold
-    if (player.gold < item.cost) {
+    // Check scrip
+    if (player.scrip < item.cost) {
       return yield* Effect.fail(
-        new InsufficientGoldError({ required: item.cost, current: player.gold }),
+        new InsufficientGoldError({ required: item.cost, current: player.scrip }),
       )
     }
 
@@ -119,7 +119,7 @@ export function buyItem(
       return yield* Effect.fail(new InventoryFullError({ maxItems: MAX_ITEMS }))
     }
 
-    // Deduct gold and add item to first empty slot
+    // Deduct scrip and add item to first empty slot
     const items = [...player.items]
     const emptySlot = items.indexOf(null)
     if (emptySlot === -1) {
@@ -129,7 +129,7 @@ export function buyItem(
 
     const updatedPlayer: PlayerState = {
       ...player,
-      gold: player.gold - item.cost,
+      scrip: player.scrip - item.cost,
       items,
     }
 
@@ -177,7 +177,7 @@ export function sellItem(
 
     const updatedPlayer: PlayerState = {
       ...player,
-      gold: player.gold + refund,
+      scrip: player.scrip + refund,
       items,
       // Drop any effect the item was granting (e.g. Gait Rig' near-permanent
       // mode buff, an item cooldown). Otherwise you could toggle Treads to +15
@@ -216,9 +216,9 @@ export function useItem(
 
     // Check cooldown (stored as buff)
     const cdBuff = player.buffs.find((b) => b.id === `item_cd_${itemId}`)
-    if (cdBuff && cdBuff.ticksRemaining > 0) {
+    if (cdBuff && cdBuff.cyclesRemaining > 0) {
       return yield* Effect.fail(
-        new ItemOnCooldownError({ itemId, ticksRemaining: cdBuff.ticksRemaining }),
+        new ItemOnCooldownError({ itemId, cyclesRemaining: cdBuff.cyclesRemaining }),
       )
     }
 
@@ -325,8 +325,8 @@ export function useItem(
 function useHealingSalve(state: GameState, player: PlayerState, slot: number): GameState {
   let updated = applyBuff(player, {
     id: 'trauma_patch_regen',
-    stacks: 50, // 200 INTEG / 4 ticks = 50 per tick
-    ticksRemaining: 4,
+    stacks: 50, // 200 INTEG / 4 ticks = 50 per cycle
+    cyclesRemaining: 4,
     source: 'trauma_patch',
   })
   updated = consumeItem(updated, slot)
@@ -377,7 +377,7 @@ function usePlaceWard(
       return yield* Effect.fail(new ItemNotFoundError({ itemId }))
     }
 
-    const duration = wardType === 'camtap' ? CAMTAP_DURATION_TICKS : SNIFFER_DURATION_TICKS
+    const duration = wardType === 'camtap' ? CAMTAP_DURATION_CYCLES : SNIFFER_DURATION_CYCLES
     const updated = consumeItem(player, slot)
     const updatedZones = {
       ...state.zones,
@@ -387,8 +387,8 @@ function usePlaceWard(
           ...zoneState.wards,
           {
             team: player.team,
-            placedTick: state.tick,
-            expiryTick: state.tick + duration,
+            placedTick: state.cycle,
+            expiryTick: state.cycle + duration,
             type: wardType,
           },
         ],
@@ -408,7 +408,7 @@ function useSmokeOfDeceit(state: GameState, player: PlayerState, slot: number): 
     applyBuff(p, {
       id: 'smoke',
       stacks: 1,
-      ticksRemaining: 3,
+      cyclesRemaining: 3,
       source: player.id,
     }),
   )
@@ -421,7 +421,7 @@ function useDustOfAppearance(state: GameState, player: PlayerState, slot: number
   updated = applyBuff(updated, {
     id: 'item_cd_tracer_dust',
     stacks: 1,
-    ticksRemaining: 0, // No cooldown
+    cyclesRemaining: 0, // No cooldown
     source: 'tracer_dust',
   })
 
@@ -429,7 +429,7 @@ function useDustOfAppearance(state: GameState, player: PlayerState, slot: number
   updated = applyBuff(updated, {
     id: 'dust_reveal',
     stacks: 1,
-    ticksRemaining: 2,
+    cyclesRemaining: 2,
     source: player.id,
   })
 
@@ -448,14 +448,14 @@ function useTownPortalScroll(
   updated = applyBuff(updated, {
     id: 'tp_channeling',
     stacks: 1,
-    ticksRemaining: 3,
+    cyclesRemaining: 3,
     source: 'recall_token',
   })
 
   updated = applyBuff(updated, {
     id: 'tp_destination',
     stacks: 1,
-    ticksRemaining: 4,
+    cyclesRemaining: 4,
     source: 'recall_token',
     destination: fountainZone,
   })
@@ -481,7 +481,7 @@ function useBlinkModule(
     updated = applyBuff(updated, {
       id: 'item_cd_blink_module',
       stacks: 1,
-      ticksRemaining: 12,
+      cyclesRemaining: 12,
       source: 'jump_shunt',
     })
 
@@ -525,7 +525,7 @@ function useForceStaff(
       const caster = applyBuff(player, {
         id: 'item_cd_force_staff',
         stacks: 1,
-        ticksRemaining: 12,
+        cyclesRemaining: 12,
         source: 'shove_splice',
       })
       return updatePlayers(state, [caster, updated])
@@ -534,7 +534,7 @@ function useForceStaff(
     updated = applyBuff(updated, {
       id: 'item_cd_force_staff',
       stacks: 1,
-      ticksRemaining: 12,
+      cyclesRemaining: 12,
       source: 'shove_splice',
     })
 
@@ -586,13 +586,13 @@ function useHurricanePike(
     updated = applyBuff(updated, {
       id: 'kickback_splice_attacks',
       stacks: 30,
-      ticksRemaining: 2,
+      cyclesRemaining: 2,
       source: 'kickback_splice',
     })
     updated = applyBuff(updated, {
       id: 'item_cd_hurricane_pike',
       stacks: 1,
-      ticksRemaining: 14,
+      cyclesRemaining: 14,
       source: 'kickback_splice',
     })
 
@@ -606,7 +606,7 @@ function useSilverEdge(state: GameState, player: PlayerState): GameState {
   let updated = applyBuff(player, {
     id: 'ghostwire_edge_invis',
     stacks: 1,
-    ticksRemaining: 3,
+    cyclesRemaining: 3,
     source: 'ghostwire_edge',
   })
   updated = applyBuff(updated, {
@@ -615,13 +615,13 @@ function useSilverEdge(state: GameState, player: PlayerState): GameState {
     // stealth even if the holder never attacks; the attack-gate already requires
     // active invis, so this is belt-and-suspenders.
     stacks: 150,
-    ticksRemaining: 3,
+    cyclesRemaining: 3,
     source: 'ghostwire_edge',
   })
   updated = applyBuff(updated, {
     id: 'item_cd_silver_edge',
     stacks: 1,
-    ticksRemaining: 18,
+    cyclesRemaining: 18,
     source: 'ghostwire_edge',
   })
   return updatePlayer(state, updated)
@@ -658,7 +658,7 @@ function useBurnout(
     const updatedCaster = applyBuff(player, {
       id: 'item_cd_burnout',
       stacks: 1,
-      ticksRemaining: 18,
+      cyclesRemaining: 18,
       source: 'burnout',
     })
 
@@ -695,20 +695,20 @@ function useEtherealBlade(
     let updatedTarget = applyBuff(targetPlayer, {
       id: 'ethereal',
       stacks: 1,
-      ticksRemaining: 2,
+      cyclesRemaining: 2,
       source: 'phase_shim',
     })
     updatedTarget = applyBuff(updatedTarget, {
       id: 'magic_vuln_40',
       stacks: 40,
-      ticksRemaining: 2,
+      cyclesRemaining: 2,
       source: 'phase_shim',
     })
 
     const updatedCaster = applyBuff(player, {
       id: 'item_cd_ethereal_blade',
       stacks: 1,
-      ticksRemaining: 15,
+      cyclesRemaining: 15,
       source: 'phase_shim',
     })
 
@@ -722,13 +722,13 @@ function useFirewallItem(state: GameState, player: PlayerState): GameState {
   let updated = applyBuff(player, {
     id: 'firewall_block',
     stacks: 1,
-    ticksRemaining: 30,
+    cyclesRemaining: 30,
     source: 'ablative_shell',
   })
   updated = applyBuff(updated, {
     id: 'item_cd_firewall_item',
     stacks: 1,
-    ticksRemaining: 30,
+    cyclesRemaining: 30,
     source: 'ablative_shell',
   })
   return updatePlayer(state, updated)
@@ -738,13 +738,13 @@ function useBlackKingBar(state: GameState, player: PlayerState): GameState {
   let updated = applyBuff(player, {
     id: 'airgap',
     stacks: 1,
-    ticksRemaining: 4,
+    cyclesRemaining: 4,
     source: 'hardshell',
   })
   updated = applyBuff(updated, {
     id: 'item_cd_hardshell',
     stacks: 1,
-    ticksRemaining: 25,
+    cyclesRemaining: 25,
     source: 'hardshell',
   })
   return updatePlayer(state, updated)
@@ -754,13 +754,13 @@ function useBladeMail(state: GameState, player: PlayerState): GameState {
   let updated = applyBuff(player, {
     id: 'spite_plate',
     stacks: 100, // 100% return
-    ticksRemaining: 3,
+    cyclesRemaining: 3,
     source: 'spite_plate',
   })
   updated = applyBuff(updated, {
     id: 'item_cd_spite_plate',
     stacks: 1,
-    ticksRemaining: 18,
+    cyclesRemaining: 18,
     source: 'spite_plate',
   })
   return updatePlayer(state, updated)
@@ -770,13 +770,13 @@ function useGhostScepter(state: GameState, player: PlayerState): GameState {
   let updated = applyBuff(player, {
     id: 'ghost_form',
     stacks: 1,
-    ticksRemaining: 2,
+    cyclesRemaining: 2,
     source: 'phase_shunt',
   })
   updated = applyBuff(updated, {
     id: 'item_cd_ghost_scepter',
     stacks: 1,
-    ticksRemaining: 20,
+    cyclesRemaining: 20,
     source: 'phase_shunt',
   })
   return updatePlayer(state, updated)
@@ -799,7 +799,7 @@ function useLotusOrb(
   let updated = applyBuff(targetPlayer, {
     id: 'mirror_shell',
     stacks: 1,
-    ticksRemaining: 5,
+    cyclesRemaining: 5,
     source: 'mirror_shell',
   })
 
@@ -808,7 +808,7 @@ function useLotusOrb(
     const caster = applyBuff(player, {
       id: 'item_cd_lotus_orb',
       stacks: 1,
-      ticksRemaining: 15,
+      cyclesRemaining: 15,
       source: 'mirror_shell',
     })
     return Effect.succeed(updatePlayers(state, [caster, updated]))
@@ -817,7 +817,7 @@ function useLotusOrb(
   updated = applyBuff(updated, {
     id: 'item_cd_lotus_orb',
     stacks: 1,
-    ticksRemaining: 15,
+    cyclesRemaining: 15,
     source: 'mirror_shell',
   })
 
@@ -830,13 +830,13 @@ function useStackOverflow(state: GameState, player: PlayerState): GameState {
   let updated = applyBuff(player, {
     id: 'stack_overflow_buff',
     stacks: 1,
-    ticksRemaining: 10,
+    cyclesRemaining: 10,
     source: 'stack_overflow',
   })
   updated = applyBuff(updated, {
     id: 'item_cd_stack_overflow',
     stacks: 1,
-    ticksRemaining: 20,
+    cyclesRemaining: 20,
     source: 'stack_overflow',
   })
   return updatePlayer(state, updated)
@@ -851,7 +851,7 @@ function useRefresherOrb(state: GameState, player: PlayerState): GameState {
   updated = applyBuff(updated, {
     id: 'item_cd_refresher_orb',
     stacks: 1,
-    ticksRemaining: 40,
+    cyclesRemaining: 40,
     source: 'redline_splice',
   })
   return updatePlayer(state, updated)
@@ -880,13 +880,13 @@ function useEulsScepter(
     let updated = applyBuff(targetPlayer, {
       id: 'cyclone',
       stacks: 1,
-      ticksRemaining: 2,
+      cyclesRemaining: 2,
       source: 'stasis_shunt',
     })
     updated = applyBuff(updated, {
       id: 'invulnerable',
       stacks: 1,
-      ticksRemaining: 2,
+      cyclesRemaining: 2,
       source: 'stasis_shunt',
     })
 
@@ -895,7 +895,7 @@ function useEulsScepter(
       const caster = applyBuff(player, {
         id: 'item_cd_euls_scepter',
         stacks: 1,
-        ticksRemaining: 15,
+        cyclesRemaining: 15,
         source: 'stasis_shunt',
       })
       return updatePlayers(state, [caster, updated])
@@ -904,7 +904,7 @@ function useEulsScepter(
     updated = applyBuff(updated, {
       id: 'item_cd_euls_scepter',
       stacks: 1,
-      ticksRemaining: 15,
+      cyclesRemaining: 15,
       source: 'stasis_shunt',
     })
 
@@ -935,20 +935,20 @@ function useScytheOfVyse(
     let updatedTarget = applyBuff(targetPlayer, {
       id: 'hex',
       stacks: 1,
-      ticksRemaining: 2,
+      cyclesRemaining: 2,
       source: 'lockout_shunt',
     })
     updatedTarget = applyBuff(updatedTarget, {
       id: 'silence',
       stacks: 1,
-      ticksRemaining: 2,
+      cyclesRemaining: 2,
       source: 'lockout_shunt',
     })
 
     const updatedCaster = applyBuff(player, {
       id: 'item_cd_scythe_of_vyse',
       stacks: 1,
-      ticksRemaining: 20,
+      cyclesRemaining: 20,
       source: 'lockout_shunt',
     })
 
@@ -965,7 +965,7 @@ function useVeilOfDiscord(state: GameState, player: PlayerState): GameState {
     applyBuff(e, {
       id: 'veil_discord',
       stacks: 25, // +25% code damage taken
-      ticksRemaining: 4,
+      cyclesRemaining: 4,
       source: 'discord_routine',
     }),
   )
@@ -973,7 +973,7 @@ function useVeilOfDiscord(state: GameState, player: PlayerState): GameState {
   const caster = applyBuff(player, {
     id: 'item_cd_veil_of_discord',
     stacks: 1,
-    ticksRemaining: 15,
+    cyclesRemaining: 15,
     source: 'discord_routine',
   })
   return updatePlayers(state, [caster, ...enemies])
@@ -990,11 +990,11 @@ function useShivasGuard(state: GameState, player: PlayerState): GameState {
     const base = isDamageImmune(enemy, 'code') ? 0 : calculateCodeDamage(BLAST_DAMAGE, enemy.ice)
     const dmg = Math.round(base * getIncomingDamageMultiplier(enemy, 'code'))
     // 'slow' (not the dead 'shivas_slow') is the id ActionResolver consumes:
-    // total stacks = % chance a move fails this tick.
+    // total stacks = % chance a move fails this cycle.
     const slowed = applyBuff(enemy, {
       id: 'slow',
       stacks: 40,
-      ticksRemaining: 2,
+      cyclesRemaining: 2,
       source: 'cryo_routine',
     })
     players[enemy.id] = { ...slowed, integ: Math.max(0, slowed.integ - dmg) }
@@ -1002,7 +1002,7 @@ function useShivasGuard(state: GameState, player: PlayerState): GameState {
   players[player.id] = applyBuff(player, {
     id: 'item_cd_shivas_guard',
     stacks: 1,
-    ticksRemaining: 20,
+    cyclesRemaining: 20,
     source: 'cryo_routine',
   })
   return { ...state, players }
@@ -1027,7 +1027,7 @@ function usePowerTreads(state: GameState, player: PlayerState): GameState {
       updated = applyBuff(base, {
         id: 'gait_rig_hp',
         stacks: 150,
-        ticksRemaining: 999,
+        cyclesRemaining: 999,
         source: 'gait_rig',
       })
       break
@@ -1036,7 +1036,7 @@ function usePowerTreads(state: GameState, player: PlayerState): GameState {
       updated = applyBuff(base, {
         id: 'gait_rig_mp',
         stacks: 100,
-        ticksRemaining: 999,
+        cyclesRemaining: 999,
         source: 'gait_rig',
       })
       break
@@ -1045,7 +1045,7 @@ function usePowerTreads(state: GameState, player: PlayerState): GameState {
       updated = applyBuff(base, {
         id: 'gait_rig_attack',
         stacks: 15,
-        ticksRemaining: 999,
+        cyclesRemaining: 999,
         source: 'gait_rig',
       })
   }

@@ -12,8 +12,8 @@ import {
 } from '~~/server/game/modes/tutorial'
 import { isBot } from '~~/server/game/ai/BotManager'
 import { ITEMS } from '~~/shared/constants/items'
-import { STARTING_GOLD } from '~~/shared/constants/balance'
-import { TUTORIAL_STEP_DEADLINE_TICKS } from '~~/shared/constants/tutorial'
+import { STARTING_SCRIP } from '~~/shared/constants/balance'
+import { TUTORIAL_STEP_DEADLINE_CYCLES } from '~~/shared/constants/tutorial'
 import { ONE_LANE_ZONES } from '~~/shared/constants/maps'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import { findPath } from '~~/shared/pathfinding'
@@ -32,13 +32,13 @@ function resolveOneLaneZone(word: string): string | null {
 
 /** Minimal tutorial-mode state for the pure advancement helper. The human's
  *  zone matters for the move step (it holds until they leave base/fountain).
- *  `tick`/`tutorialStepSince` drive the step deadline. */
-function tutorialState(step: number, humanZone = 'mid-river', tick = 0): GameState {
+ *  `cycle`/`tutorialStepSince` drive the step deadline. */
+function tutorialState(step: number, humanZone = 'mid-river', cycle = 0): GameState {
   return {
     mode: 'tutorial',
     tutorialStep: step,
     tutorialStepSince: 0,
-    tick,
+    cycle,
     players: { p1: { id: 'p1', zone: humanZone } },
   } as unknown as GameState
 }
@@ -192,7 +192,7 @@ describe('tutorial flow', () => {
       const itemId = /buy ([a-z_]+)/.exec(tutorialHint(3) ?? '')?.[1]
       expect(itemId && ITEMS[itemId]).toBeTruthy()
       const item = ITEMS[itemId!]!
-      expect(item.cost).toBeLessThanOrEqual(STARTING_GOLD)
+      expect(item.cost).toBeLessThanOrEqual(STARTING_SCRIP)
       const functionalStats = Object.keys(item.stats)
       expect(functionalStats.length > 0 || !!item.active).toBe(true)
     })
@@ -280,14 +280,14 @@ describe('tutorial flow', () => {
       // nothing legal left to do. The flow could not reach the final step, so
       // tutorial completion never fired for anyone.
       it('auto-advances a step the player cannot satisfy, and explains why', () => {
-        const stuck = tutorialState(2, 'mid-t3-chaff', TUTORIAL_STEP_DEADLINE_TICKS)
+        const stuck = tutorialState(2, 'mid-t3-chaff', TUTORIAL_STEP_DEADLINE_CYCLES)
         const next = advanceTutorialAfterTick(stuck, [], [])
         expect(next.state.tutorialStep).toBe(3)
         expect(next.notice).toContain('Moving on')
       })
 
       it('does not auto-advance before the deadline', () => {
-        const waiting = tutorialState(2, 'mid-t3-chaff', TUTORIAL_STEP_DEADLINE_TICKS - 1)
+        const waiting = tutorialState(2, 'mid-t3-chaff', TUTORIAL_STEP_DEADLINE_CYCLES - 1)
         expect(advanceTutorialAfterTick(waiting, [], []).state.tutorialStep).toBe(2)
       })
 
@@ -295,8 +295,12 @@ describe('tutorial flow', () => {
         // The whole flow, driven only by the clock — this is the invariant that
         // makes tutorial completion (and the returning-player funnel) reachable.
         let state = tutorialState(0, 'chaff-fountain', 0)
-        for (let tick = 1; tick <= TUTORIAL_STEP_DEADLINE_TICKS * TUTORIAL_STEP_COUNT + 1; tick++) {
-          state = { ...state, tick }
+        for (
+          let cycle = 1;
+          cycle <= TUTORIAL_STEP_DEADLINE_CYCLES * TUTORIAL_STEP_COUNT + 1;
+          cycle++
+        ) {
+          state = { ...state, cycle }
           state = advanceTutorialAfterTick(state, [], []).state
         }
         expect(state.tutorialStep).toBeGreaterThanOrEqual(TUTORIAL_STEP_COUNT)

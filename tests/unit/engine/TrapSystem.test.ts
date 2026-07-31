@@ -17,12 +17,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 300,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 5,
     ice: 18,
     kills: 0,
@@ -47,11 +47,11 @@ function makeState(players: PlayerState[], traps: TrapState[], overrides: Partia
   const playerMap: Record<string, PlayerState> = {}
   for (const p of players) playerMap[p.id] = p
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -117,8 +117,8 @@ describe('TrapSystem.processTraps', () => {
 
   it('disarms an expired trap without triggering, even with an enemy present', () => {
     const enemy = makePlayer({ id: 'e1', team: 'audit', heroId: 'echo', zone: 'mid-river' })
-    const expired: TrapState = { ...TRAP, expiryTick: 10 } // tick === expiryTick → expired
-    const state = makeState([enemy], [expired], { tick: 10 })
+    const expired: TrapState = { ...TRAP, expiryTick: 10 } // cycle === expiryTick → expired
+    const state = makeState([enemy], [expired], { cycle: 10 })
 
     const { state: next, events } = processTraps(state)
 

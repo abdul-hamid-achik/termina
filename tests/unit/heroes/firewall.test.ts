@@ -22,12 +22,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 270,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 7,
     ice: 22,
     kills: 0,
@@ -41,7 +41,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -69,11 +69,11 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     playerMap[p.id] = p
   }
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -103,7 +103,7 @@ describe('Firewall Hero', () => {
       expect(hasBuff(updatedEnemy, 'stun')).toBe(true)
       const stun = updatedEnemy.buffs.find((b) => b.id === 'stun')
       // raw 2 = one gated action: a cast-applied disable is reaped same-tick.
-      expect(stun!.ticksRemaining).toBe(2)
+      expect(stun!.cyclesRemaining).toBe(2)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -181,7 +181,7 @@ describe('Firewall Hero', () => {
       expect(hasBuff(updated, 'shield')).toBe(true)
       const shield = updated.buffs.find((b) => b.id === 'shield')
       expect(shield!.stacks).toBe(200) // Level 1 shield
-      expect(shield!.ticksRemaining).toBe(3)
+      expect(shield!.cyclesRemaining).toBe(3)
     })
 
     it('scales shield with level', () => {
@@ -234,7 +234,7 @@ describe('Firewall Hero', () => {
       expect(hasBuff(result.state.players['e1']!, 'taunt')).toBe(true)
       expect(hasBuff(result.state.players['e2']!, 'taunt')).toBe(true)
       const taunt = result.state.players['e1']!.buffs.find((b) => b.id === 'taunt')
-      expect(taunt!.ticksRemaining).toBe(2)
+      expect(taunt!.cyclesRemaining).toBe(2)
     })
 
     it('does not affect allies', () => {
@@ -299,7 +299,7 @@ describe('Firewall Hero', () => {
       expect(hasBuff(result.state.players['e1']!, 'root')).toBe(true)
       expect(hasBuff(result.state.players['e2']!, 'root')).toBe(true)
       const root = result.state.players['e1']!.buffs.find((b) => b.id === 'root')
-      expect(root!.ticksRemaining).toBe(2)
+      expect(root!.cyclesRemaining).toBe(2)
     })
 
     it('applies DoT debuff for 3 ticks', () => {
@@ -312,8 +312,8 @@ describe('Firewall Hero', () => {
       const updatedEnemy = result.state.players['e1']!
       expect(hasBuff(updatedEnemy, 'dpi_dot')).toBe(true)
       const dot = updatedEnemy.buffs.find((b) => b.id === 'dpi_dot')
-      expect(dot!.ticksRemaining).toBe(3)
-      expect(dot!.stacks).toBe(40) // 120 total / 3 ticks = 40 per tick at R1
+      expect(dot!.cyclesRemaining).toBe(3)
+      expect(dot!.stacks).toBe(40) // 120 total / 3 ticks = 40 per cycle at R1
     })
 
     it('does not affect allies', () => {
@@ -347,7 +347,7 @@ describe('Firewall Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
       const dot = result.state.players['e1']!.buffs.find((b) => b.id === 'dpi_dot')
-      expect(dot!.stacks).toBe(93) // 280 total / 3 = 93 per tick at R3
+      expect(dot!.stacks).toBe(93) // 280 total / 3 = 93 per cycle at R3
     })
   })
 
@@ -357,7 +357,7 @@ describe('Firewall Hero', () => {
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'tick_end',
         payload: {},
       })
@@ -372,13 +372,13 @@ describe('Firewall Hero', () => {
       player = applyBuff(player, {
         id: 'packetInspection',
         stacks: 8,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'p1',
       })
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'tick_end',
         payload: {},
       })
@@ -392,14 +392,14 @@ describe('Firewall Hero', () => {
       player = applyBuff(player, {
         id: 'packetInspection',
         stacks: 8,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'p1',
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'damage_taken',
         payload: { targetId: 'p1', attackerId: 'e1', damage: 100 },
       })
@@ -412,7 +412,7 @@ describe('Firewall Hero', () => {
   describe('Stun/Silence blocking', () => {
     it('prevents casting when stunned', () => {
       const player = makePlayer({
-        buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 1, source: 'enemy' }],
+        buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 1, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -425,7 +425,7 @@ describe('Firewall Hero', () => {
 
     it('prevents casting when silenced', () => {
       const player = makePlayer({
-        buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 2, source: 'enemy' }],
+        buffs: [{ id: 'silence', stacks: 1, cyclesRemaining: 2, source: 'enemy' }],
       })
       const state = makeState([player])
 

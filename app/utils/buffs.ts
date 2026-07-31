@@ -12,7 +12,7 @@
  * "x300" is misleading, so stack counts are hidden by default and only shown for
  * ids whose stacks are a true count (`showStacks: true`, e.g. Heap Growth).
  * Likewise `permanent: true` marks effects whose tick counter is bookkeeping
- * noise (re-applied every tick, or a refresh window), so no countdown is shown.
+ * noise (re-applied every cycle, or a refresh window), so no countdown is shown.
  *
  * Kept pure + framework-free so it is trivially unit-testable and reusable by
  * any HUD surface (Deck, NET, tooltips).
@@ -119,7 +119,7 @@ const BUFF_META: Record<string, BuffMeta> = {
   voidZone_dot: { label: 'Void Zone', kind: 'negative' },
 }
 
-// ticksRemaining at/above this is a near-permanent aura (e.g. Gait Rig' mode,
+// cyclesRemaining at/above this is a near-permanent aura (e.g. Gait Rig' mode,
 // Malloc's Heap Growth) — show it without a misleading "(999t)" countdown.
 const PERMANENT_TICKS = 999
 
@@ -205,13 +205,13 @@ export interface DisplayBuff {
   kind: BuffKind
   /** True stack count when the id opts in via `showStacks`; otherwise 1 (hidden). */
   stacks: number
-  /** ticksRemaining, or null for a near-permanent aura (no countdown shown). */
+  /** cyclesRemaining, or null for a near-permanent aura (no countdown shown). */
   ticks: number | null
 }
 
 /** Map raw engine buffs to display chips, dropping internal bookkeeping markers. */
 export function displayBuffs(
-  buffs: { id: string; stacks: number; ticksRemaining: number }[],
+  buffs: { id: string; stacks: number; cyclesRemaining: number }[],
 ): DisplayBuff[] {
   return buffs
     .filter((b) => !isInternalBuff(b.id))
@@ -222,7 +222,7 @@ export function displayBuffs(
         label: buffLabel(b.id),
         kind: buffKind(b.id),
         stacks: meta?.showStacks ? b.stacks : 1,
-        ticks: meta?.permanent || b.ticksRemaining >= PERMANENT_TICKS ? null : b.ticksRemaining,
+        ticks: meta?.permanent || b.cyclesRemaining >= PERMANENT_TICKS ? null : b.cyclesRemaining,
       }
     })
 }

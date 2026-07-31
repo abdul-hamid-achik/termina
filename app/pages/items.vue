@@ -197,7 +197,7 @@ const {
           No items match "{{ query }}".
         </p>
         <p class="text-[0.62rem] italic text-text-dim">
-          Note: Move Speed is currently cosmetic — movement is a fixed one zone per tick.
+          Note: Move Speed is currently cosmetic — movement is a fixed one zone per cycle.
         </p>
       </div>
 

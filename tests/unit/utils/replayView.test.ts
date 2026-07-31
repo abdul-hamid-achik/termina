@@ -7,11 +7,11 @@ import {
   type ReplayFrameLite,
 } from '~~/app/utils/replayView'
 
-// Build a frame stream from per-tick cumulative [chaffKills, auditKills,
+// Build a frame stream from per-cycle cumulative [chaffKills, auditKills,
 // chaffIce, auditIce] tuples — terse fixtures for the delta logic.
 function frames(rows: Array<[number, number, number, number, number]>): ReplayFrameLite[] {
-  return rows.map(([tick, rk, dk, rt, dt]) => ({
-    tick,
+  return rows.map(([cycle, rk, dk, rt, dt]) => ({
+    cycle,
     teams: { chaff: { kills: rk, iceKills: rt }, audit: { kills: dk, iceKills: dt } },
   }))
 }
@@ -74,7 +74,7 @@ describe('clampFrameIndex', () => {
 })
 
 describe('nextScrubTick', () => {
-  it('advances one tick', () => {
+  it('advances one cycle', () => {
     expect(nextScrubTick(0, 100)).toBe(1)
     expect(nextScrubTick(41, 100)).toBe(42)
   })
@@ -107,7 +107,7 @@ describe('keyMoments', () => {
         [5, 1, 0, 0, 0],
       ]),
     )
-    expect(m).toEqual([{ tick: 5, kind: 'fight', label: 'Kill' }])
+    expect(m).toEqual([{ cycle: 5, kind: 'fight', label: 'Kill' }])
   })
 
   it('coalesces a run of kills into one Fight tallying the kills', () => {
@@ -120,7 +120,7 @@ describe('keyMoments', () => {
         [7, 2, 1, 0, 0],
       ]),
     )
-    expect(m).toEqual([{ tick: 5, kind: 'fight', label: 'Fight ×3' }])
+    expect(m).toEqual([{ cycle: 5, kind: 'fight', label: 'Fight ×3' }])
   })
 
   it('splits kills separated by a long lull into distinct fights', () => {
@@ -132,8 +132,8 @@ describe('keyMoments', () => {
       ]),
     )
     expect(m).toEqual([
-      { tick: 5, kind: 'fight', label: 'Kill' },
-      { tick: 40, kind: 'fight', label: 'Kill' },
+      { cycle: 5, kind: 'fight', label: 'Kill' },
+      { cycle: 40, kind: 'fight', label: 'Kill' },
     ])
   })
 
@@ -146,8 +146,8 @@ describe('keyMoments', () => {
       ]),
     )
     expect(m).toEqual([
-      { tick: 5, kind: 'fight', label: 'Kill' },
-      { tick: 12, kind: 'ice', label: 'Ice' },
+      { cycle: 5, kind: 'fight', label: 'Kill' },
+      { cycle: 12, kind: 'ice', label: 'Ice' },
     ])
   })
 })

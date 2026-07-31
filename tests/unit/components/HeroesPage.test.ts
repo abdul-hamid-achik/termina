@@ -113,7 +113,7 @@ describe('heroes page — decision content', () => {
     expect(wrapper.text()).toContain(`bw ${at18} / ${at18}`)
   })
 
-  it('labels the per-tick refill as a sandbox aid, not innate regen', () => {
+  it('labels the per-cycle refill as a sandbox aid, not innate regen', () => {
     const note = mountHeroes().find('[data-testid="console-refill-note"]').text()
     expect(note).toContain('no innate regen')
     expect(note).toContain('fountain')

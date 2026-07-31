@@ -5,7 +5,7 @@ import { resolveAbility } from '~~/server/game/heroes/_base'
 import type { GameState, PlayerState, Buff } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeTenant } from '~~/server/game/map/spawner'
-import { initializeAncients } from '~~/server/game/engine/AncientSystem'
+import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
 // Register regex so its Q resolver runs for the talent mana-refund test.
 import '~~/server/game/heroes/regex'
 
@@ -22,12 +22,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 400,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -43,7 +43,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -51,31 +51,31 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
   return {
-    tick: 1,
+    cycle: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
     },
     players: {},
     zones: initializeZoneStates(),
     waves: [],
     neutrals: [],
     ice: initializeIce(),
-    ancients: initializeAncients(),
+    terminals: initializeAncients(),
     caches: [],
     tenant: initializeTenant(),
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
-    dayNightTick: 0,
+    dayNightCycle: 0,
     ...overrides,
   }
 }
 
 function debuff(id: string): Buff {
-  return { id, stacks: 1, ticksRemaining: 2, source: 'enemy' }
+  return { id, stacks: 1, cyclesRemaining: 2, source: 'enemy' }
 }
 
 // A second hero in the same zone, so attack/cast have a legal hero target.
@@ -267,7 +267,7 @@ describe('Arcane cache refunds BW on cast (buff was applied but consumed nowhere
 
   it('refunds 40% of the BW spent on a cast', () => {
     const result = cast({
-      buffs: [{ id: 'arcane', stacks: 1, ticksRemaining: 9999, source: 'cache_arcane' }],
+      buffs: [{ id: 'arcane', stacks: 1, cyclesRemaining: 9999, source: 'cache_arcane' }],
     })
     expect(result.state.players['p1']!.bw).toBe(400 - Q_MANA + ARCANE_REFUND)
   })

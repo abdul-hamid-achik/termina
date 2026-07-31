@@ -16,7 +16,7 @@ interface ShopItem {
 
 const props = defineProps<{
   items: ShopItem[]
-  gold: number
+  scrip: number
   ownedItems: (string | null)[]
   pinnedItems: string[]
   /** Item ids recommended for the local player's hero role, in priority order. */
@@ -142,11 +142,11 @@ function formatStats(def: ItemDef): string[] {
         :class="[
           atStackCap(item)
             ? 'border-chaff bg-chaff/5'
-            : item.cost <= gold
+            : item.cost <= scrip
               ? 'border-border-glow cursor-pointer hover:border-gold'
               : 'border-border opacity-60',
         ]"
-        @click="item.cost <= gold && !atStackCap(item) && emit('buy', item.id)"
+        @click="item.cost <= scrip && !atStackCap(item) && emit('buy', item.id)"
       >
         <div class="flex items-center justify-between">
           <span class="inline-flex items-center gap-1">
@@ -179,8 +179,8 @@ function formatStats(def: ItemDef): string[] {
         <div v-if="item.def.active" class="text-[0.65rem]">
           <span class="text-ability">Active:</span>
           <span class="text-text-dim"> {{ item.def.active.description }}</span>
-          <span v-if="item.def.active.cooldownTicks" class="text-text-dim">
-            ({{ item.def.active.cooldownTicks }}t CD)</span
+          <span v-if="item.def.active.cooldownCycles" class="text-text-dim">
+            ({{ item.def.active.cooldownCycles }}t CD)</span
           >
         </div>
 
@@ -206,7 +206,7 @@ function formatStats(def: ItemDef): string[] {
               {{ isPinned(item.id) ? '[PINNED]' : '[PIN]' }}
             </button>
             <button
-              v-if="item.cost <= gold && !atStackCap(item)"
+              v-if="item.cost <= scrip && !atStackCap(item)"
               class="touch-target text-[0.65rem] text-chaff hover:underline"
               :data-testid="`shop-buy-${item.id}`"
               :aria-label="`Buy ${item.name} for ${item.cost} scrip`"

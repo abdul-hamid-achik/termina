@@ -46,12 +46,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 280,
     level: 3,
     xp: 150,
-    gold: 300,
+    scrip: 300,
     items: ['scrap_lot', null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 5,
     ice: 15,
     kills: 0,
@@ -1338,7 +1338,7 @@ describe('useCommands', () => {
             id: 'trauma_patch_active',
             name: 'Heal',
             description: 'Restore INTEG',
-            cooldownTicks: 0,
+            cooldownCycles: 0,
           },
         },
         scrap_lot: {
@@ -1358,7 +1358,7 @@ describe('useCommands', () => {
             id: 'blink_active',
             name: 'Blink',
             description: 'Teleport to adjacent zone',
-            cooldownTicks: 12,
+            cooldownCycles: 12,
           },
         },
       }
@@ -1377,7 +1377,7 @@ describe('useCommands', () => {
       it('shows [affordable] when player has enough gold', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
-          player: makePlayer({ gold: 300 }),
+          player: makePlayer({ scrip: 300 }),
           items: sampleItems,
         })
         const suggestions = autocomplete('buy trauma', context)
@@ -1387,10 +1387,10 @@ describe('useCommands', () => {
         expect(salve!.description).toContain('[affordable]')
       })
 
-      it('shows gold needed when player cannot afford', () => {
+      it('shows scrip needed when player cannot afford', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
-          player: makePlayer({ gold: 100 }),
+          player: makePlayer({ scrip: 100 }),
           items: sampleItems,
         })
         const suggestions = autocomplete('buy jump', context)
@@ -1429,7 +1429,7 @@ describe('useCommands', () => {
             id: 'trauma_patch_active',
             name: 'Heal',
             description: 'Restore INTEG',
-            cooldownTicks: 0,
+            cooldownCycles: 0,
           },
         },
         jump_shunt: {
@@ -1438,7 +1438,12 @@ describe('useCommands', () => {
           cost: 2150,
           stats: { attack: 10 },
           consumable: false,
-          active: { id: 'blink_active', name: 'Blink', description: 'Teleport', cooldownTicks: 12 },
+          active: {
+            id: 'blink_active',
+            name: 'Blink',
+            description: 'Teleport',
+            cooldownCycles: 12,
+          },
         },
       }
 
@@ -1498,7 +1503,7 @@ describe('useCommands', () => {
             id: 'blink_active',
             name: 'Blink',
             description: 'Teleport to adjacent zone',
-            cooldownTicks: 12,
+            cooldownCycles: 12,
           },
         },
       }
@@ -1625,7 +1630,7 @@ describe('validateCommand', () => {
   describe('buyback', () => {
     it('allows buyback while dead with enough gold', () => {
       const ctx = makeContext({
-        player: makePlayer({ alive: false, gold: 1000, buybackCost: 300 }),
+        player: makePlayer({ alive: false, scrip: 1000, buybackCost: 300 }),
       })
       expect(validateCommand({ type: 'buyback' }, ctx)).toBeNull()
     })
@@ -1635,19 +1640,19 @@ describe('validateCommand', () => {
       expect(validateCommand({ type: 'buyback' }, ctx)).toMatch(/only available while dead/i)
     })
 
-    it('rejects buyback with insufficient gold and shows shortfall', () => {
+    it('rejects buyback with insufficient scrip and shows shortfall', () => {
       const ctx = makeContext({
-        player: makePlayer({ alive: false, gold: 100, buybackCost: 300 }),
+        player: makePlayer({ alive: false, scrip: 100, buybackCost: 300 }),
       })
       const err = validateCommand({ type: 'buyback' }, ctx)
-      expect(err).toMatch(/gold/i)
+      expect(err).toMatch(/scrip/i)
       expect(err).toContain('200')
     })
 
     it('rejects buyback on cooldown when tick is known', () => {
       const ctx = makeContext({
-        player: makePlayer({ alive: false, gold: 9999, buybackCost: 300, buybackCooldown: 50 }),
-        tick: 40,
+        player: makePlayer({ alive: false, scrip: 9999, buybackCost: 300, buybackCooldown: 50 }),
+        cycle: 40,
       })
       const err = validateCommand({ type: 'buyback' }, ctx)
       expect(err).toMatch(/cooldown/i)
@@ -1656,15 +1661,15 @@ describe('validateCommand', () => {
 
     it('allows buyback once the cooldown has expired', () => {
       const ctx = makeContext({
-        player: makePlayer({ alive: false, gold: 9999, buybackCost: 300, buybackCooldown: 50 }),
-        tick: 60,
+        player: makePlayer({ alive: false, scrip: 9999, buybackCost: 300, buybackCooldown: 50 }),
+        cycle: 60,
       })
       expect(validateCommand({ type: 'buyback' }, ctx)).toBeNull()
     })
 
     it('falls back to the mirrored cost formula when buybackCost is unset', () => {
       // base 100 + level 3 * 25 + deaths 1 * 10 = 185
-      const player = makePlayer({ alive: false, gold: 100, buybackCost: 0, level: 3, deaths: 1 })
+      const player = makePlayer({ alive: false, scrip: 100, buybackCost: 0, level: 3, deaths: 1 })
       expect(buybackCostFor(player)).toBe(185)
 
       const err = validateCommand({ type: 'buyback' }, makeContext({ player }))
@@ -1686,19 +1691,19 @@ describe('validateCommand', () => {
 
   describe('surrender', () => {
     it('is exempt from the dead-player gate', () => {
-      const ctx = makeContext({ player: makePlayer({ alive: false }), tick: 300 })
+      const ctx = makeContext({ player: makePlayer({ alive: false }), cycle: 300 })
       expect(validateCommand({ type: 'surrender', vote: 'yes' }, ctx)).toBeNull()
     })
 
     it('rejects surrender before the minimum tick', () => {
-      const ctx = makeContext({ tick: 100 })
+      const ctx = makeContext({ cycle: 100 })
       const err = validateCommand({ type: 'surrender', vote: 'yes' }, ctx)
       expect(err).toMatch(/too early/i)
       expect(err).toContain('225')
     })
 
     it('allows surrender after the minimum tick', () => {
-      const ctx = makeContext({ tick: 225 })
+      const ctx = makeContext({ cycle: 225 })
       expect(validateCommand({ type: 'surrender', vote: 'yes' }, ctx)).toBeNull()
     })
 
@@ -1778,7 +1783,7 @@ describe('validateCommand', () => {
     expect(validateCommand({ type: 'move', zone: 'mid-river' }, makeContext())).toBeNull()
   })
 
-  it('passes a distant move — auto-path walks it one zone per tick', () => {
+  it('passes a distant move — auto-path walks it one zone per cycle', () => {
     expect(validateCommand({ type: 'move', zone: 'audit-fountain' }, makeContext())).toBeNull()
   })
 
@@ -1817,14 +1822,14 @@ describe('validateCommand', () => {
   it('rejects move while rooted', () => {
     const ctx = makeContext({
       player: makePlayer({
-        buffs: [{ id: 'root', stacks: 1, ticksRemaining: 2, source: 'e1' }],
+        buffs: [{ id: 'root', stacks: 1, cyclesRemaining: 2, source: 'e1' }],
       }),
     })
     expect(validateCommand({ type: 'move', zone: 'mid-river' }, ctx)).toMatch(/rooted/)
   })
 
   // ── Control-gate parity with the server (ActionResolver.validateAction) ──
-  const debuff = (id: string) => ({ id, stacks: 1, ticksRemaining: 2, source: 'e1' })
+  const debuff = (id: string) => ({ id, stacks: 1, cyclesRemaining: 2, source: 'e1' })
 
   it('rejects move while taunted', () => {
     const ctx = makeContext({ player: makePlayer({ buffs: [debuff('taunt')] }) })
@@ -1897,7 +1902,7 @@ describe('validateCommand', () => {
   it('rejects cast while silenced', () => {
     const ctx = makeContext({
       player: makePlayer({
-        buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 1, source: 'e1' }],
+        buffs: [{ id: 'silence', stacks: 1, cyclesRemaining: 1, source: 'e1' }],
       }),
     })
     expect(validateCommand({ type: 'cast', ability: 'q' }, ctx)).toMatch(/silenced/)
@@ -1912,20 +1917,20 @@ describe('validateCommand', () => {
     expect(err).toMatch(/shop/)
   })
 
-  it('rejects buy without enough gold in a shop zone', () => {
+  it('rejects buy without enough scrip in a shop zone', () => {
     const items: Record<string, ItemDef> = {
       scrap_lot: { id: 'scrap_lot', name: 'Scrap Lot', cost: 500, stats: {}, consumable: false },
     }
     const ctx = makeContext({
       player: makePlayer({
         zone: 'chaff-fountain',
-        gold: 100,
+        scrip: 100,
         items: [null, null, null, null, null, null],
       }),
       items,
     })
     const err = validateCommand({ type: 'buy', item: 'scrap_lot' }, ctx)
-    expect(err).toMatch(/gold/)
+    expect(err).toMatch(/scrip/)
     expect(err).toContain('400')
   })
 
@@ -1934,7 +1939,7 @@ describe('validateCommand', () => {
       scrap_lot: { id: 'scrap_lot', name: 'Scrap Lot', cost: 500, stats: {}, consumable: false },
     }
     const ctx = makeContext({
-      player: makePlayer({ zone: 'chaff-fountain', gold: 9999 }),
+      player: makePlayer({ zone: 'chaff-fountain', scrip: 9999 }),
       items,
     })
     expect(validateCommand({ type: 'buy', item: 'scrap_lot' }, ctx)).toMatch(/Already own/)
@@ -1947,7 +1952,7 @@ describe('validateCommand', () => {
     const ctx = makeContext({
       player: makePlayer({
         zone: 'chaff-fountain',
-        gold: 9999,
+        scrip: 9999,
         items: ['a', 'b', 'c', 'd', 'e', 'f'],
       }),
       items,
@@ -2037,7 +2042,7 @@ describe('validateCommand', () => {
         cost: 80,
         stats: {},
         consumable: true,
-        active: { id: 'tp-active', name: 'Teleport', description: 'Teleport', cooldownTicks: 10 },
+        active: { id: 'tp-active', name: 'Teleport', description: 'Teleport', cooldownCycles: 10 },
       },
     }
     expect(validateCommand({ type: 'use', item: 'tp' }, makeContext({ items }))).toMatch(
@@ -2058,7 +2063,7 @@ describe('pickAbilityTargetString', () => {
       name: 'Test Ability',
       description: '',
       bwCost: 50,
-      cooldownTicks: 4,
+      cooldownCycles: 4,
       targetType: targetType as AbilityDef['targetType'],
       effects,
       ...overrides,
@@ -2185,7 +2190,7 @@ describe('informational readouts', () => {
       maxInteg: 900,
       bw: 240.2,
       maxBw: 400,
-      gold: 1850,
+      scrip: 1850,
       kills: 4,
       deaths: 1,
       assists: 6,
@@ -2195,7 +2200,7 @@ describe('informational readouts', () => {
     expect(out).toContain('Lv7')
     expect(out).toContain('INTEG 612/900') // floored, not rounded up
     expect(out).toContain('BW 240/400')
-    expect(out).toContain('1850g')
+    expect(out).toContain('1850sc')
     expect(out).toContain('KDA 4/1/6')
     expect(out).toContain('Coldstore Crossing')
   })
@@ -2390,7 +2395,7 @@ describe('the R3-08 readouts (who / net / look)', () => {
         zone: 'mid-river',
       }),
     }
-    const lines = formatContactsReadout(player, all, { e2: { zone: 'top-river', tick: 100 } }, 140)
+    const lines = formatContactsReadout(player, all, { e2: { zone: 'top-river', cycle: 100 } }, 140)
     expect(
       lines.some(
         (l) => l.startsWith('WHO · ✕ Daemon') && l.includes('INTEG 300/500') && l.includes('Q·2c'),

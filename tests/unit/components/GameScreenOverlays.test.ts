@@ -45,7 +45,7 @@ vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
 
 // ── audio + layout doubles ────────────────────────────────────────────
 // The real useAudio needs an AudioContext; record the cue names instead. The
-// tick loop says a great deal through sound, so several tests assert on it.
+// cycle loop says a great deal through sound, so several tests assert on it.
 const audio = vi.hoisted(() => ({ playSound: vi.fn() }))
 vi.mock('~/composables/useAudio', () => ({ useAudio: () => audio }))
 
@@ -99,7 +99,7 @@ const stubs = {
   // the header assertions still hold under shallow stubbing.
   StatusLines: {
     name: 'StatusLines',
-    props: ['trace', 'canAct', 'nextTickIn', 'tick', 'netLead', 'alive'],
+    props: ['trace', 'canAct', 'nextTickIn', 'cycle', 'netLead', 'alive'],
     template:
       "<div data-testid=\"theater-header\">{{ !alive ? 'DOWN' : canAct ? 'AWAITING ORDERS' : 'RESOLVING' }}</div>",
   },
@@ -144,7 +144,7 @@ function seedActiveGame(overrides: Partial<GameState> = {}) {
   const store = useGameStore()
   store.gameId = 'game_test_1'
   store.playerId = 'p1'
-  store.updateFromTick(makeTickMessage(overrides))
+  store.updateFromCycle(makeTickMessage(overrides))
   return store
 }
 
@@ -190,7 +190,7 @@ describe('GameScreen overlays', () => {
       const store = useGameStore()
       store.gameId = 'game_test_dead'
       store.playerId = 'p1'
-      // Roster where the human is dead with a future respawn tick (self_dead).
+      // Roster where the human is dead with a future respawn cycle (self_dead).
       const roster = makeRoster()
       roster.p1 = makePlayer({
         id: 'p1',
@@ -198,9 +198,9 @@ describe('GameScreen overlays', () => {
         heroId: SAMPLE_HEROES.echo,
         alive: false,
         integ: 0,
-        respawnTick: 270,
+        respawnCycle: 270,
       })
-      store.updateFromTick(makeTickMessage({ tick: 240, players: roster }))
+      store.updateFromCycle(makeTickMessage({ cycle: 240, players: roster }))
       return store
     }
 
@@ -214,13 +214,13 @@ describe('GameScreen overlays', () => {
       // death.
       const store = seedDeadPlayer()
       store.addEvents([
-        { tick: 100, type: 'kill', payload: { victimId: 'p1', killerId: 'e1' } },
+        { cycle: 100, type: 'kill', payload: { victimId: 'p1', killerId: 'e1' } },
         {
-          tick: 240,
+          cycle: 240,
           type: 'damage',
           payload: { sourceId: 'ice_mid-t1-audit', targetId: 'p1', amount: 110 },
         },
-        { tick: 240, type: 'death', payload: { playerId: 'p1', respawnTick: 270 } },
+        { cycle: 240, type: 'death', payload: { playerId: 'p1', respawnCycle: 270 } },
       ] as never)
 
       const overlay = mountGameScreen().find('[data-testid="death-overlay"]')
@@ -235,12 +235,12 @@ describe('GameScreen overlays', () => {
       const store = seedDeadPlayer()
       store.addEvents([
         {
-          tick: 240,
+          cycle: 240,
           type: 'damage',
           payload: { sourceId: 'creep_r_1', targetId: 'p1', amount: 20 },
         },
-        { tick: 240, type: 'kill', payload: { victimId: 'p1', killerId: 'e1' } },
-        { tick: 240, type: 'death', payload: { playerId: 'p1', respawnTick: 270 } },
+        { cycle: 240, type: 'kill', payload: { victimId: 'p1', killerId: 'e1' } },
+        { cycle: 240, type: 'death', payload: { playerId: 'p1', respawnCycle: 270 } },
       ] as never)
 
       const overlay = mountGameScreen().find('[data-testid="death-overlay"]')
@@ -257,13 +257,13 @@ describe('GameScreen overlays', () => {
       wrapper.unmount()
     })
 
-    it('shows the respawn countdown computed from respawnTick - tick', () => {
+    it('shows the respawn countdown computed from respawnCycle - tick', () => {
       seedDeadPlayer()
       const wrapper = mountGameScreen()
 
       const overlay = wrapper.find('[data-testid="death-overlay"]')
       expect(overlay.text()).toContain('Respawning in')
-      // respawnTick 270 - tick 240 = 30 ticks = 120s, shown as wall time.
+      // respawnCycle 270 - cycle 240 = 30 ticks = 120s, shown as wall time.
       expect(overlay.text()).toContain('2:00')
       expect(overlay.text()).not.toContain('30 ticks')
       wrapper.unmount()
@@ -271,7 +271,7 @@ describe('GameScreen overlays', () => {
 
     it('shows a sub-minute respawn as cycles AND seconds', () => {
       // The common case: most respawns are well under a minute, where "0:12"
-      // reads worse than the tick count plus the seconds it actually costs.
+      // reads worse than the cycle count plus the seconds it actually costs.
       const store = useGameStore()
       store.gameId = 'game_test_dead'
       store.playerId = 'p1'
@@ -282,12 +282,12 @@ describe('GameScreen overlays', () => {
         heroId: SAMPLE_HEROES.echo,
         alive: false,
         integ: 0,
-        respawnTick: 252,
+        respawnCycle: 252,
       })
-      store.updateFromTick(makeTickMessage({ tick: 240, players: roster }))
+      store.updateFromCycle(makeTickMessage({ cycle: 240, players: roster }))
       const wrapper = mountGameScreen()
 
-      // 12 ticks left → 48 seconds.
+      // 12 cycles left → 48 seconds.
       expect(wrapper.find('[data-testid="death-overlay"]').text()).toContain('12c (48s)')
       wrapper.unmount()
     })
@@ -303,10 +303,10 @@ describe('GameScreen overlays', () => {
         heroId: SAMPLE_HEROES.echo,
         alive: false,
         integ: 0,
-        respawnTick: 270,
+        respawnCycle: 270,
         buybackCooldown: 330, // 90 ticks out = 6 minutes
       })
-      store.updateFromTick(makeTickMessage({ tick: 240, players: roster }))
+      store.updateFromCycle(makeTickMessage({ cycle: 240, players: roster }))
       const wrapper = mountGameScreen()
 
       const overlay = wrapper.find('[data-testid="death-overlay"]')
@@ -358,7 +358,7 @@ describe('GameScreen overlays', () => {
 
       await wrapper.find('[data-testid="death-surrender-button"]').trigger('click')
 
-      // attempted, reported failure → buffered for next-tick retry, not lost
+      // attempted, reported failure → buffered for next-cycle retry, not lost
       expect(socketSpies.send).toHaveBeenCalled()
       expect(store.bufferedCommand).toBe('surrender confirm')
       wrapper.unmount()
@@ -400,7 +400,7 @@ describe('GameScreen overlays', () => {
       store.gameId = 'game_test_over'
       store.playerId = 'p1'
       // Populate the roster so postGamePlayers + scoreboard have content.
-      store.updateFromTick(makeTickMessage())
+      store.updateFromCycle(makeTickMessage())
       const stats: Record<string, ReturnType<typeof makePlayerEndStats>> = {}
       for (const id of Object.keys(makeRoster())) stats[id] = makePlayerEndStats()
       store.setGameOver(winner, stats)
@@ -441,17 +441,17 @@ describe('GameScreen overlays', () => {
     })
   })
   describe('effect cues (W2-1)', () => {
-    /** Feed the store a batch the way a tick_state would, then let watchers run. */
+    /** Feed the store a batch the way a cycle_state would, then let watchers run. */
     async function emit(
       wrapper: ReturnType<typeof mountGameScreen>,
-      events: Array<{ tick: number; type: string; payload: Record<string, unknown> }>,
+      events: Array<{ cycle: number; type: string; payload: Record<string, unknown> }>,
     ) {
       useGameStore().addEvents(events as never)
       await wrapper.vm.$nextTick()
     }
 
-    it('pays the farming loop a gold cue and an amber +Ng float', async () => {
-      // REGRESSION: the gold cue hung off `gold_change`, whose only emitter is a
+    it('pays the farming loop a scrip cue and an amber +Ng float', async () => {
+      // REGRESSION: the scrip cue hung off `gold_change`, whose only emitter is a
       // win sentinel carrying an empty playerId — so last-hitting, the core
       // economic loop of the whole match, was completely silent.
       seedActiveGame()
@@ -459,16 +459,16 @@ describe('GameScreen overlays', () => {
 
       await emit(wrapper, [
         {
-          tick: 240,
+          cycle: 240,
           type: 'wave_strip',
-          payload: { playerId: 'p1', waveId: 'c1', waveType: 'line', goldAwarded: 41 },
+          payload: { playerId: 'p1', waveId: 'c1', waveType: 'line', scripAwarded: 41 },
         },
       ])
 
-      expect(audio.playSound).toHaveBeenCalledWith('gold')
-      const float = wrapper.find('[data-testid="damage-float-gold"]')
+      expect(audio.playSound).toHaveBeenCalledWith('scrip')
+      const float = wrapper.find('[data-testid="damage-float-scrip"]')
       expect(float.exists()).toBe(true)
-      expect(float.text()).toBe('+41g')
+      expect(float.text()).toBe('+41sc')
       wrapper.unmount()
     })
 
@@ -478,37 +478,37 @@ describe('GameScreen overlays', () => {
 
       await emit(wrapper, [
         {
-          tick: 240,
+          cycle: 240,
           type: 'wave_burn',
-          payload: { playerId: 'p1', waveId: 'c2', waveType: 'sweep', goldAwarded: 12 },
+          payload: { playerId: 'p1', waveId: 'c2', waveType: 'sweep', scripAwarded: 12 },
         },
         {
-          tick: 240,
+          cycle: 240,
           type: 'neutral_killed',
           payload: { playerId: 'p1', neutralId: 'n0', neutralType: 'stub', zone: 'silt-chaff' },
         },
       ])
 
-      expect(audio.playSound.mock.calls.filter(([n]) => n === 'gold')).toHaveLength(2)
+      expect(audio.playSound.mock.calls.filter(([n]) => n === 'scrip')).toHaveLength(2)
       // The camp's bounty isn't on the wire, so only the burn floats a number.
-      expect(wrapper.findAll('[data-testid="damage-float-gold"]')).toHaveLength(1)
+      expect(wrapper.findAll('[data-testid="damage-float-scrip"]')).toHaveLength(1)
       wrapper.unmount()
     })
 
-    it('stays silent when the gold is somebody else’s', async () => {
+    it('stays silent when the scrip is somebody else’s', async () => {
       seedActiveGame()
       const wrapper = mountGameScreen()
 
       await emit(wrapper, [
         {
-          tick: 240,
+          cycle: 240,
           type: 'wave_strip',
-          payload: { playerId: 'p2', waveId: 'c1', waveType: 'line', goldAwarded: 41 },
+          payload: { playerId: 'p2', waveId: 'c1', waveType: 'line', scripAwarded: 41 },
         },
       ])
 
-      expect(audio.playSound).not.toHaveBeenCalledWith('gold')
-      expect(wrapper.find('[data-testid="damage-float-gold"]').exists()).toBe(false)
+      expect(audio.playSound).not.toHaveBeenCalledWith('scrip')
+      expect(wrapper.find('[data-testid="damage-float-scrip"]').exists()).toBe(false)
       wrapper.unmount()
     })
 
@@ -521,7 +521,7 @@ describe('GameScreen overlays', () => {
 
       await emit(wrapper, [
         {
-          tick: 240,
+          cycle: 240,
           type: 'ice_kill',
           payload: { zone: 'mid-t1-chaff', team: 'chaff', killerTeam: 'audit' },
         },
@@ -533,7 +533,7 @@ describe('GameScreen overlays', () => {
       audio.playSound.mockClear()
       await emit(wrapper, [
         {
-          tick: 241,
+          cycle: 241,
           type: 'ice_kill',
           payload: { zone: 'mid-t1-audit', team: 'audit', killerTeam: 'chaff' },
         },
@@ -551,7 +551,7 @@ describe('GameScreen overlays', () => {
 
       await emit(wrapper, [
         {
-          tick: 240,
+          cycle: 240,
           type: 'kill',
           payload: { killerId: 'p2', victimId: 'e1', assisters: ['p1', 'p3'] },
         },
@@ -570,12 +570,12 @@ describe('GameScreen overlays', () => {
       const wrapper = mountGameScreen()
 
       const dead = makeRoster()
-      dead.p1 = { ...dead.p1!, alive: false, integ: 0, respawnTick: 250 }
-      store.updateFromTick(makeTickMessage({ tick: 240, players: dead }))
+      dead.p1 = { ...dead.p1!, alive: false, integ: 0, respawnCycle: 250 }
+      store.updateFromCycle(makeTickMessage({ cycle: 240, players: dead }))
       await wrapper.vm.$nextTick()
       audio.playSound.mockClear()
 
-      store.updateFromTick(makeTickMessage({ tick: 250 }))
+      store.updateFromCycle(makeTickMessage({ cycle: 250 }))
       await wrapper.vm.$nextTick()
 
       expect(audio.playSound).toHaveBeenCalledWith('respawn')
@@ -587,7 +587,7 @@ describe('GameScreen overlays', () => {
       wrapper.unmount()
     })
 
-    it('does not mistake the first tick of a match for a respawn', async () => {
+    it('does not mistake the first cycle of a match for a respawn', async () => {
       // The store reports "not alive" until a player exists, so an ungated
       // rising edge fires the respawn cue on every single game load.
       const store = useGameStore()
@@ -595,7 +595,7 @@ describe('GameScreen overlays', () => {
       store.playerId = 'p1'
       const wrapper = mountGameScreen()
 
-      store.updateFromTick(makeTickMessage())
+      store.updateFromCycle(makeTickMessage())
       await wrapper.vm.$nextTick()
 
       expect(audio.playSound).not.toHaveBeenCalledWith('respawn')
@@ -611,7 +611,7 @@ describe('GameScreen overlays', () => {
       store.playerId = 'p1'
       const zones: Record<string, ZoneRuntimeState> = {}
       for (const id of ['mid-river', 'mid-t1-chaff']) zones[id] = makeZone(id)
-      store.updateFromTick(makeTickMessage({ tick: 240, zones }))
+      store.updateFromCycle(makeTickMessage({ cycle: 240, zones }))
       const wrapper = mountGameScreen()
 
       wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move mid-t1-chaff')

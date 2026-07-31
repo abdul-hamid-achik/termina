@@ -10,7 +10,7 @@ export interface ItemActiveDef {
   id: string
   name: string
   description: string
-  cooldownTicks: number
+  cooldownCycles: number
   bwCost?: number
   /**
    * What this active targets, when it needs one. Drives client auto-targeting

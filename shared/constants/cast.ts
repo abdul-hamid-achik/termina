@@ -146,7 +146,7 @@ export const CAST: Record<HeroId, OperatorBio> = {
     handleRationale:
       'Mutual exclusion. He holds the lock. His ability is Deadlock and he has held a stairwell for nine days.',
     kitReading:
-      'Deadlock is title by occupation — every tick he stays put is +1 defence and +3 attack, to five, and one step forfeits all of it, which is exactly the rule he lives under. Lock roots you, because the argument is about who gets to be where. Critical Section roots HIM: he chains in, takes the shield, and accepts that he cannot leave. Spinlock is three hits without moving his feet. Priority Inversion scales with the stacks — nine days of standing there, released at once.',
+      'Deadlock is title by occupation — every cycle he stays put is +1 defence and +3 attack, to five, and one step forfeits all of it, which is exactly the rule he lives under. Lock roots you, because the argument is about who gets to be where. Critical Section roots HIM: he chains in, takes the shield, and accepts that he cannot leave. Spinlock is three hits without moving his feet. Priority Inversion scales with the stacks — nine days of standing there, released at once.',
   },
   ping: {
     realName: 'Thuy Pham',

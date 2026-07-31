@@ -65,7 +65,7 @@ function matchesResult(): FetchResult {
           mode: 'ranked_5v5',
           winner: 'chaff',
           team: 'chaff',
-          durationTicks: 150,
+          durationCycles: 150,
           createdAt: '2026-01-02T00:00:00Z',
         },
       ],

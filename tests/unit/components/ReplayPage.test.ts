@@ -33,11 +33,11 @@ function replayResult(): FetchResult {
       gameId: 'g1',
       savedAt: 0,
       state: {
-        tick: 50,
+        cycle: 50,
         phase: 'ended',
         teams: {
-          chaff: { kills: 10, iceKills: 2, gold: 0 },
-          audit: { kills: 5, iceKills: 1, gold: 0 },
+          chaff: { kills: 10, iceKills: 2, scrip: 0 },
+          audit: { kills: 5, iceKills: 1, scrip: 0 },
         },
         players: {
           p1: {
@@ -46,7 +46,7 @@ function replayResult(): FetchResult {
             team: 'chaff',
             heroId: 'echo',
             level: 6,
-            gold: 5000,
+            scrip: 5000,
             kills: 5,
             deaths: 2,
             assists: 3,
@@ -57,7 +57,7 @@ function replayResult(): FetchResult {
         timeOfDay: 'day',
       },
       meta: { players: [{ playerId: 'p1', team: 'chaff', heroId: 'echo', mmr: 1500 }] },
-      actions: [{ tick: 10, playerId: 'p1', command: { type: 'cast', ability: 'q' } }],
+      actions: [{ cycle: 10, playerId: 'p1', command: { type: 'cast', ability: 'q' } }],
     }),
     error: ref(null),
     pending: ref(false),
@@ -71,7 +71,7 @@ function framesResult(): FetchResult {
       totalTicks: 50,
       frames: [
         {
-          tick: 0,
+          cycle: 0,
           teams: { chaff: { kills: 0, iceKills: 0 }, audit: { kills: 0, iceKills: 0 } },
           timeOfDay: 'day',
           players: {
@@ -82,7 +82,7 @@ function framesResult(): FetchResult {
               bw: 300,
               maxBw: 300,
               level: 1,
-              gold: 0,
+              scrip: 0,
               kills: 0,
               deaths: 0,
               assists: 0,
@@ -196,9 +196,9 @@ describe('replay page', () => {
   })
 
   it('renders key-moment markers and jumps the scrubber when one is clicked', async () => {
-    // A multi-frame replay with a kill (tick 5) and a ice fall (tick 12).
-    const frame = (tick: number, rk: number, dk: number, rt: number, dt: number) => ({
-      tick,
+    // A multi-frame replay with a kill (cycle 5) and a ice fall (cycle 12).
+    const frame = (cycle: number, rk: number, dk: number, rt: number, dt: number) => ({
+      cycle,
       teams: { chaff: { kills: rk, iceKills: rt }, audit: { kills: dk, iceKills: dt } },
       timeOfDay: 'day' as const,
       players: {},
@@ -221,21 +221,21 @@ describe('replay page', () => {
     expect(wrapper.find('[data-testid="key-moment-fight"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="key-moment-ice"]').exists()).toBe(true)
 
-    // scrubber initialises to the final tick (12); clicking the fight jumps to 5
+    // scrubber initialises to the final cycle (12); clicking the fight jumps to 5
     expect(wrapper.text()).toContain('scrub: cycle 12')
     await wrapper.find('[data-testid="key-moment-fight"]').trigger('click')
     expect(wrapper.text()).toContain('scrub: cycle 5')
   })
 
-  it('shows the net-worth gold lead derived from the current frame', async () => {
-    const fp = (id: string, gold: number) => ({
+  it('shows the net-worth scrip lead derived from the current frame', async () => {
+    const fp = (id: string, scrip: number) => ({
       id,
       integ: 600,
       maxInteg: 600,
       bw: 300,
       maxBw: 300,
       level: 6,
-      gold,
+      scrip,
       kills: 0,
       deaths: 0,
       assists: 0,
@@ -259,10 +259,10 @@ describe('replay page', () => {
           totalTicks: 1,
           frames: [
             {
-              tick: 0,
+              cycle: 0,
               teams: { chaff: { kills: 0, iceKills: 0 }, audit: { kills: 0, iceKills: 0 } },
               timeOfDay: 'day' as const,
-              // chaff 3000g vs audit 1000g → chaff +2000 net worth
+              // chaff 3000sc vs audit 1000sc → chaff +2000 net worth
               players: { p1: fp('p1', 3000), d1: fp('d1', 1000) },
             },
           ],

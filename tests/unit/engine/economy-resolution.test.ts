@@ -6,28 +6,28 @@ import {
   type PlayerSetup,
   type StateManagerApi,
 } from '~~/server/game/engine/StateManager'
-import { processTick, submitAction } from '~~/server/game/engine/GameLoop'
+import { processCycle, submitAction } from '~~/server/game/engine/GameLoop'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import {
   WAVE_XP,
-  WAVE_GOLD,
-  WAVE_GOLD_MIN,
-  WAVE_GOLD_MAX,
-  BREACH_UNIT_GOLD,
-  BURN_GOLD_RATIO,
+  WAVE_SCRIP,
+  WAVE_SCRIP_MIN,
+  WAVE_SCRIP_MAX,
+  BREACH_UNIT_SCRIP,
+  BURN_SCRIP_RATIO,
   BURN_XP_RATIO,
   HERO_KILL_XP_BASE,
   HERO_KILL_XP_PER_LEVEL,
   XP_PER_LEVEL,
   TRUESTRIKE_RIG_BONUS_DAMAGE,
-  PASSIVE_GOLD_PER_TICK,
+  PASSIVE_SCRIP_PER_CYCLE,
 } from '~~/shared/constants/balance'
 import { HERO_IDS } from '~~/shared/constants/heroes'
 
 /**
  * ECONOMY THROUGH RESOLUTION — driven entirely through the real engine
- * (`createInMemoryStateManager` + `submitAction` + `processTick`), the same
- * pipeline a live match uses. Asserts exact gold/xp deltas, level-up events,
+ * (`createInMemoryStateManager` + `submitAction` + `processCycle`), the same
+ * pipeline a live match uses. Asserts exact scrip/xp deltas, level-up events,
  * and armor / magic-resist mitigation in real combat.
  */
 
@@ -45,7 +45,7 @@ async function startGame(gameId: string, players: PlayerSetup[]): Promise<StateM
 
 async function runTick(sm: StateManagerApi, gameId: string) {
   const state = await Effect.runPromise(sm.getState(gameId))
-  const result = await Effect.runPromise(processTick(gameId, state))
+  const result = await Effect.runPromise(processCycle(gameId, state))
   await Effect.runPromise(sm.updateState(gameId, () => result.state))
   return result
 }
@@ -82,7 +82,7 @@ function makePlayers(prefix: string, perTeam: number): PlayerSetup[] {
 
 /** inCombat freezes fountain regen so HP/MP stay put across the tick. */
 function inCombatBuff() {
-  return { id: 'inCombat', stacks: 1, ticksRemaining: 3, source: 'system' }
+  return { id: 'inCombat', stacks: 1, cyclesRemaining: 3, source: 'system' }
 }
 
 /**
@@ -97,7 +97,7 @@ function withSoloWave(state: GameState, wave: WaveUnitState): GameState {
 
 describe('Economy through resolution', () => {
   describe('Wave burn', () => {
-    it('burns an allied wave below 50% INTEG → wave hp→0, denier gets burn gold + floor(WAVE_XP*0.5), wave_burn event', async () => {
+    it('burns an allied wave below 50% INTEG → wave hp→0, denier gets burn scrip + floor(WAVE_XP*0.5), wave_burn event', async () => {
       const gameId = uid('burn')
       const sm = await startGame(gameId, makePlayers('dn', 1))
 
@@ -114,7 +114,7 @@ describe('Economy through resolution', () => {
       })
 
       const before = await Effect.runPromise(sm.getState(gameId))
-      const goldBefore = before.players['dn_r0']!.gold
+      const scripBefore = before.players['dn_r0']!.scrip
       const xpBefore = before.players['dn_r0']!.xp
 
       submitAction(gameId, 'dn_r0', { type: 'burn', target: { kind: 'wave', index: 0 } })
@@ -123,24 +123,24 @@ describe('Economy through resolution', () => {
       // The burned wave is dead (hp 0); the engine GCs dead waves so it is gone.
       expect(r.state.waves.some((c) => c.id === 'deny_target' && c.integ > 0)).toBe(false)
 
-      const burnGold = Math.floor(((WAVE_GOLD_MIN + WAVE_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
+      const burnGold = Math.floor(((WAVE_SCRIP_MIN + WAVE_SCRIP_MAX) / 2) * BURN_SCRIP_RATIO)
       const burnXp = Math.floor(WAVE_XP * BURN_XP_RATIO)
       const after = r.state.players['dn_r0']!
-      // Burn gold is exact; burn XP is exact. (No passive gold confound: passive
-      // gold is distributed but we measure the burn-specific deltas as a floor.)
+      // Burn scrip is exact; burn XP is exact. (No passive scrip confound: passive
+      // scrip is distributed but we measure the burn-specific deltas as a floor.)
       expect(after.xp - xpBefore).toBe(burnXp)
-      expect(after.gold - goldBefore).toBeGreaterThanOrEqual(burnGold)
+      expect(after.scrip - scripBefore).toBeGreaterThanOrEqual(burnGold)
 
       const denyEvent = r.events.find((e) => e._tag === 'wave_burn')
       expect(denyEvent).toMatchObject({
         playerId: 'dn_r0',
         waveId: 'deny_target',
         waveType: 'line',
-        goldAwarded: burnGold,
+        scripAwarded: burnGold,
       })
     })
 
-    it('rejects denying a wave still above the 50% INTEG gate (no kill, no gold/xp)', async () => {
+    it('rejects denying a wave still above the 50% INTEG gate (no kill, no scrip/xp)', async () => {
       const gameId = uid('denygate')
       const sm = await startGame(gameId, makePlayers('dg', 1))
 
@@ -170,14 +170,14 @@ describe('Economy through resolution', () => {
   })
 
   describe('Wave last-hit', () => {
-    it('last-hits an enemy breach wave → killer gold += BREACH_UNIT_GOLD AND xp += WAVE_XP', async () => {
+    it('last-hits an enemy breach wave → killer scrip += BREACH_UNIT_SCRIP AND xp += WAVE_XP', async () => {
       const gameId = uid('lasthit')
       const sm = await startGame(gameId, makePlayers('lh', 1))
 
       await arrange(sm, gameId, (s) => {
         const moved = setPlayer(s, 'lh_r0', { zone: 'mid-river' })
-        // Enemy (audit) BREACH wave at 1 INTEG — breach last-hit gold is the fixed
-        // BREACH_UNIT_GOLD (line/sweep is randomized; breach keeps it exact).
+        // Enemy (audit) BREACH wave at 1 INTEG — breach last-hit scrip is the fixed
+        // BREACH_UNIT_SCRIP (line/sweep is randomized; breach keeps it exact).
         return withSoloWave(moved, {
           id: 'enemy_breach',
           team: 'audit',
@@ -188,7 +188,7 @@ describe('Economy through resolution', () => {
       })
 
       const before = await Effect.runPromise(sm.getState(gameId))
-      const goldBefore = before.players['lh_r0']!.gold
+      const scripBefore = before.players['lh_r0']!.scrip
       const xpBefore = before.players['lh_r0']!.xp
 
       submitAction(gameId, 'lh_r0', { type: 'attack', target: { kind: 'wave', index: 0 } })
@@ -197,12 +197,12 @@ describe('Economy through resolution', () => {
       expect(r.state.waves.some((c) => c.id === 'enemy_breach' && c.integ > 0)).toBe(false)
       const after = r.state.players['lh_r0']!
       // XP for the kill is exactly WAVE_XP. Gold is at least the breach bounty
-      // (passive gold may add on top, but the last-hit credit is the floor).
+      // (passive scrip may add on top, but the last-hit credit is the floor).
       expect(after.xp - xpBefore).toBe(WAVE_XP)
-      expect(after.gold - goldBefore).toBeGreaterThanOrEqual(BREACH_UNIT_GOLD)
+      expect(after.scrip - scripBefore).toBeGreaterThanOrEqual(BREACH_UNIT_SCRIP)
     })
 
-    it('last-hits an enemy line wave → gold delta lands in the [MIN,MAX] last-hit band, xp += WAVE_XP', async () => {
+    it('last-hits an enemy line wave → scrip delta lands in the [MIN,MAX] last-hit band, xp += WAVE_XP', async () => {
       const gameId = uid('lasthitline')
       const sm = await startGame(gameId, makePlayers('lm', 1))
 
@@ -218,7 +218,7 @@ describe('Economy through resolution', () => {
       })
 
       const before = await Effect.runPromise(sm.getState(gameId))
-      const goldBefore = before.players['lm_r0']!.gold
+      const scripBefore = before.players['lm_r0']!.scrip
       const xpBefore = before.players['lm_r0']!.xp
 
       submitAction(gameId, 'lm_r0', { type: 'attack', target: { kind: 'wave', index: 0 } })
@@ -227,10 +227,10 @@ describe('Economy through resolution', () => {
       expect(r.state.waves.some((c) => c.id === 'enemy_line' && c.integ > 0)).toBe(false)
       const after = r.state.players['lm_r0']!
       expect(after.xp - xpBefore).toBe(WAVE_XP)
-      // Fixed line last-hit gold is WAVE_GOLD (no RNG); passive income adds a
+      // Fixed line last-hit scrip is WAVE_SCRIP (no RNG); passive income adds a
       // bit more on top, so assert at least the last-hit amount.
-      const goldDelta = after.gold - goldBefore
-      expect(goldDelta).toBeGreaterThanOrEqual(WAVE_GOLD)
+      const goldDelta = after.scrip - scripBefore
+      expect(goldDelta).toBeGreaterThanOrEqual(WAVE_SCRIP)
     })
   })
 
@@ -288,7 +288,7 @@ describe('Economy through resolution', () => {
       expect(r2.state.players['kx_r1']!.xp - assistXpBefore).toBe(assistXp)
     })
 
-    it('a hero kill emits gold_change for the killer AND each assister, matching the gold paid', async () => {
+    it('a hero kill emits gold_change for the killer AND each assister, matching the scrip paid', async () => {
       // The bounty was awarded but never announced: the ONLY gold_change the
       // engine ever emitted was an empty win sentinel, so the biggest payout in
       // the game — and every assist — landed in total silence.
@@ -306,29 +306,29 @@ describe('Economy through resolution', () => {
 
       await arrange(sm, gameId, (s) => setPlayer(s, 'kg_d0', { integ: 1, buffs: [inCombatBuff()] }))
       const before = await Effect.runPromise(sm.getState(gameId))
-      const killerGoldBefore = before.players['kg_r0']!.gold
-      const assistGoldBefore = before.players['kg_r1']!.gold
+      const killerGoldBefore = before.players['kg_r0']!.scrip
+      const assistGoldBefore = before.players['kg_r1']!.scrip
 
       submitAction(gameId, 'kg_r0', { type: 'attack', target: { kind: 'hero', name: 'kg_d0' } })
       const r2 = await runTick(sm, gameId)
       expect(r2.state.players['kg_d0']!.alive).toBe(false)
 
-      const gold = r2.events.filter(
+      const scrip = r2.events.filter(
         (e): e is Extract<GameEngineEvent, { _tag: 'gold_change' }> => e._tag === 'gold_change',
       )
-      const bounty = gold.find((e) => e.playerId === 'kg_r0')
-      const assist = gold.find((e) => e.playerId === 'kg_r1')
+      const bounty = scrip.find((e) => e.playerId === 'kg_r0')
+      const assist = scrip.find((e) => e.playerId === 'kg_r1')
       expect(bounty?.reason).toBe('hero kill')
       expect(assist?.reason).toBe('assist')
 
-      // The reported amount must be the gold that actually moved (the only other
-      // income this tick is the passive trickle) — a hardcoded or stale bounty
+      // The reported amount must be the scrip that actually moved (the only other
+      // income this cycle is the passive trickle) — a hardcoded or stale bounty
       // number would fail here even though the payout itself is correct.
-      expect(r2.state.players['kg_r0']!.gold - killerGoldBefore).toBe(
-        bounty!.amount + PASSIVE_GOLD_PER_TICK,
+      expect(r2.state.players['kg_r0']!.scrip - killerGoldBefore).toBe(
+        bounty!.amount + PASSIVE_SCRIP_PER_CYCLE,
       )
-      expect(r2.state.players['kg_r1']!.gold - assistGoldBefore).toBe(
-        assist!.amount + PASSIVE_GOLD_PER_TICK,
+      expect(r2.state.players['kg_r1']!.scrip - assistGoldBefore).toBe(
+        assist!.amount + PASSIVE_SCRIP_PER_CYCLE,
       )
     })
   })
@@ -429,7 +429,7 @@ describe('Economy through resolution', () => {
           maxInteg: 5000,
           buffs: [
             inCombatBuff(),
-            { id: 'defenseBuff', stacks: ARMOR_BONUS, ticksRemaining: 5, source: 'test' },
+            { id: 'defenseBuff', stacks: ARMOR_BONUS, cyclesRemaining: 5, source: 'test' },
           ],
         })
         return next
@@ -493,7 +493,7 @@ describe('Economy through resolution', () => {
           maxInteg: 5000,
           buffs: [
             inCombatBuff(),
-            { id: 'mrShred', stacks: SHRED, ticksRemaining: 5, source: 'test' },
+            { id: 'mrShred', stacks: SHRED, cyclesRemaining: 5, source: 'test' },
           ],
         })
         return next

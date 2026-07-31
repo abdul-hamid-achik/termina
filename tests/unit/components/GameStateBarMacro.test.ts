@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import GameStateBar from '~~/app/components/game/GameStateBar.vue'
-import { makeTeamState, makeAncient } from '~~/app/stories/fixtures'
+import { makeTeamState, makeTerminal } from '~~/app/stories/fixtures'
 
 /**
  * Covers GameStateBar branches the existing test skips: the day/night clock
@@ -11,9 +11,9 @@ import { makeTeamState, makeAncient } from '~~/app/stories/fixtures'
  */
 
 const baseProps = {
-  tick: 42,
+  cycle: 42,
   gameTime: '02:48',
-  gold: 1234,
+  scrip: 1234,
   kills: 3,
   deaths: 1,
   assists: 5,
@@ -28,20 +28,20 @@ function mountBar(props: Record<string, unknown>) {
 
 describe('GameStateBar day/night clock', () => {
   it('labels the daytime phase and renders the remaining-day clock', () => {
-    // day: 300 total ticks * 4s; at dayNightTick 0 that's the full 20:00.
-    const w = mountBar({ timeOfDay: 'day', dayNightTick: 0 })
+    // day: 300 total ticks * 4s; at dayNightCycle 0 that's the full 20:00.
+    const w = mountBar({ timeOfDay: 'day', dayNightCycle: 0 })
     expect(w.text()).toContain('Day')
     expect(w.text()).toContain('20:00')
   })
 
   it('labels the night phase and renders the remaining-night clock', () => {
-    // night: 240 total; at dayNightTick 236 -> 4 ticks left -> 16s -> 0:16.
-    const w = mountBar({ timeOfDay: 'night', dayNightTick: 236 })
+    // night: 240 total; at dayNightCycle 236 -> 4 cycles left -> 16s -> 0:16.
+    const w = mountBar({ timeOfDay: 'night', dayNightCycle: 236 })
     expect(w.text()).toContain('Night')
     expect(w.text()).toContain('0:16')
   })
 
-  it('omits the clock when dayNightTick is not provided', () => {
+  it('omits the clock when dayNightCycle is not provided', () => {
     const w = mountBar({ timeOfDay: 'day' })
     expect(w.text()).toContain('Day')
     // No "(m:ss)" parenthetical without a tick.
@@ -84,13 +84,13 @@ describe('GameStateBar net-worth lead', () => {
 
 describe('GameStateBar core INTEG', () => {
   it('renders Terminal percentages from ancient INTEG, flagging the vulnerable team', () => {
-    const ancients = {
-      chaff: makeAncient('chaff', { integ: 4500, maxInteg: 4500, vulnerable: false }),
-      audit: makeAncient('audit', { integ: 2250, maxInteg: 4500, vulnerable: true }),
+    const terminals = {
+      chaff: makeTerminal('chaff', { integ: 4500, maxInteg: 4500, vulnerable: false }),
+      audit: makeTerminal('audit', { integ: 2250, maxInteg: 4500, vulnerable: true }),
     }
     const w = mountBar({
       teams: { chaff: makeTeamState('chaff'), audit: makeTeamState('audit') },
-      ancients,
+      terminals,
     })
     const strip = w.find('[data-testid="macro-strip"]')
     expect(strip.text()).toContain('CHF 100%')
@@ -99,7 +99,7 @@ describe('GameStateBar core INTEG', () => {
     expect(w.html()).toContain('text-warn')
   })
 
-  it('omits the Terminal readout when no ancients are supplied', () => {
+  it('omits the Terminal readout when no terminals are supplied', () => {
     const w = mountBar({
       teams: { chaff: makeTeamState('chaff'), audit: makeTeamState('audit') },
     })

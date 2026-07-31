@@ -3,7 +3,7 @@ import { seedGame, HUMAN, ENEMY } from './harness'
 
 /**
  * Engine-truth coverage for the surrender vote, driven through the real
- * processTick — the one player-facing mechanic that previously had only
+ * processCycle — the one player-facing mechanic that previously had only
  * unit-level coverage (SurrenderSystem), never an end-to-end run. Surrender is
  * special-cased before validation in the tick pipeline: a vote tallies against
  * the team's ALIVE HUMAN electorate, and once the 60% threshold is met the game
@@ -11,7 +11,7 @@ import { seedGame, HUMAN, ENEMY } from './harness'
  *
  * A two-human chaff team makes the threshold meaningful: ceil(2 × 0.6) = 2,
  * so one vote tallies and the second ends it. Tick is patched into the
- * surrender window (≥ SURRENDER_MIN_TICK = 225) rather than advanced 225× —
+ * surrender window (≥ SURRENDER_MIN_CYCLE = 225) rather than advanced 225× —
  * which also sidesteps the 60-tick AFK-takeover sweep.
  */
 const roster = [
@@ -35,7 +35,7 @@ describe('surrender', () => {
   it('tallies one vote, then ends the game for the other team once the threshold is met', async () => {
     const run = await seedGame('laning', { players: roster })
     // Jump into the surrender window without running the 60-tick AFK sweeps.
-    await run.patch((s) => ({ ...s, tick: 224 }))
+    await run.patch((s) => ({ ...s, cycle: 224 }))
 
     // First vote: recorded, but 60% of a 2-human team needs 2 votes.
     run.submit({ type: 'surrender', vote: 'yes' }, HUMAN)
@@ -58,10 +58,10 @@ describe('surrender', () => {
     // The exact lockout the owner hit live: takeover fired, then SURRENDER was
     // dead. The WS gate now forwards the vote, and the bot driver must skip its
     // decision for a slot with a queued surrender (latest-wins queue would
-    // otherwise overwrite the vote every tick).
+    // otherwise overwrite the vote every cycle).
     const { convertToBot, cleanupGame } = await import('~~/server/game/ai/BotManager')
     const run = await seedGame('laning', { players: roster })
-    await run.patch((s) => ({ ...s, tick: 224 }))
+    await run.patch((s) => ({ ...s, cycle: 224 }))
     try {
       // Both chaff humans got converted (the electorate stays human-id based).
       convertToBot(run.gameId, HUMAN)
@@ -91,7 +91,7 @@ describe('surrender', () => {
 
   it('lets a player retract their vote, keeping the team below threshold', async () => {
     const run = await seedGame('laning', { players: roster })
-    await run.patch((s) => ({ ...s, tick: 224 }))
+    await run.patch((s) => ({ ...s, cycle: 224 }))
 
     run.submit({ type: 'surrender', vote: 'yes' }, HUMAN)
     await run.tick()

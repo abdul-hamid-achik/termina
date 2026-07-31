@@ -102,7 +102,7 @@ const stubs = {
   // the header assertions still hold under shallow stubbing.
   StatusLines: {
     name: 'StatusLines',
-    props: ['trace', 'canAct', 'nextTickIn', 'tick', 'netLead', 'alive'],
+    props: ['trace', 'canAct', 'nextTickIn', 'cycle', 'netLead', 'alive'],
     template:
       "<div data-testid=\"theater-header\">{{ !alive ? 'DOWN' : canAct ? 'AWAITING ORDERS' : 'RESOLVING' }}</div>",
   },
@@ -147,7 +147,7 @@ function seedActiveGame(overrides: Partial<GameState> = {}) {
   const store = useGameStore()
   store.gameId = 'game_test_1'
   store.playerId = 'p1'
-  store.updateFromTick(makeTickMessage(overrides))
+  store.updateFromCycle(makeTickMessage(overrides))
   return store
 }
 
@@ -229,14 +229,14 @@ describe('GameScreen', () => {
 
       const header = wrapper.find('[data-testid="theater-header"]')
       expect(header.exists()).toBe(true)
-      // Alive + not yet acted this tick → AWAITING ORDERS (see theaterStatus).
+      // Alive + not yet acted this cycle → AWAITING ORDERS (see theaterStatus).
       expect(header.text()).toContain('AWAITING ORDERS')
       wrapper.unmount()
     })
 
-    it('shows RESOLVING once the player has already acted this tick', async () => {
+    it('shows RESOLVING once the player has already acted this cycle', async () => {
       const store = seedActiveGame()
-      store.markActionSent('move mid-river') // lastActionTick === current tick
+      store.markActionSent('move mid-river') // lastActionCycle === current tick
       const wrapper = mountGameScreen()
 
       const header = wrapper.find('[data-testid="theater-header"]')
@@ -343,7 +343,7 @@ describe('GameScreen', () => {
         heroId: SAMPLE_HEROES.echo,
         level: 1,
       })
-      store.updateFromTick(makeTickMessage({ players: roster }))
+      store.updateFromCycle(makeTickMessage({ players: roster }))
       const wrapper = mountGameScreen()
 
       const r = wrapper.findAll('.hud-action-btn').find((b) => b.text().startsWith('R'))
@@ -426,7 +426,7 @@ describe('GameScreen', () => {
       players.p1 = { ...players.p1!, zone, moveTarget: null }
       const zones: Record<string, ZoneRuntimeState> = {}
       for (const id of CORRIDOR) zones[id] = makeZone(id)
-      store.updateFromTick(makeTickMessage({ tick: 240, players, zones, ...overrides }))
+      store.updateFromCycle(makeTickMessage({ cycle: 240, players, zones, ...overrides }))
       return store
     }
 
@@ -526,7 +526,10 @@ describe('GameScreen', () => {
       await wrapper.vm.$nextTick()
 
       // One hop later, mid-walk — the tick that frees the player to act again.
-      seedMap('mid-t3-chaff', { tick: 241, players: rosterWalking('mid-t3-chaff', 'mid-t1-chaff') })
+      seedMap('mid-t3-chaff', {
+        cycle: 241,
+        players: rosterWalking('mid-t3-chaff', 'mid-t1-chaff'),
+      })
       await wrapper.vm.$nextTick()
 
       socketSpies.send.mockClear()
@@ -551,7 +554,7 @@ describe('GameScreen', () => {
       wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move mid-t3-chaff')
       await wrapper.vm.$nextTick()
 
-      seedMap('mid-t2-chaff', { tick: 241 })
+      seedMap('mid-t2-chaff', { cycle: 241 })
       await wrapper.vm.$nextTick()
 
       const feed = (

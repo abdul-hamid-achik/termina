@@ -40,10 +40,10 @@ function smallRoster() {
 
 function smallStats(): Record<string, PlayerEndStats> {
   return {
-    p1: makePlayerEndStats({ kills: 9, deaths: 2, assists: 7, gold: 8400, heroDamage: 31_200 }),
-    p2: makePlayerEndStats({ kills: 3, deaths: 5, assists: 14, gold: 4100, heroDamage: 9800 }),
-    e1: makePlayerEndStats({ kills: 6, deaths: 6, assists: 4, gold: 6900, heroDamage: 21_000 }),
-    e2: makePlayerEndStats({ kills: 2, deaths: 8, assists: 5, gold: 3200, heroDamage: 7400 }),
+    p1: makePlayerEndStats({ kills: 9, deaths: 2, assists: 7, scrip: 8400, heroDamage: 31_200 }),
+    p2: makePlayerEndStats({ kills: 3, deaths: 5, assists: 14, scrip: 4100, heroDamage: 9800 }),
+    e1: makePlayerEndStats({ kills: 6, deaths: 6, assists: 4, scrip: 6900, heroDamage: 21_000 }),
+    e2: makePlayerEndStats({ kills: 2, deaths: 8, assists: 5, scrip: 3200, heroDamage: 7400 }),
   }
 }
 
@@ -99,7 +99,7 @@ describe('PostGame', () => {
     it("shows the current player's K/D/A, damage and gold", () => {
       const wrapper = mountPostGame()
       const text = wrapper.text()
-      // p1 stats: 9/2/7, 31,200 hero dmg, 8,400 gold (toLocaleString → grouped)
+      // p1 stats: 9/2/7, 31,200 hero dmg, 8,400 scrip (toLocaleString → grouped)
       expect(text).toContain('9')
       expect(text).toContain('31,200')
       expect(text).toContain('8,400')
@@ -271,7 +271,7 @@ describe('PostGame', () => {
         kills: 20,
         deaths: 0,
         assists: 10,
-        gold: 12_000,
+        scrip: 12_000,
         heroDamage: 50_000,
       })
       const wrapper = mountPostGame({ stats, winner: 'chaff' })

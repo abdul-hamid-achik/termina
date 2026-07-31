@@ -41,7 +41,7 @@ describe('TargetDummy', () => {
         mountDummy({ integ: 800 }).find('[data-testid="target-dummy-bar"]').classes(),
       ).toContain('bg-chaff')
     })
-    it('is gold between 26% and 50%', () => {
+    it('is scrip between 26% and 50%', () => {
       expect(
         mountDummy({ integ: 400 }).find('[data-testid="target-dummy-bar"]').classes(),
       ).toContain('bg-gold')
@@ -51,7 +51,7 @@ describe('TargetDummy', () => {
         mountDummy({ integ: 200 }).find('[data-testid="target-dummy-bar"]').classes(),
       ).toContain('bg-audit')
     })
-    it('pins the boundaries: exactly 50% is gold, exactly 25% is audit', () => {
+    it('pins the boundaries: exactly 50% is scrip, exactly 25% is audit', () => {
       expect(
         mountDummy({ integ: 500, maxInteg: 1000 })
           .find('[data-testid="target-dummy-bar"]')
@@ -90,7 +90,7 @@ describe('TargetDummy', () => {
   })
 
   describe('control status chips', () => {
-    it('renders a chip per active control with its label + ticks left', () => {
+    it('renders a chip per active control with its label + cycles left', () => {
       const wrapper = mountDummy({
         statuses: [
           { label: 'STUNNED', ticksLeft: 2 },

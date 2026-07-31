@@ -98,13 +98,13 @@ export function useGameSocket() {
       // If connecting to a game (not lobby), send join_game or reconnect
       if (currentGameId && currentPlayerId && currentGameId !== 'lobby') {
         if (isReconnect) {
-          // lastTick lets the server replay the visible events missed while
+          // lastCycle lets the server replay the visible events missed while
           // disconnected; the reconnect response includes a full_state snapshot.
           send({
             type: 'reconnect',
             gameId: currentGameId,
             playerId: currentPlayerId,
-            lastTick: gameStore.tick > 0 ? gameStore.tick : undefined,
+            lastCycle: gameStore.cycle > 0 ? gameStore.cycle : undefined,
           })
         } else {
           send({ type: 'join_game', gameId: currentGameId })
@@ -135,13 +135,13 @@ export function useGameSocket() {
 
       socketLog.trace(`Received: ${msg.type}`, {
         type: msg.type,
-        ...('tick' in msg ? { tick: msg.tick } : {}),
+        ...('cycle' in msg ? { cycle: msg.cycle } : {}),
       })
 
       // Route to game store
       switch (msg.type) {
-        case 'tick_state':
-          gameStore.updateFromTick(msg)
+        case 'cycle_state':
+          gameStore.updateFromCycle(msg)
           break
         case 'events':
           gameStore.addEvents(msg.events)
@@ -178,7 +178,7 @@ export function useGameSocket() {
             msg.stats,
             msg.mmrChange,
             msg.ranked ?? true,
-            msg.durationTicks,
+            msg.durationCycles,
           )
           break
         case 'player_disconnect': {
@@ -203,7 +203,7 @@ export function useGameSocket() {
           }
           break
         case 'full_state':
-          gameStore.updateFromTick({ type: 'tick_state', tick: msg.tick, state: msg.state })
+          gameStore.updateFromCycle({ type: 'cycle_state', cycle: msg.cycle, state: msg.state })
           break
         case 'game_not_found':
           socketLog.warn('Game not found', { gameId: msg.gameId })

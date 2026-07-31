@@ -1,27 +1,27 @@
 /**
  * Headless bot-vs-bot match simulator for balance validation.
  *
- *   bun server/game/dev/simulate-game.ts [matches=1] [maxTicks=1500]
+ *   bun server/game/dev/simulate-game.ts [matches=1] [maxCycles=1500]
  *
- * Runs full 5v5 bot games through the real engine (processTick) and prints
- * per-match pacing stats (length, kills, gold, ice, winner); with matches>1
+ * Runs full 5v5 bot games through the real engine (processCycle) and prints
+ * per-match pacing stats (length, kills, scrip, ice, winner); with matches>1
  * it also prints a BALANCE SUMMARY (side win-rate, length spread, per-hero
  * win-rate) aggregated by ./simStats. A standalone manual tool — run directly,
  * never imported, so its top-level loop only executes when you invoke it.
  */
 /* eslint-disable no-console -- this is a standalone CLI tool; console IS its UI */
 import { Effect } from 'effect'
-import { processTick } from '../engine/GameLoop'
+import { processCycle } from '../engine/GameLoop'
 import { createInMemoryStateManager } from '../engine/StateManager'
 import { registerBots, cleanupGame } from '../ai/BotManager'
 import { resetWaveIdCounter } from '../map/spawner'
-import { playerNetWorth } from '../engine/GoldDistributor'
+import { playerNetWorth } from '../engine/ScripDistributor'
 import { summarizeSimResults, type SimResult } from './simStats'
 import { HERO_IDS } from '../../../shared/constants/heroes'
 import type { GameState, TeamId } from '../../../shared/types/game'
 
 const matches = Number(process.argv[2] ?? 1)
-const maxTicks = Number(process.argv[3] ?? 1500)
+const maxCycles = Number(process.argv[3] ?? 1500)
 
 function pickHeroes(count: number, exclude: Set<string>): string[] {
   const available = HERO_IDS.filter((h) => !exclude.has(h))
@@ -42,13 +42,13 @@ function teamStats(state: GameState, team: TeamId) {
     avgLevel: players.reduce((sum, p) => sum + p.level, 0) / players.length,
     iceAlive: state.ice.filter((t) => t.team === team && t.alive).length,
     waves: state.waves.filter((c) => c.team === team).length,
-    ancientHp: state.ancients?.[team]?.integ ?? -1,
-    ancientAlive: state.ancients?.[team]?.alive ?? true,
+    ancientHp: state.terminals?.[team]?.integ ?? -1,
+    ancientAlive: state.terminals?.[team]?.alive ?? true,
   }
 }
 
-function fmtMin(tick: number): string {
-  return `${Math.round((tick * 4) / 60)}m`
+function fmtMin(cycle: number): string {
+  return `${Math.round((cycle * 4) / 60)}m`
 }
 
 async function simulateOne(matchIdx: number): Promise<SimResult> {
@@ -86,31 +86,31 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
   const checkpoints: number[] = [75, 150, 300, 450, 600, 900, 1200] // 5,10,20,30,40,60,80 min
   let totalKills = 0
 
-  while (state.tick < maxTicks && state.phase !== 'ended') {
-    const result = Effect.runSync(processTick(gameId, state))
+  while (state.cycle < maxCycles && state.phase !== 'ended') {
+    const result = Effect.runSync(processCycle(gameId, state))
     state = result.state
     totalKills = state.teams.chaff.kills + state.teams.audit.kills
 
-    if (process.env.SIM_DUMP_ZONES === '1' && state.tick % 50 === 0) {
+    if (process.env.SIM_DUMP_ZONES === '1' && state.cycle % 50 === 0) {
       console.log(
-        `      t${state.tick} actions: ${result.actions
+        `      t${state.cycle} actions: ${result.actions
           .map((a) => `${a.playerId}:${JSON.stringify(a.command)}`)
           .join(' | ')}`,
       )
       if (result.rejectedActions.length > 0) {
         console.log(
-          `      t${state.tick} rejected: ${result.rejectedActions
+          `      t${state.cycle} rejected: ${result.rejectedActions
             .map((r) => `${r.playerId}:${r.reason}`)
             .join(' | ')}`,
         )
       }
     }
 
-    if (checkpoints.includes(state.tick)) {
+    if (checkpoints.includes(state.cycle)) {
       const chaff = teamStats(state, 'chaff')
       const audit = teamStats(state, 'audit')
       console.log(
-        `  [${fmtMin(state.tick)}] kills ${chaff.kills}:${audit.kills} | ` +
+        `  [${fmtMin(state.cycle)}] kills ${chaff.kills}:${audit.kills} | ` +
           `networth ${chaff.netWorth}:${audit.netWorth} | ` +
           `lvl ${chaff.avgLevel.toFixed(1)}:${audit.avgLevel.toFixed(1)} | ` +
           `ice ${chaff.iceAlive}:${audit.iceAlive} | ` +
@@ -121,7 +121,7 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
         for (const p of Object.values(state.players)) {
           console.log(
             `      ${p.id} (${p.team}) zone=${p.zone} integ =${p.integ}/${p.maxInteg} bw =${p.bw}/${p.maxBw} ` +
-              `gold=${p.gold} alive=${p.alive} buffs=[${p.buffs.map((b) => b.id).join(',')}]`,
+              `scrip=${p.scrip} alive=${p.alive} buffs=[${p.buffs.map((b) => b.id).join(',')}]`,
           )
         }
         const waveZones = new Map<string, number>()
@@ -142,8 +142,8 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
 
   console.log(
     winner
-      ? `  RESULT: ${winner} wins at ${fmtMin(state.tick)} (tick ${state.tick}) — ancient destroyed: ${!chaff.ancientAlive ? 'chaff' : !audit.ancientAlive ? 'audit' : 'none (surrender?)'}`
-      : `  RESULT: NO WINNER after ${fmtMin(state.tick)} — game stalled`,
+      ? `  RESULT: ${winner} wins at ${fmtMin(state.cycle)} (cycle ${state.cycle}) — ancient destroyed: ${!chaff.ancientAlive ? 'chaff' : !audit.ancientAlive ? 'audit' : 'none (surrender?)'}`
+      : `  RESULT: NO WINNER after ${fmtMin(state.cycle)} — game stalled`,
   )
   console.log(
     `  final: kills ${chaff.kills}:${audit.kills} (${totalKills} total) | ` +
@@ -164,7 +164,7 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
   cleanupGame(gameId)
   Effect.runSync(stateManager.deleteGame(gameId))
 
-  return { winner, ticks: state.tick, chaffHeroes, auditHeroes }
+  return { winner, ticks: state.cycle, chaffHeroes, auditHeroes }
 }
 
 const results: SimResult[] = []
@@ -182,7 +182,7 @@ if (matches > 1) {
       `  ${s.sideBiasSignificant ? '← SIGNIFICANT (likely real)' : '(within normal variance — run more)'}`,
   )
   console.log(
-    `  length: ${fmtMin(s.length.minTicks)}–${fmtMin(s.length.maxTicks)} ` +
+    `  length: ${fmtMin(s.length.minTicks)}–${fmtMin(s.length.maxCycles)} ` +
       `(median ${fmtMin(s.length.medianTicks)}, avg ${fmtMin(s.length.avgTicks)})`,
   )
   const top = s.heroWinRates.slice(0, 5)

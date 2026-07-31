@@ -15,12 +15,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 400,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 1,
     ice: 18,
     kills: 0,
@@ -34,21 +34,21 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
 }
 
-function makeState(players: PlayerState[], tick: number): GameState {
+function makeState(players: PlayerState[], cycle: number): GameState {
   const map: Record<string, PlayerState> = {}
   for (const p of players) map[p.id] = p
   return {
-    tick,
+    cycle,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: map,
     zones: { 'mid-river': { id: 'mid-river', wards: [], waves: [] } },
@@ -56,15 +56,15 @@ function makeState(players: PlayerState[], tick: number): GameState {
     neutrals: [],
     ice: [],
     caches: [],
-    tenant: { alive: false, integ: 0, maxInteg: 0, deathTick: null },
+    tenant: { alive: false, integ: 0, maxInteg: 0, deathCycle: null },
     backup: null,
     events: [],
   } as unknown as GameState
 }
 
-function castEvent(playerId: string, targetId: string, tick: number, damage: number): GameEvent {
+function castEvent(playerId: string, targetId: string, cycle: number, damage: number): GameEvent {
   return {
-    tick,
+    cycle,
     type: 'ability_cast',
     payload: { playerId, ability: 'q', targetId, damage, damageType: 'code' },
   } as GameEvent
@@ -81,7 +81,7 @@ describe('Regex passive: Pattern Cache', () => {
     // No bonus damage applied on the first cast.
     expect(after.players['e1']!.integ).toBe(enemy.integ)
     // Cache armed: target stored in `destination` (single buff, stable
-    // source=p1 so it overwrites across target switches), tick stored as stacks.
+    // source=p1 so it overwrites across target switches), cycle stored as stacks.
     const tgt = after.players['p1']!.buffs.find((b) => b.id === 'patternCacheTarget')
     const tk = after.players['p1']!.buffs.find((b) => b.id === 'patternCacheTick')
     expect(tgt?.destination).toBe('e1')
@@ -91,7 +91,7 @@ describe('Regex passive: Pattern Cache', () => {
   it('SECOND cast on the SAME target within 3 ticks deals +15% bonus code damage', () => {
     const enemy = makePlayer({ id: 'e1', name: 'Enemy', team: 'audit', heroId: 'echo', level: 1 })
 
-    // First cast arms the cache at tick 10.
+    // First cast arms the cache at cycle 10.
     const armed = resolveHeroPassive(
       makeState([makePlayer(), enemy], 10),
       'p1',
@@ -99,8 +99,8 @@ describe('Regex passive: Pattern Cache', () => {
     )
     expect(armed.players['e1']!.integ).toBe(enemy.integ) // sanity: no bonus yet
 
-    // Second cast at tick 12 (within 3 ticks) on same target with damage=200.
-    const second = resolveHeroPassive({ ...armed, tick: 12 }, 'p1', castEvent('p1', 'e1', 12, 200))
+    // Second cast at cycle 12 (within 3 ticks) on same target with damage=200.
+    const second = resolveHeroPassive({ ...armed, cycle: 12 }, 'p1', castEvent('p1', 'e1', 12, 200))
 
     const integLost = enemy.integ - second.players['e1']!.integ
     expect(integLost).toBeGreaterThan(0)
@@ -110,7 +110,7 @@ describe('Regex passive: Pattern Cache', () => {
     // round(100*0.15)=15 raw bonus from a hypothetical damage=100 cast: the
     // ratio of realized losses must equal the ratio of raw bonuses (200 vs 100).
     const secondHalf = resolveHeroPassive(
-      { ...armed, tick: 12 },
+      { ...armed, cycle: 12 },
       'p1',
       castEvent('p1', 'e1', 12, 100),
     )
@@ -129,13 +129,13 @@ describe('Regex passive: Pattern Cache', () => {
       'p1',
       castEvent('p1', 'e1', 10, 100),
     )
-    // Second cast at tick 12 on e2 (different target) — no bonus to e2.
-    const second = resolveHeroPassive({ ...armed, tick: 12 }, 'p1', castEvent('p1', 'e2', 12, 200))
+    // Second cast at cycle 12 on e2 (different target) — no bonus to e2.
+    const second = resolveHeroPassive({ ...armed, cycle: 12 }, 'p1', castEvent('p1', 'e2', 12, 200))
     expect(second.players['e2']!.integ).toBe(e2.integ)
   })
 
   it('STILL bonuses on a re-targeted hero after a switch (regression: never-expiring stale cache)', () => {
-    // Bug: patternCacheTarget was keyed by source=targetId with ticksRemaining
+    // Bug: patternCacheTarget was keyed by source=targetId with cyclesRemaining
     // 999, so after targeting a second hero the cache held two buffs and find()
     // read the stale first one — the +15% PERMANENTLY stopped firing. Now the
     // cache tracks the latest target, so repeating a target re-arms + bonuses.
@@ -144,13 +144,13 @@ describe('Regex passive: Pattern Cache', () => {
 
     let state = makeState([makePlayer(), e1, e2], 10)
     state = resolveHeroPassive(state, 'p1', castEvent('p1', 'e1', 10, 100)) // arm on e1
-    state = resolveHeroPassive({ ...state, tick: 11 }, 'p1', castEvent('p1', 'e2', 11, 100)) // switch → arm on e2
+    state = resolveHeroPassive({ ...state, cycle: 11 }, 'p1', castEvent('p1', 'e2', 11, 100)) // switch → arm on e2
     // Exactly one cache-target buff, pointing at the latest target.
     const targets = state.players['p1']!.buffs.filter((b) => b.id === 'patternCacheTarget')
     expect(targets).toHaveLength(1)
     expect(targets[0]!.destination).toBe('e2')
     // Repeat e2 within the window → bonus fires (INTEG drops below the cast's normal hit).
-    const repeat = resolveHeroPassive({ ...state, tick: 12 }, 'p1', castEvent('p1', 'e2', 12, 200))
+    const repeat = resolveHeroPassive({ ...state, cycle: 12 }, 'p1', castEvent('p1', 'e2', 12, 200))
     expect(repeat.players['e2']!.integ).toBeLessThan(e2.integ)
   })
 
@@ -161,8 +161,8 @@ describe('Regex passive: Pattern Cache', () => {
       'p1',
       castEvent('p1', 'e1', 10, 100),
     )
-    // tick 14 → 14-10 = 4 > 3, stale cache, no bonus.
-    const second = resolveHeroPassive({ ...armed, tick: 14 }, 'p1', castEvent('p1', 'e1', 14, 200))
+    // cycle 14 → 14-10 = 4 > 3, stale cache, no bonus.
+    const second = resolveHeroPassive({ ...armed, cycle: 14 }, 'p1', castEvent('p1', 'e1', 14, 200))
     expect(second.players['e1']!.integ).toBe(enemy.integ)
   })
 })

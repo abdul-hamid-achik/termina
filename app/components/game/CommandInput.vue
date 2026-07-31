@@ -23,12 +23,12 @@ const props = withDefaults(
     allPlayers?: Record<string, PlayerState>
     items?: Record<string, ItemDef>
     canAct?: boolean
-    /** The command queued for the next tick (shown while waiting). */
+    /** The command queued for the next cycle (shown while waiting). */
     pendingCommand?: string | null
-    /** Command typed while waiting — buffered client-side, sent next tick. */
+    /** Command typed while waiting — buffered client-side, sent next cycle. */
     bufferedCommand?: string | null
     /** Current game tick, for cooldown-aware validation (buyback etc.). */
-    tick?: number
+    cycle?: number
     /**
      * Game mode. Needed because this component runs its OWN pre-flight
      * validation and refuses to submit what it judges invalid — so any rule that
@@ -63,7 +63,7 @@ const props = withDefaults(
     canAct: true,
     pendingCommand: null,
     bufferedCommand: null,
-    tick: undefined,
+    cycle: undefined,
   },
 )
 
@@ -89,7 +89,7 @@ const gameContext = computed<GameContext>(() => ({
   visibleZones: props.visibleZones,
   allPlayers: props.allPlayers,
   items: props.items,
-  tick: props.tick,
+  cycle: props.cycle,
   mode: props.mode,
   neutrals: props.neutrals,
   tenant: props.tenant,
@@ -98,7 +98,7 @@ const gameContext = computed<GameContext>(() => ({
 
 /**
  * Touch devices get no automatic focus — popping the soft keyboard over
- * the game on every tick is worse than requiring an explicit tap.
+ * the game on every cycle is worse than requiring an explicit tap.
  */
 function isTouchDevice(): boolean {
   if (typeof window === 'undefined') return false
@@ -128,7 +128,7 @@ const suggestions = computed<Suggestion[]>(() => {
             { text: 'help', description: 'List all commands + the goal' },
             { text: 'chat', description: 'Send chat message' },
             { text: 'ping', description: 'Ping a zone' },
-            { text: 'buyback', description: 'Pay gold to respawn instantly' },
+            { text: 'buyback', description: 'Pay scrip to respawn instantly' },
             { text: 'surrender', description: 'Vote to forfeit (needs confirm)' },
           ]
     }
@@ -340,7 +340,7 @@ function handleSubmit() {
   }
 
   // Block submission of commands that would be rejected — in a one-action-
-  // per-tick game a wasted action is the worst outcome. The preview line
+  // per-cycle game a wasted action is the worst outcome. The preview line
   // already shows why it's invalid.
   if (preview.value?.type === 'error') {
     return
@@ -598,14 +598,14 @@ onUnmounted(() => {
       {{ preview.text }}
     </div>
 
-    <!-- Buffered command notice — typed while waiting, sends next tick -->
+    <!-- Buffered command notice — typed while waiting, sends next cycle -->
     <div
       v-if="bufferedCommand"
       data-testid="buffered-command"
       aria-live="polite"
       class="border-t border-border/50 px-3 py-0.5 font-mono text-[0.7rem] text-gold"
     >
-      [QUEUED] {{ bufferedCommand }} — sends next tick
+      [QUEUED] {{ bufferedCommand }} — sends next cycle
     </div>
 
     <!-- Input row: never disabled, players can pre-type during the wait -->
@@ -636,7 +636,7 @@ onUnmounted(() => {
         :placeholder="
           !canAct
             ? pendingCommand
-              ? `Queued: ${pendingCommand} — resolves next tick`
+              ? `Queued: ${pendingCommand} — resolves next cycle`
               : 'Action sent — pre-type your next command'
             : placeholder
         "

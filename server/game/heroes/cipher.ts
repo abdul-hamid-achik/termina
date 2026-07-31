@@ -105,7 +105,7 @@ function resolveQ(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -137,7 +137,7 @@ function resolveW(
     caster = applyBuff(caster, {
       id: 'stealth',
       stacks: 1,
-      ticksRemaining: 2,
+      cyclesRemaining: 2,
       source: player.id,
     })
 
@@ -145,7 +145,7 @@ function resolveW(
       state: updatePlayer(state, caster),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: { playerId: player.id, ability: 'w', buff: 'stealth', duration: 2 },
         },
@@ -187,14 +187,14 @@ function resolveE(
     let updatedTarget = applyBuff(targetPlayer, {
       id: 'revealed',
       stacks: 1,
-      ticksRemaining: 3,
+      cyclesRemaining: 3,
       source: player.id,
     })
     updatedTarget = applyBuff(updatedTarget, {
       id: 'silence',
       stacks: 1,
-      // 2 = one gated action: reaped same-tick by tickAllBuffs (see applyBuff note)
-      ticksRemaining: 2,
+      // 2 = one gated action: reaped same-tick by cycleAllBuffs (see applyBuff note)
+      cyclesRemaining: 2,
       source: player.id,
     })
 
@@ -202,7 +202,7 @@ function resolveE(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -260,7 +260,7 @@ function resolveR(
     updatedTarget = applyBuff(updatedTarget, {
       id: 'encryptionKey',
       stacks: newStacks,
-      ticksRemaining: ENCRYPTION_KEY_DURATION,
+      cyclesRemaining: ENCRYPTION_KEY_DURATION,
       source: player.id,
     })
 
@@ -268,7 +268,7 @@ function resolveR(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -303,7 +303,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   const updated = applyBuff(targetPlayer, {
     id: 'encryptionKey',
     stacks: newStacks,
-    ticksRemaining: ENCRYPTION_KEY_DURATION,
+    cyclesRemaining: ENCRYPTION_KEY_DURATION,
     source: playerId,
   })
 

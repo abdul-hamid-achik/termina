@@ -24,7 +24,7 @@ function shopItems() {
 
 function mountShop(
   overrides: Partial<{
-    gold: number
+    scrip: number
     ownedItems: (string | null)[]
     pinnedItems: string[]
     recommendedItems: string[]
@@ -33,7 +33,7 @@ function mountShop(
   return mount(ItemShop, {
     props: {
       items: shopItems(),
-      gold: 10_000,
+      scrip: 10_000,
       ownedItems: [null, null, null, null, null, null],
       pinnedItems: [],
       ...overrides,
@@ -60,7 +60,7 @@ describe('ItemShop', () => {
   })
 
   it('hides [BUY] when the item is unaffordable', () => {
-    const wrapper = mountShop({ gold: 0 })
+    const wrapper = mountShop({ scrip: 0 })
 
     expect(wrapper.find('[data-testid="shop-buy-trauma_patch"]').exists()).toBe(false)
   })

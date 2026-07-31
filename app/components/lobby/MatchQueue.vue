@@ -170,7 +170,7 @@ const filledCount = computed(() => {
     <TerminalPanel title="Matchmaking">
       <div class="flex flex-col gap-3 p-4">
         <!-- Screen-reader progress: announce roster fill (keyed off the count,
-             not the per-tick typing cursor, so it isn't spammy). -->
+             not the per-cycle typing cursor, so it isn't spammy). -->
         <div aria-live="polite" class="sr-only">
           {{ filledCount }} of {{ totalSlots }} players found<span v-if="botsFilling">
             — filling with {{ botsCount }} AI opponents</span

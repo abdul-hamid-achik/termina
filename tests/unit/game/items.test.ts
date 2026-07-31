@@ -67,14 +67,14 @@ describe('Items Registry', () => {
       'recall_token',
     ]
 
-    it('starter items cost less than 600g', () => {
+    it('starter items cost less than 600sc', () => {
       for (const id of starterIds) {
         const item = getItem(id)!
         expect(item.cost).toBeLessThan(600)
       }
     })
 
-    it('core items cost 500g or more', () => {
+    it('core items cost 500sc or more', () => {
       for (const id of coreIds) {
         const item = getItem(id)!
         expect(item.cost).toBeGreaterThanOrEqual(500)
@@ -113,7 +113,7 @@ describe('Items Registry', () => {
         expect(item.active!.id).toBeDefined()
         expect(item.active!.name).toBeDefined()
         expect(item.active!.description).toBeDefined()
-        expect(typeof item.active!.cooldownTicks).toBe('number')
+        expect(typeof item.active!.cooldownCycles).toBe('number')
       }
     })
 
@@ -131,7 +131,7 @@ describe('Items Registry', () => {
     it('consumable items with active have zero cooldown', () => {
       const consumablesWithActive = Object.values(ITEMS).filter((i) => i.consumable && i.active)
       for (const item of consumablesWithActive) {
-        expect(item.active!.cooldownTicks).toBe(0)
+        expect(item.active!.cooldownCycles).toBe(0)
       }
     })
   })
@@ -164,7 +164,7 @@ describe('Items Registry', () => {
       const bad: string[] = []
       for (const item of Object.values(ITEMS)) {
         if (!item.active) continue
-        if (item.active.cooldownTicks < 0) bad.push(`${item.id}: negative cooldown`)
+        if (item.active.cooldownCycles < 0) bad.push(`${item.id}: negative cooldown`)
         const tt = item.active.targetType
         if (tt !== undefined && !TARGET_TYPES.includes(tt)) {
           bad.push(`${item.id}: bad targetType "${tt}"`)

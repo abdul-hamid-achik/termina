@@ -60,9 +60,9 @@ describe('ActionLog', () => {
     const redis = makeMockRedis()
     await Effect.runPromise(
       appendActions(redis, 'g1', [
-        { tick: 1, playerId: 'p1', command: { type: 'move', zone: 'mid-river' } },
+        { cycle: 1, playerId: 'p1', command: { type: 'move', zone: 'mid-river' } },
         {
-          tick: 1,
+          cycle: 1,
           playerId: 'p2',
           command: { type: 'attack', target: { kind: 'hero', id: 'p1' } },
         },
@@ -80,22 +80,22 @@ describe('ActionLog', () => {
     const redis = makeMockRedis()
     await Effect.runPromise(
       appendActions(redis, 'g1', [
-        { tick: 1, playerId: 'p1', command: { type: 'move', zone: 'a' } },
+        { cycle: 1, playerId: 'p1', command: { type: 'move', zone: 'a' } },
       ]),
     )
     await Effect.runPromise(
       appendActions(redis, 'g1', [
-        { tick: 2, playerId: 'p1', command: { type: 'move', zone: 'b' } },
+        { cycle: 2, playerId: 'p1', command: { type: 'move', zone: 'b' } },
       ]),
     )
     await Effect.runPromise(
       appendActions(redis, 'g1', [
-        { tick: 3, playerId: 'p1', command: { type: 'move', zone: 'c' } },
+        { cycle: 3, playerId: 'p1', command: { type: 'move', zone: 'c' } },
       ]),
     )
 
     const result = await Effect.runPromise(readActions(redis, 'g1'))
-    expect(result.map((a) => a.tick)).toEqual([1, 2, 3])
+    expect(result.map((a) => a.cycle)).toEqual([1, 2, 3])
   })
 
   it('is a no-op for an empty batch', async () => {
@@ -115,7 +115,7 @@ describe('ActionLog', () => {
     const redis = makeMockRedis()
     await Effect.runPromise(
       appendActions(redis, 'g1', [
-        { tick: 1, playerId: 'p1', command: { type: 'move', zone: 'a' } },
+        { cycle: 1, playerId: 'p1', command: { type: 'move', zone: 'a' } },
       ]),
     )
     expect(redis._list.has('gamelog:g1')).toBe(true)
@@ -131,7 +131,7 @@ describe('ActionLog', () => {
     await expect(
       Effect.runPromise(
         appendActions(redis, 'g1', [
-          { tick: 1, playerId: 'p1', command: { type: 'move', zone: 'a' } },
+          { cycle: 1, playerId: 'p1', command: { type: 'move', zone: 'a' } },
         ]),
       ),
     ).resolves.toBeUndefined()

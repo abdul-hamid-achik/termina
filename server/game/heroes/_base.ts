@@ -25,7 +25,7 @@ export class InsufficientBwError extends Data.TaggedError('InsufficientBwError')
 
 export class CooldownError extends Data.TaggedError('CooldownError')<{
   readonly ability: string
-  readonly ticksRemaining: number
+  readonly cyclesRemaining: number
 }> {}
 
 export class InvalidTargetError extends Data.TaggedError('InvalidTargetError')<{
@@ -170,17 +170,17 @@ export function isHardControlBuffId(id: string): boolean {
  * no attacker-team parameter (invariant guarded by tests).
  */
 export function isBreached(player: PlayerState): boolean {
-  return player.buffs.some((b) => b.id === 'breached' && b.ticksRemaining > 0)
+  return player.buffs.some((b) => b.id === 'breached' && b.cyclesRemaining > 0)
 }
 
 /**
- * Why cast-applied control disables (stun/silence/root/taunt) use ticksRemaining
+ * Why cast-applied control disables (stun/silence/root/taunt) use cyclesRemaining
  * 2, not 1, to gate ONE future action: the debuff is applied during the resolve
  * phase, but the victim's action THIS tick was already validated at tick start,
- * and tickAllBuffs reaps the debuff at the END of this same tick. So
- * ticksRemaining:1 decrements to 0 and is gone before the next validateAction
+ * and cycleAllBuffs reaps the debuff at the END of this same tick. So
+ * cyclesRemaining:1 decrements to 0 and is gone before the next validateAction
  * ever sees it (a silent no-op). 2 survives the same-tick reap, gates the next
- * action, then expires. (See the `ticksRemaining: 2 // one gated action` sites.)
+ * action, then expires. (See the `cyclesRemaining: 2 // one gated action` sites.)
  */
 export function applyBuff(player: PlayerState, buff: BuffState): PlayerState {
   // AIRGAP closes a breach by definition — strip breached when airgap lands.
@@ -201,7 +201,7 @@ export function applyBuff(player: PlayerState, buff: BuffState): PlayerState {
     buffs[idx] = {
       ...buffs[idx]!,
       stacks: buff.stacks,
-      ticksRemaining: Math.max(buffs[idx]!.ticksRemaining, buff.ticksRemaining),
+      cyclesRemaining: Math.max(buffs[idx]!.cyclesRemaining, buff.cyclesRemaining),
     }
   } else {
     buffs.push(buff)
@@ -209,14 +209,14 @@ export function applyBuff(player: PlayerState, buff: BuffState): PlayerState {
   return { ...player, buffs }
 }
 
-export function tickBuffs(player: PlayerState): PlayerState {
+export function cycleBuffs(player: PlayerState): PlayerState {
   const buffs = player.buffs
-    .map((b) => ({ ...b, ticksRemaining: b.ticksRemaining - 1 }))
-    // Preserve the backup buff at ticksRemaining === 0 so handleDeaths can proc
-    // the resurrection even if the buff would have expired this tick. If the
-    // player survives this tick, the backup is removed as expired at the end of
+    .map((b) => ({ ...b, cyclesRemaining: b.cyclesRemaining - 1 }))
+    // Preserve the backup buff at cyclesRemaining === 0 so handleDeaths can proc
+    // the resurrection even if the buff would have expired this cycle. If the
+    // player survives this cycle, the backup is removed as expired at the end of
     // handleDeaths (see GameLoop.handleDeaths' backup-expiry sweep).
-    .filter((b) => b.ticksRemaining > 0 || b.id === 'backup')
+    .filter((b) => b.cyclesRemaining > 0 || b.id === 'backup')
   return { ...player, buffs }
 }
 
@@ -354,7 +354,7 @@ export function dealDamage(
   damageType: DamageType,
 ): PlayerState {
   // Immunity (Proxy R / Eul's invulnerable; BKB airgap; Ethereal/Ghost
-  // kinetic) ignores the hit entirely — no INTEG lost, buff left for tickBuffs to
+  // kinetic) ignores the hit entirely — no INTEG lost, buff left for cycleBuffs to
   // expire (NOT consumed like phaseShift).
   if (isDamageImmune(target, damageType)) return target
 
@@ -563,7 +563,7 @@ export function processDoTs(state: GameState): { state: GameState; events: GameE
       // Emitting per-dot damage events feeds kill/assist credit and inCombat
       events.push({
         _tag: 'damage',
-        tick: state.tick,
+        cycle: state.cycle,
         sourceId: dot.source,
         targetId: player.id,
         amount: effectiveDamage,
@@ -575,7 +575,7 @@ export function processDoTs(state: GameState): { state: GameState; events: GameE
   return { state: updated, events }
 }
 
-export function tickAllBuffs(state: GameState): GameState {
+export function cycleAllBuffs(state: GameState): GameState {
   let updated = state
   const events: GameEvent[] = []
   // DMZ explosions are collected here and applied AFTER the per-player tick loop:
@@ -594,11 +594,11 @@ export function tickAllBuffs(state: GameState): GameState {
     const returnShadow = player.buffs.find((b) => b.id === 'nextHopShadow' || b.id === 'returnMark')
     // Firewall DMZ: a marker riding alongside the W shield; when it ends it
     // explodes for code damage to enemies in the caster's zone.
-    const dmzExpiring = player.buffs.find((b) => b.id === 'dmz' && b.ticksRemaining === 1)
+    const dmzExpiring = player.buffs.find((b) => b.id === 'dmz' && b.cyclesRemaining === 1)
 
-    if (tpChannelingBuff && tpChannelingBuff.ticksRemaining === 1 && tpDestBuff?.destination) {
+    if (tpChannelingBuff && tpChannelingBuff.cyclesRemaining === 1 && tpDestBuff?.destination) {
       const tpDestination = tpDestBuff.destination
-      const ticked = tickBuffs(player)
+      const ticked = cycleBuffs(player)
       const teleported: PlayerState = {
         ...ticked,
         zone: tpDestination,
@@ -607,7 +607,7 @@ export function tickAllBuffs(state: GameState): GameState {
       updated = updatePlayer(updated, teleported)
 
       events.push({
-        tick: state.tick,
+        cycle: state.cycle,
         type: 'teleport_complete',
         payload: {
           playerId: player.id,
@@ -616,18 +616,18 @@ export function tickAllBuffs(state: GameState): GameState {
       })
     } else if (
       returnShadow &&
-      returnShadow.ticksRemaining === 1 &&
+      returnShadow.cyclesRemaining === 1 &&
       returnShadow.destination &&
       returnShadow.destination !== player.zone
     ) {
       const returnZone = returnShadow.destination
-      // tickBuffs decrements + drops the expiring shadow; then snap the zone.
-      const ticked = tickBuffs(player)
+      // cycleBuffs decrements + drops the expiring shadow; then snap the zone.
+      const ticked = cycleBuffs(player)
       const teleported: PlayerState = { ...ticked, zone: returnZone }
       updated = updatePlayer(updated, teleported)
 
       events.push({
-        tick: state.tick,
+        cycle: state.cycle,
         type: 'teleport_complete',
         payload: {
           playerId: player.id,
@@ -637,10 +637,10 @@ export function tickAllBuffs(state: GameState): GameState {
       })
     } else if (dmzExpiring) {
       // Drop the expiring dmz (+ shield) now; queue the blast for after the loop.
-      updated = updatePlayer(updated, tickBuffs(player))
+      updated = updatePlayer(updated, cycleBuffs(player))
       explosions.push({ casterId: player.id, zone: player.zone, damage: dmzExpiring.stacks })
     } else {
-      const ticked = tickBuffs(player)
+      const ticked = cycleBuffs(player)
       if (ticked !== player) {
         updated = updatePlayer(updated, ticked)
       }
@@ -668,7 +668,7 @@ export function tickAllBuffs(state: GameState): GameState {
     }
     if (hitAny) {
       events.push({
-        tick: state.tick,
+        cycle: state.cycle,
         type: 'ability_used',
         payload: {
           playerId: ex.casterId,
@@ -730,7 +730,7 @@ export function resolveAbility(
       return yield* Effect.fail(
         new CooldownError({
           ability: heroDef?.abilities[ability].name ?? ability,
-          ticksRemaining: cd,
+          cyclesRemaining: cd,
         }),
       )
     }

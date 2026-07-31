@@ -3,14 +3,14 @@ import { areAdjacent } from '~~/server/game/map/topology'
 import { seedGame, HUMAN, ENEMY } from './harness'
 
 /**
- * Movement is one zone per tick, but an order may name ANY reachable zone —
- * the hero auto-paths toward it, one hop per tick, until arrival or a new
+ * Movement is one zone per cycle, but an order may name ANY reachable zone —
+ * the hero auto-paths toward it, one hop per cycle, until arrival or a new
  * deliberate action. These exercise the rule through the full loop (not a bare
- * validateAction): single steps land next tick, distant orders walk the BFS
+ * validateAction): single steps land next cycle, distant orders walk the BFS
  * path, and a new intent cancels the walk.
  */
 describe('movement', () => {
-  it('a hero can step to an adjacent zone in one tick', async () => {
+  it('a hero can step to an adjacent zone in one cycle', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
@@ -25,7 +25,7 @@ describe('movement', () => {
     expect((await game.me()).zone).toBe('mid-t1-chaff')
   })
 
-  it('a distant order auto-paths: one hop per tick, never a teleport, arriving over N ticks', async () => {
+  it('a distant order auto-paths: one hop per cycle, never a teleport, arriving over N ticks', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
@@ -93,7 +93,7 @@ describe('movement', () => {
     expect(me.moveTarget ?? null).toBeNull()
   })
 
-  it('only one action per player per tick — a second submission overwrites the first (latest wins)', async () => {
+  it('only one action per player per cycle — a second submission overwrites the first (latest wins)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
@@ -101,7 +101,7 @@ describe('movement', () => {
     }))
 
     // mid-river borders BOTH mid-t1-chaff and cache-top, so each step is legal on
-    // its own. Queue them back-to-back in one tick: the queue holds a single
+    // its own. Queue them back-to-back in one cycle: the queue holds a single
     // action per player, so the later submission replaces the earlier one — the
     // hero ends up at the LAST-submitted zone, not the first.
     expect(areAdjacent('mid-river', 'mid-t1-chaff')).toBe(true)

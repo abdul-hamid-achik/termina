@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { Effect } from 'effect'
-import { processTick } from '~~/server/game/engine/GameLoop'
+import { processCycle } from '~~/server/game/engine/GameLoop'
 import { registerBots, cleanupGame, getBotLane } from '~~/server/game/ai/BotManager'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { resetWaveIdCounter, initializeTenant } from '~~/server/game/map/spawner'
-import { initializeAncients } from '~~/server/game/engine/AncientSystem'
+import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
 import { zonesForMap } from '~~/shared/constants/maps'
 
 /**
@@ -13,7 +13,7 @@ import { zonesForMap } from '~~/shared/constants/maps'
  * graph, but bot pathfinding (findPath) walks the GLOBAL zone graph — so a bot
  * whose role lane is top/bot/jungle would try to step into a zone this game
  * doesn't have. registerBots({ forceLane: 'mid' }) pins every bot to the one
- * surviving lane; this drives the real processTick → decideBotAction path and
+ * surviving lane; this drives the real processCycle → decideBotAction path and
  * proves the bots stay on the map AND still push it. Without forceLane this is
  * exactly the standstill the tutorial entry point must avoid.
  */
@@ -32,12 +32,12 @@ function makeBot(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 280,
     level: 1,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -55,25 +55,25 @@ function makeBot(overrides: Partial<PlayerState> = {}): PlayerState {
 function oneLaneState(players: Record<string, PlayerState>): GameState {
   const zones = zonesForMap('one_lane')
   return {
-    tick: 0,
+    cycle: 0,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
     },
     players,
     zones: initializeZoneStates(zones),
     neutrals: [],
     waves: [],
     ice: initializeIce(zones),
-    ancients: initializeAncients(),
+    terminals: initializeAncients(),
     caches: [],
     tenant: initializeTenant(),
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
-    dayNightTick: 0,
+    dayNightCycle: 0,
     mapId: 'one_lane',
   }
 }
@@ -151,7 +151,7 @@ describe('bots on the one-lane map', () => {
     let crossedFrontier = false
     let offMapRejections = 0
     for (let i = 0; i < TICKS; i++) {
-      const result = Effect.runSync(processTick(GAME_ID, state))
+      const result = Effect.runSync(processCycle(GAME_ID, state))
       state = result.state
 
       // Invariant: no bot is ever standing in a zone this map doesn't have.

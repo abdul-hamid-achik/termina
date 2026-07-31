@@ -35,7 +35,7 @@ const W_DOT_DURATION = 3
 
 const E_MANA = abilityBwTable('regex', 'e')
 const E_COOLDOWN = [15, 14, 13, 12] as const
-// 2 = one gated action: a cast-applied stun is reaped same-tick by tickAllBuffs
+// 2 = one gated action: a cast-applied stun is reaped same-tick by cycleAllBuffs
 // (see the applyBuff note in _base), so it needs 2 ticks to gate one action.
 const E_STUN_DURATION = 2
 
@@ -101,7 +101,7 @@ function resolveQ(
     updatedTarget = applyBuff(updatedTarget, {
       id: 'magicVulnerability',
       stacks: Q_VULNERABILITY,
-      ticksRemaining: 3,
+      cyclesRemaining: 3,
       source: player.id,
     })
 
@@ -109,7 +109,7 @@ function resolveQ(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -158,13 +158,13 @@ function resolveW(
     let updatedTarget = applyBuff(targetPlayer, {
       id: 'root',
       stacks: 1,
-      ticksRemaining: W_ROOT_DURATION,
+      cyclesRemaining: W_ROOT_DURATION,
       source: player.id,
     })
     updatedTarget = applyBuff(updatedTarget, {
       id: 'dot_magical',
       stacks: dotDamage,
-      ticksRemaining: W_DOT_DURATION,
+      cyclesRemaining: W_DOT_DURATION,
       source: player.id,
     })
 
@@ -172,7 +172,7 @@ function resolveW(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -227,13 +227,13 @@ function resolveE(
     updatedCaster = applyBuff(updatedCaster, {
       id: 'stun',
       stacks: 1,
-      ticksRemaining: E_STUN_DURATION,
+      cyclesRemaining: E_STUN_DURATION,
       source: player.id,
     })
     updatedTarget = applyBuff(updatedTarget, {
       id: 'stun',
       stacks: 1,
-      ticksRemaining: E_STUN_DURATION,
+      cyclesRemaining: E_STUN_DURATION,
       source: player.id,
     })
 
@@ -241,7 +241,7 @@ function resolveE(
       state: updatePlayers(state, [updatedCaster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -295,7 +295,7 @@ function resolveR(
     updatedTarget = applyBuff(updatedTarget, {
       id: 'silence',
       stacks: 1,
-      ticksRemaining: R_SILENCE_DURATION,
+      cyclesRemaining: R_SILENCE_DURATION,
       source: player.id,
     })
 
@@ -303,7 +303,7 @@ function resolveR(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -339,10 +339,10 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   const lastTarget = player.buffs.find((b) => b.id === 'patternCacheTarget')?.destination
   const lastCastTick = player.buffs.find((b) => b.id === 'patternCacheTick')?.stacks ?? 0
 
-  const currentTick = state.tick
+  const currentCycle = state.cycle
   const damage = event.payload['damage'] as number | undefined
 
-  if (lastTarget === targetId && currentTick - lastCastTick <= 3 && damage) {
+  if (lastTarget === targetId && currentCycle - lastCastTick <= 3 && damage) {
     const bonusDamage = Math.round(damage * PATTERN_MATCH_BONUS)
     const targetPlayer = state.players[targetId]
     if (targetPlayer && targetPlayer.alive) {
@@ -353,21 +353,21 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
 
   // Keep exactly ONE patternCacheTarget: drop any prior, then record the current
   // target in `destination`. removeBuff-then-applyBuff because applyBuff's
-  // in-place update refreshes only stacks/ticksRemaining, not destination. The
-  // window is still enforced by the currentTick - lastCastTick <= 3 check; the
+  // in-place update refreshes only stacks/cyclesRemaining, not destination. The
+  // window is still enforced by the currentCycle - lastCastTick <= 3 check; the
   // 4-tick duration just lets the buff age out instead of lingering forever.
   let updatedPlayer = removeBuff(player, 'patternCacheTarget')
   updatedPlayer = applyBuff(updatedPlayer, {
     id: 'patternCacheTarget',
     stacks: 1,
-    ticksRemaining: 4,
+    cyclesRemaining: 4,
     source: playerId,
     destination: targetId,
   })
   updatedPlayer = applyBuff(updatedPlayer, {
     id: 'patternCacheTick',
-    stacks: currentTick,
-    ticksRemaining: 999,
+    stacks: currentCycle,
+    cyclesRemaining: 999,
     source: playerId,
   })
 

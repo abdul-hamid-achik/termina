@@ -95,7 +95,7 @@ function resolveQ(
     updatedTarget = applyBuff(updatedTarget, {
       id: 'slow',
       stacks: 25,
-      ticksRemaining: 2,
+      cyclesRemaining: 2,
       source: player.id,
     })
 
@@ -103,7 +103,7 @@ function resolveQ(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -156,13 +156,13 @@ function resolveW(
         ? applyBuff(caster, {
             id: 'shield',
             stacks: shieldAmount,
-            ticksRemaining: 3,
+            cyclesRemaining: 3,
             source: player.id,
           })
         : applyBuff(targetPlayer, {
             id: 'shield',
             stacks: shieldAmount,
-            ticksRemaining: 3,
+            cyclesRemaining: 3,
             source: player.id,
           })
 
@@ -172,7 +172,7 @@ function resolveW(
       state: updatePlayers(state, players),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -216,7 +216,7 @@ function resolveE(
       state: updatePlayers(state, healed),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -276,13 +276,13 @@ function resolveR(
     caster = applyBuff(caster, {
       id: 'invulnerable',
       stacks: 1,
-      ticksRemaining: 1,
+      cyclesRemaining: 1,
       source: player.id,
     })
     swappedTarget = applyBuff(swappedTarget, {
       id: 'invulnerable',
       stacks: 1,
-      ticksRemaining: 1,
+      cyclesRemaining: 1,
       source: player.id,
     })
 
@@ -290,7 +290,7 @@ function resolveR(
       state: updatePlayers(state, [caster, swappedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -322,7 +322,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
       applyBuff(player, {
         id: 'middleman',
         stacks: Math.round(MIDDLEMAN_REDIRECT * 100),
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: playerId,
       }),
     )

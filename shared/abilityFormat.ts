@@ -56,7 +56,7 @@ export function abilitySummary(a: AbilityDef): string {
 
 /** Cooldown in whole seconds, given the 4s batch clock. */
 export function cooldownSeconds(a: AbilityDef, tickMs: number): number {
-  return Math.round((a.cooldownTicks * tickMs) / 1000)
+  return Math.round((a.cooldownCycles * tickMs) / 1000)
 }
 
 /**

@@ -16,7 +16,7 @@ type ConnState = 'connecting' | 'connected' | 'closed' | 'reconnecting' | 'error
 
 const conn = ref<ConnState>('connecting')
 const ackedGameId = ref<string | null>(null)
-const lastTick = ref<number>(0)
+const lastCycle = ref<number>(0)
 const visibleState = ref<PlayerVisibleState | null>(null)
 const errorMessage = ref<string | null>(null)
 
@@ -57,8 +57,8 @@ async function connect() {
     const msg = parseSpectatorMessage(ev.data)
     if (msg.type === 'ack') {
       ackedGameId.value = msg.gameId
-    } else if (msg.type === 'tick') {
-      lastTick.value = msg.tick
+    } else if (msg.type === 'cycle') {
+      lastCycle.value = msg.cycle
       visibleState.value = msg.state
     } else if (msg.type === 'error') {
       errorMessage.value = msg.message
@@ -137,7 +137,7 @@ function toRow(p: PlayerState): PlayerScoreRow {
     kills: p.kills,
     deaths: p.deaths,
     assists: p.assists,
-    gold: p.gold,
+    scrip: p.scrip,
     zone: p.zone,
     alive: p.alive,
     aiControlled: p.aiControlled,
@@ -146,9 +146,9 @@ function toRow(p: PlayerState): PlayerScoreRow {
 const chaffRows = computed(() => chaffPlayers.value.map(toRow))
 const auditRows = computed(() => auditPlayers.value.map(toRow))
 
-// Padded MM:SS game clock from a tick count (shared tick→clock helper).
-function gameTime(tick: number): string {
-  return formatTickClock(tick, true)
+// Padded MM:SS game clock from a cycle count (shared cycle→clock helper).
+function gameTime(cycle: number): string {
+  return formatTickClock(cycle, true)
 }
 </script>
 
@@ -197,7 +197,7 @@ function gameTime(tick: number): string {
 
       <!-- Status when no state yet -->
       <div v-else-if="!visibleState && !errorMessage" class="border border-border p-4 t-caption">
-        &gt;_ waiting for first tick from game server...
+        &gt;_ waiting for first cycle from game server...
         <div v-if="ackedGameId" class="mt-1">subscription confirmed for {{ ackedGameId }}</div>
       </div>
 
@@ -222,9 +222,9 @@ function gameTime(tick: number): string {
           <div class="flex flex-col items-center justify-center p-3">
             <div class="t-caption">cycle · {{ visibleState.timeOfDay }}</div>
             <div class="t-h1 t-mono-num text-glow-sm" data-testid="spectator-tick">
-              {{ lastTick }}
+              {{ lastCycle }}
             </div>
-            <div class="t-caption mt-1">{{ gameTime(lastTick) }}</div>
+            <div class="t-caption mt-1">{{ gameTime(lastCycle) }}</div>
           </div>
           <div
             class="border-l border-border p-3 text-center bloom-audit"

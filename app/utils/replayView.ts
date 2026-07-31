@@ -40,7 +40,7 @@ export function formatReplayCommand(cmd: ReplayCommand): string {
 }
 
 /**
- * Clamp a scrub position to a valid frame index. Frames are indexed by tick
+ * Clamp a scrub position to a valid frame index. Frames are indexed by cycle
  * (0..N-1); scrubbing past the end pins to the last frame, before the start
  * pins to the first. Returns -1 when there are no frames (caller renders the
  * snapshot fallback instead).
@@ -52,7 +52,7 @@ export function clampFrameIndex(frameCount: number, scrubTick: number): number {
 }
 
 /**
- * The next playback position, one tick on, capped at the final tick — drives the
+ * The next playback position, one cycle on, capped at the final cycle — drives the
  * replay's play/pause auto-advance. Stays at `max` once reached (the caller stops
  * the timer there).
  */
@@ -61,18 +61,18 @@ export function nextScrubTick(current: number, max: number): number {
   return Math.min(current + 1, max)
 }
 
-/** The minimal frame shape keyMoments needs (team kill/ice tallies per tick). */
+/** The minimal frame shape keyMoments needs (team kill/ice tallies per cycle). */
 export interface ReplayFrameLite {
-  tick: number
+  cycle: number
   teams: {
     chaff: { kills: number; iceKills: number }
     audit: { kills: number; iceKills: number }
   }
 }
 
-/** A notable tick in a replay, for the jump-to-the-action markers. */
+/** A notable cycle in a replay, for the jump-to-the-action markers. */
 export interface KeyMoment {
-  tick: number
+  cycle: number
   kind: 'fight' | 'ice'
   label: string
 }
@@ -90,11 +90,11 @@ export function keyMoments(frames: ReplayFrameLite[], coalesceGap = 3): KeyMomen
   const totalKills = (f: ReplayFrameLite) => f.teams.chaff.kills + f.teams.audit.kills
   const totalIce = (f: ReplayFrameLite) => f.teams.chaff.iceKills + f.teams.audit.iceKills
 
-  let fight: { tick: number; kills: number; lastTick: number } | null = null
+  let fight: { cycle: number; kills: number; lastCycle: number } | null = null
   const flush = () => {
     if (!fight) return
     moments.push({
-      tick: fight.tick,
+      cycle: fight.cycle,
       kind: 'fight',
       label: fight.kills > 1 ? `Fight ×${fight.kills}` : 'Kill',
     })
@@ -108,18 +108,18 @@ export function keyMoments(frames: ReplayFrameLite[], coalesceGap = 3): KeyMomen
     const iceDelta = totalIce(cur) - totalIce(prev)
 
     // A long lull since the last kill closes the current fight.
-    if (fight && cur.tick - fight.lastTick > coalesceGap) flush()
+    if (fight && cur.cycle - fight.lastCycle > coalesceGap) flush()
 
     if (killDelta > 0) {
       if (fight) {
         fight.kills += killDelta
-        fight.lastTick = cur.tick
+        fight.lastCycle = cur.cycle
       } else {
-        fight = { tick: cur.tick, kills: killDelta, lastTick: cur.tick }
+        fight = { cycle: cur.cycle, kills: killDelta, lastCycle: cur.cycle }
       }
     }
-    if (iceDelta > 0) moments.push({ tick: cur.tick, kind: 'ice', label: 'Ice' })
+    if (iceDelta > 0) moments.push({ cycle: cur.cycle, kind: 'ice', label: 'Ice' })
   }
   flush()
-  return moments.sort((a, b) => a.tick - b.tick)
+  return moments.sort((a, b) => a.cycle - b.cycle)
 }

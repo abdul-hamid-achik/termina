@@ -19,12 +19,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: echo.baseStats.bw,
     level: 1,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: echo.baseStats.plate,
     ice: echo.baseStats.ice,
     kills: 0,
@@ -57,7 +57,7 @@ describe('CombatResolver', () => {
       for (const id of ['ghost_form', 'ethereal', 'invulnerable']) {
         const player = makePlayer({
           integ: 500,
-          buffs: [{ id, stacks: 1, ticksRemaining: 2, source: 'x' }],
+          buffs: [{ id, stacks: 1, cyclesRemaining: 2, source: 'x' }],
         })
         const hit = resolveKineticHit(player, 100)
         expect(hit.immune).toBe(true)
@@ -69,7 +69,7 @@ describe('CombatResolver', () => {
     it('reports a phaseShift dodge and consumes the buff (no INTEG lost)', () => {
       const player = makePlayer({
         integ: 500,
-        buffs: [{ id: 'phaseShift', stacks: 1, ticksRemaining: 1, source: 'echo' }],
+        buffs: [{ id: 'phaseShift', stacks: 1, cyclesRemaining: 1, source: 'echo' }],
       })
       const hit = resolveKineticHit(player, 100)
       expect(hit.dodged).toBe(true)
@@ -81,7 +81,7 @@ describe('CombatResolver', () => {
     it('absorbs damage through a shield buff, reporting only the unabsorbed INTEG loss', () => {
       const player = makePlayer({
         integ: 500,
-        buffs: [{ id: 'shield', stacks: 40, ticksRemaining: 3, source: 'x' }],
+        buffs: [{ id: 'shield', stacks: 40, cyclesRemaining: 3, source: 'x' }],
       })
       const raw = 100
       const hit = resolveKineticHit(player, raw)
@@ -95,7 +95,7 @@ describe('CombatResolver', () => {
     it('applies Kernel hardened 10% reduction before shield', () => {
       const hardened = makePlayer({
         integ: 500,
-        buffs: [{ id: 'hardened', stacks: 1, ticksRemaining: 99, source: 'kernel' }],
+        buffs: [{ id: 'hardened', stacks: 1, cyclesRemaining: 99, source: 'kernel' }],
       })
       const plain = makePlayer({ integ: 500 })
       const raw = 100

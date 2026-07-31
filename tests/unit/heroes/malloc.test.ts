@@ -28,12 +28,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 300,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 2,
     ice: 14,
     kills: 0,
@@ -47,7 +47,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -75,11 +75,11 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     playerMap[p.id] = p
   }
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -107,15 +107,15 @@ describe('Malloc Hero', () => {
       expect(hasBuff(updated, 'allocate')).toBe(true)
       const buff = updated.buffs.find((b) => b.id === 'allocate')
       expect(buff!.stacks).toBe(25)
-      expect(buff!.ticksRemaining).toBe(3)
+      expect(buff!.cyclesRemaining).toBe(3)
     })
 
     it('feeds the allocate buff into effective attack (was ignored — +0 attack)', () => {
-      const base = makePlayer({ gold: 0 })
-      const withAllocate = applyBuff(makePlayer({ gold: 0 }), {
+      const base = makePlayer({ scrip: 0 })
+      const withAllocate = applyBuff(makePlayer({ scrip: 0 }), {
         id: 'allocate',
         stacks: 25,
-        ticksRemaining: 3,
+        cyclesRemaining: 3,
         source: 'p1',
       })
       // Before the fix, getEffectiveAttack omitted 'allocate' → delta was 0.
@@ -238,7 +238,7 @@ describe('Malloc Hero', () => {
       expect(hasBuff(updatedEnemy, 'stun')).toBe(true)
       const stun = updatedEnemy.buffs.find((b) => b.id === 'stun')
       // raw 2 = one gated action: a cast-applied disable is reaped same-tick.
-      expect(stun!.ticksRemaining).toBe(2)
+      expect(stun!.cyclesRemaining).toBe(2)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -367,12 +367,12 @@ describe('Malloc Hero', () => {
   })
 
   describe('Passive: Heap Growth', () => {
-    it('grants bonus attack based on gold (1 per 100)', () => {
-      const player = makePlayer({ gold: 500 })
+    it('grants bonus attack based on scrip (1 per 100)', () => {
+      const player = makePlayer({ scrip: 500 })
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'tick_end',
         payload: {},
       })
@@ -381,23 +381,23 @@ describe('Malloc Hero', () => {
       expect(getHeapGrowthBonus(updated.players['p1']!)).toBe(5)
     })
 
-    it('caps the heap-growth bonus at +40, no matter how much gold is hoarded', () => {
-      // 6000 gold would be +60 at a raw 1-per-100, but the passive caps it at +40
-      // (reached at 4000 gold) — the boundary the ability description now states.
-      const player = makePlayer({ gold: 6000 })
+    it('caps the heap-growth bonus at +40, no matter how much scrip is hoarded', () => {
+      // 6000 scrip would be +60 at a raw 1-per-100, but the passive caps it at +40
+      // (reached at 4000 scrip) — the boundary the ability description now states.
+      const player = makePlayer({ scrip: 6000 })
       const state = makeState([player])
 
-      const updated = resolvePassive(state, 'p1', { tick: 10, type: 'tick_end', payload: {} })
+      const updated = resolvePassive(state, 'p1', { cycle: 10, type: 'tick_end', payload: {} })
 
       expect(getHeapGrowthBonus(updated.players['p1']!)).toBe(40)
     })
 
     it('returns 0 with no gold', () => {
-      const player = makePlayer({ gold: 50 })
+      const player = makePlayer({ scrip: 50 })
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'tick_end',
         payload: {},
       })
@@ -405,20 +405,20 @@ describe('Malloc Hero', () => {
       expect(getHeapGrowthBonus(updated.players['p1']!)).toBe(0)
     })
 
-    it('updates stacks when gold changes', () => {
-      let player = makePlayer({ gold: 300 })
+    it('updates stacks when scrip changes', () => {
+      let player = makePlayer({ scrip: 300 })
       player = applyBuff(player, {
         id: 'heapGrowth',
         stacks: 3,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'p1',
       })
-      // Simulate gold increasing
-      player = { ...player, gold: 700 }
+      // Simulate scrip increasing
+      player = { ...player, scrip: 700 }
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'tick_end',
         payload: {},
       })
@@ -427,11 +427,11 @@ describe('Malloc Hero', () => {
     })
 
     it('feeds heapGrowth stacks into effective attack (was ignored — the dead-passive bug)', () => {
-      const base = makePlayer({ gold: 0 })
-      const withHeap = applyBuff(makePlayer({ gold: 0 }), {
+      const base = makePlayer({ scrip: 0 })
+      const withHeap = applyBuff(makePlayer({ scrip: 0 }), {
         id: 'heapGrowth',
         stacks: 12,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'p1',
       })
       // Before the fix, getEffectiveAttack ignored heapGrowth → delta was 0.
@@ -442,7 +442,7 @@ describe('Malloc Hero', () => {
   describe('Stun/Silence blocking', () => {
     it('prevents casting when stunned', () => {
       const player = makePlayer({
-        buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 1, source: 'enemy' }],
+        buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 1, source: 'enemy' }],
       })
       const state = makeState([player])
 
@@ -494,7 +494,7 @@ describe('Malloc Hero', () => {
       const result = Effect.runSync(
         resolveAbility(makeState([player, makeEnemy()]), 'p1', 'e', { kind: 'hero', name: 'e1' }),
       )
-      // E cooldownTicks (12) − 2
+      // E cooldownCycles (12) − 2
       expect(result.state.players['p1']!.cooldowns.e).toBe(10)
     })
 

@@ -5,7 +5,7 @@ import type { DamageType } from '~~/shared/types/hero'
 
 export interface DamageEvent {
   readonly _tag: 'damage'
-  readonly tick: number
+  readonly cycle: number
   readonly sourceId: string
   readonly targetId: string
   readonly amount: number
@@ -14,7 +14,7 @@ export interface DamageEvent {
 
 export interface HealEvent {
   readonly _tag: 'heal'
-  readonly tick: number
+  readonly cycle: number
   readonly sourceId: string
   readonly targetId: string
   readonly amount: number
@@ -22,7 +22,7 @@ export interface HealEvent {
 
 export interface KillEvent {
   readonly _tag: 'kill'
-  readonly tick: number
+  readonly cycle: number
   readonly killerId: string
   readonly victimId: string
   readonly assisters: string[]
@@ -34,22 +34,22 @@ export interface KillEvent {
 
 export interface DeathEvent {
   readonly _tag: 'death'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
-  readonly respawnTick: number
+  readonly respawnCycle: number
 }
 
 export interface IceKillEvent {
   readonly _tag: 'ice_kill'
-  readonly tick: number
+  readonly cycle: number
   readonly zone: string
   readonly team: TeamId
   readonly killerTeam: TeamId
 }
 
 export interface AncientDestroyedEvent {
-  readonly _tag: 'ancient_destroyed'
-  readonly tick: number
+  readonly _tag: 'terminal_destroyed'
+  readonly cycle: number
   /** The team whose Ancient (Core) fell. */
   readonly team: TeamId
   /** The team that destroyed it (the winner). */
@@ -58,25 +58,25 @@ export interface AncientDestroyedEvent {
 
 export interface WaveStripEvent {
   readonly _tag: 'wave_strip'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly waveId: string
   readonly waveType: 'line' | 'sweep' | 'breach'
-  readonly goldAwarded: number
+  readonly scripAwarded: number
 }
 
 export interface WaveBurnEvent {
   readonly _tag: 'wave_burn'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly waveId: string
   readonly waveType: 'line' | 'sweep' | 'breach'
-  readonly goldAwarded: number
+  readonly scripAwarded: number
 }
 
 export interface GoldChangeEvent {
   readonly _tag: 'gold_change'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly amount: number
   readonly reason: string
@@ -84,14 +84,14 @@ export interface GoldChangeEvent {
 
 export interface LevelUpEvent {
   readonly _tag: 'level_up'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly newLevel: number
 }
 
 export interface AbilityUsedEvent {
   readonly _tag: 'ability_used'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly abilityId: string
   readonly targetId?: string
@@ -107,27 +107,27 @@ export interface AbilityUsedEvent {
  */
 export interface StatusAppliedEvent {
   readonly _tag: 'status_applied'
-  readonly tick: number
+  readonly cycle: number
   readonly sourceId: string
   readonly targetId: string
   /** Engine buff id (`stun`, `root`, `silence`, `hex`, …). */
   readonly status: string
   /** The engine's real remaining duration, not the ability's advertised one. */
-  readonly ticksRemaining: number
+  readonly cyclesRemaining: number
 }
 
 export interface CooldownEvent {
   readonly _tag: 'cooldown_used'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly abilityId: string
-  readonly cooldownTicks: number
+  readonly cooldownCycles: number
   readonly readyAtTick: number
 }
 
 export interface PowerSpikeEvent {
   readonly _tag: 'power_spike'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly spikeType: 'level_6' | 'level_12' | 'level_18' | 'core_item'
   readonly itemId?: string
@@ -136,7 +136,7 @@ export interface PowerSpikeEvent {
 
 export interface ItemPurchasedEvent {
   readonly _tag: 'item_purchased'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly itemId: string
   readonly cost: number
@@ -144,7 +144,7 @@ export interface ItemPurchasedEvent {
 
 export interface ItemSoldEvent {
   readonly _tag: 'item_sold'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly itemId: string
   readonly refund: number
@@ -152,7 +152,7 @@ export interface ItemSoldEvent {
 
 export interface WardPlacedEvent {
   readonly _tag: 'ward_placed'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly zone: string
   readonly team: TeamId
@@ -161,7 +161,7 @@ export interface WardPlacedEvent {
 
 export interface CachePickedEvent {
   readonly _tag: 'cache_picked'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly zone: string
   readonly cacheType: string
@@ -169,7 +169,7 @@ export interface CachePickedEvent {
 
 export interface TrapTriggeredEvent {
   readonly _tag: 'trap_triggered'
-  readonly tick: number
+  readonly cycle: number
   readonly owner: string
   readonly team: TeamId
   readonly zone: string
@@ -179,7 +179,7 @@ export interface TrapTriggeredEvent {
 
 export interface SpellBlockedEvent {
   readonly _tag: 'spell_blocked'
-  readonly tick: number
+  readonly cycle: number
   readonly casterId: string
   readonly targetId: string
   readonly source: 'intercept_shell' | 'ablative_shell' | 'mirror_shell'
@@ -189,14 +189,14 @@ export interface SpellBlockedEvent {
 
 export interface TenantKilledEvent {
   readonly _tag: 'tenant_killed'
-  readonly tick: number
+  readonly cycle: number
   readonly killerTeam: TeamId
-  readonly goldAwarded: number
+  readonly scripAwarded: number
 }
 
 export interface NeutralKilledEvent {
   readonly _tag: 'neutral_killed'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly neutralId: string
   readonly neutralType: string
@@ -205,7 +205,7 @@ export interface NeutralKilledEvent {
 
 export interface TenantDamageEvent {
   readonly _tag: 'tenant_damage'
-  readonly tick: number
+  readonly cycle: number
   readonly damage: number
   readonly integ: number
   readonly maxInteg: number
@@ -213,31 +213,31 @@ export interface TenantDamageEvent {
 
 export interface TenantRespawnEvent {
   readonly _tag: 'tenant_respawn'
-  readonly tick: number
+  readonly cycle: number
   readonly integ: number
   readonly maxInteg: number
 }
 
 export interface TenantKilledInternalEvent {
   readonly _tag: 'tenant_killed'
-  readonly tick: number
+  readonly cycle: number
 }
 
 export interface BackupPickedEvent {
   readonly _tag: 'backup_picked'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
 }
 
 export interface BackupUsedEvent {
   readonly _tag: 'backup_used'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
 }
 
 export interface TalentSelectedEvent {
   readonly _tag: 'talent_selected'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly talentId: string
   readonly tier: number
@@ -246,7 +246,7 @@ export interface TalentSelectedEvent {
 
 export interface TeleportCompleteEvent {
   readonly _tag: 'teleport_complete'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly destination: string
   /** Return-shadow variants (Traceroute Next Hop / Lambda Return) so the feed
@@ -256,43 +256,43 @@ export interface TeleportCompleteEvent {
 
 export interface TeleportCancelledEvent {
   readonly _tag: 'teleport_cancelled'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly reason: 'movement' | 'damage'
 }
 
 export interface NightFallsEvent {
   readonly _tag: 'night_falls'
-  readonly tick: number
+  readonly cycle: number
 }
 
 export interface DayBreaksEvent {
   readonly _tag: 'day_breaks'
-  readonly tick: number
+  readonly cycle: number
 }
 
 export interface HardenUsedEvent {
   readonly _tag: 'harden_used'
-  readonly tick: number
+  readonly cycle: number
   readonly team: TeamId
 }
 
 export interface HardenOnCooldownEvent {
   readonly _tag: 'harden_on_cooldown'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly remainingTicks: number
 }
 
 export interface IceInvulnerableEvent {
   readonly _tag: 'ice_invulnerable'
-  readonly tick: number
+  readonly cycle: number
   readonly zone: string
 }
 
 export interface SurrenderVoteEvent {
   readonly _tag: 'surrender_vote'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly team: 'chaff' | 'audit'
   readonly votesFor: number
@@ -301,14 +301,14 @@ export interface SurrenderVoteEvent {
 
 export interface SurrenderedEvent {
   readonly _tag: 'surrendered'
-  readonly tick: number
+  readonly cycle: number
   readonly team: 'chaff' | 'audit'
   readonly winner: 'chaff' | 'audit'
 }
 
 export interface AfkTakeoverEvent {
   readonly _tag: 'afk_takeover'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly heroId: string | null
   readonly team: 'chaff' | 'audit'
@@ -317,17 +317,17 @@ export interface AfkTakeoverEvent {
 
 export interface DoubleCastEvent {
   readonly _tag: 'double_cast'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly abilityId: string
 }
 
 export interface BreachOpenedEvent {
   readonly _tag: 'breach_opened'
-  readonly tick: number
+  readonly cycle: number
   readonly playerId: string
   readonly targetId: string
-  readonly durationTicks: number
+  readonly durationCycles: number
 }
 
 export type GameEngineEvent =
@@ -374,10 +374,10 @@ export type GameEngineEvent =
 
 /** Convert an engine event to the wire GameEvent format. */
 export function toGameEvent(event: GameEngineEvent): {
-  tick: number
+  cycle: number
   type: string
   payload: Record<string, unknown>
 } {
-  const { _tag, tick, ...payload } = event
-  return { tick, type: _tag, payload: payload as Record<string, unknown> }
+  const { _tag, cycle, ...payload } = event
+  return { cycle, type: _tag, payload: payload as Record<string, unknown> }
 }

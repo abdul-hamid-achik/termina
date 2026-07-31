@@ -2,13 +2,13 @@ import { describe, it, expect } from 'vitest'
 import { seedGame, HUMAN, ENEMY } from './harness'
 import {
   TUTORIAL_STEP_COUNT,
-  TUTORIAL_STEP_DEADLINE_TICKS,
+  TUTORIAL_STEP_DEADLINE_CYCLES,
   tutorialHint,
 } from '~~/server/game/modes/tutorial'
 import { canSurrender } from '~~/server/game/engine/SurrenderSystem'
-import { SURRENDER_MIN_TICK } from '~~/shared/constants/balance'
+import { SURRENDER_MIN_CYCLE } from '~~/shared/constants/balance'
 
-/** Did the human's action get rejected with a tutorial-lock hint this tick? */
+/** Did the human's action get rejected with a tutorial-lock hint this cycle? */
 function lockedThisTick(rejected: Array<{ playerId: string; reason: string }>): boolean {
   return rejected.some((r) => r.playerId === HUMAN && r.reason.includes('🎓'))
 }
@@ -150,7 +150,7 @@ describe('tutorial mode', () => {
         ...s,
         tutorialStep: 1,
         // Refresh the deadline so the step can only advance on the action.
-        tutorialStepSince: s.tick,
+        tutorialStepSince: s.cycle,
         waves: [],
       }))
 
@@ -222,7 +222,7 @@ describe('tutorial mode', () => {
     // REGRESSION: the tutorial's designed happy path used to terminate in the
     // app's WORST state. The four hints finish around tick 60, the banner
     // announced "free play", and the player was then held in an endless 2v2
-    // with no menu and no surrender — SURRENDER_MIN_TICK is 225 (15 min), so
+    // with no menu and no surrender — SURRENDER_MIN_CYCLE is 225 (15 min), so
     // the only real way out was closing the tab.
     it('ends the game and credits the human when the last step completes', async () => {
       const game = await seedGame('fresh', { mode: 'tutorial', mapId: 'one_lane' })
@@ -233,7 +233,7 @@ describe('tutorial mode', () => {
       await game.patch((s) => ({
         ...s,
         tutorialStep: TUTORIAL_STEP_COUNT - 1,
-        tutorialStepSince: s.tick - TUTORIAL_STEP_DEADLINE_TICKS,
+        tutorialStepSince: s.cycle - TUTORIAL_STEP_DEADLINE_CYCLES,
       }))
       await game.tick()
 
@@ -254,7 +254,7 @@ describe('tutorial mode', () => {
     it('is quittable immediately — no 15-minute surrender lock', async () => {
       const game = await seedGame('fresh', { mode: 'tutorial', mapId: 'one_lane' })
       const early = await game.state()
-      expect(early.tick).toBeLessThan(SURRENDER_MIN_TICK)
+      expect(early.cycle).toBeLessThan(SURRENDER_MIN_CYCLE)
 
       expect(canSurrender(early, early.players[HUMAN]!.team).can).toBe(true)
     })

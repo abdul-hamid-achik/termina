@@ -101,7 +101,7 @@ function getBuffStacks(player: PlayerState, buffId: string): number {
  * Effective attack: hero base + growth, plus item attack, plus talent attack,
  * plus additive attack buffs (mutex Deadlock, thread Fork, cron Uptime, malloc
  * Heap Growth + Allocate — both malloc attack buffs were created but never read
- * here, so Malloc's gold-scaling passive and Q were each giving +0 attack — Power
+ * here, so Malloc's scrip-scaling passive and Q were each giving +0 attack — Power
  * Treads attack mode, and Hurricane Pike's post-thrust attack steroid).
  */
 export function getEffectiveAttack(player: PlayerState, itemStats?: ItemStats): number {

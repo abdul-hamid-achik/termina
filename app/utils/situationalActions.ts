@@ -1,4 +1,4 @@
-import { HARDEN_COOLDOWN_TICKS, SURRENDER_MIN_TICK } from '~~/shared/constants/balance'
+import { HARDEN_COOLDOWN_CYCLES, SURRENDER_MIN_CYCLE } from '~~/shared/constants/balance'
 import { pickDenyTargetString } from '~/composables/useCommands'
 import type {
   PlayerState,
@@ -23,8 +23,8 @@ export interface SituationalContext {
   backup: { zone: string; holderId: string | null } | null
   caches: CacheState[]
   teams: Record<TeamId, TeamState> | null
-  tick: number
-  /** Game mode — the tutorial is exempt from the surrender tick gate. */
+  cycle: number
+  /** Game mode — the tutorial is exempt from the surrender cycle gate. */
   mode?: GameMode
 }
 
@@ -80,22 +80,22 @@ export function computeSituationalActions(ctx: SituationalContext): SituationalA
   const teamState = ctx.teams?.[p.team] ?? null
   const glyphReady =
     !teamState ||
-    teamState.hardenUsedTick == null ||
-    ctx.tick - teamState.hardenUsedTick >= HARDEN_COOLDOWN_TICKS
+    teamState.hardenUsedCycle == null ||
+    ctx.cycle - teamState.hardenUsedCycle >= HARDEN_COOLDOWN_CYCLES
   if (glyphReady) {
     out.push({ cmd: 'harden', label: 'HARDEN', aria: 'Activate team harden (fortify structures)' })
   }
   // R4-11: flush own BREACH early (same verb, self-target).
-  if (p.buffs?.some((b) => b.id === 'breached' && b.ticksRemaining > 0)) {
+  if (p.buffs?.some((b) => b.id === 'breached' && b.cyclesRemaining > 0)) {
     out.push({
       cmd: 'breach self',
       label: 'FLUSH',
       aria: 'Flush your BREACH early (costs this cycle and BW)',
     })
   }
-  // Mirrors SurrenderSystem.canSurrender: the tutorial has no tick gate, so a
+  // Mirrors SurrenderSystem.canSurrender: the tutorial has no cycle gate, so a
   // learner always has a visible way out of a practice game.
-  if (ctx.mode === 'tutorial' || ctx.tick >= SURRENDER_MIN_TICK) {
+  if (ctx.mode === 'tutorial' || ctx.cycle >= SURRENDER_MIN_CYCLE) {
     out.push({
       cmd: 'surrender',
       label: ctx.mode === 'tutorial' ? 'END PRACTICE' : 'SURRENDER',

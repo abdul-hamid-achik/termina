@@ -16,7 +16,7 @@ const ability = (over: Partial<AbilityDef>): AbilityDef => ({
   name: 'X',
   description: '',
   bwCost: 0,
-  cooldownTicks: 0,
+  cooldownCycles: 0,
   targetType: 'self',
   effects: [],
   ...over,
@@ -45,21 +45,21 @@ function makeHero(over: Partial<HeroDef> = {}): HeroDef {
         id: 'q',
         name: 'Q',
         bwCost: 50,
-        cooldownTicks: 2,
+        cooldownCycles: 2,
         effects: [{ type: 'damage', value: 100 }],
       }),
       w: ability({
         id: 'w',
         name: 'W',
         bwCost: 30,
-        cooldownTicks: 3,
+        cooldownCycles: 3,
         effects: [{ type: 'dot', value: 60, duration: 3 }],
       }),
       e: ability({
         id: 'e',
         name: 'E',
         bwCost: 500,
-        cooldownTicks: 1,
+        cooldownCycles: 1,
         effects: [{ type: 'heal', value: 40 }],
       }),
       r: ability({ id: 'r', name: 'R' }),
@@ -100,23 +100,23 @@ describe('useTrainingConsole', () => {
     expect(c.log.value.some((l) => l.includes('not enough BW'))).toBe(true)
   })
 
-  it('applies a DoT that drains the dummy over ticks (total spread per tick)', () => {
+  it('applies a DoT that drains the dummy over ticks (total spread per cycle)', () => {
     const c = useTrainingConsole(ref(makeHero()))
     c.cast('w') // dot total 60 over 3 → 20/tick
     expect(c.dots.value).toHaveLength(1)
     expect(c.dummyHp.value).toBe(1000) // no burst
-    c.advanceTick()
+    c.advanceCycle()
     expect(c.dummyHp.value).toBe(980) // -20
-    c.advanceTick()
-    c.advanceTick()
+    c.advanceCycle()
+    c.advanceCycle()
     expect(c.dummyHp.value).toBe(940) // -60 total
     expect(c.dots.value).toHaveLength(0) // expired
   })
 
-  it('regenerates BW (≥2) and decrements cooldowns each tick', () => {
+  it('regenerates BW (≥2) and decrements cooldowns each cycle', () => {
     const c = useTrainingConsole(ref(makeHero()))
     c.cast('q') // bw 150, cd 2
-    c.advanceTick()
+    c.advanceCycle()
     expect(c.cooldowns.q).toBe(1)
     expect(c.bw.value).toBe(160) // +10 (5% of 200)
   })
@@ -154,7 +154,7 @@ describe('useTrainingConsole', () => {
 
   it('trims the log to the last 50 lines', () => {
     const c = useTrainingConsole(ref(makeHero()))
-    for (let i = 0; i < 60; i++) c.advanceTick()
+    for (let i = 0; i < 60; i++) c.advanceCycle()
     expect(c.log.value.length).toBeLessThanOrEqual(50)
   })
 
@@ -217,9 +217,9 @@ describe('useTrainingConsole', () => {
       const c = useTrainingConsole(ref(makeHero()))
       c.cast('q') // 100 burst
       c.cast('w') // dot 60 over 3 → 20/tick
-      c.advanceTick()
-      c.advanceTick()
-      c.advanceTick() // 3 dot ticks → +60
+      c.advanceCycle()
+      c.advanceCycle()
+      c.advanceCycle() // 3 dot ticks → +60
       expect(c.totalDamage.value).toBe(160)
       expect(c.castCount.value).toBe(2)
     })
@@ -244,7 +244,7 @@ describe('useTrainingConsole', () => {
             id: 'q',
             name: 'Q',
             bwCost: 50,
-            cooldownTicks: 0,
+            cooldownCycles: 0,
             effects: [
               { type: 'damage', value: 100 },
               { type: 'slow', value: 30, duration: 3 },
@@ -254,7 +254,7 @@ describe('useTrainingConsole', () => {
             id: 'r',
             name: 'R',
             bwCost: 0,
-            cooldownTicks: 0,
+            cooldownCycles: 0,
             effects: [{ type: 'stun', duration: 2 }],
           }),
         },
@@ -270,12 +270,12 @@ describe('useTrainingConsole', () => {
       expect(c.log.value.some((l) => l.includes('STUNNED for 2t'))).toBe(true)
     })
 
-    it('decays statuses each tick and announces when they wear off', async () => {
+    it('decays statuses each cycle and announces when they wear off', async () => {
       const c = await consoleAtSix()
       c.cast('r') // stun 2t
-      c.advanceTick()
+      c.advanceCycle()
       expect(c.statuses.value[0]!.ticksLeft).toBe(1)
-      c.advanceTick()
+      c.advanceCycle()
       expect(c.statuses.value).toHaveLength(0)
       expect(c.log.value.some((l) => l.includes('STUNNED wore off'))).toBe(true)
     })
@@ -283,7 +283,7 @@ describe('useTrainingConsole', () => {
     it('refreshes an existing control instead of stacking duplicates', async () => {
       const c = await consoleAtSix()
       c.cast('r')
-      c.advanceTick() // stun → 1t left
+      c.advanceCycle() // stun → 1t left
       c.cast('r') // re-stun → refreshed back to 2t
       expect(c.statuses.value).toHaveLength(1)
       expect(c.statuses.value[0]!.ticksLeft).toBe(2)
@@ -345,15 +345,15 @@ describe('useTrainingConsole', () => {
       const c = await atLevel(useTrainingConsole(ref(hero)), 11)
       expect(c.maxBw.value).toBe(200 + 40 * 10)
       expect(c.bw.value).toBe(600) // reset refills to the level-11 pool
-      c.advanceTick()
+      c.advanceCycle()
       expect(c.bw.value).toBe(600) // already full — the refill can't overflow
     })
 
-    it('refills bw per tick against the level pool, labelled as a sandbox aid', async () => {
+    it('refills bw per cycle against the level pool, labelled as a sandbox aid', async () => {
       const hero = makeHero({ growthPerLevel: { bw: 40 } })
       const c = await atLevel(useTrainingConsole(ref(hero)), 11)
       c.cast('q') // −50 from a 600 pool
-      c.advanceTick()
+      c.advanceCycle()
       expect(c.bw.value).toBe(580) // +30 (5% of 600), not 5% of the base 200
       expect(c.log.value.some((l) => l.includes('+30 bw sandbox refill'))).toBe(true)
     })

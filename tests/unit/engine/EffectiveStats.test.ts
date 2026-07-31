@@ -17,12 +17,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 200,
     level: 1,
     xp: 0,
-    gold: 0,
+    scrip: 0,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 10,
     ice: 15,
     kills: 0,
@@ -38,7 +38,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 const buff = (id: string, stacks: number): BuffState => ({
   id,
   stacks,
-  ticksRemaining: 3,
+  cyclesRemaining: 3,
   source: 'x',
 })
 

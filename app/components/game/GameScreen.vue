@@ -42,8 +42,8 @@ import {
   dayNightReadout,
   formatCaches,
   formatBackup,
-  goldLead,
-  formatGoldShort,
+  scripLead,
+  formatScripShort,
 } from '~/utils/strategy'
 import { useAudio } from '~/composables/useAudio'
 import { ZONE_MAP } from '~~/shared/constants/zones'
@@ -55,7 +55,7 @@ import { recommendedItemsForRole } from '~~/shared/constants/itemBuilds'
 import { ITEMS, ITEM_CATEGORIES, DEFAULT_QUICKBUY_ITEMS } from '~~/shared/constants/items'
 import type { ItemCategoryId } from '~~/shared/types/items'
 import { getTalentTree } from '~~/shared/constants/talents'
-import type { IceState, AncientState } from '~~/shared/types/game'
+import type { IceState, TerminalState } from '~~/shared/types/game'
 import { uiLog } from '~/utils/logger'
 import { collapseStructureDamage, type CombatLine } from '~/utils/combatLog'
 import {
@@ -65,8 +65,8 @@ import {
   type KillFeedEntry,
 } from '~/utils/combatNarrative'
 import {
-  TICK_DURATION_MS,
-  CACHE_DURATION_TICKS,
+  CYCLE_DURATION_MS,
+  CACHE_DURATION_CYCLES,
   ULTIMATE_UNLOCK_LEVEL,
   getAbilityLevel,
 } from '~~/shared/constants/balance'
@@ -89,9 +89,9 @@ const { connected, reconnecting, connectionLost, latency } = gameSocket
 // Local combat log for parsed errors + game events
 const localEvents = ref<
   Array<{
-    tick: number
+    cycle: number
     text: string
-    type: 'damage' | 'healing' | 'kill' | 'gold' | 'system' | 'ability' | 'rig'
+    type: 'damage' | 'healing' | 'kill' | 'scrip' | 'system' | 'ability' | 'rig'
   }>
 >([])
 
@@ -199,7 +199,7 @@ onMounted(() => {
         'Destroy the enemy Terminal to win. Good luck!',
       ]
       for (const text of intro)
-        localEvents.value.push({ tick: gameStore.tick, text, type: 'system' })
+        localEvents.value.push({ cycle: gameStore.cycle, text, type: 'system' })
     }
   } catch {
     // localStorage unavailable (private mode / SSR) — skip the intro silently.
@@ -297,7 +297,7 @@ const commandInputRef = ref<{ focus: () => void } | null>(null)
 
 /**
  * R3-09 — prompt-primary on desktop only. Aggressive autofocus on a coarse
- * pointer pops the soft keyboard over the game on every overlay close / tick;
+ * pointer pops the soft keyboard over the game on every overlay close / cycle;
  * gate every reclaim of the prompt on (pointer: fine).
  */
 function isFinePointer(): boolean {
@@ -348,7 +348,7 @@ function handleArrowMove(direction: 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'Arr
     handleCommand(`move ${targetZone}`)
   } else {
     localEvents.value.push({
-      tick: gameStore.tick,
+      cycle: gameStore.cycle,
       text: `No zone ${ARROW_WORD[direction]} ${playerZone.name} — click a zone on the map or type move <zone>`,
       type: 'system',
     })
@@ -367,7 +367,7 @@ function onKeyUp(e: KeyboardEvent) {
 // ── Game-feel: impact keys (bumped to replay one-shot animations) ──
 const heroFlashKey = ref(0) // I took damage → red flash on the hero panel
 const kdaPopKey = ref(0) // I got a kill → KDA pop
-const tickPulseKey = ref(0) // each tick → reveal flash in the STREAM header
+const tickPulseKey = ref(0) // each cycle → reveal flash in the STREAM header
 const deathVignetteKey = ref(0) // I died → instant red vignette pulse (on the event)
 const respawnKey = ref(0) // I respawned → one-shot chaff vignette
 let awaitingRespawn = false
@@ -389,7 +389,7 @@ const FLOAT_ANCHOR: Record<DamageFloatEntry['kind'], 'self' | 'target'> = {
   taken: 'self',
   heal: 'self',
   dealt: 'target',
-  gold: 'target',
+  scrip: 'target',
 }
 
 function pushDamageFloat(amount: number, kind: DamageFloatEntry['kind']) {
@@ -423,7 +423,7 @@ function hitStrength(amount: number, maxInteg: number): number {
 const impactKey = ref(0)
 const impactLevel = ref<'light' | 'strong'>('light')
 let lastImpactAt = 0
-/** Multiple hits land in the same tick; without a floor they retrigger the
+/** Multiple hits land in the same cycle; without a floor they retrigger the
  *  flare on top of itself and it reads as a strobe rather than as impact. */
 const IMPACT_RETRIGGER_MS = 250
 
@@ -449,7 +449,7 @@ function registerHit(amount: number) {
 // zone change would double-print teleports and fire on every respawn.
 const walkTarget = ref<string | null>(null)
 
-// On each new tick: play the tick sound and flush any command the player
+// On each new cycle: play the cycle sound and flush any command the player
 // pre-typed while waiting (buffered client-side, sent now that they can act).
 // Dying closes the shop/scoreboard overlays (z-30) that would otherwise hide
 // the death screen (z-20), and the shop is non-functional while dead anyway.
@@ -467,14 +467,14 @@ watch(
       return
     }
     // Coming back was a UI element silently disappearing. Gated on an actual
-    // death: the store reports "not alive" until the first tick_state lands, so
+    // death: the store reports "not alive" until the first cycle_state lands, so
     // an ungated rising edge would fire the cue on every game load.
     if (!awaitingRespawn) return
     awaitingRespawn = false
     playSound('respawn')
     respawnKey.value++
     localEvents.value.push({
-      tick: gameStore.tick,
+      cycle: gameStore.cycle,
       text: '>_ PROCESS RESTORED — you are back in the fight',
       type: 'system',
     })
@@ -482,9 +482,9 @@ watch(
 )
 
 watch(
-  () => gameStore.tick,
+  () => gameStore.cycle,
   () => {
-    playSound('tick')
+    playSound('cycle')
     // Reveal beat: bump the pulse key so the Theater header flashes as the
     // tick's resolution lands.
     tickPulseKey.value++
@@ -508,7 +508,7 @@ watch(
     if (zone === target) {
       walkTarget.value = null
       localEvents.value.push({
-        tick: gameStore.tick,
+        cycle: gameStore.cycle,
         text: `▸ You arrive at ${ZONE_MAP[zone]?.name ?? zone}`,
         type: 'system',
       })
@@ -519,7 +519,7 @@ watch(
     const remaining = pathDistance(zone, target, (id) => !!gameStore.visibleZones[id])
     if (remaining > 0) {
       localEvents.value.push({
-        tick: gameStore.tick,
+        cycle: gameStore.cycle,
         text: `▸ You reach ${ZONE_MAP[zone]?.name ?? zone} — ${remaining} more to ${ZONE_MAP[target]?.name ?? target}`,
         type: 'system',
       })
@@ -561,31 +561,31 @@ watch(
             playSound('death')
             triggerImpact('strong')
             // Instant red vignette on the EVENT — the "PROCESS TERMINATED" overlay
-            // is tied to authoritative isAlive state (a tick_state away), which can
+            // is tied to authoritative isAlive state (a cycle_state away), which can
             // lag the event under latency; the vignette confirms death immediately.
             deathVignetteKey.value++
           }
           break
-        // Farming — the loop the player spends most of the match in. The gold
+        // Farming — the loop the player spends most of the match in. The scrip
         // cue used to hang off `gold_change`, whose only emitter is a win
         // sentinel carrying an empty playerId, so last-hitting was silent.
         case 'wave_strip':
         case 'wave_burn':
           if (e.payload.playerId === pid) {
-            playSound('gold')
-            pushDamageFloat(Number(e.payload.goldAwarded), 'gold')
+            playSound('scrip')
+            pushDamageFloat(Number(e.payload.scripAwarded), 'scrip')
           }
           break
         case 'neutral_killed':
           // The camp's bounty is not on the wire, so the cue carries no number.
-          if (e.payload.playerId === pid) playSound('gold')
+          if (e.payload.playerId === pid) playSound('scrip')
           break
         case 'level_up':
           if (e.payload.playerId === pid) {
             playSound('ready')
             if ([10, 15, 20, 25].includes(e.payload.newLevel as number)) {
               localEvents.value.push({
-                tick: e.tick,
+                cycle: e.cycle,
                 text: `★ Talent unlocked — choose your level ${e.payload.newLevel} talent below`,
                 type: 'system',
               })
@@ -598,7 +598,7 @@ watch(
             triggerImpact('light')
             kdaPopKey.value++
           } else if (Array.isArray(e.payload.assisters) && e.payload.assisters.includes(pid)) {
-            // An assist moves your KDA and your gold; it was the one scoring
+            // An assist moves your KDA and your scrip; it was the one scoring
             // event with no feedback at all. No flare — you did not land it.
             playSound('kill')
             kdaPopKey.value++
@@ -642,7 +642,7 @@ watch(
 // Game-end climax: the win/loss moment gets its own juice — a team-colored
 // full-screen flash, a strong flare, and a victory/defeat stinger. PostGame
 // provides the screen; this provides the instantaneous punch the fade-in alone
-// lacks. Keyed on (ended && winner) so it survives either the tick_state phase
+// lacks. Keyed on (ended && winner) so it survives either the cycle_state phase
 // or the game_over message arriving first, and re-arms when the game resets.
 watch(
   () => gameStore.phase === 'ended' && gameStore.winner != null,
@@ -658,11 +658,11 @@ watch(
 
 // ── Derived state ──────────────────────────────────────────────
 
-const currentTick = computed(() => gameStore.tick)
+const currentCycle = computed(() => gameStore.cycle)
 
-const gameTime = computed(() => formatTickClock(gameStore.tick, true))
+const gameTime = computed(() => formatTickClock(gameStore.cycle, true))
 
-const playerGold = computed(() => gameStore.player?.gold ?? 0)
+const playerScrip = computed(() => gameStore.player?.scrip ?? 0)
 const playerKills = computed(() => gameStore.player?.kills ?? 0)
 const playerDeaths = computed(() => gameStore.player?.deaths ?? 0)
 const playerAssists = computed(() => gameStore.player?.assists ?? 0)
@@ -681,7 +681,7 @@ const heroData = computed(() => {
     cooldowns: p.cooldowns,
     items: p.items,
     buffs: p.buffs,
-    gold: p.gold,
+    scrip: p.scrip,
     alive: p.alive,
   }
 })
@@ -707,8 +707,8 @@ function entityLabel(id: unknown): string {
     const zone = id.slice('ice_'.length)
     return `ice (${zone})`
   }
-  if (id.startsWith('ancient_')) {
-    const team = id.slice('ancient_'.length)
+  if (id.startsWith('terminal_')) {
+    const team = id.slice('terminal_'.length)
     if (team === 'chaff') return 'the Chaff Terminal'
     if (team === 'audit') return 'the Audit Terminal'
     return `the ${team} Terminal`
@@ -752,7 +752,7 @@ const narrativeCtx = computed<NarrativeContext>(() => ({
 
 const combatEvents = computed<CombatLine[]>(() => {
   const lines = buildCombatLines(gameStore.events, narrativeCtx.value, collapseStructureDamage)
-  return [...lines, ...localEvents.value].sort((a, b) => a.tick - b.tick)
+  return [...lines, ...localEvents.value].sort((a, b) => a.cycle - b.cycle)
 })
 
 // Cinematic headline plays — first blood, multi-kills, shutdowns, ice/Tenant/Core.
@@ -761,15 +761,15 @@ const killFeed = computed<KillFeedEntry[]>(() =>
 )
 
 // Ancients (team cores) live in the game store — shown on the base zones of the map.
-const ancients = computed(() => gameStore.ancients)
+const terminals = computed(() => gameStore.terminals)
 
 // ── STREAM header drama + low-INTEG danger framing ───────────────────
 const THEATER_BAR_WIDTH = 24
 
-/** Wide countdown bar that drains over the 4s tick — the Theater heartbeat. */
+/** Wide countdown bar that drains over the 4s cycle — the Theater heartbeat. */
 const theaterBar = computed(() => {
-  const remaining = Math.max(0, Math.min(TICK_DURATION_MS, gameStore.nextTickIn))
-  const filled = Math.round((remaining / TICK_DURATION_MS) * THEATER_BAR_WIDTH)
+  const remaining = Math.max(0, Math.min(CYCLE_DURATION_MS, gameStore.nextTickIn))
+  const filled = Math.round((remaining / CYCLE_DURATION_MS) * THEATER_BAR_WIDTH)
   return '█'.repeat(filled) + '░'.repeat(THEATER_BAR_WIDTH - filled)
 })
 
@@ -795,45 +795,45 @@ const heroCritical = computed(() => gameStore.isAlive && hpPct.value <= 15)
 
 let firstTickLogged = false
 const unsubOnMessage = gameSocket.onMessage((msg) => {
-  if (msg.type === 'tick_state') {
+  if (msg.type === 'cycle_state') {
     if (!firstTickLogged) {
       firstTickLogged = true
-      uiLog.info('First tick_state received — game is live')
+      uiLog.info('First cycle_state received — game is live')
       localEvents.value.push({
-        tick: 0,
+        cycle: 0,
         text: '>_ Connected to game server. Stream active.',
         type: 'system',
       })
     }
   } else if (msg.type === 'announcement') {
     localEvents.value.push({
-      tick: gameStore.tick,
+      cycle: gameStore.cycle,
       text: `>_ ${msg.message}`,
       type: 'system',
     })
   } else if (msg.type === 'error') {
     localEvents.value.push({
-      tick: gameStore.tick,
+      cycle: gameStore.cycle,
       text: `[ERROR] ${msg.message}`,
       type: 'system',
     })
   } else if (msg.type === 'chat') {
     const tag = msg.channel === 'team' ? '[TEAM]' : '[ALL]'
     localEvents.value.push({
-      tick: gameStore.tick,
+      cycle: gameStore.cycle,
       text: `${tag} ${entityLabel(msg.playerId)}: ${msg.message}`,
       type: 'system',
     })
   } else if (msg.type === 'ping_map') {
     localEvents.value.push({
-      tick: gameStore.tick,
+      cycle: gameStore.cycle,
       text: `[PING] ${entityLabel(msg.playerId)} pinged ${ZONE_MAP[msg.zone]?.name ?? msg.zone}`,
       type: 'system',
     })
   }
 })
 
-// Ice lookup: zoneId → IceState (the store tracks ice from tick_state)
+// Ice lookup: zoneId → IceState (the store tracks ice from cycle_state)
 const iceByZone = computed(() => {
   const map = new Map<string, IceState>()
   for (const t of gameStore.ice) {
@@ -851,11 +851,11 @@ const mapZones = computed(() => {
   // Currently-live caches by zone (spawned but not yet expired).
   const liveCacheByZone = new Map<string, string>()
   for (const r of gameStore.caches) {
-    if (r.tick + CACHE_DURATION_TICKS > gameStore.tick) liveCacheByZone.set(r.zone, r.type)
+    if (r.cycle + CACHE_DURATION_CYCLES > gameStore.cycle) liveCacheByZone.set(r.zone, r.type)
   }
 
   // Tenant state for the pit (reuses the net readout's tested respawn readout).
-  const tenantReadout = gameStore.tenant ? formatTenant(gameStore.tenant, gameStore.tick) : null
+  const tenantReadout = gameStore.tenant ? formatTenant(gameStore.tenant, gameStore.cycle) : null
 
   // The GAME's zone set, not the global 32. On the one-lane tutorial map the
   // full list put ~20 zones on the board that the game does not contain — and
@@ -1001,14 +1001,14 @@ const zoneIce = computed(() => iceByZone.value.get(playerZone.value) ?? null)
 
 /**
  * Ticks are the engine's unit, but nothing in the HUD ever tells a player a
- * tick is 4s — so the countdowns they have to act on carry wall time too.
- * Under a minute the tick count is still the actionable number (you queue one
- * action per tick), so both are shown; "0:12" reads worse than "12s" anyway.
+ * cycle is 4s — so the countdowns they have to act on carry wall time too.
+ * Under a minute the cycle count is still the actionable number (you queue one
+ * action per cycle), so both are shown; "0:12" reads worse than "12s" anyway.
  * From a minute up the clock alone is enough.
  */
 function countdownText(ticks: number): string {
   const t = Math.max(0, ticks)
-  const seconds = (t * TICK_DURATION_MS) / 1000
+  const seconds = (t * CYCLE_DURATION_MS) / 1000
   return seconds < 60 ? `${t}c (${seconds}s)` : ticksToClock(t)
 }
 
@@ -1016,14 +1016,16 @@ const buybackInfo = computed(() => {
   const p = gameStore.player
   if (!p || p.alive) return null
   const cost = buybackCostFor(p)
-  const cooldownTicks =
-    p.buybackCooldown && gameStore.tick < p.buybackCooldown ? p.buybackCooldown - gameStore.tick : 0
-  const shortfall = Math.max(0, cost - p.gold)
+  const cooldownCycles =
+    p.buybackCooldown && gameStore.cycle < p.buybackCooldown
+      ? p.buybackCooldown - gameStore.cycle
+      : 0
+  const shortfall = Math.max(0, cost - p.scrip)
   return {
     cost,
-    cooldownTicks,
+    cooldownCycles,
     shortfall,
-    canBuyback: cooldownTicks === 0 && shortfall === 0,
+    canBuyback: cooldownCycles === 0 && shortfall === 0,
   }
 })
 
@@ -1046,7 +1048,7 @@ function handleCommand(cmd: string) {
     if (me) {
       const picked = pickAttackTargetString(me, gameStore.allPlayers)
       if ('error' in picked) {
-        localEvents.value.push({ tick: gameStore.tick, text: picked.error, type: 'system' })
+        localEvents.value.push({ cycle: gameStore.cycle, text: picked.error, type: 'system' })
         return
       }
       cmd = `attack ${picked.target}`
@@ -1059,7 +1061,7 @@ function handleCommand(cmd: string) {
     if (me) {
       const picked = pickDenyTargetString(me, gameStore.waves)
       if ('error' in picked) {
-        localEvents.value.push({ tick: gameStore.tick, text: picked.error, type: 'system' })
+        localEvents.value.push({ cycle: gameStore.cycle, text: picked.error, type: 'system' })
         return
       }
       cmd = `burn ${picked.target}`
@@ -1078,7 +1080,7 @@ function handleCommand(cmd: string) {
       if (caster && ability) {
         const picked = pickAbilityTargetString(ability, caster, gameStore.allPlayers)
         if ('error' in picked) {
-          localEvents.value.push({ tick: gameStore.tick, text: picked.error, type: 'system' })
+          localEvents.value.push({ cycle: gameStore.cycle, text: picked.error, type: 'system' })
           return
         }
         if (picked.target) {
@@ -1100,7 +1102,7 @@ function handleCommand(cmd: string) {
       if (user && targetType) {
         const picked = pickItemTargetString(targetType, user, gameStore.allPlayers)
         if ('error' in picked) {
-          localEvents.value.push({ tick: gameStore.tick, text: picked.error, type: 'system' })
+          localEvents.value.push({ cycle: gameStore.cycle, text: picked.error, type: 'system' })
           return
         }
         const resolved = commands.parse(
@@ -1120,7 +1122,7 @@ function handleCommand(cmd: string) {
       const opts = heroId ? getTalentTree(heroId)?.tiers[command.tier] : undefined
       if (!opts) {
         localEvents.value.push({
-          tick: gameStore.tick,
+          cycle: gameStore.cycle,
           text: 'No talents available for your hero',
           type: 'system',
         })
@@ -1151,13 +1153,13 @@ function handleCommand(cmd: string) {
     // return without sending — purely informational, never a game action.
     if (command.type === 'help') {
       for (const line of formatHelpReadout()) {
-        localEvents.value.push({ tick: gameStore.tick, text: line, type: 'system' })
+        localEvents.value.push({ cycle: gameStore.cycle, text: line, type: 'system' })
       }
       return
     }
     // status/map/scan/who/net/look are informational: print a readout to the
     // local log and return WITHOUT sending — the server ignores them, so
-    // submitting one would silently burn the player's one action this tick.
+    // submitting one would silently burn the player's one action this cycle.
     if (
       command.type === 'status' ||
       command.type === 'map' ||
@@ -1173,16 +1175,16 @@ function handleCommand(cmd: string) {
             me,
             gameStore.allPlayers,
             gameStore.lastSeen,
-            gameStore.tick,
+            gameStore.cycle,
           )) {
-            localEvents.value.push({ tick: gameStore.tick, text: line, type: 'system' })
+            localEvents.value.push({ cycle: gameStore.cycle, text: line, type: 'system' })
           }
         } else if (command.type === 'net') {
           const myWards = Object.values(gameStore.visibleZones).flatMap((z) => z.wards ?? [])
           const vision = visionSummary(
             Object.keys(gameStore.visibleZones),
             myWards.filter((w) => w.team === me.team),
-            gameStore.tick,
+            gameStore.cycle,
           )
           const dn = dayNightReadout(gameStore.timeOfDay)
           const visionText =
@@ -1199,10 +1201,10 @@ function handleCommand(cmd: string) {
             dayNight: `${dn.label} · ${dn.meaning}`,
             objectives,
           })
-          localEvents.value.push({ tick: gameStore.tick, text, type: 'system' })
+          localEvents.value.push({ cycle: gameStore.cycle, text, type: 'system' })
         } else if (command.type === 'look') {
           for (const line of formatLookReadout(me, gameStore.waves, gameStore.neutrals)) {
-            localEvents.value.push({ tick: gameStore.tick, text: line, type: 'system' })
+            localEvents.value.push({ cycle: gameStore.cycle, text: line, type: 'system' })
           }
         } else {
           const text =
@@ -1211,7 +1213,7 @@ function handleCommand(cmd: string) {
               : command.type === 'map'
                 ? formatMapReadout(me, gameStore.mapId)
                 : formatScanReadout(me, gameStore.allPlayers)
-          localEvents.value.push({ tick: gameStore.tick, text, type: 'system' })
+          localEvents.value.push({ cycle: gameStore.cycle, text, type: 'system' })
         }
       }
       return
@@ -1222,28 +1224,28 @@ function handleCommand(cmd: string) {
     // and the local readouts returned above stay available too.
     if (gameStore.player?.aiControlled && command.type !== 'surrender') {
       localEvents.value.push({
-        tick: gameStore.tick,
+        cycle: gameStore.cycle,
         text: 'A bot controls your hero for the rest of this match — you can still chat, ping, and vote to surrender.',
         type: 'system',
       })
       return
     }
-    // Already acted this tick: buffer the command client-side and auto-send
-    // it when the next tick arrives (buyback/surrender are special actions
+    // Already acted this cycle: buffer the command client-side and auto-send
+    // it when the next cycle arrives (buyback/surrender are special actions
     // the server handles out-of-band, so they always go through directly).
     const isSpecial =
       command.type === 'buyback' || command.type === 'surrender' || command.type === 'select_talent'
     if (!isSpecial && gameStore.isAlive && !gameStore.canAct) {
       gameStore.bufferCommand(cmd)
       localEvents.value.push({
-        tick: gameStore.tick,
-        text: `[QUEUED] ${cmd} — will send next tick`,
+        cycle: gameStore.cycle,
+        text: `[QUEUED] ${cmd} — will send next cycle`,
         type: 'system',
       })
       return
     }
     // Pre-flight validation mirroring server rules — don't waste the one
-    // action this tick on a command the server will reject.
+    // action this cycle on a command the server will reject.
     const validationError = validateCommand(command, {
       player: gameStore.player,
       visibleZones: gameStore.visibleZones,
@@ -1251,12 +1253,12 @@ function handleCommand(cmd: string) {
       items: ITEMS,
       neutrals: gameStore.neutrals,
       tenant: gameStore.tenant ?? undefined,
-      tick: gameStore.tick,
+      cycle: gameStore.cycle,
       mode: gameStore.mode,
     })
     if (validationError) {
       localEvents.value.push({
-        tick: gameStore.tick,
+        cycle: gameStore.cycle,
         text: validationError,
         type: 'system',
       })
@@ -1267,13 +1269,13 @@ function handleCommand(cmd: string) {
       return
     }
     // If the socket isn't open (reconnecting), the action never reached the
-    // server — don't fake "Action sent". Buffer it so the next tick after we
+    // server — don't fake "Action sent". Buffer it so the next cycle after we
     // reconnect re-sends it, and tell the player why their input paused.
     const sent = gameSocket.send({ type: 'action', command })
     if (!sent) {
       gameStore.bufferCommand(cmd)
       localEvents.value.push({
-        tick: gameStore.tick,
+        cycle: gameStore.cycle,
         text: `⚠ Connection unstable — "${cmd}" paused, will retry`,
         type: 'system',
       })
@@ -1291,16 +1293,16 @@ function handleCommand(cmd: string) {
       walkTarget.value = command.zone === gameStore.player?.zone ? null : command.zone
     } else if (!isSpecial) walkTarget.value = null
     // Immediate positive confirmation so the action feels registered NOW, not
-    // only when the tick resolves ~4s later. Pre-flight validation already gated
+    // only when the cycle resolves ~4s later. Pre-flight validation already gated
     // out rejects above, so this fires only on actions that will resolve; the
-    // landing cues (damage floats, impact flare) still come from the tick events.
+    // landing cues (damage floats, impact flare) still come from the cycle events.
     // Offensive orders get the meatier `cast` whoosh; everything else — move,
     // buy, ward, burn — used to send in total silence.
     if (command.type === 'cast' || command.type === 'attack') playSound('cast')
     else playSound('submit')
   } else if (error) {
     localEvents.value.push({
-      tick: gameStore.tick,
+      cycle: gameStore.cycle,
       text: error,
       type: 'system',
     })
@@ -1318,20 +1320,20 @@ function handleZoneClick(zoneId: string) {
 
   if (p.zone === zoneId) {
     localEvents.value.push({
-      tick: gameStore.tick,
+      cycle: gameStore.cycle,
       text: `Already in ${ZONE_MAP[zoneId]?.name ?? zoneId}`,
       type: 'system',
     })
     return
   }
 
-  // Auto-path: any zone is a valid order — the hero walks one zone per tick
+  // Auto-path: any zone is a valid order — the hero walks one zone per cycle
   // toward it (validateCommand still rejects zones off this game's map).
   handleCommand(`move ${zoneId}`)
 }
 
-// The trace the rail renders — rebuilt per tick from the store (C1a).
-const FALLBACK_ANCIENT: AncientState = {
+// The trace the rail renders — rebuilt per cycle from the store (C1a).
+const FALLBACK_TERMINAL: TerminalState = {
   team: 'chaff',
   integ: 0,
   maxInteg: 0,
@@ -1354,7 +1356,7 @@ const traceModel = computed(() => {
     playerZone: p?.zone ?? '',
     playerTeam: p?.team ?? 'chaff',
     contacts,
-    ancients: ancients.value ?? { chaff: FALLBACK_ANCIENT, audit: FALLBACK_ANCIENT },
+    terminals: terminals.value ?? { chaff: FALLBACK_TERMINAL, audit: FALLBACK_TERMINAL },
   })
 })
 
@@ -1377,7 +1379,7 @@ function pickMoveZone(zoneId: string) {
 function handleActionRowCommand(cmd: string) {
   if (cmd === '__no-adjacent-zones__') {
     localEvents.value.push({
-      tick: gameStore.tick,
+      cycle: gameStore.cycle,
       text: 'No adjacent zones to move to from here.',
       type: 'system',
     })
@@ -1423,7 +1425,7 @@ function handleQuickAction(cmd: string) {
     // and not clickable. It is a MOVE button; it now moves.
     if (!movePickerZones.value.length) {
       localEvents.value.push({
-        tick: gameStore.tick,
+        cycle: gameStore.cycle,
         text: 'No adjacent zones to move to from here.',
         type: 'system',
       })
@@ -1448,7 +1450,7 @@ function handleQuickAction(cmd: string) {
       const zoneType = ZONE_MAP[p.zone]?.type
       const inBase = zoneType === 'fountain' || zoneType === 'base'
       localEvents.value.push({
-        tick: gameStore.tick,
+        cycle: gameStore.cycle,
         text: inBase
           ? 'No targets here — move to a lane to fight (e.g.  move mid-river ).'
           : 'No enemies in this zone — last-hit waves via STRIP / attack wave:N, or  attack <target> .',
@@ -1482,7 +1484,7 @@ const situationalActions = computed(() =>
     backup: gameStore.backup,
     caches: gameStore.caches,
     teams: gameStore.teams,
-    tick: gameStore.tick,
+    cycle: gameStore.cycle,
     mode: gameStore.mode,
   }),
 )
@@ -1497,7 +1499,7 @@ function runSituational(cmd: string) {
 
 // ── Quick action button availability ─────────────────────────
 // Greys out Q/W/E/R when on cooldown or unaffordable so players can see
-// at a glance which abilities are actually castable this tick.
+// at a glance which abilities are actually castable this cycle.
 const abilityButtonState = computed(() => {
   const p = gameStore.player
   const result: Record<string, { ready: boolean; label: string; aria: string }> = {}
@@ -1524,12 +1526,12 @@ const abilityButtonState = computed(() => {
     }
     const cd = p.cooldowns[slot]
     if (cd > 0) {
-      // The chip stays a bare tick count so the dense bar keeps its width; the
+      // The chip stays a bare cycle count so the dense bar keeps its width; the
       // seconds a player actually plans in go into the accessible name instead.
       result[upper] = {
         ready: false,
         label: `${upper}·${cd}`,
-        aria: `${upper} ${name}, on cooldown ${cd} cycles, about ${(cd * TICK_DURATION_MS) / 1000} seconds`,
+        aria: `${upper} ${name}, on cooldown ${cd} cycles, about ${(cd * CYCLE_DURATION_MS) / 1000} seconds`,
       }
       continue
     }
@@ -1567,7 +1569,7 @@ const abilityArias = computed(() => {
 
 // ── The rig's voice (R3-06) ─────────────────────────────────────
 // The recommendation FocusBanner used to pin above the grid, printed into the
-// scrollback as a `> ` line WHEN IT CHANGES (a per-tick repeat is noise). The
+// scrollback as a `> ` line WHEN IT CHANGES (a per-cycle repeat is noise). The
 // INTEG readout and threat verdict ride in the same line so nothing the banner
 // showed is lost.
 const rigRecommendation = computed(() => {
@@ -1608,15 +1610,15 @@ const rigHasReadyAbility = computed(() =>
   ['Q', 'W', 'E', 'R'].some((s) => abilityButtonState.value[s]?.ready),
 )
 const netLeadText = computed(() => {
-  const lead = goldLead(gameStore.netWorth.chaff, gameStore.netWorth.audit)
+  const lead = scripLead(gameStore.netWorth.chaff, gameStore.netWorth.audit)
   return lead.leader === null
     ? 'even'
-    : `${lead.leader === 'chaff' ? 'CHF' : 'AUD'} +${formatGoldShort(lead.amount)}`
+    : `${lead.leader === 'chaff' ? 'CHF' : 'AUD'} +${formatScripShort(lead.amount)}`
 })
 
 watch(rigRecommendation, (rec, prev) => {
   if (!rec || rec === prev) return
-  localEvents.value.push({ tick: gameStore.tick, text: rec, type: 'rig' })
+  localEvents.value.push({ cycle: gameStore.cycle, text: rec, type: 'rig' })
 })
 
 // The `net` command's objective segment — tenant / caches / backup in one
@@ -1626,15 +1628,15 @@ const backupHolder = computed(() => {
     const buff = (p.buffs ?? []).find((b) => b.id === 'backup')
     if (buff) {
       const name = (p.heroId && HEROES[p.heroId]?.name) || p.name
-      return { name, ticksRemaining: buff.ticksRemaining }
+      return { name, cyclesRemaining: buff.cyclesRemaining }
     }
   }
   return null
 })
 
 function formatObjectivesLine(): string {
-  const t = gameStore.tenant ? formatTenant(gameStore.tenant, gameStore.tick).label : 'TENANT —'
-  const c = formatCaches(gameStore.caches, gameStore.tick).label
+  const t = gameStore.tenant ? formatTenant(gameStore.tenant, gameStore.cycle).label : 'TENANT —'
+  const c = formatCaches(gameStore.caches, gameStore.cycle).label
   const b = formatBackup(gameStore.backup, backupHolder.value).label
   return `${t} · ${c} · ${b}`
 }
@@ -1643,7 +1645,7 @@ function formatObjectivesLine(): string {
 function handleItemUse(_slotIndex: number, itemId: string) {
   if (!gameStore.player?.alive) {
     localEvents.value.push({
-      tick: gameStore.tick,
+      cycle: gameStore.cycle,
       text: 'Cannot use items while dead',
       type: 'system',
     })
@@ -1662,7 +1664,7 @@ function handleItemUseBySlot(slotIndex: number) {
 
 const isGameOver = computed(() => gameStore.phase === 'ended')
 
-// The tick of the player's most recent death. `death` is emitted for EVERY
+// The cycle of the player's most recent death. `death` is emitted for EVERY
 // death — including one with no eligible killer — so it is the only reliable
 // anchor. Everything below is scoped to it: the events list is a 200-entry ring
 // buffer, and the overlay used to scan it unbounded, so a kill from ten minutes
@@ -1672,21 +1674,21 @@ const lastDeathTick = computed<number | null>(() => {
   if (!pid) return null
   for (let i = gameStore.events.length - 1; i >= 0; i--) {
     const e = gameStore.events[i]!
-    if (e.type === 'death' && e.payload.playerId === pid) return e.tick
+    if (e.type === 'death' && e.payload.playerId === pid) return e.cycle
   }
   return null
 })
 
 const killerName = computed(() => {
   const pid = gameStore.playerId
-  const deathTick = lastDeathTick.value
-  if (!pid || deathTick == null) return null
+  const deathCycle = lastDeathTick.value
+  if (!pid || deathCycle == null) return null
 
   let attributed: string | null = null
   let lastDamaged: string | null = null
   for (let i = gameStore.events.length - 1; i >= 0; i--) {
     const e = gameStore.events[i]!
-    if (e.tick < deathTick) break
+    if (e.cycle < deathCycle) break
     if (e.type === 'kill' && e.payload.victimId === pid && e.payload.killerId) {
       attributed = e.payload.killerId as string
       break
@@ -1694,7 +1696,7 @@ const killerName = computed(() => {
     // ICE, waves and neutrals are not eligible killers (handleDeaths only
     // accepts a killerId that resolves to a player), so an NPC kill produces a
     // `death` with no `kill` at all. Since NPC hits now emit `damage`, the last
-    // thing that hit us on the death tick is the honest answer — without it the
+    // thing that hit us on the death cycle is the honest answer — without it the
     // overlay simply said nothing after the most instructive death in the game,
     // the ice dive.
     if (lastDamaged === null && e.type === 'damage' && e.payload.targetId === pid) {
@@ -1825,10 +1827,10 @@ function handleReturnToMenu() {
         <p v-if="killerName" class="t-h3 mt-5 text-text-primary">
           Killed by <span class="text-audit text-glow-audit">{{ killerName }}</span>
         </p>
-        <p v-if="gameStore.player.respawnTick" class="mt-5 t-body text-text-dim">
+        <p v-if="gameStore.player.respawnCycle" class="mt-5 t-body text-text-dim">
           Respawning in
           <span class="text-chaff text-glow-chaff font-bold t-mono-num">{{
-            countdownText(gameStore.player.respawnTick - gameStore.tick)
+            countdownText(gameStore.player.respawnCycle - gameStore.cycle)
           }}</span>
         </p>
         <div v-if="buybackInfo" class="mt-6 flex flex-col items-center gap-2">
@@ -1845,11 +1847,11 @@ function handleReturnToMenu() {
           >
             [BUYBACK — {{ buybackInfo.cost }}sc]
           </button>
-          <p v-if="buybackInfo.cooldownTicks > 0" class="t-caption text-audit">
-            Buyback on cooldown — {{ countdownText(buybackInfo.cooldownTicks) }} remaining
+          <p v-if="buybackInfo.cooldownCycles > 0" class="t-caption text-audit">
+            Buyback on cooldown — {{ countdownText(buybackInfo.cooldownCycles) }} remaining
           </p>
           <p v-else-if="buybackInfo.shortfall > 0" class="t-caption text-text-dim">
-            Need {{ buybackInfo.shortfall }}sc more ({{ gameStore.player.gold }}sc /
+            Need {{ buybackInfo.shortfall }}sc more ({{ gameStore.player.scrip }}sc /
             {{ buybackInfo.cost }}sc)
           </p>
         </div>
@@ -1885,7 +1887,7 @@ function handleReturnToMenu() {
     </div>
 
     <!-- Kill feed: cinematic headline plays overlaid near the top -->
-    <KillFeed class="game-grid__killfeed" :entries="killFeed" :current-tick="currentTick" />
+    <KillFeed class="game-grid__killfeed" :entries="killFeed" :current-cycle="currentCycle" />
 
     <!-- Critical-INTEG red vignette pulse over the whole screen -->
     <div
@@ -1896,9 +1898,9 @@ function handleReturnToMenu() {
 
     <div ref="barEl" class="game-grid__bar">
       <GameStateBar
-        :tick="currentTick"
+        :cycle="currentCycle"
         :game-time="gameTime"
-        :gold="playerGold"
+        :scrip="playerScrip"
         :kills="playerKills"
         :deaths="playerDeaths"
         :assists="playerAssists"
@@ -1907,9 +1909,9 @@ function handleReturnToMenu() {
         :reconnecting="reconnecting"
         :latency="latency"
         :time-of-day="gameStore.timeOfDay"
-        :day-night-tick="gameStore.dayNightTick"
+        :day-night-cycle="gameStore.dayNightCycle"
         :teams="gameStore.teams"
-        :ancients="ancients"
+        :terminals="terminals"
         :net-worth-chaff="gameStore.netWorth.chaff"
         :net-worth-audit="gameStore.netWorth.audit"
         :kda-pop-key="kdaPopKey"
@@ -1927,7 +1929,7 @@ function handleReturnToMenu() {
          (max-h) + shrink-0 so a busy zone scrolls internally instead of starving
          the net readout, and a quiet zone stays compact. -->
     <!-- Status lines replaced the panel chrome (R3-08): hop + threat, net
-         lead, the tick clock — no borders. -->
+         lead, the cycle clock — no borders. -->
     <div class="game-grid__war">
       <StatusLines
         :trace="traceModel"
@@ -1938,8 +1940,8 @@ function handleReturnToMenu() {
         "
         :alive="gameStore.isAlive"
         :net-lead="netLeadText"
-        :next-tick-in="gameStore.nextTickIn"
-        :tick="gameStore.tick"
+        :next-cycle-in="gameStore.nextTickIn"
+        :cycle="gameStore.cycle"
         :can-act="gameStore.canAct"
         :enemy-count="rigEnemyCount"
         :ally-headcount="rigAllyHeadcount"
@@ -2002,7 +2004,7 @@ function handleReturnToMenu() {
         <Scoreboard
           :players="gameStore.scoreboard"
           :teams="gameStore.teams"
-          :current-tick="currentTick"
+          :current-cycle="currentCycle"
           :current-player-id="gameStore.playerId ?? ''"
         />
         <button
@@ -2050,7 +2052,7 @@ function handleReturnToMenu() {
         </div>
         <ItemShop
           :items="shopItems"
-          :gold="playerGold"
+          :scrip="playerScrip"
           :owned-items="playerItems"
           :pinned-items="pinnedItems"
           :recommended-items="recommendedShopItems"
@@ -2068,7 +2070,7 @@ function handleReturnToMenu() {
         <QuickBuy
           v-if="pinnedItems.length || recommendedShopItems.length"
           :pinned-items="pinnedItems"
-          :gold="playerGold"
+          :scrip="playerScrip"
           :can-buy="gameStore.canBuy"
           :recommended-items="recommendedShopItems"
           @buy="handleBuyItem"
@@ -2097,7 +2099,7 @@ function handleReturnToMenu() {
       />
 
       <!-- A queued walk is otherwise invisible: the order scrolls out of the log
-           and the hero just drifts a zone per tick with no way to call it off. -->
+           and the hero just drifts a zone per cycle with no way to call it off. -->
       <div
         v-if="walkReadout"
         class="flex items-center gap-2 px-2 pb-1 font-mono t-hud-sm text-self"
@@ -2127,7 +2129,7 @@ function handleReturnToMenu() {
         :can-act="gameStore.canAct"
         :pending-command="gameStore.pendingCommand"
         :buffered-command="gameStore.bufferedCommand"
-        :tick="gameStore.tick"
+        :cycle="gameStore.cycle"
         :mode="gameStore.mode"
         :neutrals="gameStore.neutrals"
         :tenant="gameStore.tenant ?? undefined"
@@ -2227,7 +2229,7 @@ function handleReturnToMenu() {
 
 /* Overlay lanes, stacked below the measured HUD bar (--hud-bar-h, published from
    the script). The fixed 4.25rem both of these used to sit at is 68px at the
-   root font size — squarely on the focus banner and the tick/gold/KDA row. The
+   root font size — squarely on the focus banner and the cycle/gold/KDA row. The
    fallback keeps the old placement if the measurement never arrives. */
 .game-grid__killfeed {
   position: absolute;

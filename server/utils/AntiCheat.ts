@@ -58,7 +58,7 @@ export function validateVision(
   if (command.type === 'move') {
     const targetZone = command.zone
     // Auto-path: any zone of THIS game's map with a path from here is a legal
-    // order (the hero walks one hop per tick). Only an off-map/unreachable
+    // order (the hero walks one hop per cycle). Only an off-map/unreachable
     // destination is a violation. Mirrors ActionResolver's validateAction.
     const reachable =
       player.zone === targetZone ||
@@ -145,7 +145,7 @@ export function validateCooldowns(
     return createViolation(
       playerId,
       'COOLDOWN_MANIPULATION',
-      `Attempted to cast ${command.ability} with ${cooldown} ticks remaining`,
+      `Attempted to cast ${command.ability} with ${cooldown} cycles remaining`,
     )
   }
 
@@ -235,9 +235,9 @@ export function validatePlayerStats(state: GameState, playerId: string): CheatDe
     )
   }
 
-  // Check gold is non-negative
-  if (player.gold < 0) {
-    return createViolation(playerId, 'STAT_MISMATCH', `Negative gold (${player.gold})`)
+  // Check scrip is non-negative
+  if (player.scrip < 0) {
+    return createViolation(playerId, 'STAT_MISMATCH', `Negative scrip (${player.scrip})`)
   }
 
   // Check item count

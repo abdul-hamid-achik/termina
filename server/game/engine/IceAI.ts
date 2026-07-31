@@ -11,22 +11,22 @@ export interface IceAction {
 }
 
 /**
- * Ice targeting priority each tick (MOBA convention — waves tank ice,
+ * Ice targeting priority each cycle (MOBA convention — waves tank ice,
  * heroes draw aggro only by acting aggressively):
  * 1. Enemy hero that attacked an allied hero in the ice zone, or attacked
- *    the ice itself, this tick
+ *    the ice itself, this cycle
  * 2. Enemy waves in zone
  * 3. Enemy hero presence (only when there are no waves to shoot)
  *
- * Ice damage: ICE_ATTACK per tick.
+ * Ice damage: ICE_ATTACK per cycle.
  *
- * `priorEvents` (this tick's damage events from action resolution) is used
+ * `priorEvents` (this cycle's damage events from action resolution) is used
  * to detect heroes attacking the ice — hero→ice damage is emitted with
  * targetId `ice_${zone}`.
  */
 export function runIceAI(
   state: GameState,
-  heroAttackers?: Map<string, string>, // attackerId -> victimId mapping from this tick's actions
+  heroAttackers?: Map<string, string>, // attackerId -> victimId mapping from this cycle's actions
   priorEvents?: readonly GameEngineEvent[],
 ): IceAction[] {
   const actions: IceAction[] = []
@@ -70,7 +70,7 @@ function selectIceTarget(
   // Get enemy waves in the ice's zone
   const enemyWaves = state.waves.filter((c) => c.zone === zone && c.team !== iceTeam && c.integ > 0)
 
-  // Priority 1: Enemy hero that drew aggro this tick — attacked an allied
+  // Priority 1: Enemy hero that drew aggro this cycle — attacked an allied
   // hero in the ice zone, or attacked the ice itself.
   if (enemyHeroes.length > 0) {
     const alliedHeroesInZone = Object.values(state.players).filter(
@@ -141,7 +141,7 @@ export function applyIceActions(
         }
         events.push({
           _tag: 'damage',
-          tick: state.tick,
+          cycle: state.cycle,
           // Same id convention `selectIceTarget` reads for hero→ice damage,
           // so the client's entityLabel names the exact ice that shot you.
           sourceId: `ice_${action.iceZone}`,

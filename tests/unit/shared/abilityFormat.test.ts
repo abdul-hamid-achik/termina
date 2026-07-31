@@ -19,7 +19,7 @@ describe('formatEffect', () => {
   it('defaults damage type to kinetic', () => {
     expect(formatEffect(effect({ type: 'damage', value: 25 }))).toBe('25 kinetic dmg')
   })
-  it('formats durations in ticks', () => {
+  it('formats durations in cycles', () => {
     expect(formatEffect(effect({ type: 'slow', value: 30, duration: 2 }))).toBe('30% slow for 2t')
     expect(formatEffect(effect({ type: 'stun', duration: 1 }))).toBe('stun 1t')
     expect(formatEffect(effect({ type: 'stun' }))).toBe('stun 1t')
@@ -63,7 +63,7 @@ describe('abilitySummary', () => {
     name: 'X',
     description: '',
     bwCost: 0,
-    cooldownTicks: 0,
+    cooldownCycles: 0,
     targetType: 'none',
     effects,
   })
@@ -84,7 +84,7 @@ describe('abilitySummary', () => {
 
 describe('cooldownSeconds', () => {
   it('converts cooldown ticks to seconds at the 4s tick', () => {
-    const a = { cooldownTicks: 3 } as AbilityDef
+    const a = { cooldownCycles: 3 } as AbilityDef
     expect(cooldownSeconds(a, 4000)).toBe(12)
   })
 })
@@ -95,7 +95,7 @@ describe('abilityImpact', () => {
     name: 'X',
     description: '',
     bwCost: 0,
-    cooldownTicks: 0,
+    cooldownCycles: 0,
     targetType: 'none',
     effects,
   })
@@ -112,7 +112,7 @@ describe('abilityImpact', () => {
     expect(i.total).toBe(65)
   })
 
-  it('treats DoT value as total, deriving per-tick, and takes the longest duration', () => {
+  it('treats DoT value as total, deriving per-cycle, and takes the longest duration', () => {
     const i = abilityImpact(
       ability([
         effect({ type: 'dot', value: 60, duration: 3 }), // 20/t
@@ -157,7 +157,7 @@ describe('abilityControls', () => {
     name: 'X',
     description: '',
     bwCost: 0,
-    cooldownTicks: 0,
+    cooldownCycles: 0,
     targetType: 'none',
     effects,
   })

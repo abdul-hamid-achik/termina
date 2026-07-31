@@ -4,7 +4,7 @@ import type { PlayerState, TeamId } from '~~/shared/types/game'
  * Pay `xp` to every living hero of `team` standing in `zone`.
  *
  * The lane-presence half of wave XP: being there when a wave dies pays,
- * whoever — or whatever — landed the killing blow. Peer of GoldDistributor,
+ * whoever — or whatever — landed the killing blow. Peer of ScripDistributor,
  * shared so the two callers that mean "a wave died here" (a hero last-hit in
  * ActionResolver, a wave-on-wave kill in WaveAI) cannot drift apart.
  *
@@ -12,7 +12,7 @@ import type { PlayerState, TeamId } from '~~/shared/types/game'
  * pays them the full WAVE_XP itself, so they must not also draw the share.
  *
  * Returns the SAME object when nobody qualifies, which is the common case on a
- * per-tick path and keeps StateDelta's reference-equality diff quiet.
+ * per-cycle path and keeps StateDelta's reference-equality diff quiet.
  */
 export function awardZoneXp(
   players: Record<string, PlayerState>,

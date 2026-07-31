@@ -10,7 +10,7 @@
 
 export interface SimResult {
   winner: 'chaff' | 'audit' | null
-  /** Game length in ticks (×4s = wall-clock). */
+  /** Game length in cycles (×4s = wall-clock). */
   ticks: number
   chaffHeroes: string[]
   auditHeroes: string[]
@@ -42,7 +42,7 @@ export interface SimSummary {
    * (e.g. 10/16) reads as NOT significant, so it isn't mistaken for a real bias.
    */
   sideBiasSignificant: boolean
-  length: { minTicks: number; maxTicks: number; avgTicks: number; medianTicks: number }
+  length: { minTicks: number; maxCycles: number; avgTicks: number; medianTicks: number }
   /** Per-hero win-rate, highest first (heroes that appeared at least once). */
   heroWinRates: HeroWinRate[]
 }
@@ -98,7 +98,7 @@ export function summarizeSimResults(results: SimResult[]): SimSummary {
     sideBiasSignificant,
     length: {
       minTicks: sorted[0] ?? 0,
-      maxTicks: sorted[sorted.length - 1] ?? 0,
+      maxCycles: sorted[sorted.length - 1] ?? 0,
       avgTicks: matches > 0 ? Math.round(total / matches) : 0,
       medianTicks: sorted.length > 0 ? sorted[Math.floor(sorted.length / 2)]! : 0,
     },

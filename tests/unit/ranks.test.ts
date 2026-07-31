@@ -13,7 +13,7 @@ describe('getRankTier', () => {
 
   it('climbs tiers as MMR increases', () => {
     expect(getRankTier(700).id).toBe('bronze')
-    expect(getRankTier(1300).id).toBe('gold')
+    expect(getRankTier(1300).id).toBe('scrip')
     expect(getRankTier(1600).id).toBe('platinum')
     expect(getRankTier(1900).id).toBe('diamond')
     expect(getRankTier(2200).id).toBe('terminal')

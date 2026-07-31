@@ -15,9 +15,9 @@ const mixed: (string | null)[] = [
   null,
 ]
 
-// An item cooldown is expressed as a buff `item_cd_<itemId>` with ticksRemaining.
+// An item cooldown is expressed as a buff `item_cd_<itemId>` with cyclesRemaining.
 const onCooldownBuffs: BuffState[] = [
-  { id: `item_cd_${SAMPLE_ITEMS.salve}`, stacks: 1, ticksRemaining: 3, source: 'item' },
+  { id: `item_cd_${SAMPLE_ITEMS.salve}`, stacks: 1, cyclesRemaining: 3, source: 'item' },
 ]
 
 const noBuffs: BuffState[] = []

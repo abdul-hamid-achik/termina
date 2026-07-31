@@ -1,35 +1,35 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useGameStore } from '~~/app/stores/game'
-import { TICK_DURATION_MS } from '~~/shared/constants/balance'
-import type { TickStateMessage } from '~~/shared/types/protocol'
+import { CYCLE_DURATION_MS } from '~~/shared/constants/balance'
+import type { CycleStateMessage } from '~~/shared/types/protocol'
 import type { TeamState } from '~~/shared/types/game'
 
 // ── Helpers ───────────────────────────────────────────────────────
 
 function makeTeams(): { chaff: TeamState; audit: TeamState } {
   return {
-    chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
-    audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+    chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
+    audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
   }
 }
 
-function makeTickMessage(tick: number): TickStateMessage {
+function makeTickMessage(cycle: number): CycleStateMessage {
   return {
-    type: 'tick_state',
-    tick,
+    type: 'cycle_state',
+    cycle,
     state: {
       phase: 'playing',
       players: {},
       zones: {},
       teams: makeTeams(),
-    } as TickStateMessage['state'],
+    } as CycleStateMessage['state'],
   }
 }
 
 // ── Tests ─────────────────────────────────────────────────────────
 
-describe('Game Store — tick countdown', () => {
+describe('Game Store — cycle countdown', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
@@ -39,69 +39,69 @@ describe('Game Store — tick countdown', () => {
     vi.useRealTimers()
   })
 
-  it('anchors the countdown when a tick arrives', () => {
+  it('anchors the countdown when a cycle arrives', () => {
     const store = useGameStore()
 
-    store.updateFromTick(makeTickMessage(1))
+    store.updateFromCycle(makeTickMessage(1))
 
-    expect(store.lastTickAt).toBe(Date.now())
-    expect(store.nextTickIn).toBe(TICK_DURATION_MS)
+    expect(store.lastCycleAt).toBe(Date.now())
+    expect(store.nextTickIn).toBe(CYCLE_DURATION_MS)
   })
 
   it('counts down as wall-clock time passes', () => {
     const store = useGameStore()
-    store.updateFromTick(makeTickMessage(1))
+    store.updateFromCycle(makeTickMessage(1))
 
     vi.advanceTimersByTime(1000)
-    expect(store.nextTickIn).toBe(TICK_DURATION_MS - 1000)
+    expect(store.nextTickIn).toBe(CYCLE_DURATION_MS - 1000)
 
     vi.advanceTimersByTime(1500)
-    expect(store.nextTickIn).toBe(TICK_DURATION_MS - 2500)
+    expect(store.nextTickIn).toBe(CYCLE_DURATION_MS - 2500)
   })
 
-  it('clamps at zero when the tick is late', () => {
+  it('clamps at zero when the cycle is late', () => {
     const store = useGameStore()
-    store.updateFromTick(makeTickMessage(1))
+    store.updateFromCycle(makeTickMessage(1))
 
-    vi.advanceTimersByTime(TICK_DURATION_MS + 2000)
+    vi.advanceTimersByTime(CYCLE_DURATION_MS + 2000)
 
     expect(store.nextTickIn).toBe(0)
   })
 
-  it('re-anchors when the next tick arrives', () => {
+  it('re-anchors when the next cycle arrives', () => {
     const store = useGameStore()
-    store.updateFromTick(makeTickMessage(1))
+    store.updateFromCycle(makeTickMessage(1))
 
     vi.advanceTimersByTime(3000)
-    expect(store.nextTickIn).toBe(TICK_DURATION_MS - 3000)
+    expect(store.nextTickIn).toBe(CYCLE_DURATION_MS - 3000)
 
-    store.updateFromTick(makeTickMessage(2))
-    expect(store.nextTickIn).toBe(TICK_DURATION_MS)
+    store.updateFromCycle(makeTickMessage(2))
+    expect(store.nextTickIn).toBe(CYCLE_DURATION_MS)
   })
 
   it('does not stack intervals across multiple ticks', () => {
     const store = useGameStore()
-    store.updateFromTick(makeTickMessage(1))
-    store.updateFromTick(makeTickMessage(2))
-    store.updateFromTick(makeTickMessage(3))
+    store.updateFromCycle(makeTickMessage(1))
+    store.updateFromCycle(makeTickMessage(2))
+    store.updateFromCycle(makeTickMessage(3))
 
     expect(vi.getTimerCount()).toBe(1)
   })
 
   it('stopTickCountdown halts and zeroes the countdown', () => {
     const store = useGameStore()
-    store.updateFromTick(makeTickMessage(1))
+    store.updateFromCycle(makeTickMessage(1))
 
     store.stopTickCountdown()
 
     expect(store.nextTickIn).toBe(0)
-    expect(store.lastTickAt).toBeNull()
+    expect(store.lastCycleAt).toBeNull()
     expect(vi.getTimerCount()).toBe(0)
   })
 
   it('reset stops the countdown timer', () => {
     const store = useGameStore()
-    store.updateFromTick(makeTickMessage(1))
+    store.updateFromCycle(makeTickMessage(1))
 
     store.reset()
 
@@ -142,11 +142,11 @@ describe('Game Store — buffered command', () => {
     expect(store.consumeBufferedCommand()).toBe('attack hero:daemon')
   })
 
-  it('survives tick updates (consumed by the screen, not the store)', () => {
+  it('survives cycle updates (consumed by the screen, not the store)', () => {
     const store = useGameStore()
 
     store.bufferCommand('cast q')
-    store.updateFromTick(makeTickMessage(5))
+    store.updateFromCycle(makeTickMessage(5))
 
     expect(store.bufferedCommand).toBe('cast q')
     store.stopTickCountdown()

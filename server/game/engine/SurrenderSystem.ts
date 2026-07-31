@@ -4,7 +4,7 @@
  */
 
 import type { GameState, PlayerState, TeamId } from '~~/shared/types/game'
-import { SURRENDER_MIN_TICK, SURRENDER_VOTE_THRESHOLD } from '~~/shared/constants/balance'
+import { SURRENDER_MIN_CYCLE, SURRENDER_VOTE_THRESHOLD } from '~~/shared/constants/balance'
 import { isBot } from '~~/server/game/ai/BotManager'
 
 /**
@@ -41,10 +41,10 @@ export function canSurrender(state: GameState, team: TeamId): { can: boolean; re
   // match early. It makes no sense in the tutorial, which is single-player and
   // finishes well before tick 225 — it only trapped learners in a game they had
   // already graduated from, with no other way out than closing the tab.
-  if (state.mode !== 'tutorial' && state.tick < SURRENDER_MIN_TICK) {
+  if (state.mode !== 'tutorial' && state.cycle < SURRENDER_MIN_CYCLE) {
     return {
       can: false,
-      reason: `Too early to surrender (wait until tick ${SURRENDER_MIN_TICK})`,
+      reason: `Too early to surrender (wait until tick ${SURRENDER_MIN_CYCLE})`,
     }
   }
 

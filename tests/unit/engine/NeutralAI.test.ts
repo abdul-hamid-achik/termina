@@ -22,12 +22,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 200,
     level: 1,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -42,11 +42,11 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
   return {
-    tick: 60,
+    cycle: 60,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -211,7 +211,7 @@ describe('NeutralAI', () => {
 
     it('emits a damage event naming the neutral that hit', () => {
       const state = makeGameState({
-        tick: 62,
+        cycle: 62,
         neutrals: [
           {
             id: 'neutral_1',
@@ -234,7 +234,7 @@ describe('NeutralAI', () => {
       expect(events).toEqual([
         {
           _tag: 'damage',
-          tick: 62,
+          cycle: 62,
           sourceId: 'neutral_1',
           targetId: 'p1',
           amount: 49,
@@ -263,7 +263,7 @@ describe('NeutralAI', () => {
             id: 'p1',
             zone: 'silt-chaff-top',
             integ: 500,
-            buffs: [{ id: 'shield', stacks: 999, ticksRemaining: 5, source: 'x' }],
+            buffs: [{ id: 'shield', stacks: 999, cyclesRemaining: 5, source: 'x' }],
           }),
         },
       })

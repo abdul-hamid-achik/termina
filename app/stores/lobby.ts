@@ -230,7 +230,7 @@ export const useLobbyStore = defineStore('lobby', () => {
 
   function matchFound(id?: string) {
     if (id) lobbyId.value = id
-    // Idempotent: the 3s HTTP recovery poll calls this on every tick for an
+    // Idempotent: the 3s HTTP recovery poll calls this on every cycle for an
     // active lobby. Without this guard it would reset a player already drafting
     // back to the 'found' splash every poll (the picking↔found bounce). Only run
     // the found→picking transition from a genuinely pre-match state.

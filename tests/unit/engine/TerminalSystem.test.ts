@@ -1,18 +1,18 @@
 import { describe, it, expect } from 'vitest'
 import {
-  ANCIENT_ZONES,
-  ancientTargetId,
-  parseAncientTargetId,
+  TERMINAL_ZONES,
+  terminalTargetId,
+  parseTerminalTargetId,
   initializeAncients,
-  ensureAncients,
+  ensureTerminals,
   isAncientVulnerable,
   updateAncientVulnerability,
   resolveAncientAttack,
-  checkAncientWin,
-} from '~~/server/game/engine/AncientSystem'
+  checkTerminalWin,
+} from '~~/server/game/engine/TerminalSystem'
 import type { GameState, PlayerState, WaveUnitState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import { ANCIENT_HP } from '~~/shared/constants/balance'
+import { TERMINAL_HP } from '~~/shared/constants/balance'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -27,12 +27,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 200,
     level: 1,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -60,25 +60,25 @@ function makeWave(overrides: Partial<WaveUnitState> = {}): WaveUnitState {
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
   return {
-    tick: 1,
+    cycle: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
     },
     players: {},
     zones: initializeZoneStates(),
     waves: [],
     neutrals: [],
     ice: initializeIce(),
-    ancients: initializeAncients(),
+    terminals: initializeAncients(),
     caches: [],
-    tenant: { alive: false, integ: 0, maxInteg: 5000, deathTick: null },
+    tenant: { alive: false, integ: 0, maxInteg: 5000, deathCycle: null },
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
-    dayNightTick: 0,
+    dayNightCycle: 0,
     ...overrides,
   }
 }
@@ -92,48 +92,48 @@ function withDeadT3(state: GameState, team: 'chaff' | 'audit'): GameState {
   }
 }
 
-describe('AncientSystem', () => {
+describe('TerminalSystem', () => {
   describe('initializeAncients', () => {
     it('creates two full-INTEG, invulnerable, alive Ancients', () => {
-      const ancients = initializeAncients()
+      const terminals = initializeAncients()
       for (const team of ['chaff', 'audit'] as const) {
-        expect(ancients[team].team).toBe(team)
-        expect(ancients[team].integ).toBe(ANCIENT_HP)
-        expect(ancients[team].maxInteg).toBe(ANCIENT_HP)
-        expect(ancients[team].alive).toBe(true)
-        expect(ancients[team].vulnerable).toBe(false)
+        expect(terminals[team].team).toBe(team)
+        expect(terminals[team].integ).toBe(TERMINAL_HP)
+        expect(terminals[team].maxInteg).toBe(TERMINAL_HP)
+        expect(terminals[team].alive).toBe(true)
+        expect(terminals[team].vulnerable).toBe(false)
       }
     })
   })
 
   describe('target ids', () => {
     it('round-trips ancient target ids', () => {
-      expect(parseAncientTargetId(ancientTargetId('chaff'))).toBe('chaff')
-      expect(parseAncientTargetId(ancientTargetId('audit'))).toBe('audit')
-      expect(parseAncientTargetId('ice_mid-t1-chaff')).toBeNull()
-      expect(parseAncientTargetId('p1')).toBeNull()
+      expect(parseTerminalTargetId(terminalTargetId('chaff'))).toBe('chaff')
+      expect(parseTerminalTargetId(terminalTargetId('audit'))).toBe('audit')
+      expect(parseTerminalTargetId('ice_mid-t1-chaff')).toBeNull()
+      expect(parseTerminalTargetId('p1')).toBeNull()
     })
 
-    it('places ancients in their base zones', () => {
-      expect(ANCIENT_ZONES.chaff).toBe('chaff-base')
-      expect(ANCIENT_ZONES.audit).toBe('audit-base')
+    it('places terminals in their base zones', () => {
+      expect(TERMINAL_ZONES.chaff).toBe('chaff-base')
+      expect(TERMINAL_ZONES.audit).toBe('audit-base')
     })
   })
 
-  describe('ensureAncients', () => {
-    it('returns the same state when ancients exist', () => {
+  describe('ensureTerminals', () => {
+    it('returns the same state when terminals exist', () => {
       const state = makeGameState()
-      expect(ensureAncients(state)).toBe(state)
+      expect(ensureTerminals(state)).toBe(state)
     })
 
-    it('backfills ancients on legacy states', () => {
+    it('backfills terminals on legacy states', () => {
       const state = makeGameState()
       const legacy = { ...state } as Partial<GameState>
-      delete legacy.ancients
+      delete legacy.terminals
 
-      const result = ensureAncients(legacy as GameState)
-      expect(result.ancients.chaff.alive).toBe(true)
-      expect(result.ancients.audit.alive).toBe(true)
+      const result = ensureTerminals(legacy as GameState)
+      expect(result.terminals.chaff.alive).toBe(true)
+      expect(result.terminals.audit.alive).toBe(true)
     })
   })
 
@@ -168,8 +168,8 @@ describe('AncientSystem', () => {
       const state = withDeadT3(makeGameState(), 'audit')
       const updated = updateAncientVulnerability(state)
       expect(updated).not.toBe(state)
-      expect(updated.ancients.audit.vulnerable).toBe(true)
-      expect(updated.ancients.chaff.vulnerable).toBe(false)
+      expect(updated.terminals.audit.vulnerable).toBe(true)
+      expect(updated.terminals.chaff.vulnerable).toBe(false)
     })
   })
 
@@ -185,7 +185,7 @@ describe('AncientSystem', () => {
 
       const result = resolveAncientAttack(state, 'p1', 100)
       expect(result.rejected).toBeDefined()
-      expect(result.state.ancients.audit.integ).toBe(ANCIENT_HP)
+      expect(result.state.terminals.audit.integ).toBe(TERMINAL_HP)
       expect(result.events).toHaveLength(0)
     })
 
@@ -196,13 +196,13 @@ describe('AncientSystem', () => {
 
       const result = resolveAncientAttack(state, 'p1', 100)
       expect(result.rejected).toBeUndefined()
-      expect(result.state.ancients.audit.integ).toBe(ANCIENT_HP - 100)
-      expect(result.state.ancients.audit.alive).toBe(true)
+      expect(result.state.terminals.audit.integ).toBe(TERMINAL_HP - 100)
+      expect(result.state.terminals.audit.alive).toBe(true)
       expect(result.events).toHaveLength(1)
       expect(result.events[0]!._tag).toBe('damage')
       expect(result.events[0]).toMatchObject({
         sourceId: 'p1',
-        targetId: 'ancient_audit',
+        targetId: 'terminal_audit',
         amount: 100,
       })
     })
@@ -214,25 +214,25 @@ describe('AncientSystem', () => {
 
       const result = resolveAncientAttack(state, 'c9', 20)
       expect(result.rejected).toBeUndefined()
-      expect(result.state.ancients.audit.integ).toBe(ANCIENT_HP - 20)
+      expect(result.state.terminals.audit.integ).toBe(TERMINAL_HP - 20)
     })
 
-    it('destroys the Ancient at 0 INTEG and emits a dedicated ancient_destroyed event', () => {
+    it('destroys the Ancient at 0 INTEG and emits a dedicated terminal_destroyed event', () => {
       const base = vulnerableState({
         players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'audit-base' }) },
       })
       const state: GameState = {
         ...base,
-        ancients: { ...base.ancients, audit: { ...base.ancients.audit, integ: 50 } },
+        terminals: { ...base.terminals, audit: { ...base.terminals.audit, integ: 50 } },
       }
 
       const result = resolveAncientAttack(state, 'p1', 100)
-      expect(result.state.ancients.audit.integ).toBe(0)
-      expect(result.state.ancients.audit.alive).toBe(false)
+      expect(result.state.terminals.audit.integ).toBe(0)
+      expect(result.state.terminals.audit.alive).toBe(false)
       // No ice_kill reuse — the Ancient has its own event so the UI does not
       // render a misleading "destroyed ice in <base>" line.
       expect(result.events.some((e) => e._tag === 'ice_kill')).toBe(false)
-      const killEvent = result.events.find((e) => e._tag === 'ancient_destroyed')
+      const killEvent = result.events.find((e) => e._tag === 'terminal_destroyed')
       expect(killEvent).toBeDefined()
       expect(killEvent).toMatchObject({ team: 'audit', killerTeam: 'chaff' })
     })
@@ -243,9 +243,9 @@ describe('AncientSystem', () => {
       })
       const state: GameState = {
         ...base,
-        ancients: {
-          ...base.ancients,
-          audit: { ...base.ancients.audit, integ: 0, alive: false },
+        terminals: {
+          ...base.terminals,
+          audit: { ...base.terminals.audit, integ: 0, alive: false },
         },
       }
 
@@ -268,42 +268,42 @@ describe('AncientSystem', () => {
       const state = updateAncientVulnerability(withDeadT3(base, 'chaff'))
 
       const result = resolveAncientAttack(state, 'p1', 100)
-      expect(result.state.ancients.chaff.integ).toBe(ANCIENT_HP - 100)
-      expect(result.state.ancients.audit.integ).toBe(ANCIENT_HP)
+      expect(result.state.terminals.chaff.integ).toBe(TERMINAL_HP - 100)
+      expect(result.state.terminals.audit.integ).toBe(TERMINAL_HP)
     })
   })
 
-  describe('checkAncientWin', () => {
+  describe('checkTerminalWin', () => {
     it('returns null while both Ancients stand', () => {
-      expect(checkAncientWin(makeGameState())).toBeNull()
+      expect(checkTerminalWin(makeGameState())).toBeNull()
     })
 
     it('returns the winning team when an Ancient falls', () => {
       const state = makeGameState()
       const auditDown: GameState = {
         ...state,
-        ancients: {
-          ...state.ancients,
-          audit: { ...state.ancients.audit, integ: 0, alive: false },
+        terminals: {
+          ...state.terminals,
+          audit: { ...state.terminals.audit, integ: 0, alive: false },
         },
       }
-      expect(checkAncientWin(auditDown)).toBe('chaff')
+      expect(checkTerminalWin(auditDown)).toBe('chaff')
 
       const chaffDown: GameState = {
         ...state,
-        ancients: {
-          ...state.ancients,
-          chaff: { ...state.ancients.chaff, integ: 0, alive: false },
+        terminals: {
+          ...state.terminals,
+          chaff: { ...state.terminals.chaff, integ: 0, alive: false },
         },
       }
-      expect(checkAncientWin(chaffDown)).toBe('audit')
+      expect(checkTerminalWin(chaffDown)).toBe('audit')
     })
 
-    it('returns null for legacy states without ancients', () => {
+    it('returns null for legacy states without terminals', () => {
       const state = makeGameState()
       const legacy = { ...state } as Partial<GameState>
-      delete legacy.ancients
-      expect(checkAncientWin(legacy as GameState)).toBeNull()
+      delete legacy.terminals
+      expect(checkTerminalWin(legacy as GameState)).toBeNull()
     })
   })
 })

@@ -106,7 +106,7 @@ function resolveQ(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -153,14 +153,14 @@ function resolveW(
     let updatedTarget = applyBuff(targetPlayer, {
       id: 'silence',
       stacks: 1,
-      // 2 = one gated action: reaped same-tick by tickAllBuffs (see applyBuff note)
-      ticksRemaining: 2,
+      // 2 = one gated action: reaped same-tick by cycleAllBuffs (see applyBuff note)
+      cyclesRemaining: 2,
       source: player.id,
     })
     updatedTarget = applyBuff(updatedTarget, {
       id: 'attackReduction',
       stacks: 20, // 20% reduction
-      ticksRemaining: 3,
+      cyclesRemaining: 3,
       source: player.id,
     })
 
@@ -168,7 +168,7 @@ function resolveW(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -203,7 +203,7 @@ function resolveE(
     caster = applyBuff(caster, {
       id: 'tracepath_vision',
       stacks: 1,
-      ticksRemaining: 3,
+      cyclesRemaining: 3,
       source: player.id,
     })
     // Tracepath is a vision tool only — movement is a fixed 1 zone/tick.
@@ -212,7 +212,7 @@ function resolveE(
       state: updatePlayer(state, caster),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -250,13 +250,13 @@ function resolveR(
       let target = applyBuff(e, {
         id: 'flood_dot',
         stacks: dotPerTick,
-        ticksRemaining: 3,
+        cyclesRemaining: 3,
         source: player.id,
       })
       target = applyBuff(target, {
         id: 'slow',
         stacks: R_SLOW_PERCENT,
-        ticksRemaining: 3,
+        cyclesRemaining: 3,
         source: player.id,
       })
       return target
@@ -266,7 +266,7 @@ function resolveR(
       state: updatePlayers(state, [caster, ...updatedEnemies]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -300,7 +300,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   const updated = applyBuff(targetPlayer, {
     id: 'latency',
     stacks: 1,
-    ticksRemaining: 1,
+    cyclesRemaining: 1,
     source: playerId,
   })
 

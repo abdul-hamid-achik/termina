@@ -40,7 +40,7 @@ export default {
           deep: 'rgb(var(--color-audit-deep) / <alpha-value>)',
         },
         self: 'rgb(var(--color-self) / <alpha-value>)',
-        gold: 'rgb(var(--color-gold) / <alpha-value>)',
+        scrip: 'rgb(var(--color-gold) / <alpha-value>)',
         bw: 'rgb(var(--color-bw) / <alpha-value>)',
         damage: 'rgb(var(--color-damage) / <alpha-value>)',
         healing: 'rgb(var(--color-healing) / <alpha-value>)',

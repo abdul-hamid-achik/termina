@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { HERO_IDS, HEROES } from '~~/shared/constants/heroes'
-import { TICK_DURATION_MS } from '~~/shared/constants/balance'
+import { CYCLE_DURATION_MS } from '~~/shared/constants/balance'
 import { cycleFrameLine } from '~~/shared/constants/world'
 import { useStartTutorial } from '~/composables/useStartTutorial'
 import { useAuthStore } from '~/stores/auth'
 
 // Live hero count from the registry so the landing page can't drift.
 const heroCount = HERO_IDS.length
-const tickSeconds = TICK_DURATION_MS / 1000
+const tickSeconds = CYCLE_DURATION_MS / 1000
 
 // Practice vs bots: shared one-lane tutorial launcher (see useStartTutorial).
 const {

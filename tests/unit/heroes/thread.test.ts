@@ -20,12 +20,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 270,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -39,7 +39,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -67,11 +67,11 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     playerMap[p.id] = p
   }
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -113,7 +113,7 @@ describe('Thread Hero', () => {
       expect(hasBuff(updated, 'forkAtk')).toBe(true)
       const buff = updated.buffs.find((b) => b.id === 'forkAtk')
       expect(buff!.stacks).toBe(20)
-      expect(buff!.ticksRemaining).toBe(3)
+      expect(buff!.cyclesRemaining).toBe(3)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -213,7 +213,7 @@ describe('Thread Hero', () => {
       expect(hasBuff(updated, 'shield')).toBe(true)
       const shield = updated.buffs.find((b) => b.id === 'shield')
       expect(shield!.stacks).toBe(100) // Level 1 base shield, no allies
-      expect(shield!.ticksRemaining).toBe(3)
+      expect(shield!.cyclesRemaining).toBe(3)
     })
 
     it('increases shield per ally in zone', () => {
@@ -278,7 +278,7 @@ describe('Thread Hero', () => {
       expect(hasBuff(updatedEnemy, 'yield')).toBe(true)
       const debuff = updatedEnemy.buffs.find((b) => b.id === 'yield')
       expect(debuff!.stacks).toBe(25) // 25% bonus damage
-      expect(debuff!.ticksRemaining).toBe(3)
+      expect(debuff!.cyclesRemaining).toBe(3)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -353,7 +353,7 @@ describe('Thread Hero', () => {
       const updated = result.state.players['p1']!
       expect(hasBuff(updated, 'threadPool')).toBe(true)
       const buff = updated.buffs.find((b) => b.id === 'threadPool')
-      expect(buff!.ticksRemaining).toBe(4)
+      expect(buff!.cyclesRemaining).toBe(4)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -394,7 +394,7 @@ describe('Thread Hero', () => {
       const state = makeState([player, enemy1, enemy2])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'p1', targetId: 'e1', damage: 100 },
       })
@@ -409,7 +409,7 @@ describe('Thread Hero', () => {
       const state = makeState([player, enemy1])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'p1', targetId: 'e1', damage: 100 },
       })
@@ -426,7 +426,7 @@ describe('Thread Hero', () => {
       const state = makeState([player, enemy1, enemy2, enemy3])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'p1', targetId: 'e1', damage: 100 },
       })
@@ -442,7 +442,7 @@ describe('Thread Hero', () => {
       const state = makeState([player, enemy])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'p1', targetId: 'e1', damage: 100 },
       })
@@ -458,7 +458,7 @@ describe('Thread Hero', () => {
       const state = makeState([player, enemy1, enemy2])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'ability_cast',
         payload: { playerId: 'p1' },
       })
@@ -473,7 +473,7 @@ describe('Thread Hero', () => {
       const state = makeState([player, enemy1, enemy2])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'e1', targetId: 'p1', damage: 100 },
       })
@@ -488,7 +488,7 @@ describe('Thread Hero', () => {
       const state = makeState([player, enemy1, enemy2])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'p1', targetId: 'e1', damage: 100 },
       })
@@ -498,7 +498,7 @@ describe('Thread Hero', () => {
   })
 
   describe('R: Thread Pool (overclock cleave — formerly a dead buff)', () => {
-    const tpBuff = [{ id: 'threadPool', stacks: 1, ticksRemaining: 4, source: 'p1' }]
+    const tpBuff = [{ id: 'threadPool', stacks: 1, cyclesRemaining: 4, source: 'p1' }]
 
     it('makes basic attacks cleave EVERY enemy in the zone (not just 1-2)', () => {
       const player = makePlayer({ level: 5, buffs: tpBuff }) // base passive would hit only 1
@@ -508,7 +508,7 @@ describe('Thread Hero', () => {
       const state = makeState([player, enemy1, enemy2, enemy3])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'p1', targetId: 'e1', damage: 100 },
       })
@@ -527,7 +527,7 @@ describe('Thread Hero', () => {
           ]),
           'p1',
           {
-            tick: 10,
+            cycle: 10,
             type: 'attack',
             payload: { attackerId: 'p1', targetId: 'e1', damage: 100 },
           },
@@ -543,7 +543,7 @@ describe('Thread Hero', () => {
   describe('Stun/Silence blocking', () => {
     it('prevents casting when stunned', () => {
       const player = makePlayer({
-        buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 1, source: 'enemy' }],
+        buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 1, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -556,7 +556,7 @@ describe('Thread Hero', () => {
 
     it('prevents casting when silenced', () => {
       const player = makePlayer({
-        buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 2, source: 'enemy' }],
+        buffs: [{ id: 'silence', stacks: 1, cyclesRemaining: 2, source: 'enemy' }],
       })
       const state = makeState([player])
 

@@ -93,13 +93,13 @@ describe('targetRefSchema (via commandSchema attack)', () => {
 
   describe('ancient', () => {
     it('accepts a bare ancient target (new win-condition variant)', () => {
-      ok(commandSchema, attack({ kind: 'ancient' }))
+      ok(commandSchema, attack({ kind: 'terminal' }))
     })
     it('strips extra fields on ancient target', () => {
-      const result = commandSchema.safeParse(attack({ kind: 'ancient', sneaky: true }))
+      const result = commandSchema.safeParse(attack({ kind: 'terminal', sneaky: true }))
       expect(result.success).toBe(true)
       if (result.success && result.data.type === 'attack') {
-        expect(result.data.target).toEqual({ kind: 'ancient' })
+        expect(result.data.target).toEqual({ kind: 'terminal' })
       }
     })
   })
@@ -160,7 +160,7 @@ describe('commandSchema', () => {
     })
     it('accepts cast with a target', () => {
       ok(commandSchema, { type: 'cast', ability: 'q', target: { kind: 'hero', name: 'axe' } })
-      ok(commandSchema, { type: 'cast', ability: 'r', target: { kind: 'ancient' } })
+      ok(commandSchema, { type: 'cast', ability: 'r', target: { kind: 'terminal' } })
       ok(commandSchema, { type: 'cast', ability: 'w', target: { kind: 'self' } })
     })
     it('rejects invalid ability key', () => {
@@ -234,10 +234,15 @@ describe('commandSchema', () => {
   })
 
   describe('bare commands', () => {
-    it.each(['backup', 'grab', 'scan', 'status', 'map', 'buyback', 'harden'] as const)(
-      'accepts bare %s command',
+    it.each(['backup', 'grab', 'buyback', 'harden'] as const)('accepts bare %s command', (type) => {
+      ok(commandSchema, { type })
+    })
+    // Trap #9: client-only readouts must NOT validate on the wire (GameScreen
+    // short-circuits them; accepting would burn the player's action).
+    it.each(['scan', 'status', 'map', 'who', 'net', 'look', 'help'] as const)(
+      'rejects client-only %s command',
       (type) => {
-        ok(commandSchema, { type })
+        bad(commandSchema, { type })
       },
     )
   })
@@ -310,7 +315,7 @@ describe('commandSchema', () => {
     })
     it('rejects non-wave targets (burn is wave-only)', () => {
       bad(commandSchema, { type: 'burn', target: { kind: 'hero', name: 'axe' } })
-      bad(commandSchema, { type: 'burn', target: { kind: 'ancient' } })
+      bad(commandSchema, { type: 'burn', target: { kind: 'terminal' } })
       bad(commandSchema, { type: 'burn', target: { kind: 'self' } })
     })
     it('rejects missing target', () => {
@@ -370,7 +375,7 @@ describe('clientMessageSchema', () => {
       ok(clientMessageSchema, { type: 'action', command: { type: 'move', zone: 'mid' } })
       ok(clientMessageSchema, {
         type: 'action',
-        command: { type: 'attack', target: { kind: 'ancient' } },
+        command: { type: 'attack', target: { kind: 'terminal' } },
       })
     })
     it('rejects an invalid inner command', () => {
@@ -433,18 +438,18 @@ describe('clientMessageSchema', () => {
   })
 
   describe('reconnect', () => {
-    it('accepts reconnect without lastTick', () => {
+    it('accepts reconnect without lastCycle', () => {
       ok(clientMessageSchema, { type: 'reconnect', gameId: 'game_1', playerId: 'p_1' })
     })
-    it('accepts reconnect with lastTick 0 (lower bound)', () => {
-      ok(clientMessageSchema, { type: 'reconnect', gameId: 'g', playerId: 'p', lastTick: 0 })
+    it('accepts reconnect with lastCycle 0 (lower bound)', () => {
+      ok(clientMessageSchema, { type: 'reconnect', gameId: 'g', playerId: 'p', lastCycle: 0 })
     })
     it('accepts ids at max length 128', () => {
       ok(clientMessageSchema, { type: 'reconnect', gameId: str(128), playerId: str(128) })
     })
-    it('rejects negative or fractional lastTick', () => {
-      bad(clientMessageSchema, { type: 'reconnect', gameId: 'g', playerId: 'p', lastTick: -1 })
-      bad(clientMessageSchema, { type: 'reconnect', gameId: 'g', playerId: 'p', lastTick: 1.5 })
+    it('rejects negative or fractional lastCycle', () => {
+      bad(clientMessageSchema, { type: 'reconnect', gameId: 'g', playerId: 'p', lastCycle: -1 })
+      bad(clientMessageSchema, { type: 'reconnect', gameId: 'g', playerId: 'p', lastCycle: 1.5 })
     })
     it('rejects missing or oversized ids', () => {
       bad(clientMessageSchema, { type: 'reconnect', playerId: 'p' })
@@ -506,7 +511,7 @@ describe('clientMessageSchema', () => {
       bad(clientMessageSchema, { type: 'eval', code: '1+1' })
       // server→client message types must not validate as client messages
       bad(clientMessageSchema, { type: 'error', code: 'X', message: 'm' })
-      bad(clientMessageSchema, { type: 'full_state', tick: 1, state: {} })
+      bad(clientMessageSchema, { type: 'full_state', cycle: 1, state: {} })
     })
     it('rejects missing type', () => {
       bad(clientMessageSchema, { command: { type: 'move', zone: 'mid' } })

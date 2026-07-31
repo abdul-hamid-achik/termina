@@ -37,7 +37,7 @@ const E_COOLDOWN = 20
 const R_MANA = abilityBwTable('socket', 'r')
 const R_COOLDOWN = 55
 // Global slow magnitude per rank: ActionResolver reads slow stacks as the
-// % chance an enemy's move fails each tick. (Was a flat stacks:1 = 1% — a
+// % chance an enemy's move fails each cycle. (Was a flat stacks:1 = 1% — a
 // leftover from the old, inert "-1 move speed" model — making the ult dead.)
 const R_SLOW_PERCENT = [20, 30, 40] as const
 
@@ -103,7 +103,7 @@ function resolveQ(
     const rooted = applyBuff(targetPlayer, {
       id: 'root',
       stacks: 1,
-      ticksRemaining: 2,
+      cyclesRemaining: 2,
       source: player.id,
     })
 
@@ -111,7 +111,7 @@ function resolveQ(
       state: updatePlayers(state, [caster, rooted]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -142,7 +142,7 @@ function resolveW(
     caster = setCooldown(caster, 'w', W_COOLDOWN)
 
     const damage = scaleValue(W_DAMAGE, level)
-    const expiryTick = state.tick + W_TRAP_LIFETIME
+    const expiryTick = state.cycle + W_TRAP_LIFETIME
     const revealDuration = W_TRAP_REVEAL
 
     // Arm an invisible trap in the caster's zone. TrapSystem.processTraps
@@ -164,7 +164,7 @@ function resolveW(
       state: { ...updatePlayer(state, caster), zones },
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -174,7 +174,7 @@ function resolveW(
           },
         },
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'trap_placed',
           payload: {
             owner: player.id,
@@ -237,7 +237,7 @@ function resolveE(
       state: updatePlayers(state, [caster, pulled]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -274,7 +274,7 @@ function resolveR(
       applyBuff(e, {
         id: 'broadcast_slow',
         stacks: slowPercent, // % chance to fail each move (read by ActionResolver)
-        ticksRemaining: 3,
+        cyclesRemaining: 3,
         source: player.id,
       }),
     )
@@ -283,7 +283,7 @@ function resolveR(
       state: updatePlayers(state, [caster, ...slowed]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -315,7 +315,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   const updated = applyBuff(player, {
     id: `handshake_vision_${targetId}`,
     stacks: 1,
-    ticksRemaining: HANDSHAKE_VISION_TICKS,
+    cyclesRemaining: HANDSHAKE_VISION_TICKS,
     source: targetId,
   })
 
@@ -326,20 +326,20 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
     updatedTarget = applyBuff(targetPlayer, {
       id: 'slow',
       stacks: LINK_SLOW_PERCENT,
-      ticksRemaining: LINK_SLOW_DURATION,
+      cyclesRemaining: LINK_SLOW_DURATION,
       source: playerId,
     })
     updatedTarget = applyBuff(updatedTarget, {
       id: 'socket_link',
       stacks: 0,
-      ticksRemaining: LINK_WINDOW_TICKS,
+      cyclesRemaining: LINK_WINDOW_TICKS,
       source: playerId,
     })
   } else {
     updatedTarget = applyBuff(targetPlayer, {
       id: 'socket_link',
       stacks: linkStacks,
-      ticksRemaining: LINK_WINDOW_TICKS,
+      cyclesRemaining: LINK_WINDOW_TICKS,
       source: playerId,
     })
   }

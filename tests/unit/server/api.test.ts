@@ -508,7 +508,7 @@ describe('API endpoints', () => {
         Effect.succeed({
           savedAt: 100,
           state: {
-            tick: 9,
+            cycle: 9,
             phase: 'playing',
             surrenderVotes: { chaff: new Set(), audit: new Set() },
           },
@@ -525,19 +525,19 @@ describe('API endpoints', () => {
         Effect.succeed({
           savedAt: 123,
           state: {
-            tick: 9,
+            cycle: 9,
             phase: 'ended',
             surrenderVotes: { chaff: new Set(['p1']), audit: new Set() },
           },
           meta: { players: [] },
         } as never),
       )
-      vi.mocked(readActions).mockReturnValue(Effect.succeed([{ tick: 1 }] as never))
+      vi.mocked(readActions).mockReturnValue(Effect.succeed([{ cycle: 1 }] as never))
       const result = await replayHandler(makeEvent('GET', '/api/replay/g1'))
       expect(result.gameId).toBe('g1')
       expect(result.savedAt).toBe(123)
       expect(result.state.surrenderVotes).toEqual({ chaff: ['p1'], audit: [] })
-      expect(result.actions).toEqual([{ tick: 1 }])
+      expect(result.actions).toEqual([{ cycle: 1 }])
     })
   })
 

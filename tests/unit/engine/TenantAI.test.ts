@@ -19,12 +19,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 200,
     level: 1,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -39,11 +39,11 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
   return {
-    tick: 1,
+    cycle: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -62,7 +62,7 @@ describe('TenantAI', () => {
   describe('runTenantAI', () => {
     it('should return no actions when Tenant is dead', () => {
       const state = makeGameState({
-        tenant: { alive: false, integ: 0, maxInteg: 5000, deathTick: 10 },
+        tenant: { alive: false, integ: 0, maxInteg: 5000, deathCycle: 10 },
         players: {
           p1: makePlayer({ id: 'p1', zone: 'hollow' }),
         },
@@ -74,7 +74,7 @@ describe('TenantAI', () => {
 
     it('should attack heroes in hollow', () => {
       const state = makeGameState({
-        tenant: { alive: true, integ: 5000, maxInteg: 5000, deathTick: null },
+        tenant: { alive: true, integ: 5000, maxInteg: 5000, deathCycle: null },
         players: {
           p1: makePlayer({ id: 'p1', zone: 'hollow', integ: 300 }),
         },
@@ -88,7 +88,7 @@ describe('TenantAI', () => {
 
     it('should target lowest INTEG hero in pit', () => {
       const state = makeGameState({
-        tenant: { alive: true, integ: 5000, maxInteg: 5000, deathTick: null },
+        tenant: { alive: true, integ: 5000, maxInteg: 5000, deathCycle: null },
         players: {
           p1: makePlayer({ id: 'p1', zone: 'hollow', integ: 400 }),
           p2: makePlayer({ id: 'p2', zone: 'hollow', integ: 100, team: 'chaff' }),
@@ -102,7 +102,7 @@ describe('TenantAI', () => {
 
     it('should not attack heroes outside hollow', () => {
       const state = makeGameState({
-        tenant: { alive: true, integ: 5000, maxInteg: 5000, deathTick: null },
+        tenant: { alive: true, integ: 5000, maxInteg: 5000, deathCycle: null },
         players: {
           p1: makePlayer({ id: 'p1', zone: 'mid-river' }),
         },
@@ -116,7 +116,7 @@ describe('TenantAI', () => {
   describe('processTenantDamage', () => {
     it('should apply damage to Tenant INTEG when heroes attack Tenant', () => {
       const state = makeGameState({
-        tenant: { alive: true, integ: 5000, maxInteg: 5000, deathTick: null },
+        tenant: { alive: true, integ: 5000, maxInteg: 5000, deathCycle: null },
       })
 
       const damageDealt = new Map<string, number>()
@@ -131,8 +131,8 @@ describe('TenantAI', () => {
 
     it('should handle Tenant death when INTEG reaches 0', () => {
       const state = makeGameState({
-        tick: 100,
-        tenant: { alive: true, integ: 500, maxInteg: 5000, deathTick: null },
+        cycle: 100,
+        tenant: { alive: true, integ: 500, maxInteg: 5000, deathCycle: null },
         players: {
           p1: makePlayer({ id: 'p1', zone: 'hollow' }),
           p2: makePlayer({ id: 'p2', zone: 'hollow', team: 'audit' }),
@@ -151,13 +151,13 @@ describe('TenantAI', () => {
       expect(result.state.tenant.integ).toBe(0)
     })
 
-    it('should distribute gold to damage dealers on Tenant kill', () => {
+    it('should distribute scrip to damage dealers on Tenant kill', () => {
       const state = makeGameState({
-        tick: 100,
-        tenant: { alive: true, integ: 500, maxInteg: 5000, deathTick: null },
+        cycle: 100,
+        tenant: { alive: true, integ: 500, maxInteg: 5000, deathCycle: null },
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'hollow', gold: 0 }),
-          p2: makePlayer({ id: 'p2', zone: 'hollow', team: 'audit', gold: 0 }),
+          p1: makePlayer({ id: 'p1', zone: 'hollow', scrip: 0 }),
+          p2: makePlayer({ id: 'p2', zone: 'hollow', team: 'audit', scrip: 0 }),
         },
       })
 
@@ -167,14 +167,14 @@ describe('TenantAI', () => {
 
       const result = processTenantDamage(state, damageDealt)
 
-      const totalGold = result.state.players['p1']!.gold + result.state.players['p2']!.gold
+      const totalGold = result.state.players['p1']!.scrip + result.state.players['p2']!.scrip
       expect(totalGold).toBeGreaterThan(0)
     })
 
     it('should drop backup in hollow on death', () => {
       const state = makeGameState({
-        tick: 100,
-        tenant: { alive: true, integ: 500, maxInteg: 5000, deathTick: null },
+        cycle: 100,
+        tenant: { alive: true, integ: 500, maxInteg: 5000, deathCycle: null },
         players: {
           p1: makePlayer({ id: 'p1', zone: 'hollow' }),
         },
@@ -192,7 +192,7 @@ describe('TenantAI', () => {
 
     it('should not apply damage when Tenant is dead', () => {
       const state = makeGameState({
-        tenant: { alive: false, integ: 0, maxInteg: 5000, deathTick: 10 },
+        tenant: { alive: false, integ: 0, maxInteg: 5000, deathCycle: 10 },
       })
 
       const damageDealt = new Map<string, number>()
@@ -211,7 +211,7 @@ describe('TenantAI', () => {
         alive: true,
         integ: 5000,
         maxInteg: 5000,
-        deathTick: null,
+        deathCycle: null,
       }
       const state = makeGameState({
         tenant: initialTenant,

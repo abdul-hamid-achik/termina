@@ -116,7 +116,7 @@ function resolveQ(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -164,7 +164,7 @@ function resolveW(
     const updatedTarget = applyBuff(targetPlayer, {
       id: 'root',
       stacks: 1,
-      ticksRemaining: W_ROOT_DURATION,
+      cyclesRemaining: W_ROOT_DURATION,
       source: player.id,
     })
 
@@ -172,7 +172,7 @@ function resolveW(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -189,7 +189,7 @@ function resolveW(
 
 // E: Next Hop — Drop a return shadow at the current zone. After E_SHADOW_DURATION
 // ticks the shadow expires and snaps the caster back to where it was dropped (the
-// teleport-back is resolved in _base.ts tickAllBuffs, keyed off the buff's
+// teleport-back is resolved in _base.ts cycleAllBuffs, keyed off the buff's
 // `destination`). Lets Traceroute dive a lane, do damage, then bounce to safety.
 function resolveE(
   state: GameState,
@@ -207,7 +207,7 @@ function resolveE(
     caster = applyBuff(caster, {
       id: 'nextHopShadow',
       stacks: 1,
-      ticksRemaining: E_SHADOW_DURATION,
+      cyclesRemaining: E_SHADOW_DURATION,
       source: player.id,
       // The zone to snap back to when the shadow expires.
       destination: player.zone,
@@ -217,7 +217,7 @@ function resolveE(
       state: updatePlayer(state, caster),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -251,7 +251,7 @@ function resolveR(
     caster = applyBuff(caster, {
       id: 'fullTraceDmg',
       stacks: R_DAMAGE_BUFF_PERCENT,
-      ticksRemaining: R_DAMAGE_BUFF_DURATION,
+      cyclesRemaining: R_DAMAGE_BUFF_DURATION,
       source: player.id,
     })
 
@@ -261,7 +261,7 @@ function resolveR(
       applyBuff(e, {
         id: 'revealed',
         stacks: 1,
-        ticksRemaining: R_REVEAL_DURATION,
+        cyclesRemaining: R_REVEAL_DURATION,
         source: player.id,
       }),
     )
@@ -270,7 +270,7 @@ function resolveR(
       state: updatePlayers(state, [caster, ...revealedEnemies]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -306,7 +306,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   const updated = applyBuff(player, {
     id: 'hopCount',
     stacks: newStacks,
-    ticksRemaining: HOP_COUNT_DECAY_TICKS,
+    cyclesRemaining: HOP_COUNT_DECAY_TICKS,
     source: playerId,
   })
 

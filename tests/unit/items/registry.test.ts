@@ -230,7 +230,7 @@ describe('Item Registry', () => {
       const item = getItem('jump_shunt')!
       expect(item.active).toBeDefined()
       expect(item.active!.id).toBe('jump_shunt_active')
-      expect(item.active!.cooldownTicks).toBe(12)
+      expect(item.active!.cooldownCycles).toBe(12)
     })
 
     it('null_pointer has a passive ability (crit)', () => {
@@ -267,7 +267,7 @@ describe('Item Registry', () => {
       const item = getItem('stack_overflow')!
       expect(item.active).toBeDefined()
       expect(item.active!.id).toBe('stack_overflow_active')
-      expect(item.active!.cooldownTicks).toBe(20)
+      expect(item.active!.cooldownCycles).toBe(20)
     })
 
     it('segfault_blade has a passive ability', () => {
@@ -280,7 +280,7 @@ describe('Item Registry', () => {
       const item = getItem('ablative_shell')!
       expect(item.active).toBeDefined()
       expect(item.active!.id).toBe('ablative_shell_active')
-      expect(item.active!.cooldownTicks).toBe(30)
+      expect(item.active!.cooldownCycles).toBe(30)
     })
 
     it('burnout has an active damage ability', () => {
@@ -305,7 +305,7 @@ describe('Item Registry', () => {
       const item = getItem('redline_splice')!
       expect(item.active).toBeDefined()
       expect(item.active!.name).toBe('Reset Cooldowns')
-      expect(item.active!.cooldownTicks).toBe(40)
+      expect(item.active!.cooldownCycles).toBe(40)
     })
 
     it('scrap_lot has no active or passive', () => {
@@ -439,7 +439,7 @@ describe('Item Registry', () => {
   describe('no dead items', () => {
     it('every non-consumable item grants a functional benefit', () => {
       // A non-consumable item must grant a real stat, an active, or a passive —
-      // otherwise it's a gold sink that does nothing. This guard keeps a dead
+      // otherwise it's a scrip sink that does nothing. This guard keeps a dead
       // item from slipping into the shop.
       for (const def of Object.values(ITEMS)) {
         if (def.consumable) continue

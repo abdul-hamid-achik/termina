@@ -10,7 +10,7 @@ import { formatTickClock } from '~/utils/gameClock'
 const props = defineProps<{
   players: ScoreboardEntry[]
   teams: { chaff: TeamState; audit: TeamState }
-  currentTick: number
+  currentCycle: number
   currentPlayerId: string
 }>()
 
@@ -39,20 +39,20 @@ function expandedItemNames(player: ScoreboardEntry): string {
 }
 
 function respawnCountdown(player: ScoreboardEntry): string {
-  if (player.alive || !player.respawnTick) return ''
-  const ticks = player.respawnTick - props.currentTick
+  if (player.alive || !player.respawnCycle) return ''
+  const ticks = player.respawnCycle - props.currentCycle
   return ticks > 0 ? `${ticks}t` : ''
 }
 
 function teamTotalGold(team: TeamId): number {
   return props.players
     .filter((p) => p.team === team && !p.fogged)
-    .reduce((sum, p) => sum + p.gold, 0)
+    .reduce((sum, p) => sum + p.scrip, 0)
 }
 
-function formatGold(gold: number): string {
-  if (gold >= 10000) return `${(gold / 1000).toFixed(1)}k`
-  return gold.toLocaleString()
+function formatScrip(scrip: number): string {
+  if (scrip >= 10000) return `${(scrip / 1000).toFixed(1)}k`
+  return scrip.toLocaleString()
 }
 
 function itemAbbrev(itemId: string | null | undefined): string {
@@ -66,7 +66,7 @@ function itemAbbrev(itemId: string | null | undefined): string {
     .slice(0, 5)
 }
 
-const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true))
+const gameTimeFormatted = computed(() => formatTickClock(props.currentCycle, true))
 </script>
 
 <template>
@@ -153,7 +153,7 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
                 {{ player.level }}
               </div>
               <div class="scoreboard__col scoreboard__col--gold text-gold">
-                {{ player.fogged ? '???' : formatGold(player.gold) }}
+                {{ player.fogged ? '???' : formatScrip(player.scrip) }}
               </div>
               <div class="scoreboard__col scoreboard__col--items">
                 <template v-if="player.fogged">
@@ -210,7 +210,7 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
       <div class="scoreboard__team-total scoreboard__team-total--chaff">
         <span class="scoreboard__total-label">TOTAL</span>
         <span class="text-chaff">{{ teams.chaff.kills }}K</span>
-        <span class="text-gold">{{ formatGold(teamTotalGold('chaff')) }}sc</span>
+        <span class="text-gold">{{ formatScrip(teamTotalGold('chaff')) }}sc</span>
         <span class="text-text-dim">{{ teams.chaff.iceKills }}T</span>
       </div>
       <div class="scoreboard__footer-center">
@@ -221,7 +221,7 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
       <div class="scoreboard__team-total scoreboard__team-total--audit">
         <span class="scoreboard__total-label">TOTAL</span>
         <span class="text-audit">{{ teams.audit.kills }}K</span>
-        <span class="text-gold">{{ formatGold(teamTotalGold('audit')) }}sc</span>
+        <span class="text-gold">{{ formatScrip(teamTotalGold('audit')) }}sc</span>
         <span class="text-text-dim">{{ teams.audit.iceKills }}T</span>
       </div>
     </div>

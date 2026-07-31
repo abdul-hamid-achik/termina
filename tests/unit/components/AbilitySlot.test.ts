@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import AbilitySlot from '~~/app/components/heroes/AbilitySlot.vue'
 import { formatEffect, cooldownSeconds } from '~~/shared/abilityFormat'
-import { TICK_DURATION_MS } from '~~/shared/constants/balance'
+import { CYCLE_DURATION_MS } from '~~/shared/constants/balance'
 import type { AbilityDef } from '~~/shared/types/hero'
 
 // A representative targeted nuke with two effects, a BW cost and a cooldown —
@@ -12,7 +12,7 @@ const ability: AbilityDef = {
   name: 'Packet Storm',
   description: 'Hurls a burst of packets at the target.',
   bwCost: 50,
-  cooldownTicks: 3,
+  cooldownCycles: 3,
   targetType: 'hero',
   effects: [
     { type: 'damage', value: 40, damageType: 'code' },
@@ -41,7 +41,7 @@ describe('AbilitySlot', () => {
     expect(text).toContain(formatEffect(ability.effects[1]!)) // "30% slow for 2t"
     // costs + target line
     expect(text).toContain('50') // BW cost
-    expect(text).toContain(`${cooldownSeconds(ability, TICK_DURATION_MS)}s`) // cooldown in seconds
+    expect(text).toContain(`${cooldownSeconds(ability, CYCLE_DURATION_MS)}s`) // cooldown in seconds
     expect(text).toContain('hero') // targetType (CSS uppercases it visually)
   })
 
@@ -93,7 +93,7 @@ describe('AbilitySlot', () => {
       name: 'Always On',
       description: 'A static passive bonus.',
       bwCost: 0,
-      cooldownTicks: 0,
+      cooldownCycles: 0,
       targetType: 'self',
       effects: [],
     }

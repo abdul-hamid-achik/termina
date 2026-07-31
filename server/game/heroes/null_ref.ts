@@ -103,7 +103,7 @@ function resolveQ(
     updatedTarget = applyBuff(updatedTarget, {
       id: 'mrShred',
       stacks: Q_MR_SHRED,
-      ticksRemaining: Q_MR_SHRED_DURATION,
+      cyclesRemaining: Q_MR_SHRED_DURATION,
       source: player.id,
     })
 
@@ -111,7 +111,7 @@ function resolveQ(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -159,7 +159,7 @@ function resolveW(
     const updatedTarget = applyBuff(targetPlayer, {
       id: 'silence',
       stacks: 1,
-      ticksRemaining: W_SILENCE_DURATION,
+      cyclesRemaining: W_SILENCE_DURATION,
       source: player.id,
     })
 
@@ -167,7 +167,7 @@ function resolveW(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -204,13 +204,13 @@ function resolveE(
       let updated = applyBuff(e, {
         id: 'voidZone_dot',
         stacks: damagePerTick,
-        ticksRemaining: E_DOT_DURATION,
+        cyclesRemaining: E_DOT_DURATION,
         source: player.id,
       })
       updated = applyBuff(updated, {
         id: 'revealed',
         stacks: 1,
-        ticksRemaining: E_DOT_DURATION,
+        cyclesRemaining: E_DOT_DURATION,
         source: player.id,
       })
       return updated
@@ -220,7 +220,7 @@ function resolveE(
       state: updatePlayers(state, [caster, ...updatedEnemies]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -280,7 +280,7 @@ function resolveR(
       ),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -323,7 +323,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   updated = applyBuff(updated, {
     id: 'voidDrain',
     stacks: 1,
-    ticksRemaining: 1,
+    cyclesRemaining: 1,
     source: playerId,
   })
 

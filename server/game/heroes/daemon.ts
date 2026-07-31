@@ -98,7 +98,7 @@ function resolveQ(
     const updatedTarget = applyBuff(targetPlayer, {
       id: 'inject_dot',
       stacks: damagePerTick,
-      ticksRemaining: 3,
+      cyclesRemaining: 3,
       source: player.id,
     })
 
@@ -106,7 +106,7 @@ function resolveQ(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -156,8 +156,8 @@ function resolveW(
           ...targetZoneState.wards,
           {
             team: caster.team,
-            placedTick: state.tick,
-            expiryTick: state.tick + 3,
+            placedTick: state.cycle,
+            expiryTick: state.cycle + 3,
             type: 'camtap',
           },
         ],
@@ -168,7 +168,7 @@ function resolveW(
       state: { ...updatePlayer(state, caster), zones },
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -179,13 +179,13 @@ function resolveW(
           },
         },
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'decoy_spawned',
           payload: {
             owner: player.id,
             zone: zoneId,
             heroId: 'daemon',
-            expiryTick: state.tick + 3,
+            expiryTick: state.cycle + 3,
           },
         },
       ],
@@ -226,7 +226,7 @@ function resolveE(
         state,
         events: [
           {
-            tick: state.tick,
+            cycle: state.cycle,
             type: 'ability_failed',
             payload: {
               playerId: player.id,
@@ -250,7 +250,7 @@ function resolveE(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -296,7 +296,7 @@ function resolveR(
       state: updatePlayer(state, caster),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -326,7 +326,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
       updated = applyBuff(updated, {
         id: 'stealthIdle',
         stacks: 0,
-        ticksRemaining: 99,
+        cyclesRemaining: 99,
         source: playerId,
       })
       return updatePlayer(state, updated)
@@ -341,7 +341,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
     updated = applyBuff(updated, {
       id: 'stealthIdle',
       stacks: 0,
-      ticksRemaining: 99,
+      cyclesRemaining: 99,
       source: playerId,
     })
     return updatePlayer(state, updated)
@@ -355,7 +355,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
     let updated = applyBuff(player, {
       id: 'stealthIdle',
       stacks: idleTicks,
-      ticksRemaining: 99,
+      cyclesRemaining: 99,
       source: playerId,
     })
 
@@ -363,7 +363,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
       updated = applyBuff(updated, {
         id: 'stealth',
         stacks: 1,
-        ticksRemaining: 99,
+        cyclesRemaining: 99,
         source: playerId,
       })
     }

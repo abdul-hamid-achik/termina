@@ -91,7 +91,7 @@ const {
   unlockLevelFor,
   cast,
   castCombo,
-  advanceTick,
+  advanceCycle,
   reset,
 } = useTrainingConsole(hero)
 
@@ -446,7 +446,7 @@ const {
           </div>
           <div class="mt-1 flex flex-wrap gap-2">
             <AsciiButton label="CAST COMBO (C)" variant="primary" @click="castCombo" />
-            <AsciiButton label="ADVANCE TICK (4s)" @click="advanceTick" />
+            <AsciiButton label="ADVANCE TICK (4s)" @click="advanceCycle" />
             <AsciiButton label="RESET" variant="ghost" @click="reset" />
           </div>
           <p class="text-[0.6rem] leading-snug text-text-dim" data-testid="console-refill-note">

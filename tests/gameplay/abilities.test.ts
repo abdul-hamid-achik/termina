@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { seedGame, HUMAN, ENEMY } from './harness'
-import { WAVE_ESCALATION_INTERVAL_TICKS, waveUnitMaxHp } from '~~/shared/constants/balance'
+import { WAVE_ESCALATION_INTERVAL_CYCLES, waveUnitMaxHp } from '~~/shared/constants/balance'
 
 /**
  * Replaces tests/e2e/flows/game_cast_self_buff.yml — the same engine truth
@@ -8,7 +8,7 @@ import { WAVE_ESCALATION_INTERVAL_TICKS, waveUnitMaxHp } from '~~/shared/constan
  * no /api/test/* round-trip.
  */
 describe('abilities', () => {
-  it('a self-buff cast goes on cooldown after one tick (echo W — Phase Shift)', async () => {
+  it('a self-buff cast goes on cooldown after one cycle (echo W — Phase Shift)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
 
     game.cast('w')
@@ -30,7 +30,7 @@ describe('abilities', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
-          buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 1, source: ENEMY }],
+          buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 1, source: ENEMY }],
         },
       },
     }))
@@ -60,7 +60,7 @@ describe('abilities', () => {
           ...s.players[HUMAN]!,
           zone: 'mid-river',
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
-          buffs: [{ id: 'root', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+          buffs: [{ id: 'root', stacks: 1, cyclesRemaining: 5, source: ENEMY }],
         },
       },
     }))
@@ -90,7 +90,7 @@ describe('abilities', () => {
           ...s.players[HUMAN]!,
           zone: 'mid-river',
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
-          buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+          buffs: [{ id: 'silence', stacks: 1, cyclesRemaining: 5, source: ENEMY }],
         },
       },
     }))
@@ -115,7 +115,7 @@ describe('abilities', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
-          buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+          buffs: [{ id: 'silence', stacks: 1, cyclesRemaining: 5, source: ENEMY }],
         },
       },
     }))
@@ -168,7 +168,7 @@ describe('abilities', () => {
     await game.tick()
 
     // Inject applies a multi-tick damage-over-time debuff on the target (a 1-tick
-    // disable like a stun would already be gone by now — tickAllBuffs runs this
+    // disable like a stun would already be gone by now — cycleAllBuffs runs this
     // same tick — so a DoT is the observable "the debuff landed" signal).
     expect((await game.player(ENEMY)).buffs.some((b) => b.id.includes('dot'))).toBe(true)
   })
@@ -203,7 +203,7 @@ describe('abilities', () => {
         [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
         [ENEMY]: {
           ...s.players[ENEMY]!,
-          buffs: [{ id: 'airgap', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+          buffs: [{ id: 'airgap', stacks: 1, cyclesRemaining: 5, source: ENEMY }],
         },
       },
     }))
@@ -222,7 +222,7 @@ describe('abilities', () => {
           ...s.players[HUMAN]!,
           zone: 'mid-river',
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
-          buffs: [{ id: 'cyclone', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+          buffs: [{ id: 'cyclone', stacks: 1, cyclesRemaining: 5, source: ENEMY }],
         },
       },
     }))
@@ -241,7 +241,7 @@ describe('abilities', () => {
     expect((await game.me()).cooldowns.w).toBe(0)
   })
 
-  it('a cast on cooldown is rejected with the ability name, ticks left, and ready tick', async () => {
+  it('a cast on cooldown is rejected with the ability name, cycles left, and ready tick', async () => {
     // Design-brief quick win #1: rejections must say WHY and WHEN, concretely.
     const game = await seedGame('laning_combat', { heroSelf: 'daemon', heroEnemy: 'echo' })
     await game.patch((s) => ({
@@ -258,7 +258,7 @@ describe('abilities', () => {
     const r = game.lastRejected.find((x) => x.playerId === HUMAN)
     expect(r?.reason).toContain('Inject') // the ability's NAME, not "ability"
     expect(r?.reason).toContain('cooldown')
-    expect(r?.reason).toMatch(/5 ticks left/)
+    expect(r?.reason).toMatch(/5 cycles left/)
     expect(r?.reason).toMatch(/ready T\d+/)
   })
 
@@ -293,7 +293,7 @@ describe('abilities', () => {
         [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
         [ENEMY]: {
           ...s.players[ENEMY]!,
-          buffs: [{ id: 'mirror_shell', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+          buffs: [{ id: 'mirror_shell', stacks: 1, cyclesRemaining: 5, source: ENEMY }],
         },
       },
     }))
@@ -327,7 +327,7 @@ describe('abilities', () => {
         [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
         [ENEMY]: {
           ...s.players[ENEMY]!,
-          buffs: [{ id: 'spellblock', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+          buffs: [{ id: 'spellblock', stacks: 1, cyclesRemaining: 5, source: ENEMY }],
         },
       },
     }))
@@ -360,7 +360,7 @@ describe('abilities', () => {
         [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
         [ENEMY]: {
           ...s.players[ENEMY]!,
-          buffs: [{ id: 'firewall_block', stacks: 1, ticksRemaining: 30, source: ENEMY }],
+          buffs: [{ id: 'firewall_block', stacks: 1, cyclesRemaining: 30, source: ENEMY }],
         },
       },
     }))
@@ -395,7 +395,7 @@ describe('abilities', () => {
         },
         [ENEMY]: {
           ...s.players[ENEMY]!,
-          buffs: [{ id: 'spellblock', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+          buffs: [{ id: 'spellblock', stacks: 1, cyclesRemaining: 5, source: ENEMY }],
         },
       },
     }))
@@ -427,7 +427,7 @@ describe('abilities', () => {
         },
         [ENEMY]: {
           ...s.players[ENEMY]!,
-          buffs: [{ id: 'mirror_shell', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+          buffs: [{ id: 'mirror_shell', stacks: 1, cyclesRemaining: 5, source: ENEMY }],
         },
       },
     }))
@@ -464,7 +464,7 @@ describe('abilities', () => {
         },
         [ENEMY]: {
           ...s.players[ENEMY]!,
-          buffs: [{ id: 'spellblock', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+          buffs: [{ id: 'spellblock', stacks: 1, cyclesRemaining: 5, source: ENEMY }],
         },
       },
     }))
@@ -491,7 +491,7 @@ describe('abilities', () => {
         ...s.players,
         [ENEMY]: {
           ...s.players[ENEMY]!,
-          buffs: [{ id: 'taunt', stacks: 1, ticksRemaining: 2, source: HUMAN }],
+          buffs: [{ id: 'taunt', stacks: 1, cyclesRemaining: 2, source: HUMAN }],
         },
       },
     }))
@@ -516,8 +516,8 @@ describe('abilities', () => {
         [ENEMY]: {
           ...s.players[ENEMY]!,
           buffs: [
-            { id: 'taunt', stacks: 1, ticksRemaining: 2, source: HUMAN },
-            { id: 'airgap', stacks: 1, ticksRemaining: 5, source: ENEMY },
+            { id: 'taunt', stacks: 1, cyclesRemaining: 2, source: HUMAN },
+            { id: 'airgap', stacks: 1, cyclesRemaining: 5, source: ENEMY },
           ],
         },
       },
@@ -542,7 +542,7 @@ describe('abilities', () => {
           ...s.players[HUMAN]!,
           zone: 'mid-river',
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
-          buffs: [{ id: 'hex', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+          buffs: [{ id: 'hex', stacks: 1, cyclesRemaining: 5, source: ENEMY }],
         },
       },
     }))
@@ -600,8 +600,8 @@ describe('abilities', () => {
           ...s.players[ENEMY]!,
           integ: s.players[ENEMY]!.maxInteg,
           buffs: [
-            { id: 'ethereal', stacks: 1, ticksRemaining: 6, source: HUMAN },
-            { id: 'magic_vuln_40', stacks: 40, ticksRemaining: 6, source: HUMAN },
+            { id: 'ethereal', stacks: 1, cyclesRemaining: 6, source: HUMAN },
+            { id: 'magic_vuln_40', stacks: 40, cyclesRemaining: 6, source: HUMAN },
           ],
         },
       },
@@ -618,8 +618,8 @@ describe('abilities', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           buffs: [
-            { id: 'ethereal', stacks: 1, ticksRemaining: 6, source: ENEMY },
-            { id: 'magic_vuln_40', stacks: 40, ticksRemaining: 6, source: ENEMY },
+            { id: 'ethereal', stacks: 1, cyclesRemaining: 6, source: ENEMY },
+            { id: 'magic_vuln_40', stacks: 40, cyclesRemaining: 6, source: ENEMY },
           ],
         },
       },
@@ -646,8 +646,8 @@ describe('abilities', () => {
           ...s.players[HUMAN]!,
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
           buffs: [
-            { id: 'stun', stacks: 1, ticksRemaining: 5, source: ENEMY },
-            { id: 'airgap', stacks: 1, ticksRemaining: 5, source: HUMAN },
+            { id: 'stun', stacks: 1, cyclesRemaining: 5, source: ENEMY },
+            { id: 'airgap', stacks: 1, cyclesRemaining: 5, source: HUMAN },
           ],
         },
       },
@@ -672,8 +672,8 @@ describe('abilities', () => {
           ...s.players[HUMAN]!,
           zone: 'mid-river',
           buffs: [
-            { id: 'root', stacks: 1, ticksRemaining: 5, source: ENEMY },
-            { id: 'airgap', stacks: 1, ticksRemaining: 5, source: HUMAN },
+            { id: 'root', stacks: 1, cyclesRemaining: 5, source: ENEMY },
+            { id: 'airgap', stacks: 1, cyclesRemaining: 5, source: HUMAN },
           ],
         },
       },
@@ -691,8 +691,8 @@ describe('abilities', () => {
           ...s.players[HUMAN]!,
           zone: s.players[ENEMY]!.zone,
           buffs: [
-            { id: 'stun', stacks: 1, ticksRemaining: 5, source: ENEMY },
-            { id: 'airgap', stacks: 1, ticksRemaining: 5, source: HUMAN },
+            { id: 'stun', stacks: 1, cyclesRemaining: 5, source: ENEMY },
+            { id: 'airgap', stacks: 1, cyclesRemaining: 5, source: HUMAN },
           ],
         },
       },
@@ -716,8 +716,8 @@ describe('abilities', () => {
           ...s.players[HUMAN]!,
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
           buffs: [
-            { id: 'cyclone', stacks: 1, ticksRemaining: 5, source: HUMAN },
-            { id: 'airgap', stacks: 1, ticksRemaining: 5, source: HUMAN },
+            { id: 'cyclone', stacks: 1, cyclesRemaining: 5, source: HUMAN },
+            { id: 'airgap', stacks: 1, cyclesRemaining: 5, source: HUMAN },
           ],
         },
       },
@@ -793,7 +793,7 @@ describe('abilities', () => {
         ...s.players,
         [ENEMY]: {
           ...s.players[ENEMY]!,
-          buffs: [{ id: 'phaseShift', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+          buffs: [{ id: 'phaseShift', stacks: 1, cyclesRemaining: 5, source: ENEMY }],
         },
       },
     }))
@@ -824,11 +824,11 @@ describe('abilities', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           buffs: [
-            { id: 'ghostwire_edge_invis', stacks: 1, ticksRemaining: 3, source: 'ghostwire_edge' },
+            { id: 'ghostwire_edge_invis', stacks: 1, cyclesRemaining: 3, source: 'ghostwire_edge' },
             {
               id: 'ghostwire_edge_bonus',
               stacks: 150,
-              ticksRemaining: 3,
+              cyclesRemaining: 3,
               source: 'ghostwire_edge',
             },
           ],
@@ -857,7 +857,7 @@ describe('abilities vs waves', () => {
   const LANE = 'mid-river'
 
   /** Seed the human alone in a lane with `hp`-strong enemy waves in front. The
-   *  BW pool is widened to the level being faked, since the per-tick recalc
+   *  BW pool is widened to the level being faked, since the per-cycle recalc
    *  that would grow it only runs AFTER the cast phase. */
   async function laneWithWave(heroSelf: 'mutex' | 'null_ref', waveHp: number[], level = 6) {
     const game = await seedGame('laning_combat', { heroSelf })
@@ -902,13 +902,13 @@ describe('abilities vs waves', () => {
 
   it('an ability that finishes a wave banks the bounty and emits wave_strip', async () => {
     const game = await laneWithWave('mutex', [30, 400])
-    const goldBefore = (await game.me()).gold
+    const scripBefore = (await game.me()).scrip
 
     game.cast('e')
     await game.tick()
 
     expect(game.lastEvents.some((e) => e._tag === 'wave_strip' && e.playerId === HUMAN)).toBe(true)
-    expect((await game.me()).gold).toBeGreaterThan(goldBefore)
+    expect((await game.me()).scrip).toBeGreaterThan(scripBefore)
     // Reaped from the board by WaveAI the same tick, like any other wave death.
     expect((await game.state()).waves.some((c) => c.id === 'wave_0')).toBe(false)
   })
@@ -918,7 +918,7 @@ describe('abilities vs waves', () => {
     // tick a cast lands on decides whether it clears the wave. Every other
     // ability fixture sits near tick 0 where the escalation multiplier is 1.0
     // and that relationship is invisible.
-    const lateTick = WAVE_ESCALATION_INTERVAL_TICKS * 3
+    const lateTick = WAVE_ESCALATION_INTERVAL_CYCLES * 3
     const freshMax = waveUnitMaxHp('line', 0)
     const lateMax = waveUnitMaxHp('line', lateTick)
     expect(lateMax).toBeGreaterThan(freshMax * 1.5)
@@ -931,7 +931,7 @@ describe('abilities vs waves', () => {
     expect(early.lastEvents.some((e) => e._tag === 'wave_strip')).toBe(true)
 
     const late = await laneWithWave('null_ref', [lateMax], 18)
-    await late.patch((s) => ({ ...s, tick: lateTick }))
+    await late.patch((s) => ({ ...s, cycle: lateTick }))
     late.cast('r')
     await late.tick()
     expect(late.lastEvents.some((e) => e._tag === 'wave_strip')).toBe(false)

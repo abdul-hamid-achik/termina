@@ -6,7 +6,7 @@
  * end" e2e specs (game-over, smoke) impossible to run honestly. Setting
  * TERMINA_TEST_FAST_GAME=<factor> (e.g. 8) on the server process:
  *
- *   - runs the game loop at TICK_DURATION_MS / factor (engine logic is
+ *   - runs the game loop at CYCLE_DURATION_MS / factor (engine logic is
  *     tick-based and deterministic, so nothing else changes),
  *   - divides Ancient INTEG by the factor, and
  *   - halves ice INTEG when the factor is >= 4,
@@ -37,7 +37,7 @@ export function scaledTickIntervalMs(baseMs: number): number {
 }
 
 /** Effective Ancient max INTEG. */
-export function scaledAncientHp(baseHp: number): number {
+export function scaledTerminalHp(baseHp: number): number {
   return Math.max(1, Math.ceil(baseHp / fastGameFactor()))
 }
 
@@ -56,7 +56,7 @@ export function scaledIceHp(baseHp: number): number {
 }
 
 /**
- * Effective respawn duration in ticks. Multiplied by the factor so the
+ * Effective respawn duration in cycles. Multiplied by the factor so the
  * wall-clock respawn time matches production — without this, a death at
  * factor 8 would respawn in ~1.5s real time, far too fast for a human (or a
  * death-overlay e2e assertion) to even see.

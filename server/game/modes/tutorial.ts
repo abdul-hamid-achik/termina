@@ -3,7 +3,7 @@ import type { GameState, TeamId } from '~~/shared/types/game'
 import {
   TUTORIAL_FLOW,
   TUTORIAL_STEP_COUNT,
-  TUTORIAL_STEP_DEADLINE_TICKS,
+  TUTORIAL_STEP_DEADLINE_CYCLES,
 } from '~~/shared/constants/tutorial'
 import { HERO_IDS } from '~~/shared/constants/heroes'
 
@@ -22,7 +22,7 @@ import { HERO_IDS } from '~~/shared/constants/heroes'
 export {
   TUTORIAL_FLOW,
   TUTORIAL_STEP_COUNT,
-  TUTORIAL_STEP_DEADLINE_TICKS,
+  TUTORIAL_STEP_DEADLINE_CYCLES,
   tutorialHint,
 } from '~~/shared/constants/tutorial'
 
@@ -105,7 +105,7 @@ export function buildTutorialRoster(
 /** Outcome of a tutorial advance: the new state plus anything to tell the player. */
 export interface TutorialAdvance {
   state: GameState
-  /** Announcement to push to the human this tick, or null. */
+  /** Announcement to push to the human this cycle, or null. */
   notice: string | null
 }
 
@@ -114,7 +114,7 @@ export interface TutorialAdvance {
  *
  * A step completes when the human (any non-bot player) performed — and the
  * engine accepted — the command that step teaches. A step ALSO completes when it
- * has been active longer than TUTORIAL_STEP_DEADLINE_TICKS.
+ * has been active longer than TUTORIAL_STEP_DEADLINE_CYCLES.
  *
  * The deadline is the load-bearing part. Every step's success condition depends
  * on the live match: "attack" wants a wave wave to have arrived, "cast" wants a
@@ -155,8 +155,8 @@ export function advanceTutorialAfterTick(
   if (actor && !stalledInBase) return { state: advanceTo(state, step + 1), notice: null }
 
   const since = state.tutorialStepSince ?? 0
-  const elapsed = state.tick - since
-  if (elapsed >= TUTORIAL_STEP_DEADLINE_TICKS) {
+  const elapsed = state.cycle - since
+  if (elapsed >= TUTORIAL_STEP_DEADLINE_CYCLES) {
     return {
       state: advanceTo(state, step + 1),
       notice: `🎓 Moving on — ${current.skipNote}`,
@@ -175,5 +175,5 @@ export function advanceTutorialAfterTick(
 
 /** Step the flow forward, stamping the tick so the next step gets a fresh deadline. */
 function advanceTo(state: GameState, nextStep: number): GameState {
-  return { ...state, tutorialStep: nextStep, tutorialStepSince: state.tick }
+  return { ...state, tutorialStep: nextStep, tutorialStepSince: state.cycle }
 }

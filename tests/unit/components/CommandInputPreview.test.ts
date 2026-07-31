@@ -14,13 +14,13 @@ import type { PlayerState } from '~~/shared/types/game'
  */
 
 // A chaff hero parked in the fountain (a shop zone) so buy/sell validate, with
-// generous gold/mana and everything off cooldown. Override per-test as needed.
+// generous scrip/mana and everything off cooldown. Override per-test as needed.
 function makeShopPlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return makePlayer({
     id: 'me',
     heroId: SAMPLE_HEROES.echo,
     zone: 'chaff-fountain',
-    gold: 5000,
+    scrip: 5000,
     bw: 400,
     maxBw: 400,
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
@@ -138,7 +138,7 @@ describe('CommandInput preview line', () => {
 
   it('renders a buyback preview with the computed cost while dead', async () => {
     const wrapper = mountInput(
-      makeShopPlayer({ alive: false, integ: 0, buybackCost: 1200, gold: 5000 }),
+      makeShopPlayer({ alive: false, integ: 0, buybackCost: 1200, scrip: 5000 }),
     )
     const preview = await previewFor(wrapper, 'buyback')
     expect(preview.text()).toContain('>> Buyback')
@@ -147,7 +147,7 @@ describe('CommandInput preview line', () => {
   })
 
   it('renders a surrender-yes preview after confirm', async () => {
-    const wrapper = mountInput(makeShopPlayer(), { tick: 500 })
+    const wrapper = mountInput(makeShopPlayer(), { cycle: 500 })
     const preview = await previewFor(wrapper, 'surrender confirm')
     expect(preview.text()).toContain('Vote YES to surrender')
     wrapper.unmount()
@@ -223,13 +223,13 @@ describe('CommandInput surrender gate', () => {
   // graduated tutorial, which is exactly the dead end the exemption exists to
   // remove.
   it('blocks an early surrender in a NORMAL game', async () => {
-    const wrapper = mountInput(makeShopPlayer(), { tick: 10 })
+    const wrapper = mountInput(makeShopPlayer(), { cycle: 10 })
     const preview = await previewFor(wrapper, 'surrender confirm')
     expect(preview.text()).toContain('Too early to surrender')
   })
 
   it('allows an early surrender in the tutorial', async () => {
-    const wrapper = mountInput(makeShopPlayer(), { tick: 10, mode: 'tutorial' })
+    const wrapper = mountInput(makeShopPlayer(), { cycle: 10, mode: 'tutorial' })
     const preview = await previewFor(wrapper, 'surrender confirm')
     expect(preview.exists() ? preview.text() : '').not.toContain('Too early to surrender')
   })

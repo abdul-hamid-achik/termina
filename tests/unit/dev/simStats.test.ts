@@ -30,7 +30,7 @@ describe('summarizeSimResults', () => {
       r('chaff', 200, ['a'], ['b']),
     ])
     expect(s.length.minTicks).toBe(100)
-    expect(s.length.maxTicks).toBe(300)
+    expect(s.length.maxCycles).toBe(300)
     expect(s.length.medianTicks).toBe(200)
     expect(s.length.avgTicks).toBe(200)
   })
@@ -101,7 +101,7 @@ describe('summarizeSimResults', () => {
   it('handles an empty batch without dividing by zero', () => {
     const s = summarizeSimResults([])
     expect(s.matches).toBe(0)
-    expect(s.length).toEqual({ minTicks: 0, maxTicks: 0, avgTicks: 0, medianTicks: 0 })
+    expect(s.length).toEqual({ minTicks: 0, maxCycles: 0, avgTicks: 0, medianTicks: 0 })
     expect(s.heroWinRates).toEqual([])
   })
 })

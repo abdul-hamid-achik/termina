@@ -25,12 +25,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 200,
     level: 1,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -187,7 +187,7 @@ describe('DamageCalculator', () => {
     const vuln = (id: string, stacks: number): BuffState => ({
       id,
       stacks,
-      ticksRemaining: 3,
+      cyclesRemaining: 3,
       source: 'x',
     })
 
@@ -236,7 +236,7 @@ describe('DamageCalculator', () => {
   })
 
   describe('isDamageImmune', () => {
-    const buff = (id: string): BuffState => ({ id, stacks: 1, ticksRemaining: 2, source: 'x' })
+    const buff = (id: string): BuffState => ({ id, stacks: 1, cyclesRemaining: 2, source: 'x' })
 
     it('invulnerable blocks every damage type', () => {
       const p = makePlayer({ buffs: [buff('invulnerable')] })

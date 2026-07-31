@@ -38,7 +38,7 @@ vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
 
 // ── audio + layout doubles ────────────────────────────────────────────
 // The real useAudio needs an AudioContext; record the cue names instead. The
-// tick loop says a great deal through sound, so several tests assert on it.
+// cycle loop says a great deal through sound, so several tests assert on it.
 const audio = vi.hoisted(() => ({ playSound: vi.fn() }))
 vi.mock('~/composables/useAudio', () => ({ useAudio: () => audio }))
 
@@ -92,7 +92,7 @@ const stubs = {
   // the header assertions still hold under shallow stubbing.
   StatusLines: {
     name: 'StatusLines',
-    props: ['trace', 'canAct', 'nextTickIn', 'tick', 'netLead', 'alive'],
+    props: ['trace', 'canAct', 'nextTickIn', 'cycle', 'netLead', 'alive'],
     template:
       "<div data-testid=\"theater-header\">{{ !alive ? 'DOWN' : canAct ? 'AWAITING ORDERS' : 'RESOLVING' }}</div>",
   },
@@ -137,7 +137,7 @@ function seedActiveGame(overrides: Partial<GameState> = {}) {
   const store = useGameStore()
   store.gameId = 'game_test_1'
   store.playerId = 'p1'
-  store.updateFromTick(makeTickMessage(overrides))
+  store.updateFromCycle(makeTickMessage(overrides))
   return store
 }
 
@@ -294,12 +294,12 @@ describe('GameScreen commands', () => {
       store.gameId = 'g'
       store.playerId = 'p1'
 
-      store.updateFromTick(makeTickMessage({ tick: 10 })) // before SURRENDER_MIN_TICK (225)
+      store.updateFromCycle(makeTickMessage({ cycle: 10 })) // before SURRENDER_MIN_CYCLE (225)
       const early = mountGameScreen()
       expect(early.find('[data-testid="situational-surrender"]').exists()).toBe(false)
       early.unmount()
 
-      store.updateFromTick(makeTickMessage({ tick: 240 })) // past the gate
+      store.updateFromCycle(makeTickMessage({ cycle: 240 })) // past the gate
       const late = mountGameScreen()
       expect(late.find('[data-testid="situational-surrender"]').exists()).toBe(true)
       late.unmount()
@@ -354,7 +354,7 @@ describe('GameScreen commands', () => {
     it('withholds attack tenant while he is dead, even standing in the pit', async () => {
       seedActiveGame({
         players: rosterAt('hollow'),
-        tenant: { alive: false, integ: 0, maxInteg: 5000, deathTick: 200 },
+        tenant: { alive: false, integ: 0, maxInteg: 5000, deathCycle: 200 },
       })
       const wrapper = mountGameScreen()
 
@@ -378,10 +378,10 @@ describe('GameScreen commands', () => {
       'mid-river',
     ]
 
-    /** Seed a tick with the human standing in `zone`, optionally still walking. */
+    /** Seed a cycle with the human standing in `zone`, optionally still walking. */
     function seedWalkTick(
       zone: string,
-      tick: number,
+      cycle: number,
       extra: Partial<PlayerState> = {},
     ): ReturnType<typeof useGameStore> {
       const store = useGameStore()
@@ -391,7 +391,7 @@ describe('GameScreen commands', () => {
       players.p1 = { ...players.p1!, zone, moveTarget: null, ...extra }
       const zones: Record<string, ZoneRuntimeState> = {}
       for (const id of CORRIDOR) zones[id] = makeZone(id)
-      store.updateFromTick(makeTickMessage({ tick, players, zones }))
+      store.updateFromCycle(makeTickMessage({ cycle, players, zones }))
       return store
     }
 
@@ -443,7 +443,7 @@ describe('GameScreen commands', () => {
 
       // Death cancels the walk server-side; the client must forget it too, or
       // the fountain respawn would read as reaching the abandoned destination.
-      seedWalkTick('mid-river', 241, { alive: false, integ: 0, respawnTick: 250 })
+      seedWalkTick('mid-river', 241, { alive: false, integ: 0, respawnCycle: 250 })
       await wrapper.vm.$nextTick()
       seedWalkTick('chaff-fountain', 250)
       await wrapper.vm.$nextTick()
@@ -482,7 +482,7 @@ describe('GameScreen commands', () => {
       players.p1 = { ...players.p1!, zone }
       const zones: Record<string, ZoneRuntimeState> = {}
       for (const id of CORRIDOR) zones[id] = makeZone(id)
-      store.updateFromTick(makeTickMessage({ tick: 240, players, zones }))
+      store.updateFromCycle(makeTickMessage({ cycle: 240, players, zones }))
       return store
     }
 
@@ -591,9 +591,9 @@ describe('GameScreen commands', () => {
     })
   })
   describe('effects that used to hurt (W2-6)', () => {
-    async function hit(wrapper: ReturnType<typeof mountGameScreen>, tick: number, amount: number) {
+    async function hit(wrapper: ReturnType<typeof mountGameScreen>, cycle: number, amount: number) {
       useGameStore().addEvents([
-        { tick, type: 'damage', payload: { sourceId: 'e1', targetId: 'p1', amount } },
+        { cycle, type: 'damage', payload: { sourceId: 'e1', targetId: 'p1', amount } },
       ] as never)
       await wrapper.vm.$nextTick()
     }
@@ -641,7 +641,7 @@ describe('GameScreen commands', () => {
 
       // Dying is not a repeat of the same beat and must always land.
       useGameStore().addEvents([
-        { tick: 240, type: 'death', payload: { playerId: 'p1', respawnTick: 270 } },
+        { cycle: 240, type: 'death', payload: { playerId: 'p1', respawnCycle: 270 } },
       ] as never)
       await wrapper.vm.$nextTick()
       expect(wrapper.find('[data-testid="impact-overlay"]').element).not.toBe(first)
@@ -653,8 +653,8 @@ describe('GameScreen commands', () => {
       const wrapper = mountGameScreen()
 
       useGameStore().addEvents([
-        { tick: 240, type: 'damage', payload: { sourceId: 'e1', targetId: 'p1', amount: 90 } },
-        { tick: 240, type: 'damage', payload: { sourceId: 'p1', targetId: 'e1', amount: 70 } },
+        { cycle: 240, type: 'damage', payload: { sourceId: 'e1', targetId: 'p1', amount: 90 } },
+        { cycle: 240, type: 'damage', payload: { sourceId: 'p1', targetId: 'e1', amount: 70 } },
       ] as never)
       await wrapper.vm.$nextTick()
 
@@ -668,7 +668,7 @@ describe('GameScreen commands', () => {
 
     it('anchors the overlay lanes to the measured HUD bar', async () => {
       // The kill feed sat at a hardcoded 4.25rem — 59.5px at the 14px root —
-      // which lands squarely on the focus banner and the tick/gold/KDA row.
+      // which lands squarely on the focus banner and the cycle/gold/KDA row.
       seedActiveGame()
       const wrapper = mountGameScreen()
       expect(resizeCb).toBeTypeOf('function')

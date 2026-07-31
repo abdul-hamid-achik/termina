@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
   processDoTs,
-  tickAllBuffs,
+  cycleAllBuffs,
   levelUpHero,
   dealDamage,
   applyBuff,
-  tickBuffs,
+  cycleBuffs,
   removeBuff,
   hasBuff,
   getBuffStacks,
@@ -47,12 +47,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 200,
     level: 1,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -75,11 +75,11 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
   return {
-    tick: 1,
+    cycle: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -87,12 +87,12 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     neutrals: [],
     ice: initializeIce(),
     caches: [],
-    tenant: { alive: true, integ: 5000, maxInteg: 5000, deathTick: null },
+    tenant: { alive: true, integ: 5000, maxInteg: 5000, deathCycle: null },
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
-    dayNightTick: 0,
+    dayNightCycle: 0,
     ...overrides,
   }
 }
@@ -102,7 +102,7 @@ describe('_base hero utilities', () => {
     it('should apply damage from DoT buffs', () => {
       const player = makePlayer({
         integ: 500,
-        buffs: [{ id: 'phys_dot', stacks: 20, ticksRemaining: 5, source: 'test' }],
+        buffs: [{ id: 'phys_dot', stacks: 20, cyclesRemaining: 5, source: 'test' }],
       })
       const state = makeGameState({ players: { p1: player } })
 
@@ -118,8 +118,8 @@ describe('_base hero utilities', () => {
       const player = makePlayer({
         integ: 500,
         buffs: [
-          { id: 'phys_dot', stacks: 20, ticksRemaining: 5, source: 'test' },
-          { id: 'magic_dot', stacks: 30, ticksRemaining: 5, source: 'test' },
+          { id: 'phys_dot', stacks: 20, cyclesRemaining: 5, source: 'test' },
+          { id: 'magic_dot', stacks: 30, cyclesRemaining: 5, source: 'test' },
         ],
       })
       const state = makeGameState({ players: { p1: player } })
@@ -142,7 +142,7 @@ describe('_base hero utilities', () => {
       const player = makePlayer({
         integ: 0,
         alive: false,
-        buffs: [{ id: 'phys_dot', stacks: 20, ticksRemaining: 5, source: 'test' }],
+        buffs: [{ id: 'phys_dot', stacks: 20, cyclesRemaining: 5, source: 'test' }],
       })
       const state = makeGameState({ players: { p1: player } })
 
@@ -153,7 +153,7 @@ describe('_base hero utilities', () => {
     it('should kill player if DoT damage exceeds INTEG', () => {
       const player = makePlayer({
         integ: 5,
-        buffs: [{ id: 'phys_dot', stacks: 100, ticksRemaining: 5, source: 'test' }],
+        buffs: [{ id: 'phys_dot', stacks: 100, cyclesRemaining: 5, source: 'test' }],
       })
       const state = makeGameState({ players: { p1: player } })
 
@@ -163,37 +163,37 @@ describe('_base hero utilities', () => {
     })
   })
 
-  describe('tickAllBuffs', () => {
-    it('should decrement ticksRemaining on all buffs', () => {
+  describe('cycleAllBuffs', () => {
+    it('should decrement cyclesRemaining on all buffs', () => {
       const player = makePlayer({
-        buffs: [{ id: 'test_buff', stacks: 1, ticksRemaining: 5, source: 'test' }],
+        buffs: [{ id: 'test_buff', stacks: 1, cyclesRemaining: 5, source: 'test' }],
       })
       const state = makeGameState({ players: { p1: player } })
 
-      const result = tickAllBuffs(state)
-      expect(result.players['p1']!.buffs[0]!.ticksRemaining).toBe(4)
+      const result = cycleAllBuffs(state)
+      expect(result.players['p1']!.buffs[0]!.cyclesRemaining).toBe(4)
     })
 
     it('should remove expired buffs', () => {
       const player = makePlayer({
-        buffs: [{ id: 'expiring', stacks: 1, ticksRemaining: 1, source: 'test' }],
+        buffs: [{ id: 'expiring', stacks: 1, cyclesRemaining: 1, source: 'test' }],
       })
       const state = makeGameState({ players: { p1: player } })
 
-      const result = tickAllBuffs(state)
+      const result = cycleAllBuffs(state)
       expect(result.players['p1']!.buffs).toHaveLength(0)
     })
 
     it('should handle multiple buffs with different durations', () => {
       const player = makePlayer({
         buffs: [
-          { id: 'buff1', stacks: 1, ticksRemaining: 5, source: 'test' },
-          { id: 'buff2', stacks: 1, ticksRemaining: 1, source: 'test' },
+          { id: 'buff1', stacks: 1, cyclesRemaining: 5, source: 'test' },
+          { id: 'buff2', stacks: 1, cyclesRemaining: 1, source: 'test' },
         ],
       })
       const state = makeGameState({ players: { p1: player } })
 
-      const result = tickAllBuffs(state)
+      const result = cycleAllBuffs(state)
       expect(result.players['p1']!.buffs).toHaveLength(1)
       expect(result.players['p1']!.buffs[0]!.id).toBe('buff1')
     })
@@ -201,12 +201,12 @@ describe('_base hero utilities', () => {
     it('should not affect dead players', () => {
       const player = makePlayer({
         alive: false,
-        buffs: [{ id: 'test', stacks: 1, ticksRemaining: 5, source: 'test' }],
+        buffs: [{ id: 'test', stacks: 1, cyclesRemaining: 5, source: 'test' }],
       })
       const state = makeGameState({ players: { p1: player } })
 
-      const result = tickAllBuffs(state)
-      expect(result.players['p1']!.buffs[0]!.ticksRemaining).toBe(5)
+      const result = cycleAllBuffs(state)
+      expect(result.players['p1']!.buffs[0]!.cyclesRemaining).toBe(5)
     })
   })
 
@@ -265,7 +265,7 @@ describe('_base hero utilities', () => {
     it('should absorb damage with shield buff', () => {
       const player = makePlayer({
         integ: 500,
-        buffs: [{ id: 'shield', stacks: 50, ticksRemaining: 5, source: 'test' }],
+        buffs: [{ id: 'shield', stacks: 50, cyclesRemaining: 5, source: 'test' }],
       })
       const result = dealDamage(player, 30, 'black')
       expect(result.integ).toBe(500)
@@ -275,7 +275,7 @@ describe('_base hero utilities', () => {
     it('should remove shield when depleted', () => {
       const player = makePlayer({
         integ: 500,
-        buffs: [{ id: 'shield', stacks: 20, ticksRemaining: 5, source: 'test' }],
+        buffs: [{ id: 'shield', stacks: 20, cyclesRemaining: 5, source: 'test' }],
       })
       const result = dealDamage(player, 50, 'black')
       expect(result.integ).toBe(470)
@@ -285,7 +285,7 @@ describe('_base hero utilities', () => {
     it('should dodge attack with phaseShift buff', () => {
       const player = makePlayer({
         integ: 500,
-        buffs: [{ id: 'phaseShift', stacks: 1, ticksRemaining: 5, source: 'test' }],
+        buffs: [{ id: 'phaseShift', stacks: 1, cyclesRemaining: 5, source: 'test' }],
       })
       const result = dealDamage(player, 100, 'black')
       expect(result.integ).toBe(500)
@@ -299,8 +299,8 @@ describe('_base hero utilities', () => {
       const player = makePlayer({
         integ: 500,
         buffs: [
-          { id: 'shield', stacks: 30, ticksRemaining: 5, source: 's1' },
-          { id: 'shield', stacks: 40, ticksRemaining: 5, source: 's2' },
+          { id: 'shield', stacks: 30, cyclesRemaining: 5, source: 's1' },
+          { id: 'shield', stacks: 40, cyclesRemaining: 5, source: 's2' },
         ],
       })
       const result = dealDamage(player, 20, 'black')
@@ -317,8 +317,8 @@ describe('_base hero utilities', () => {
       const player = makePlayer({
         integ: 500,
         buffs: [
-          { id: 'shield', stacks: 30, ticksRemaining: 5, source: 's1' },
-          { id: 'shield', stacks: 40, ticksRemaining: 5, source: 's2' },
+          { id: 'shield', stacks: 30, cyclesRemaining: 5, source: 's1' },
+          { id: 'shield', stacks: 40, cyclesRemaining: 5, source: 's2' },
         ],
       })
       const result = dealDamage(player, 50, 'black')
@@ -335,7 +335,7 @@ describe('_base hero utilities', () => {
         plate: 0,
         ice: 0,
         heroId: null,
-        buffs: [{ id: 'breached', stacks: 1, ticksRemaining: 3, source: 'enemy' }],
+        buffs: [{ id: 'breached', stacks: 1, cyclesRemaining: 3, source: 'enemy' }],
       })
       const closedDmg = 500 - dealDamage(closed, 100, 'code').integ
       const openDmg = 500 - dealDamage(open, 100, 'code').integ
@@ -353,7 +353,7 @@ describe('_base hero utilities', () => {
     it('should apply hardened reduction', () => {
       const player = makePlayer({
         integ: 500,
-        buffs: [{ id: 'hardened', stacks: 1, ticksRemaining: 5, source: 'test' }],
+        buffs: [{ id: 'hardened', stacks: 1, cyclesRemaining: 5, source: 'test' }],
       })
       const result = dealDamage(player, 100, 'black')
       expect(result.integ).toBe(410)
@@ -371,7 +371,7 @@ describe('_base hero utilities', () => {
       const player = makePlayer({
         integ: 300,
         maxInteg: 500,
-        buffs: [{ id: 'antiHeal', stacks: 50, ticksRemaining: 3, source: 'cache' }],
+        buffs: [{ id: 'antiHeal', stacks: 50, cyclesRemaining: 3, source: 'cache' }],
       })
       // 100 heal at 50% antiHeal → 50 effective.
       expect(healPlayer(player, 100).integ).toBe(350)
@@ -381,36 +381,36 @@ describe('_base hero utilities', () => {
   describe('applyBuff', () => {
     it('should add new buff', () => {
       const player = makePlayer()
-      const buff: BuffState = { id: 'test', stacks: 1, ticksRemaining: 5, source: 'test' }
+      const buff: BuffState = { id: 'test', stacks: 1, cyclesRemaining: 5, source: 'test' }
       const result = applyBuff(player, buff)
       expect(result.buffs).toHaveLength(1)
     })
 
     it('should refresh existing buff duration', () => {
       const player = makePlayer({
-        buffs: [{ id: 'test', stacks: 1, ticksRemaining: 2, source: 'test' }],
+        buffs: [{ id: 'test', stacks: 1, cyclesRemaining: 2, source: 'test' }],
       })
-      const buff: BuffState = { id: 'test', stacks: 1, ticksRemaining: 5, source: 'test' }
+      const buff: BuffState = { id: 'test', stacks: 1, cyclesRemaining: 5, source: 'test' }
       const result = applyBuff(player, buff)
-      expect(result.buffs[0]!.ticksRemaining).toBe(5)
+      expect(result.buffs[0]!.cyclesRemaining).toBe(5)
     })
 
     it('should update existing buff stacks', () => {
       const player = makePlayer({
-        buffs: [{ id: 'test', stacks: 1, ticksRemaining: 5, source: 'test' }],
+        buffs: [{ id: 'test', stacks: 1, cyclesRemaining: 5, source: 'test' }],
       })
-      const buff: BuffState = { id: 'test', stacks: 3, ticksRemaining: 5, source: 'test' }
+      const buff: BuffState = { id: 'test', stacks: 3, cyclesRemaining: 5, source: 'test' }
       const result = applyBuff(player, buff)
       expect(result.buffs[0]!.stacks).toBe(3)
     })
 
     it('should keep max duration when refreshing', () => {
       const player = makePlayer({
-        buffs: [{ id: 'test', stacks: 1, ticksRemaining: 10, source: 'test' }],
+        buffs: [{ id: 'test', stacks: 1, cyclesRemaining: 10, source: 'test' }],
       })
-      const buff: BuffState = { id: 'test', stacks: 1, ticksRemaining: 5, source: 'test' }
+      const buff: BuffState = { id: 'test', stacks: 1, cyclesRemaining: 5, source: 'test' }
       const result = applyBuff(player, buff)
-      expect(result.buffs[0]!.ticksRemaining).toBe(10)
+      expect(result.buffs[0]!.cyclesRemaining).toBe(10)
     })
 
     it('fizzles hard control on a closed (non-breached) target', () => {
@@ -419,7 +419,7 @@ describe('_base hero utilities', () => {
         const result = applyBuff(closed, {
           id,
           stacks: 1,
-          ticksRemaining: 2,
+          cyclesRemaining: 2,
           source: 'enemy',
         })
         expect(
@@ -432,12 +432,12 @@ describe('_base hero utilities', () => {
     it('lands hard control on a breached target', () => {
       const open = makePlayer({
         id: 'victim',
-        buffs: [{ id: 'breached', stacks: 1, ticksRemaining: 3, source: 'enemy' }],
+        buffs: [{ id: 'breached', stacks: 1, cyclesRemaining: 3, source: 'enemy' }],
       })
       const result = applyBuff(open, {
         id: 'stun',
         stacks: 1,
-        ticksRemaining: 2,
+        cyclesRemaining: 2,
         source: 'enemy',
       })
       expect(result.buffs.some((b) => b.id === 'stun')).toBe(true)
@@ -448,7 +448,7 @@ describe('_base hero utilities', () => {
       const result = applyBuff(self, {
         id: 'root',
         stacks: 1,
-        ticksRemaining: 2,
+        cyclesRemaining: 2,
         source: 'p1',
       })
       expect(result.buffs.some((b) => b.id === 'root')).toBe(true)
@@ -456,12 +456,12 @@ describe('_base hero utilities', () => {
 
     it('applying airgap strips breached in the same call', () => {
       const open = makePlayer({
-        buffs: [{ id: 'breached', stacks: 1, ticksRemaining: 3, source: 'enemy' }],
+        buffs: [{ id: 'breached', stacks: 1, cyclesRemaining: 3, source: 'enemy' }],
       })
       const result = applyBuff(open, {
         id: 'airgap',
         stacks: 1,
-        ticksRemaining: 4,
+        cyclesRemaining: 4,
         source: 'hardshell',
       })
       expect(result.buffs.some((b) => b.id === 'breached')).toBe(false)
@@ -473,27 +473,27 @@ describe('_base hero utilities', () => {
       const result = applyBuff(closed, {
         id: 'shield',
         stacks: 100,
-        ticksRemaining: 3,
+        cyclesRemaining: 3,
         source: 'self',
       })
       expect(result.buffs.some((b) => b.id === 'shield')).toBe(true)
     })
   })
 
-  describe('tickBuffs', () => {
+  describe('cycleBuffs', () => {
     it('should decrement all buff durations', () => {
       const player = makePlayer({
-        buffs: [{ id: 'test', stacks: 1, ticksRemaining: 5, source: 'test' }],
+        buffs: [{ id: 'test', stacks: 1, cyclesRemaining: 5, source: 'test' }],
       })
-      const result = tickBuffs(player)
-      expect(result.buffs[0]!.ticksRemaining).toBe(4)
+      const result = cycleBuffs(player)
+      expect(result.buffs[0]!.cyclesRemaining).toBe(4)
     })
 
     it('should remove expired buffs', () => {
       const player = makePlayer({
-        buffs: [{ id: 'test', stacks: 1, ticksRemaining: 1, source: 'test' }],
+        buffs: [{ id: 'test', stacks: 1, cyclesRemaining: 1, source: 'test' }],
       })
-      const result = tickBuffs(player)
+      const result = cycleBuffs(player)
       expect(result.buffs).toHaveLength(0)
     })
   })
@@ -502,8 +502,8 @@ describe('_base hero utilities', () => {
     it('should remove buff by id', () => {
       const player = makePlayer({
         buffs: [
-          { id: 'buff1', stacks: 1, ticksRemaining: 5, source: 'test' },
-          { id: 'buff2', stacks: 1, ticksRemaining: 5, source: 'test' },
+          { id: 'buff1', stacks: 1, cyclesRemaining: 5, source: 'test' },
+          { id: 'buff2', stacks: 1, cyclesRemaining: 5, source: 'test' },
         ],
       })
       const result = removeBuff(player, 'buff1')
@@ -521,7 +521,7 @@ describe('_base hero utilities', () => {
   describe('hasBuff', () => {
     it('should return true when buff exists', () => {
       const player = makePlayer({
-        buffs: [{ id: 'test', stacks: 1, ticksRemaining: 5, source: 'test' }],
+        buffs: [{ id: 'test', stacks: 1, cyclesRemaining: 5, source: 'test' }],
       })
       expect(hasBuff(player, 'test')).toBe(true)
     })
@@ -535,7 +535,7 @@ describe('_base hero utilities', () => {
   describe('getBuffStacks', () => {
     it('should return buff stacks', () => {
       const player = makePlayer({
-        buffs: [{ id: 'test', stacks: 5, ticksRemaining: 5, source: 'test' }],
+        buffs: [{ id: 'test', stacks: 5, cyclesRemaining: 5, source: 'test' }],
       })
       expect(getBuffStacks(player, 'test')).toBe(5)
     })
@@ -784,7 +784,7 @@ describe('_base hero utilities', () => {
   describe('addEvent', () => {
     it('should add event to state', () => {
       const state = makeGameState()
-      const event: GameEvent = { tick: 1, type: 'test', payload: {} }
+      const event: GameEvent = { cycle: 1, type: 'test', payload: {} }
       const result = addEvent(state, event)
       expect(result.events).toHaveLength(1)
     })
@@ -816,11 +816,11 @@ describe('_base hero utilities', () => {
       const player = makePlayer({
         zone: 'mid-t1-chaff',
         buffs: [
-          { id: 'tp_channeling', stacks: 1, ticksRemaining: 1, source: 'recall_token' },
+          { id: 'tp_channeling', stacks: 1, cyclesRemaining: 1, source: 'recall_token' },
           {
             id: 'tp_destination',
             stacks: 1,
-            ticksRemaining: 2,
+            cyclesRemaining: 2,
             source: 'recall_token',
             destination: 'chaff-fountain',
           },
@@ -828,7 +828,7 @@ describe('_base hero utilities', () => {
       })
       const state = makeGameState({ players: { p1: player } })
 
-      const result = tickAllBuffs(state)
+      const result = cycleAllBuffs(state)
 
       expect(result.players['p1']!.zone).toBe('chaff-fountain')
       expect(result.players['p1']!.buffs).toHaveLength(0)
@@ -841,11 +841,11 @@ describe('_base hero utilities', () => {
       const player = makePlayer({
         zone: 'mid-t1-chaff',
         buffs: [
-          { id: 'tp_channeling', stacks: 1, ticksRemaining: 2, source: 'recall_token' },
+          { id: 'tp_channeling', stacks: 1, cyclesRemaining: 2, source: 'recall_token' },
           {
             id: 'tp_destination',
             stacks: 1,
-            ticksRemaining: 3,
+            cyclesRemaining: 3,
             source: 'recall_token',
             destination: 'chaff-fountain',
           },
@@ -853,7 +853,7 @@ describe('_base hero utilities', () => {
       })
       const state = makeGameState({ players: { p1: player } })
 
-      const result = tickAllBuffs(state)
+      const result = cycleAllBuffs(state)
 
       expect(result.players['p1']!.zone).toBe('mid-t1-chaff')
       expect(result.players['p1']!.buffs).toHaveLength(2)
@@ -865,11 +865,11 @@ describe('_base hero utilities', () => {
         team: 'audit',
         zone: 'mid-t1-audit',
         buffs: [
-          { id: 'tp_channeling', stacks: 1, ticksRemaining: 1, source: 'recall_token' },
+          { id: 'tp_channeling', stacks: 1, cyclesRemaining: 1, source: 'recall_token' },
           {
             id: 'tp_destination',
             stacks: 1,
-            ticksRemaining: 2,
+            cyclesRemaining: 2,
             source: 'recall_token',
             destination: 'audit-fountain',
           },
@@ -877,7 +877,7 @@ describe('_base hero utilities', () => {
       })
       const state = makeGameState({ players: { p1: player } })
 
-      const result = tickAllBuffs(state)
+      const result = cycleAllBuffs(state)
 
       expect(result.players['p1']!.zone).toBe('audit-fountain')
       expect(result.players['p1']!.buffs).toHaveLength(0)
@@ -886,11 +886,11 @@ describe('_base hero utilities', () => {
     it('should handle missing destination buff gracefully', () => {
       const player = makePlayer({
         zone: 'mid-t1-chaff',
-        buffs: [{ id: 'tp_channeling', stacks: 1, ticksRemaining: 1, source: 'recall_token' }],
+        buffs: [{ id: 'tp_channeling', stacks: 1, cyclesRemaining: 1, source: 'recall_token' }],
       })
       const state = makeGameState({ players: { p1: player } })
 
-      const result = tickAllBuffs(state)
+      const result = cycleAllBuffs(state)
 
       expect(result.players['p1']!.zone).toBe('mid-t1-chaff')
       expect(result.players['p1']!.buffs).toHaveLength(0)

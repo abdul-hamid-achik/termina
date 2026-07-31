@@ -97,8 +97,8 @@ function resolveQ(
     updatedTarget = applyBuff(updatedTarget, {
       id: 'stun',
       stacks: 1,
-      // 2 = one gated action: reaped same-tick by tickAllBuffs (see applyBuff note)
-      ticksRemaining: 2,
+      // 2 = one gated action: reaped same-tick by cycleAllBuffs (see applyBuff note)
+      cyclesRemaining: 2,
       source: player.id,
     })
 
@@ -106,7 +106,7 @@ function resolveQ(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -142,16 +142,16 @@ function resolveW(
     caster = applyBuff(caster, {
       id: 'shield',
       stacks: shieldAmount,
-      ticksRemaining: 3,
+      cyclesRemaining: 3,
       source: player.id,
     })
     // DMZ marker (rides alongside the shield): when it ends — whether the shield
     // expired or was broken — it explodes for W_EXPLOSION_DAMAGE magical to
-    // enemies in the zone. The blast is processed in tickAllBuffs on its expiry.
+    // enemies in the zone. The blast is processed in cycleAllBuffs on its expiry.
     caster = applyBuff(caster, {
       id: 'dmz',
       stacks: W_EXPLOSION_DAMAGE,
-      ticksRemaining: 3,
+      cyclesRemaining: 3,
       source: player.id,
     })
 
@@ -159,7 +159,7 @@ function resolveW(
       state: updatePlayer(state, caster),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -193,7 +193,7 @@ function resolveE(
       applyBuff(e, {
         id: 'taunt',
         stacks: 1,
-        ticksRemaining: 2,
+        cyclesRemaining: 2,
         source: player.id,
       }),
     )
@@ -202,7 +202,7 @@ function resolveE(
       state: updatePlayers(state, [caster, ...taunted]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -240,13 +240,13 @@ function resolveR(
       let updated = applyBuff(e, {
         id: 'root',
         stacks: 1,
-        ticksRemaining: 2,
+        cyclesRemaining: 2,
         source: player.id,
       })
       updated = applyBuff(updated, {
         id: 'dpi_dot',
         stacks: dotPerTick,
-        ticksRemaining: 3,
+        cyclesRemaining: 3,
         source: player.id,
       })
       return updated
@@ -256,7 +256,7 @@ function resolveR(
       state: updatePlayers(state, [caster, ...updatedEnemies]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -285,7 +285,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
     const updated = applyBuff(player, {
       id: 'packetInspection',
       stacks: Math.round(PACKET_INSPECTION_REFLECT * 100),
-      ticksRemaining: 9999,
+      cyclesRemaining: 9999,
       source: playerId,
     })
     return updatePlayer(state, updated)

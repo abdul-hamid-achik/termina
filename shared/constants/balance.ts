@@ -2,32 +2,32 @@
 
 import type { WaveUnitState, CacheState } from '../types/game'
 
-export const TICK_DURATION_MS = 4000
+export const CYCLE_DURATION_MS = 4000
 export const ACTION_WINDOW_MS = 3500
 
 // ── Gold ─────────────────────────────────────────────────────────
 
-export const PASSIVE_GOLD_PER_TICK = 4
-export const WAVE_GOLD_MIN = 30
-export const WAVE_GOLD_MAX = 50
-/** Fixed normal-wave last-hit gold (was random 30–50). Deterministic so farm
+export const PASSIVE_SCRIP_PER_CYCLE = 4
+export const WAVE_SCRIP_MIN = 30
+export const WAVE_SCRIP_MAX = 50
+/** Fixed normal-wave last-hit scrip (was random 30–50). Deterministic so farm
  * reward doesn't swing on dice; equals the old average so economy is unchanged. */
-export const WAVE_GOLD = 40
-export const BREACH_UNIT_GOLD = 75
+export const WAVE_SCRIP = 40
+export const BREACH_UNIT_SCRIP = 75
 export const KILL_BOUNTY_BASE = 200
 export const KILL_BOUNTY_PER_STREAK = 50
-export const ASSIST_GOLD = 100
-export const ICE_GOLD = 500
-export const TENANT_GOLD = 600
-export const STARTING_GOLD = 600
+export const ASSIST_SCRIP = 100
+export const ICE_SCRIP = 500
+export const TENANT_SCRIP = 600
+export const STARTING_SCRIP = 600
 /** Fraction of an item's cost refunded when sold. */
 export const SELL_REFUND_RATIO = 0.5
 
 /**
- * Comeback bounty: kill gold is multiplied by a factor based on the
+ * Comeback bounty: kill scrip is multiplied by a factor based on the
  * net-worth gap between teams. The killer earns up to +50% if their
  * team is behind, and as little as -30% if their team is far ahead.
- * Net-worth gap of COMEBACK_FULL_GAP gold yields the cap multiplier.
+ * Net-worth gap of COMEBACK_FULL_GAP scrip yields the cap multiplier.
  */
 export const COMEBACK_BONUS_MAX = 0.5
 export const COMEBACK_PENALTY_MAX = 0.3
@@ -124,7 +124,7 @@ export const WAVE_XP_SHARED = Math.floor(WAVE_XP * WAVE_XP_SHARED_RATIO)
  * Comeback XP: kill XP is multiplied by a factor based on the average team
  * LEVEL gap (see xpComebackMultiplier). A team behind in average level earns
  * bonus XP so a level lead can't compound without a catch-up mechanism — the
- * XP mirror of the gold comeback bounty above. An average level gap of
+ * XP mirror of the scrip comeback bounty above. An average level gap of
  * XP_COMEBACK_FULL_LEVEL_GAP yields the cap multiplier.
  */
 export const XP_COMEBACK_BONUS_MAX = 0.5
@@ -146,19 +146,19 @@ export const SPELL_LIFESTEAL_PERCENT = 0.3
 // ── Respawn ──────────────────────────────────────────────────────
 
 /**
- * Respawn time in ticks = base + max(0, level - freeLevels) * perLevel
+ * Respawn time in cycles = base + max(0, level - freeLevels) * perLevel
  * Level 1 death = 3 ticks (12s) — roughly a wave wave, so a gank always
  * costs something. Scales smoothly: lvl 5 ≈ 28s, lvl 10 ≈ 48s, lvl 25 ≈ 108s.
  */
-export const RESPAWN_BASE_TICKS = 3
-export const RESPAWN_PER_LEVEL_TICKS = 1
+export const RESPAWN_BASE_CYCLES = 3
+export const RESPAWN_PER_LEVEL_CYCLES = 1
 export const RESPAWN_FREE_LEVELS = 1
 
 // ── Buyback ──────────────────────────────────────────────────────
 
 export const BUYBACK_BASE_COST = 100
 export const BUYBACK_COST_PER_LEVEL = 25
-export const BUYBACK_COOLDOWN_TICKS = 90 // 6 minutes at 4s/tick
+export const BUYBACK_COOLDOWN_CYCLES = 90 // 6 minutes at 4s/cycle
 
 // ── Inventory ────────────────────────────────────────────────────
 
@@ -166,25 +166,25 @@ export const MAX_ITEMS = 6
 
 // ── Wards ────────────────────────────────────────────────────────
 
-export const CAMTAP_DURATION_TICKS = 45
-export const SNIFFER_DURATION_TICKS = 30
+export const CAMTAP_DURATION_CYCLES = 45
+export const SNIFFER_DURATION_CYCLES = 30
 export const WARD_LIMIT_PER_TEAM = 3
 export const SNIFFER_TRUE_SIGHT_RADIUS = 1
 
 // ── Tenant ───────────────────────────────────────────────────────
 
-export const TENANT_RESPAWN_TICKS = 90
+export const TENANT_RESPAWN_CYCLES = 90
 export const TENANT_BASE_HP = 5000
 export const TENANT_HP_PER_MINUTE = 100
 export const TENANT_ATTACK = 150
-export const TENANT_BACKUP_TICKS = 300 // 5 minutes at 4s/tick
+export const TENANT_BACKUP_CYCLES = 300 // 5 minutes at 4s/cycle
 
 // ── Caches ───────────────────────────────────────────────────────────
 
-export const CACHE_INTERVAL_TICKS = 60 // Spawn every 60 ticks (4 min)
-export const CACHE_DURATION_TICKS = 30 // Caches expire after 30 ticks (2 min)
+export const CACHE_INTERVAL_CYCLES = 60 // Spawn every 60 ticks (4 min)
+export const CACHE_DURATION_CYCLES = 30 // Caches expire after 30 ticks (2 min)
 
-// Cache buff durations (in ticks). Typed against CacheState['type'] so adding a
+// Cache buff durations (in cycles). Typed against CacheState['type'] so adding a
 // new cache type is a compile error here until the duration map is updated.
 export const CACHE_BUFF_TICKS: Record<CacheState['type'], number> = {
   haste: 15, // 60 seconds
@@ -196,12 +196,12 @@ export const CACHE_BUFF_TICKS: Record<CacheState['type'], number> = {
 
 // ── Surrender ────────────────────────────────────────────────────
 
-export const SURRENDER_MIN_TICK = 225 // 15 minutes at 4s/tick
+export const SURRENDER_MIN_CYCLE = 225 // 15 minutes at 4s/cycle
 export const SURRENDER_VOTE_THRESHOLD = 0.6 // 60% majority required
 
 // ── Wave Waves ──────────────────────────────────────────────────
 
-export const WAVE_INTERVAL_TICKS = 8
+export const WAVE_INTERVAL_CYCLES = 8
 export const LINE_UNITS_PER_WAVE = 3
 export const SWEEP_UNITS_PER_WAVE = 1
 export const BREACH_WAVE_INTERVAL = 5 // every 5th wave includes a breach wave
@@ -219,7 +219,7 @@ export const BREACH_UNIT_ATTACK = 50
  * Ice and Ancient INTEG are fixed while wave output never scaled, so a wave
  * that could not break a T1 at minute 5 still could not break it at minute 45:
  * `bun run sim 16` measured 31–73m, median 60m. Every
- * WAVE_ESCALATION_INTERVAL_TICKS, wave INTEG and wave damage each gain one
+ * WAVE_ESCALATION_INTERVAL_CYCLES, wave INTEG and wave damage each gain one
  * WAVE_ESCALATION_STEP of their base value, so lane pressure compounds and
  * pushes eventually close the game. These values measured 14–38m (median 28m)
  * over 16 matches and 9–35m (median 24m) over 24.
@@ -234,7 +234,7 @@ export const BREACH_UNIT_ATTACK = 50
  * one-shot heroes. Tuning order: shorten the interval before growing the step —
  * the step compounds against the cap, the interval front-loads the mid game.
  */
-export const WAVE_ESCALATION_INTERVAL_TICKS = 50
+export const WAVE_ESCALATION_INTERVAL_CYCLES = 50
 export const WAVE_ESCALATION_STEP = 0.35
 export const WAVE_ESCALATION_MAX_MULTIPLIER = 4
 
@@ -250,30 +250,30 @@ const WAVE_BASE_ATTACK: Record<WaveUnitState['type'], number> = {
   breach: BREACH_UNIT_ATTACK,
 }
 
-/** Wave stat multiplier at `tick`. 1.0 for the whole first interval. */
-export function waveEscalationMultiplier(tick: number): number {
-  const steps = Math.max(0, Math.floor(tick / WAVE_ESCALATION_INTERVAL_TICKS))
+/** Wave stat multiplier at `cycle`. 1.0 for the whole first interval. */
+export function waveEscalationMultiplier(cycle: number): number {
+  const steps = Math.max(0, Math.floor(cycle / WAVE_ESCALATION_INTERVAL_CYCLES))
   return Math.min(WAVE_ESCALATION_MAX_MULTIPLIER, 1 + steps * WAVE_ESCALATION_STEP)
 }
 
 /**
- * INTEG a wave of `type` spawns with at `tick` — and therefore its max INTEG, since
+ * INTEG a wave of `type` spawns with at `cycle` — and therefore its max INTEG, since
  * lane waves never heal. Any surface that renders a wave INTEG bar or a
  * fraction-of-max threshold has to read this rather than LINE_UNIT_HP &co,
- * which are only the tick-0 values once escalation starts.
+ * which are only the cycle-0 values once escalation starts.
  */
-export function waveUnitMaxHp(type: WaveUnitState['type'], tick: number): number {
-  return Math.round(WAVE_BASE_HP[type] * waveEscalationMultiplier(tick))
+export function waveUnitMaxHp(type: WaveUnitState['type'], cycle: number): number {
+  return Math.round(WAVE_BASE_HP[type] * waveEscalationMultiplier(cycle))
 }
 
-/** Damage a wave of `type` deals at `tick`. */
-export function waveUnitAttack(type: WaveUnitState['type'], tick: number): number {
-  return Math.round(WAVE_BASE_ATTACK[type] * waveEscalationMultiplier(tick))
+/** Damage a wave of `type` deals at `cycle`. */
+export function waveUnitAttack(type: WaveUnitState['type'], cycle: number): number {
+  return Math.round(WAVE_BASE_ATTACK[type] * waveEscalationMultiplier(cycle))
 }
 
 // ── Neutral Waves ─────────────────────────────────────────────────
 
-export const SILT_DWELLER_INTERVAL_TICKS = 60 // Spawn neutrals every 60 ticks
+export const SILT_DWELLER_INTERVAL_CYCLES = 60 // Spawn neutrals every 60 ticks
 
 /** Max live neutrals per jungle camp zone. Prevents unbounded accumulation
  *  if a camp is never cleared (unlike lane waves which have enforceWaveZoneCap). */
@@ -282,14 +282,14 @@ export const MAX_NEUTRALS_PER_CAMP = 4
 // Neutral wave types with stats
 export const SILT_DWELLERS = {
   // Small camp
-  stub: { integ: 250, attack: 10, gold: 20, xp: 25 },
+  stub: { integ: 250, attack: 10, scrip: 20, xp: 25 },
   // Medium camp
-  watchdog: { integ: 550, attack: 25, gold: 40, xp: 50 },
+  watchdog: { integ: 550, attack: 25, scrip: 40, xp: 50 },
   // Large camp
-  warden: { integ: 900, attack: 40, gold: 60, xp: 80 },
+  warden: { integ: 900, attack: 40, scrip: 60, xp: 80 },
   // Ancient
-  orphan: { integ: 1500, attack: 75, gold: 150, xp: 200 },
-  zombie: { integ: 2000, attack: 60, gold: 200, xp: 250 },
+  orphan: { integ: 1500, attack: 75, scrip: 150, xp: 200 },
+  zombie: { integ: 2000, attack: 60, scrip: 200, xp: 250 },
 } as const
 
 export type SiltDwellerType = keyof typeof SILT_DWELLERS
@@ -309,14 +309,14 @@ export const ICE_DEFENSE = 20
  * base zone. Invulnerable until at least one of the owning team's T3
  * ice is destroyed; the game ends when an Ancient falls.
  */
-export const ANCIENT_HP = 6000
+export const TERMINAL_HP = 6000
 
 /**
  * Waves stuck in a base zone with nothing to attack (Ancient still
  * invulnerable) are despawned ("garbage collected") after this many idle
  * ticks — prevents unbounded wave pileups in base.
  */
-export const WAVE_BASE_IDLE_DESPAWN_TICKS = 3
+export const WAVE_BASE_IDLE_DESPAWN_CYCLES = 3
 
 /**
  * Defensive cap on lane waves per team per zone. When exceeded the
@@ -327,31 +327,31 @@ export const MAX_WAVE_UNITS_PER_ZONE_PER_TEAM = 12
 
 // ── Fountain ─────────────────────────────────────────────────────
 
-export const FOUNTAIN_HEAL_PER_TICK_PERCENT = 15
-export const FOUNTAIN_BW_PER_TICK_PERCENT = 15
+export const FOUNTAIN_HEAL_PER_CYCLE_PERCENT = 15
+export const FOUNTAIN_BW_PER_CYCLE_PERCENT = 15
 
-export const HARDEN_DURATION_TICKS = 5
-export const HARDEN_COOLDOWN_TICKS = 300
+export const HARDEN_DURATION_CYCLES = 5
+export const HARDEN_COOLDOWN_CYCLES = 300
 
 // ── BREACH (access state) ────────────────────────────────────────
 // Closed by default. `breach <target>` opens a crew-wide window so code
 // damage is full and hard control can land. Kinetic never needs access.
 // Duration 5: room for breach + hard control + one follow-up. CD 10 / cost 50
 // keep it a deliberate spend, not free every cycle.
-export const BREACH_DURATION_TICKS = 5
-export const BREACH_COOLDOWN_TICKS = 10
+export const BREACH_DURATION_CYCLES = 5
+export const BREACH_COOLDOWN_CYCLES = 10
 export const BREACH_BW_COST = 50
 
 // ── Day/Night Cycle ──────────────────────────────────────────────
 
-export const DAY_DURATION_TICKS = 300
-export const NIGHT_DURATION_TICKS = 240
+export const DAY_DURATION_CYCLES = 300
+export const NIGHT_DURATION_CYCLES = 240
 export const NIGHT_VISION_PENALTY = 1
 
 // ── Burn System ──────────────────────────────────────────────────
 
 export const BURN_HP_THRESHOLD = 0.5
-export const BURN_GOLD_RATIO = 0.5
+export const BURN_SCRIP_RATIO = 0.5
 export const BURN_XP_RATIO = 0.5
 
 // ── Assist System ────────────────────────────────────────────────

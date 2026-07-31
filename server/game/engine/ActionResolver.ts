@@ -6,7 +6,7 @@ import type {
   TeamId,
   TeamState,
   IceState,
-  AncientState,
+  TerminalState,
   ZoneRuntimeState,
   SiltDwellerState,
   CacheState,
@@ -45,25 +45,25 @@ import { HEROES } from '~~/shared/constants/heroes'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import { applyBuff, isBreached, hasBuff, isHardControlBuffId } from '~~/server/game/heroes/_base'
 import { buyItem, sellItem, useItem } from '~~/server/game/items/shop'
-import { awardLastHit, awardIceKill } from './GoldDistributor'
+import { awardLastHit, awardIceKill } from './ScripDistributor'
 import { pickupBackup } from './TenantAI'
 import { pickupCache } from './CacheAI'
-import { resolveAncientAttack, ANCIENT_ZONES } from './AncientSystem'
+import { resolveAncientAttack, TERMINAL_ZONES } from './TerminalSystem'
 import { ITEMS } from '~~/shared/constants/items'
 import {
   WAVE_XP,
   SILT_DWELLERS,
   type SiltDwellerType,
-  WAVE_GOLD_MIN,
-  WAVE_GOLD_MAX,
+  WAVE_SCRIP_MIN,
+  WAVE_SCRIP_MAX,
   waveUnitMaxHp,
   WAVE_XP_SHARED,
-  HARDEN_COOLDOWN_TICKS,
-  BREACH_DURATION_TICKS,
-  BREACH_COOLDOWN_TICKS,
+  HARDEN_COOLDOWN_CYCLES,
+  BREACH_DURATION_CYCLES,
+  BREACH_COOLDOWN_CYCLES,
   BREACH_BW_COST,
   BURN_HP_THRESHOLD,
-  BURN_GOLD_RATIO,
+  BURN_SCRIP_RATIO,
   BURN_XP_RATIO,
   NULL_POINTER_CRIT_CHANCE,
   NULL_POINTER_CRIT_MULTIPLIER,
@@ -196,7 +196,7 @@ export function validateAction(state: GameState, action: PlayerAction): string |
   switch (cmd.type) {
     case 'move': {
       // Auto-path: ANY zone of THIS game's map with a path from here is a valid
-      // order — the hero walks one zone per tick toward it (resolveMovementPhase
+      // order — the hero walks one zone per cycle toward it (resolveMovementPhase
       // takes the next hop; GameLoop re-issues the move until arrival). Gating on
       // the game's live zone set keeps subset maps (one-lane) closed, else a
       // player could step out of the map into an uninitialized zone.
@@ -240,9 +240,9 @@ export function validateAction(state: GameState, action: PlayerAction): string |
         return cmd.ability === 'r' ? 'Ultimate unlocks at level 6' : 'Ability not yet learned'
       }
       if (player.cooldowns[cmd.ability] > 0) {
-        // Concrete rejection (design brief, quick win #1): name + ticks + ready tick.
+        // Concrete rejection (design brief, quick win #1): name + ticks + ready cycle.
         const cd = player.cooldowns[cmd.ability]
-        return `${ability.name} on cooldown — ${cd} tick${cd === 1 ? '' : 's'} left (ready T${state.tick + cd})`
+        return `${ability.name} on cooldown — ${cd} cycle${cd === 1 ? '' : 's'} left (ready T${state.cycle + cd})`
       }
       // R4-11 teaching rejection: single-target hard control on a CLOSED enemy
       // fails with a message that names the fix. AoE control cannot be
@@ -288,7 +288,7 @@ export function validateAction(state: GameState, action: PlayerAction): string |
       if (!itemDef?.active) return 'Item has no active ability'
       // Check item is not on cooldown (via buff)
       const cdBuff = player.buffs.find((b) => b.id === `item_cd_${cmd.item}`)
-      if (cdBuff && cdBuff.ticksRemaining > 0) return 'Item on cooldown'
+      if (cdBuff && cdBuff.cyclesRemaining > 0) return 'Item on cooldown'
       return null
     }
     case 'ward': {
@@ -346,9 +346,9 @@ export function validateAction(state: GameState, action: PlayerAction): string |
       if (target.zone !== player.zone) return 'Target not in your zone'
       if (hasBuff(target, 'airgap')) return `${target.name} is AIRGAPPED — breach fails`
       if (player.bw < BREACH_BW_COST) return `Need ${BREACH_BW_COST} BW to breach`
-      const cd = player.buffs.find((b) => b.id === 'item_cd_breach' && b.ticksRemaining > 0)
+      const cd = player.buffs.find((b) => b.id === 'item_cd_breach' && b.cyclesRemaining > 0)
       if (cd) {
-        return `Breach on cooldown — ${cd.ticksRemaining} cycle${cd.ticksRemaining === 1 ? '' : 's'} left`
+        return `Breach on cooldown — ${cd.cyclesRemaining} cycle${cd.cyclesRemaining === 1 ? '' : 's'} left`
       }
       return null
     }
@@ -402,7 +402,7 @@ function emitStatusApplied(
   pre: Record<string, PlayerState>,
   post: Record<string, PlayerState>,
   sourceId: string,
-  tick: number,
+  cycle: number,
   events: GameEngineEvent[],
 ): void {
   for (const [pid, after] of Object.entries(post)) {
@@ -413,11 +413,11 @@ function emitStatusApplied(
       if (before.buffs.some((b) => b.id === buff.id)) continue
       events.push({
         _tag: 'status_applied',
-        tick,
+        cycle,
         sourceId,
         targetId: pid,
         status: buff.id,
-        ticksRemaining: buff.ticksRemaining,
+        cyclesRemaining: buff.cyclesRemaining,
       })
     }
   }
@@ -426,7 +426,7 @@ function emitStatusApplied(
 // ── Resolution Pipeline ────────────────────────────────────────
 
 /**
- * Resolve all player actions for a tick.
+ * Resolve all player actions for a cycle.
  *
  * Priority-ordered resolution:
  * Phase 0: Item actives — blink/Hardshell/nukes, ahead of the ability they set up
@@ -447,7 +447,7 @@ function emitStatusApplied(
  * Moving cancels TP channeling.
  */
 function resolveMovementPhase(
-  tick: number,
+  cycle: number,
   validActions: PlayerAction[],
   players: Record<string, PlayerState>,
   zones: Record<string, ZoneRuntimeState>,
@@ -461,10 +461,10 @@ function resolveMovementPhase(
     const cmd = action.command as { type: 'move'; zone: string }
     const player = players[action.playerId]
     if (player && player.alive) {
-      // Auto-path: the order names the DESTINATION; each tick moves one hop
-      // along the BFS path (recomputed per tick, so it self-heals). A hop
+      // Auto-path: the order names the DESTINATION; each cycle moves one hop
+      // along the BFS path (recomputed per cycle, so it self-heals). A hop
       // beyond this one stores the destination as moveTarget — GameLoop
-      // re-issues the move next tick until arrival or a new deliberate action.
+      // re-issues the move next cycle until arrival or a new deliberate action.
       const path = findPath(player.zone, cmd.zone, (id) => !!zones[id])
       const nextHop = path[1]
       if (!nextHop) {
@@ -480,19 +480,19 @@ function resolveMovementPhase(
           .filter((b) => b.id === 'slow' || b.id === 'broadcast_slow')
           .reduce((sum, b) => sum + b.stacks, 0),
       )
-      // Deterministic slow: instead of a per-tick coin flip (Math.random < slow),
+      // Deterministic slow: instead of a per-cycle coin flip (Math.random < slow),
       // block movement on a fixed, evenly-spaced pattern that yields the SAME
       // average skip rate (totalSlow% of ticks) but is fully predictable — a
-      // slowed escape no longer fails "because of dice". `(tick * slow) % 100 < slow`
+      // slowed escape no longer fails "because of dice". `(cycle * slow) % 100 < slow`
       // skips exactly slow/100 of ticks, distributed evenly across the slow.
-      const slowBlocks = !hasted && totalSlow > 0 && (tick * totalSlow) % 100 < totalSlow
+      const slowBlocks = !hasted && totalSlow > 0 && (cycle * totalSlow) % 100 < totalSlow
       if (slowBlocks) {
         // Synthesized continuations fail silently — the player already got
         // their feedback when they issued the order.
         if (!action.synthesized) {
           rejected.push({ playerId: action.playerId, reason: 'Slowed — failed to move' })
         }
-        // The slow costs a tick of progress, not the order — keep walking.
+        // The slow costs a cycle of progress, not the order — keep walking.
         playerUpdates[action.playerId] = { ...playerUpdates[action.playerId], moveTarget: cmd.zone }
         continue
       }
@@ -508,7 +508,7 @@ function resolveMovementPhase(
         )
         events.push({
           _tag: 'teleport_cancelled',
-          tick,
+          cycle,
           playerId: action.playerId,
           reason: 'movement',
         })
@@ -524,11 +524,11 @@ function resolveMovementPhase(
 
 /**
  * Phase 1: Instant abilities (stuns, silences) — resolve simultaneously.
- * These apply before movement, but they do NOT gate the victim's SAME-tick
- * action (which was already validated at tick start) — a cast-applied disable
- * gates the victim's NEXT tick, which is why those disables use ticksRemaining 2
- * (see the applyBuff note in heroes/_base): a 1-tick disable is reaped this same
- * tick before any future validateAction sees it.
+ * These apply before movement, but they do NOT gate the victim's SAME-cycle
+ * action (which was already validated at cycle start) — a cast-applied disable
+ * gates the victim's NEXT cycle, which is why those disables use cyclesRemaining 2
+ * (see the applyBuff note in heroes/_base): a 1-cycle disable is reaped this same
+ * cycle before any future validateAction sees it.
  */
 function resolveInstantCastsPhase(
   state: GameState,
@@ -538,7 +538,7 @@ function resolveInstantCastsPhase(
   waves: WaveUnitState[],
   ice: IceState[],
   neutrals: SiltDwellerState[],
-  ancients: { chaff: AncientState; audit: AncientState },
+  terminals: { chaff: TerminalState; audit: TerminalState },
   events: GameEngineEvent[],
   heroAttackers: Map<string, string>,
   rejected: Array<{ playerId: string; reason: string }>,
@@ -568,7 +568,7 @@ function resolveInstantCastsPhase(
       waves,
       ice,
       neutrals,
-      ancients,
+      terminals,
       action,
       events,
       heroAttackers,
@@ -587,11 +587,11 @@ function resolveInstantCastsPhase(
 }
 
 /**
- * Phase 3a: Burns — allied waves below 50% INTEG. The burner gets reduced gold
+ * Phase 3a: Burns — allied waves below 50% INTEG. The burner gets reduced scrip
  * + XP for denying (preventing the enemy from last-hitting).
  */
 function resolveDenyPhase(
-  tick: number,
+  cycle: number,
   validActions: PlayerAction[],
   players: Record<string, PlayerState>,
   waves: WaveUnitState[],
@@ -615,25 +615,25 @@ function resolveDenyPhase(
     // neither the level-1 constant (the window shrinks every minute until
     // denying is impossible) nor the current tick's tier (the window widens past
     // the threshold for any wave that outlived an escalation boundary) is
-    // right. Fall back to the tick-0 base for fixtures that omit maxInteg.
+    // right. Fall back to the cycle-0 base for fixtures that omit maxInteg.
     if (wave.integ > (wave.maxInteg ?? waveUnitMaxHp(wave.type, 0)) * BURN_HP_THRESHOLD) continue
 
     waves[waveIdx] = { ...wave, integ: 0 }
 
-    const burnGold = Math.floor(((WAVE_GOLD_MIN + WAVE_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
+    const burnGold = Math.floor(((WAVE_SCRIP_MIN + WAVE_SCRIP_MAX) / 2) * BURN_SCRIP_RATIO)
     playerUpdates[action.playerId] = {
       ...playerUpdates[action.playerId],
-      gold: denier.gold + burnGold,
+      scrip: denier.scrip + burnGold,
       xp: denier.xp + Math.floor(WAVE_XP * BURN_XP_RATIO),
     }
 
     events.push({
       _tag: 'wave_burn',
-      tick,
+      cycle,
       playerId: action.playerId,
       waveId: wave.id,
       waveType: wave.type,
-      goldAwarded: burnGold,
+      scripAwarded: burnGold,
     })
   }
   return { players: applyPlayerUpdates(players, playerUpdates), waves }
@@ -654,7 +654,7 @@ function resolveAttackPhase(
   waves: WaveUnitState[],
   ice: IceState[],
   neutrals: SiltDwellerState[],
-  ancients: { chaff: AncientState; audit: AncientState },
+  terminals: { chaff: TerminalState; audit: TerminalState },
   events: GameEngineEvent[],
   rejected: Array<{ playerId: string; reason: string }>,
   heroAttackers: Map<string, string>,
@@ -669,7 +669,7 @@ function resolveAttackPhase(
   waves: WaveUnitState[]
   ice: IceState[]
   neutrals: SiltDwellerState[]
-  ancients: { chaff: AncientState; audit: AncientState }
+  terminals: { chaff: TerminalState; audit: TerminalState }
 } {
   let playerUpdates: PlayerUpdates = {}
 
@@ -699,8 +699,8 @@ function resolveAttackPhase(
     const attacker = players[action.playerId]
     if (!attacker || !attacker.alive) continue
 
-    // One action per player per 4s tick: a mis-targeted attack that resolves to
-    // nothing must SAY so, otherwise the tick is eaten in silence. Every exit
+    // One action per player per 4s cycle: a mis-targeted attack that resolves to
+    // nothing must SAY so, otherwise the cycle is eaten in silence. Every exit
     // below reports; `rejected` is also what excludes the player from
     // succeededActions (no phantom on-attack passive for a swing that missed)
     // and from the tutorial's "you performed the taught verb" check.
@@ -821,7 +821,7 @@ function resolveAttackPhase(
             }
             events.push({
               _tag: 'damage',
-              tick: state.tick,
+              cycle: state.cycle,
               sourceId: action.playerId,
               targetId: chainTarget.id,
               amount: chainDamage,
@@ -911,7 +911,7 @@ function resolveAttackPhase(
         totalDamage += magicDmg
         events.push({
           _tag: 'damage',
-          tick: state.tick,
+          cycle: state.cycle,
           sourceId: action.playerId,
           targetId,
           amount: magicDmg,
@@ -937,19 +937,19 @@ function resolveAttackPhase(
       const newInteg = Math.max(0, targetPendingHp - hpLoss)
 
       if (attacker.items.includes('concussion_hammer') && Math.random() < 0.25) {
-        // ticksRemaining 2 = one gated action: reaped same-tick by tickAllBuffs
+        // cyclesRemaining 2 = one gated action: reaped same-cycle by cycleAllBuffs
         // (see the applyBuff note), so 1 would never reach the next validateAction.
-        newBuffs.push({ id: 'stun', stacks: 1, ticksRemaining: 2, source: attacker.id })
+        newBuffs.push({ id: 'stun', stacks: 1, cyclesRemaining: 2, source: attacker.id })
         // Emitted here rather than by a buff diff: the attack phase stages its
         // changes in playerUpdates/pendingBuffs, so there is no post state to
         // diff against until the whole phase has been folded in.
         events.push({
           _tag: 'status_applied',
-          tick: state.tick,
+          cycle: state.cycle,
           sourceId: action.playerId,
           targetId,
           status: 'stun',
-          ticksRemaining: 2,
+          cyclesRemaining: 2,
         })
       }
 
@@ -957,7 +957,7 @@ function resolveAttackPhase(
         newBuffs = newBuffs.filter((b) => b.id !== 'tp_channeling' && b.id !== 'tp_destination')
         events.push({
           _tag: 'teleport_cancelled',
-          tick: state.tick,
+          cycle: state.cycle,
           playerId: targetId,
           reason: 'damage',
         })
@@ -975,7 +975,7 @@ function resolveAttackPhase(
         }
         events.push({
           _tag: 'damage',
-          tick: state.tick,
+          cycle: state.cycle,
           sourceId: targetId,
           targetId: action.playerId,
           amount: returnDamage,
@@ -1000,7 +1000,7 @@ function resolveAttackPhase(
 
         events.push({
           _tag: 'damage',
-          tick: state.tick,
+          cycle: state.cycle,
           sourceId: action.playerId,
           targetId,
           amount: damage,
@@ -1012,7 +1012,7 @@ function resolveAttackPhase(
       if (!resolved) {
         // Count the same index space waveInZoneByIndex walks (every wave in
         // the zone, dead-but-unreaped included) so the quoted range is the one
-        // the player can actually type this tick.
+        // the player can actually type this cycle.
         const wavesInZone = waves.filter((c) => c.zone === attacker.zone).length
         miss(
           wavesInZone === 0
@@ -1049,7 +1049,7 @@ function resolveAttackPhase(
 
       events.push({
         _tag: 'damage',
-        tick: state.tick,
+        cycle: state.cycle,
         sourceId: action.playerId,
         targetId: wave.id,
         amount: attackDamage,
@@ -1069,7 +1069,7 @@ function resolveAttackPhase(
       if (iceTarget.invulnerable) {
         events.push({
           _tag: 'ice_invulnerable',
-          tick: state.tick,
+          cycle: state.cycle,
           zone: iceTarget.zone,
         })
         continue
@@ -1100,7 +1100,7 @@ function resolveAttackPhase(
 
       events.push({
         _tag: 'damage',
-        tick: state.tick,
+        cycle: state.cycle,
         sourceId: action.playerId,
         targetId: `ice_${iceTarget.zone}`,
         amount: attackDamage,
@@ -1123,7 +1123,7 @@ function resolveAttackPhase(
 
       events.push({
         _tag: 'damage',
-        tick: state.tick,
+        cycle: state.cycle,
         sourceId: action.playerId,
         targetId: 'tenant',
         amount: attackDamage,
@@ -1158,15 +1158,15 @@ function resolveAttackPhase(
 
       events.push({
         _tag: 'damage',
-        tick: state.tick,
+        cycle: state.cycle,
         sourceId: action.playerId,
         targetId: neutral.id,
         amount: attackDamage,
         damageType: 'kinetic',
       })
-    } else if (cmd.target.kind === 'ancient') {
+    } else if (cmd.target.kind === 'terminal') {
       const enemyTeam: TeamId = attacker.team === 'chaff' ? 'audit' : 'chaff'
-      if (attacker.zone !== ANCIENT_ZONES[enemyTeam]) {
+      if (attacker.zone !== TERMINAL_ZONES[enemyTeam]) {
         miss('You must be in the enemy base to attack the Ancient')
         continue
       }
@@ -1175,7 +1175,7 @@ function resolveAttackPhase(
       const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
 
       const result = resolveAncientAttack(
-        { ...state, players, waves, ice, ancients },
+        { ...state, players, waves, ice, terminals },
         action.playerId,
         attackDamage,
       )
@@ -1188,7 +1188,7 @@ function resolveAttackPhase(
         continue
       }
 
-      ancients = result.state.ancients
+      terminals = result.state.terminals
       events.push(...result.events)
       holdTarget()
 
@@ -1198,7 +1198,7 @@ function resolveAttackPhase(
     } else {
       // TargetRef also carries 'zone' and 'self', which the wire schema accepts
       // for an attack but no branch above handles — without this they fall off
-      // the end of the chain and eat the tick in silence.
+      // the end of the chain and eat the cycle in silence.
       miss(`You cannot attack a ${cmd.target.kind}`)
     }
   }
@@ -1208,7 +1208,7 @@ function resolveAttackPhase(
     waves,
     ice,
     neutrals,
-    ancients,
+    terminals,
   }
 }
 
@@ -1292,7 +1292,7 @@ function resolvePassivesPhase(
           {
             id: 'spellblock',
             stacks: 1,
-            ticksRemaining: LINKENS_RECHARGE_TICKS,
+            cyclesRemaining: LINKENS_RECHARGE_TICKS,
             source: 'intercept_shell',
           },
         ]
@@ -1345,7 +1345,7 @@ function resolveShopPhase(
       players = { ...result.players }
       events.push({
         _tag: 'item_purchased',
-        tick: state.tick,
+        cycle: state.cycle,
         playerId: action.playerId,
         itemId: cmd.item,
         cost: ITEMS[cmd.item]?.cost ?? 0,
@@ -1383,7 +1383,7 @@ function resolveShopPhase(
       players = { ...result.players }
       events.push({
         _tag: 'item_sold',
-        tick: state.tick,
+        cycle: state.cycle,
         playerId: action.playerId,
         itemId: cmd.item,
         refund: Math.floor((ITEMS[cmd.item]?.cost ?? 0) * SELL_REFUND_RATIO),
@@ -1399,7 +1399,7 @@ function resolveShopPhase(
  *
  * Runs BEFORE instant casts and movement, and is fed by its own per-player
  * action slot (GameLoop keys the queue by main/item), so an item and an ability
- * can land in the same 4s tick. The ORDER is the whole point: blink → stun →
+ * can land in the same 4s cycle. The ORDER is the whole point: blink → stun →
  * nuke only reads as a combo if the item resolves first. Resolving actives
  * after the ability (where they used to sit, in the shop phase) reverses every
  * such combo — you blink to where the fight WAS.
@@ -1414,7 +1414,7 @@ function resolveItemActivesPhase(
   zones: Record<string, ZoneRuntimeState>,
   waves: WaveUnitState[],
   ice: IceState[],
-  ancients: { chaff: AncientState; audit: AncientState },
+  terminals: { chaff: TerminalState; audit: TerminalState },
   events: GameEngineEvent[],
   rejected: Array<{ playerId: string; reason: string }>,
   heroAttackers: Map<string, string>,
@@ -1426,7 +1426,7 @@ function resolveItemActivesPhase(
   const uses = validActions.filter((a) => a.command.type === 'use')
   for (const action of uses) {
     const cmd = action.command as { type: 'use'; item: string; target?: TargetRef | string }
-    const tempState: GameState = { ...state, players, zones, waves, ice, ancients }
+    const tempState: GameState = { ...state, players, zones, waves, ice, terminals }
     const result = Effect.runSync(
       useItem(tempState, action.playerId, cmd.item, cmd.target).pipe(
         Effect.match({
@@ -1447,7 +1447,7 @@ function resolveItemActivesPhase(
       zones = { ...result.zones }
       events.push({
         _tag: 'ability_used',
-        tick: state.tick,
+        cycle: state.cycle,
         playerId: action.playerId,
         abilityId: ITEMS[cmd.item]?.active?.id ?? cmd.item,
       })
@@ -1475,7 +1475,7 @@ function resolveItemActivesPhase(
           blockTargetId,
           action.playerId,
           'code',
-          state.tick,
+          state.cycle,
           events,
         )
       }
@@ -1495,7 +1495,7 @@ function resolveItemActivesPhase(
         if (delta > 0) {
           events.push({
             _tag: 'damage',
-            tick: state.tick,
+            cycle: state.cycle,
             sourceId: action.playerId,
             targetId: pid,
             amount: delta,
@@ -1520,7 +1520,7 @@ function resolveItemActivesPhase(
                 }
                 events.push({
                   _tag: 'damage',
-                  tick: state.tick,
+                  cycle: state.cycle,
                   sourceId: pid,
                   targetId: action.playerId,
                   amount: returnDamage,
@@ -1532,7 +1532,7 @@ function resolveItemActivesPhase(
         } else if (delta < 0) {
           events.push({
             _tag: 'heal',
-            tick: state.tick,
+            cycle: state.cycle,
             sourceId: action.playerId,
             targetId: pid,
             amount: -delta,
@@ -1542,7 +1542,7 @@ function resolveItemActivesPhase(
 
       // Hex (Lockout Shunt) and Cyclone (Stasis Shunt) are pure disables with no HP
       // delta — without this diff they landed completely silently.
-      emitStatusApplied(prePlayers, players, action.playerId, state.tick, events)
+      emitStatusApplied(prePlayers, players, action.playerId, state.cycle, events)
     }
   }
 
@@ -1550,7 +1550,7 @@ function resolveItemActivesPhase(
 }
 
 /**
- * Post-shop phases: harden, backup/cache pickup, maxInteg/maxBw recalc, gold/XP
+ * Post-shop phases: harden, backup/cache pickup, maxInteg/maxBw recalc, scrip/XP
  * awards (wave/neutral/ice), damage tracking, ward placement. These all
  * run after the shop phase and before the final state assembly.
  */
@@ -1597,10 +1597,10 @@ function resolvePostShopPhases(
       players = { ...players, [action.playerId]: updated }
       events.push({
         _tag: 'breach_opened',
-        tick: state.tick,
+        cycle: state.cycle,
         playerId: action.playerId,
         targetId: action.playerId,
-        durationTicks: 0, // flush
+        durationCycles: 0, // flush
       })
       continue
     }
@@ -1610,7 +1610,7 @@ function resolvePostShopPhases(
     if (!target || target.team === caster.team || !target.alive || target.zone !== caster.zone)
       continue
     if (hasBuff(target, 'airgap') || caster.bw < BREACH_BW_COST) continue
-    if (caster.buffs.some((b) => b.id === 'item_cd_breach' && b.ticksRemaining > 0)) continue
+    if (caster.buffs.some((b) => b.id === 'item_cd_breach' && b.cyclesRemaining > 0)) continue
 
     let nextCaster = {
       ...caster,
@@ -1619,13 +1619,13 @@ function resolvePostShopPhases(
     nextCaster = applyBuff(nextCaster, {
       id: 'item_cd_breach',
       stacks: 1,
-      ticksRemaining: BREACH_COOLDOWN_TICKS,
+      cyclesRemaining: BREACH_COOLDOWN_CYCLES,
       source: caster.id,
     })
     let nextTarget = applyBuff(target, {
       id: 'breached',
       stacks: 1,
-      ticksRemaining: BREACH_DURATION_TICKS,
+      cyclesRemaining: BREACH_DURATION_CYCLES,
       source: caster.id,
     })
     players = {
@@ -1635,10 +1635,10 @@ function resolvePostShopPhases(
     }
     events.push({
       _tag: 'breach_opened',
-      tick: state.tick,
+      cycle: state.cycle,
       playerId: action.playerId,
       targetId: target.id,
-      durationTicks: BREACH_DURATION_TICKS,
+      durationCycles: BREACH_DURATION_CYCLES,
     })
   }
 
@@ -1649,21 +1649,21 @@ function resolvePostShopPhases(
     if (!player) continue
     const team = player.team
     const teamState = teams[team]
-    if (teamState.hardenUsedTick !== null) {
-      const ticksSinceUse = state.tick - teamState.hardenUsedTick
-      if (ticksSinceUse < HARDEN_COOLDOWN_TICKS) {
+    if (teamState.hardenUsedCycle !== null) {
+      const ticksSinceUse = state.cycle - teamState.hardenUsedCycle
+      if (ticksSinceUse < HARDEN_COOLDOWN_CYCLES) {
         events.push({
           _tag: 'harden_on_cooldown',
-          tick: state.tick,
+          cycle: state.cycle,
           playerId: action.playerId,
-          remainingTicks: HARDEN_COOLDOWN_TICKS - ticksSinceUse,
+          remainingTicks: HARDEN_COOLDOWN_CYCLES - ticksSinceUse,
         })
         continue
       }
     }
     ice = ice.map((t) => (t.team === team ? { ...t, invulnerable: true } : t))
-    teams = { ...teams, [team]: { ...teamState, hardenUsedTick: state.tick } }
-    events.push({ _tag: 'harden_used', tick: state.tick, team })
+    teams = { ...teams, [team]: { ...teamState, hardenUsedCycle: state.cycle } }
+    events.push({ _tag: 'harden_used', cycle: state.cycle, team })
   }
 
   // Backup pickup
@@ -1740,10 +1740,10 @@ function resolvePostShopPhases(
     }
   }
 
-  // Wave last-hit gold + XP
+  // Wave last-hit scrip + XP
   for (const kill of waveKills) {
     const tempState: GameState = { ...state, players, waves, ice }
-    const goldBefore = players[kill.playerId]?.gold ?? 0
+    const scripBefore = players[kill.playerId]?.scrip ?? 0
     const awarded = awardLastHit(tempState, kill.playerId, kill.waveType)
     players = { ...awarded.players }
     const killer = players[kill.playerId]
@@ -1754,11 +1754,11 @@ function resolvePostShopPhases(
       // one thing the combat log stayed silent about.
       events.push({
         _tag: 'wave_strip',
-        tick: state.tick,
+        cycle: state.cycle,
         playerId: kill.playerId,
         waveId: kill.waveId,
         waveType: kill.waveType,
-        goldAwarded: killer.gold - goldBefore,
+        scripAwarded: killer.scrip - scripBefore,
       })
       // Lane-mates standing here share a fraction. XP used to come exclusively
       // from last-hits, so a laner who mistimed their attacks earned literally
@@ -1770,7 +1770,7 @@ function resolvePostShopPhases(
     }
   }
 
-  // Neutral kill gold + XP
+  // Neutral kill scrip + XP
   for (const kill of neutralKills) {
     const neutral = neutrals.find((n) => n.id === kill.neutralId)
     if (!neutral) continue
@@ -1780,11 +1780,11 @@ function resolvePostShopPhases(
     if (killer) {
       players = {
         ...players,
-        [kill.playerId]: { ...killer, gold: killer.gold + stats.gold, xp: killer.xp + stats.xp },
+        [kill.playerId]: { ...killer, scrip: killer.scrip + stats.scrip, xp: killer.xp + stats.xp },
       }
       events.push({
         _tag: 'neutral_killed' as const,
-        tick: state.tick,
+        cycle: state.cycle,
         playerId: kill.playerId,
         neutralId: neutral.id,
         neutralType: neutral.type,
@@ -1794,7 +1794,7 @@ function resolvePostShopPhases(
     neutrals = neutrals.filter((n) => n.id !== kill.neutralId)
   }
 
-  // Ice kill gold
+  // Ice kill scrip
   for (const kill of iceKills) {
     const nearbyAllies = Object.entries(players)
       .filter(([, p]) => p.zone === kill.zone && p.team !== kill.team && p.alive)
@@ -1802,13 +1802,13 @@ function resolvePostShopPhases(
     const tempState: GameState = { ...state, players, waves, ice }
     const awarded = awardIceKill(tempState, kill.zone, nearbyAllies)
     // Read the payout back off the diff rather than recomputing the split — the
-    // event can then never disagree with what the player's gold actually did.
+    // event can then never disagree with what the player's scrip actually did.
     for (const id of nearbyAllies) {
-      const gained = (awarded.players[id]?.gold ?? 0) - (players[id]?.gold ?? 0)
+      const gained = (awarded.players[id]?.scrip ?? 0) - (players[id]?.scrip ?? 0)
       if (gained > 0) {
         events.push({
           _tag: 'gold_change',
-          tick: state.tick,
+          cycle: state.cycle,
           playerId: id,
           amount: gained,
           reason: 'ice kill',
@@ -1842,14 +1842,14 @@ function resolvePostShopPhases(
       const wardSlot = player.items.findIndex((i) => i === 'camtap' || i === 'sniffer')
       if (wardSlot === -1) continue
       const wardType = player.items[wardSlot] === 'sniffer' ? 'sniffer' : 'camtap'
-      const placed = placeWard(zones, cmd.zone, player.team, state.tick, wardType)
+      const placed = placeWard(zones, cmd.zone, player.team, state.cycle, wardType)
       if (placed) {
         const newItems = [...player.items]
         newItems[wardSlot] = null
         players = { ...players, [action.playerId]: { ...player, items: newItems } }
         events.push({
           _tag: 'ward_placed',
-          tick: state.tick,
+          cycle: state.cycle,
           playerId: action.playerId,
           zone: cmd.zone,
           team: player.team,
@@ -1888,7 +1888,7 @@ export function resolveActions(
     }> = []
     // Item actives resolve first (Phase 0) and several of them MOVE the caster —
     // blink, force staff, hurricane pike. Anti-cheat's vision check reads
-    // pre-tick zones, so it reads a hero attacking into the zone they are about
+    // pre-cycle zones, so it reads a hero attacking into the zone they are about
     // to blink to as an attack on an "invisible" hero and drops it: exactly the
     // item→attack combo the item slot exists to enable. The attack phase's own
     // zone check still rejects a genuinely out-of-zone swing, with a message
@@ -1942,7 +1942,7 @@ export function resolveActions(
     const heroAttackers = new Map<string, string>()
     const rejected: Array<{ playerId: string; reason: string }> = []
     let zones = { ...state.zones }
-    let ancients = state.ancients
+    let terminals = state.terminals
     let waves = [...state.waves]
     let neutrals = [...(state.neutrals ?? [])]
     let ice = [...state.ice]
@@ -2020,7 +2020,7 @@ export function resolveActions(
     }
 
     // Phase 0: Item actives — first, so a blink/Hardshell/Ethereal lands BEFORE the
-    // ability cast in the same tick rather than after it.
+    // ability cast in the same cycle rather than after it.
     {
       const result = resolveItemActivesPhase(
         state,
@@ -2029,7 +2029,7 @@ export function resolveActions(
         zones,
         waves,
         ice,
-        ancients,
+        terminals,
         events,
         rejected,
         heroAttackers,
@@ -2049,7 +2049,7 @@ export function resolveActions(
         waves,
         ice,
         neutrals,
-        ancients,
+        terminals,
         events,
         heroAttackers,
         rejected,
@@ -2067,7 +2067,7 @@ export function resolveActions(
     // Phase 2: Movement — all moves resolve simultaneously
     {
       const result = resolveMovementPhase(
-        state.tick,
+        state.cycle,
         validActions,
         players,
         state.zones,
@@ -2080,7 +2080,7 @@ export function resolveActions(
 
     // Phase 3: Attacks + targeted abilities — simultaneous
     {
-      const result = resolveDenyPhase(state.tick, validActions, players, waves, events)
+      const result = resolveDenyPhase(state.cycle, validActions, players, waves, events)
       players = result.players
       waves = result.waves
     }
@@ -2103,7 +2103,7 @@ export function resolveActions(
         waves,
         ice,
         neutrals,
-        ancients,
+        terminals,
         events,
         rejected,
         heroAttackers,
@@ -2118,7 +2118,7 @@ export function resolveActions(
       waves = result.waves
       ice = result.ice
       neutrals = result.neutrals
-      ancients = result.ancients
+      terminals = result.terminals
     }
 
     // Resolve targeted casts
@@ -2130,7 +2130,7 @@ export function resolveActions(
         waves,
         ice,
         neutrals,
-        ancients,
+        terminals,
         action,
         events,
         heroAttackers,
@@ -2195,7 +2195,7 @@ export function resolveActions(
       neutrals,
       ice,
       teams,
-      ancients,
+      terminals,
       backup: backupGround,
       caches: cachesGround,
     }
@@ -2241,7 +2241,7 @@ function applyTargetedSpellBlock(
   targetId: string,
   casterId: string,
   damageType: DamageType,
-  tick: number,
+  cycle: number,
   events: GameEngineEvent[],
 ): Record<string, PlayerState> {
   const pre = prePlayers[targetId]
@@ -2256,12 +2256,12 @@ function applyTargetedSpellBlock(
     const buffs = pre.buffs.flatMap((b) => {
       if (b.id !== blockId) return [b]
       return b.id === 'spellblock'
-        ? [{ ...b, stacks: 0, ticksRemaining: LINKENS_RECHARGE_TICKS }]
+        ? [{ ...b, stacks: 0, cyclesRemaining: LINKENS_RECHARGE_TICKS }]
         : []
     })
     events.push({
       _tag: 'spell_blocked',
-      tick,
+      cycle,
       casterId,
       targetId,
       source: blockId === 'spellblock' ? 'intercept_shell' : 'ablative_shell',
@@ -2286,7 +2286,7 @@ function applyTargetedSpellBlock(
       next = { ...next, [casterId]: { ...casterPost, integ: newInteg, alive: newInteg > 0 } }
       events.push({
         _tag: 'damage',
-        tick,
+        cycle,
         sourceId: targetId,
         targetId: casterId,
         amount: reflected,
@@ -2295,7 +2295,7 @@ function applyTargetedSpellBlock(
     }
     events.push({
       _tag: 'spell_blocked',
-      tick,
+      cycle,
       casterId,
       targetId,
       source: 'mirror_shell',
@@ -2324,7 +2324,7 @@ function resolveHeroCast(
   waves: WaveUnitState[],
   ice: GameState['ice'],
   neutrals: SiltDwellerState[],
-  ancients: GameState['ancients'],
+  terminals: GameState['terminals'],
   action: PlayerAction,
   events: GameEngineEvent[],
   heroAttackers: Map<string, string>,
@@ -2371,10 +2371,10 @@ function resolveHeroCast(
     waves,
     ice,
     neutrals,
-    ancients,
+    terminals,
   }
   // Effect.either keeps AbilityError failures as values — an uncaught defect
-  // here would abort the entire tick (GameLoop recovers but loses actions).
+  // here would abort the entire cycle (GameLoop recovers but loses actions).
   const result = Effect.runSync(
     Effect.either(resolveAbility(tempState, action.playerId, cmd.ability, cmd.target)),
   )
@@ -2391,7 +2391,7 @@ function resolveHeroCast(
       reason = `Not enough BW for ${abilityName}: need ${err.required}, have ${Math.floor(caster.bw)}`
     } else if (err._tag === 'CooldownError') {
       const cd = caster.cooldowns[cmd.ability] ?? 0
-      reason = `${abilityName} on cooldown — ${cd} tick${cd === 1 ? '' : 's'} left (ready T${state.tick + cd})`
+      reason = `${abilityName} on cooldown — ${cd} cycle${cd === 1 ? '' : 's'} left (ready T${state.cycle + cd})`
     } else {
       reason = err.reason
     }
@@ -2434,7 +2434,7 @@ function resolveHeroCast(
       targetId,
       action.playerId,
       damageType,
-      state.tick,
+      state.cycle,
       events,
     )
   }
@@ -2463,7 +2463,7 @@ function resolveHeroCast(
     if (delta > 0) {
       events.push({
         _tag: 'damage',
-        tick: state.tick,
+        cycle: state.cycle,
         sourceId: action.playerId,
         targetId: pid,
         amount: delta,
@@ -2491,7 +2491,7 @@ function resolveHeroCast(
             }
             events.push({
               _tag: 'damage',
-              tick: state.tick,
+              cycle: state.cycle,
               sourceId: pid,
               targetId: action.playerId,
               amount: returnDamage,
@@ -2503,7 +2503,7 @@ function resolveHeroCast(
     } else if (delta < 0) {
       events.push({
         _tag: 'heal',
-        tick: state.tick,
+        cycle: state.cycle,
         sourceId: action.playerId,
         targetId: pid,
         amount: -delta,
@@ -2523,7 +2523,7 @@ function resolveHeroCast(
   // NPCs the cast hit (damageEnemyNpcsInZone). Credited from the INTEG diff for the
   // same reason hero damage is: the resolvers' own wire events are discarded.
   let castWaves = collectNpcCastDamage(
-    state.tick,
+    state.cycle,
     action.playerId,
     damageType,
     waves,
@@ -2532,7 +2532,7 @@ function resolveHeroCast(
     waveKills,
   )
   let castNeutrals = collectNeutralCastDamage(
-    state.tick,
+    state.cycle,
     action.playerId,
     damageType,
     neutrals,
@@ -2567,7 +2567,7 @@ function resolveHeroCast(
         waves: castWaves,
         ice,
         neutrals: castNeutrals,
-        ancients,
+        terminals,
       }
       const echoResult = Effect.runSync(
         Effect.either(resolveAbility(echoState, action.playerId, cmd.ability, cmd.target)),
@@ -2577,7 +2577,7 @@ function resolveHeroCast(
         // Feedback: announce the proc so the player knows the ability fired twice.
         events.push({
           _tag: 'double_cast',
-          tick: state.tick,
+          cycle: state.cycle,
           playerId: action.playerId,
           abilityId: abilityDef?.id ?? cmd.ability,
         })
@@ -2588,7 +2588,7 @@ function resolveHeroCast(
           if (delta > 0) {
             events.push({
               _tag: 'damage',
-              tick: state.tick,
+              cycle: state.cycle,
               sourceId: action.playerId,
               targetId: pid,
               amount: delta,
@@ -2603,7 +2603,7 @@ function resolveHeroCast(
           } else if (delta < 0) {
             events.push({
               _tag: 'heal',
-              tick: state.tick,
+              cycle: state.cycle,
               sourceId: action.playerId,
               targetId: pid,
               amount: -delta,
@@ -2611,7 +2611,7 @@ function resolveHeroCast(
           }
         }
         castWaves = collectNpcCastDamage(
-          state.tick,
+          state.cycle,
           action.playerId,
           damageType,
           castWaves,
@@ -2620,7 +2620,7 @@ function resolveHeroCast(
           waveKills,
         )
         castNeutrals = collectNeutralCastDamage(
-          state.tick,
+          state.cycle,
           action.playerId,
           damageType,
           castNeutrals,
@@ -2650,7 +2650,7 @@ function resolveHeroCast(
         }
         events.push({
           _tag: 'heal',
-          tick: state.tick,
+          cycle: state.cycle,
           sourceId: action.playerId,
           targetId: action.playerId,
           amount: healAmount,
@@ -2661,7 +2661,7 @@ function resolveHeroCast(
 
   // Crowd control the resolvers applied (root riders, AoE stuns, hexes) —
   // recovered from the buff diff, since result.right.events are discarded.
-  emitStatusApplied(players, newPlayers, action.playerId, state.tick, events)
+  emitStatusApplied(players, newPlayers, action.playerId, state.cycle, events)
 
   // result.right.events are wire-format 'ability_cast' events the client
   // doesn't understand — discard them; ability_used/cooldown_used below
@@ -2670,7 +2670,7 @@ function resolveHeroCast(
 
   events.splice(castEvtIdx, 0, {
     _tag: 'ability_used',
-    tick: state.tick,
+    cycle: state.cycle,
     playerId: action.playerId,
     abilityId: abilityDef?.id ?? cmd.ability,
     targetId,
@@ -2678,11 +2678,11 @@ function resolveHeroCast(
   })
   events.push({
     _tag: 'cooldown_used',
-    tick: state.tick,
+    cycle: state.cycle,
     playerId: action.playerId,
     abilityId: cmd.ability,
-    cooldownTicks: actualCd,
-    readyAtTick: state.tick + actualCd,
+    cooldownCycles: actualCd,
+    readyAtTick: state.cycle + actualCd,
   })
 
   return { players: newPlayers, zones: newState.zones, waves: castWaves, neutrals: castNeutrals }
@@ -2696,7 +2696,7 @@ function resolveHeroCast(
  * resolvePostShopPhases. Returns the post buffer so the caller can carry it on.
  */
 function collectNpcCastDamage(
-  tick: number,
+  cycle: number,
   casterId: string,
   damageType: DamageType,
   pre: WaveUnitState[],
@@ -2713,7 +2713,7 @@ function collectNpcCastDamage(
     if (was === undefined || was <= c.integ) continue
     events.push({
       _tag: 'damage',
-      tick,
+      cycle,
       sourceId: casterId,
       targetId: c.id,
       amount: was - c.integ,
@@ -2727,9 +2727,9 @@ function collectNpcCastDamage(
 }
 
 /** The neutral half of {@link collectNpcCastDamage} — same contract, and the
- *  kill feeds the `neutralKills` path that pays the camp's gold + XP. */
+ *  kill feeds the `neutralKills` path that pays the camp's scrip + XP. */
 function collectNeutralCastDamage(
-  tick: number,
+  cycle: number,
   casterId: string,
   damageType: DamageType,
   pre: SiltDwellerState[],
@@ -2744,7 +2744,7 @@ function collectNeutralCastDamage(
     if (was === undefined || was <= n.integ) continue
     events.push({
       _tag: 'damage',
-      tick,
+      cycle,
       sourceId: casterId,
       targetId: n.id,
       amount: was - n.integ,

@@ -18,8 +18,8 @@ and SHALLOWS.
 THE BATCH CLOCK IS CANON. The city commits every instruction at once,
 four seconds wide, in no order. It was built that way to end a latency
 arms race that was killing people over ten metres of ground. The
-player-facing word is CYCLE. `tick` remains the internal identifier
-until the identifier-sweep release — do not rename it early.
+player-facing word is CYCLE. Internal field is also `cycle` (identifier
+sweep complete) — do not reintroduce `tick` as a state field.
 
 Two crews contest the routes. CHAFF came up off the street. AUDIT is
 Quorum's corporate response division. Quorum is both a team and the
@@ -121,9 +121,9 @@ bun run preview
 
 ### Game Loop Pipeline (server/game/engine/)
 
-Each tick (4s) runs this pipeline in `processTick`:
+Each cycle (4s) runs this pipeline in `processCycle`:
 1. Bot AI decides actions → `submitAction()`
-2. Drain action queue (1 action per player per tick)
+2. Drain action queue (1 action per player per cycle)
 3. Validate actions via `validateAction()` — rejected ones return with reason
 4. Resolve in phases: instant abilities → movement → attacks/casts → passives/cooldowns → buy/sell
 5. WaveAI + IceAI
@@ -149,7 +149,7 @@ Browser → Vite dev server → Nuxt CLI upgrade → Nitro DevServer → http-pr
 ### State Flow (Client)
 
 WebSocket messages → `useGameSocket` composable → routes to Pinia stores:
-- `game.ts` store: tick state, player state, scoreboard, events
+- `game.ts` store: cycle state, player state, scoreboard, events
 - `lobby.ts` store: queue status, hero picks, countdown
 - `auth.ts` store: session via `nuxt-auth-utils`
 
@@ -157,7 +157,7 @@ WebSocket messages → `useGameSocket` composable → routes to Pinia stores:
 
 ### Map Topology
 
-Zones are defined in `shared/constants/zones.ts` with `adjacentTo` arrays. Movement validation checks `areAdjacent()` — players can only move one zone per tick. Fountain is only adjacent to base.
+Zones are defined in `shared/constants/zones.ts` with `adjacentTo` arrays. Movement validation checks `areAdjacent()` — players can only move one zone per cycle. Fountain is only adjacent to base.
 
 ### Vision System
 
@@ -168,7 +168,7 @@ Zones are defined in `shared/constants/zones.ts` with `adjacentTo` arrays. Movem
 Production is a Vercel + DigitalOcean split (full runbook: `infra/README.md`):
 
 - **Vercel** — the Nuxt frontend, plus the data layer (Neon Postgres + Upstash Redis) provisioned via the Vercel Marketplace. Browser → `www.terminamoba.com`; HTTP `/api/*` is proxied to DO via `vercel.json` `rewrites` (same-origin, first-party cookie). WebSockets connect directly to DO (`NUXT_PUBLIC_WS_URL`)
-- **DigitalOcean App Platform** — the full Nitro server (SSR + WS + 4s-tick game loop + API) at `api.terminamoba.com`, from a DOCR Docker image (`Dockerfile`, non-root runtime). Managed as **Pulumi (TypeScript) IaC in `infra/`** — isolated (own deps/tsconfig; excluded from app lint/typecheck/knip/Docker), so it never affects app CI gates. OAuth runs here; `redirect_uri` is forced to the www frontend via `NUXT_OAUTH_*_REDIRECT_URL` (behind the proxy DO sees `Host: api.*`, so it must be pinned)
+- **DigitalOcean App Platform** — the full Nitro server (SSR + WS + 4s-cycle game loop + API) at `api.terminamoba.com`, from a DOCR Docker image (`Dockerfile`, non-root runtime). Managed as **Pulumi (TypeScript) IaC in `infra/`** — isolated (own deps/tsconfig; excluded from app lint/typecheck/knip/Docker), so it never affects app CI gates. OAuth runs here; `redirect_uri` is forced to the www frontend via `NUXT_OAUTH_*_REDIRECT_URL` (behind the proxy DO sees `Host: api.*`, so it must be pinned)
 - **State backend** is self-managed: a DigitalOcean Spaces (S3-compatible) bucket pinned in `infra/Pulumi.yaml` `backend.url` (DO `pulumi login` not needed). Secrets via the default `passphrase` provider
 - **Secrets** are managed locally with **tvault**, keyed by their real env-var names, in **two projects**: `termina` holds the PROD secrets (deploy: `tvault -p termina run -- pulumi up`; www-callback OAuth apps + Neon/Upstash) and `termina-local` holds LOCAL dev secrets (run: `tvault -p termina-local run -- bun run dev`; localhost-callback GitHub OAuth app + docker Postgres/Redis). Always pass `-p` — bare `tvault run` uses the current project and can inject prod creds (incl. the prod DB) into local dev. `infra/index.ts` reads each secret env-first, else Pulumi config. The DO Spaces keys (`AWS_*`) are distinct from the provider token (`DIGITALOCEAN_TOKEN`)
 - **Auth invariant**: `NUXT_SESSION_PASSWORD` must be byte-identical on Vercel and DO (the session cookie seal must be mutually decryptable). Vercel only needs `NUXT_SESSION_PASSWORD` + `NUXT_PUBLIC_WS_URL` (+ the Neon/Upstash integration vars); the rest of the backend secrets live only on DO
@@ -214,7 +214,7 @@ Expert in the server-side game loop and combat systems.
 
 **Key files**:
 
-- `GameLoop.ts` — tick pipeline, `processTick`, `submitAction`, `buildGameLoop`
+- `GameLoop.ts` — cycle pipeline, `processCycle`, `submitAction`, `buildGameLoop`
 - `ActionResolver.ts` — `validateAction`, `resolveActions` (phase-ordered: instant → move → attack → passive → buy)
 - `StateManager.ts` — `createPlayerState`, `createInitialGameState`, in-memory Effect service
 - `VisionCalculator.ts` — `filterStateForPlayer`, fog-of-war per team
@@ -222,8 +222,8 @@ Expert in the server-side game loop and combat systems.
 - R4 combat lexicon: damage types kinetic/code/black; mitigation plate/ice; pools INTEG/BW; immunity AIRGAP; access state BREACH (code halved into closed targets; hard control fails until breached)
 - `CombatResolver.ts` — `resolvePhysicalHit` unified NPC→hero damage path (wraps `_base.dealDamage`); `computeBladeMailReflect` single reflect formula
 - `StateDelta.ts` — per-player tick_state delta compression (reference-equality field diff)
-- `GoldDistributor.ts` — passive scrip, kill bounties, last-hit rewards
-- `WaveAI.ts`, `IceAI.ts` — NPC behavior each tick
+- `ScripDistributor.ts` — passive scrip, kill bounties, last-hit rewards
+- `WaveAI.ts`, `IceAI.ts` — NPC behavior each cycle
 - `NeutralAI.ts` — Silt dweller spawning, attacking heroes
 - `TenantAI.ts` — the Tenant's attacks, death handling, backup drops
 - `CacheAI.ts` — cache spawning, buffs, pickup
@@ -232,11 +232,11 @@ Expert in the server-side game loop and combat systems.
 
 - Harden/Fortification — team-wide ICE invulnerability (5 cycle duration, 300 cycle cooldown). Command: `harden`. Key files: ActionResolver.ts (harden phase), GameLoop.ts (expiration)
 - Day/Night Cycle — time-based vision system (Day: 300 ticks, Night: 240 ticks, night vision penalty: -1 zone). Key files: GameLoop.ts (time progression), VisionCalculator.ts (penalty)
-- TP Scroll Channeling — teleport with interrupt (2 tick channel, cancels on damage/movement). Key files: \_base.ts (channeling completion), ActionResolver.ts (cancellation)
+- TP Scroll Channeling — teleport with interrupt (2 cycle channel, cancels on damage/movement). Key files: \_base.ts (channeling completion), ActionResolver.ts (cancellation)
 - Sniffers — true sight mechanic, reveals invisible units (75sc cost, 240 cycle duration). Key files: VisionCalculator.ts (true sight), zones.ts (ward types)
 - Backup Resurrection — instant revive at death location with full HP/MP. Key files: GameLoop.ts (backup check in handleDeaths)
 
-**Conventions**: Immutable state updates via spread. All engine functions return `Effect.Effect<...>`. Game state is `Record<string, PlayerState>` keyed by playerId. One action per player per tick.
+**Conventions**: Immutable state updates via spread. All engine functions return `Effect.Effect<...>`. Game state is `Record<string, PlayerState>` keyed by playerId. One action per player per cycle.
 
 ### hero-designer
 
@@ -350,7 +350,7 @@ Expert in NPC bot behavior and lane assignment.
 - `BotManager.ts` — `registerBots`, `getBotPlayerIds`, `getBotLane`, `isBot`, `cleanupGame`
 - `BotAI.ts` — `decideBotAction` (lane-based movement, attack priority, ability usage)
 
-**Conventions**: Bot IDs use `bot_` prefix. Bots are assigned lanes on game creation. `decideBotAction` runs per-bot before draining the player action queue each tick. Bots never receive WebSocket messages.
+**Conventions**: Bot IDs use `bot_` prefix. Bots are assigned lanes on game creation. `decideBotAction` runs per-bot before draining the player action queue each cycle. Bots never receive WebSocket messages.
 
 ### map-systems
 

@@ -11,7 +11,7 @@
  *  - props-driven stories pass `makePlayer()` / `makeScoreboardEntry()` etc.
  *    straight into a component's props.
  *  - store-coupled stories seed the Pinia game store via
- *    `store.updateFromTick(makeTickMessage(...))`, or assign the lighter
+ *    `store.updateFromCycle(makeTickMessage(...))`, or assign the lighter
  *    `makeGameState()` pieces directly onto the store's refs.
  */
 import type {
@@ -21,12 +21,12 @@ import type {
   TeamId,
   ZoneRuntimeState,
   IceState,
-  AncientState,
+  TerminalState,
   TenantState,
   CacheState,
   GameEvent,
 } from '~~/shared/types/game'
-import type { TickStateMessage, PlayerEndStats } from '~~/shared/types/protocol'
+import type { CycleStateMessage, PlayerEndStats } from '~~/shared/types/protocol'
 import type { ScoreboardEntry } from '~/stores/game'
 
 // ── Sample ids (all real, drawn from shared/constants/*) ─────────────
@@ -91,12 +91,12 @@ export function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 300,
     level: 9,
     xp: 1400,
-    gold: 1400,
+    scrip: 1400,
     items: [SAMPLE_ITEMS.blades, null, null, null, null, null],
     cooldowns: { q: 0, w: 2, e: 0, r: 8 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 5,
     ice: 15,
     kills: 4,
@@ -123,25 +123,25 @@ export function makeScoreboardEntry(overrides: Partial<ScoreboardEntry> = {}): S
     kills: 4,
     deaths: 1,
     assists: 6,
-    gold: 1400,
+    scrip: 1400,
     level: 9,
     items: [SAMPLE_ITEMS.blades, null, null, null, null, null],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     fogged: false,
     ...overrides,
   }
 }
 
-// ── Teams / ice / ancients / objectives ──────────────────────────────
+// ── Teams / ice / terminals / objectives ──────────────────────────────
 
 export function makeTeamState(id: TeamId, overrides: Partial<TeamState> = {}): TeamState {
   return {
     id,
     kills: id === 'chaff' ? 14 : 9,
     iceKills: id === 'chaff' ? 3 : 1,
-    gold: id === 'chaff' ? 5100 : 4150,
-    hardenUsedTick: null,
+    scrip: id === 'chaff' ? 5100 : 4150,
+    hardenUsedCycle: null,
     ...overrides,
   }
 }
@@ -158,7 +158,7 @@ export function makeIce(team: TeamId, zone: string, overrides: Partial<IceState>
   }
 }
 
-export function makeAncient(team: TeamId, overrides: Partial<AncientState> = {}): AncientState {
+export function makeTerminal(team: TeamId, overrides: Partial<TerminalState> = {}): TerminalState {
   return {
     team,
     integ: 4500,
@@ -174,7 +174,7 @@ export function makeTenant(overrides: Partial<TenantState> = {}): TenantState {
     alive: true,
     integ: 3500,
     maxInteg: 5000,
-    deathTick: null,
+    deathCycle: null,
     ...overrides,
   }
 }
@@ -183,7 +183,7 @@ export function makeCache(overrides: Partial<CacheState> = {}): CacheState {
   return {
     zone: 'cache-top',
     type: 'dd',
-    tick: 240,
+    cycle: 240,
     ...overrides,
   }
 }
@@ -204,7 +204,7 @@ export function makePlayerEndStats(overrides: Partial<PlayerEndStats> = {}): Pla
     kills: 8,
     deaths: 3,
     assists: 12,
-    gold: 6200,
+    scrip: 6200,
     items: SAMPLE_INVENTORY,
     heroDamage: 24_800,
     iceDamage: 3400,
@@ -237,7 +237,7 @@ export function makeRoster(): Record<string, PlayerState> {
       heroId: SAMPLE_HEROES.socket,
       zone: 'bot-t1-audit',
       level: 6,
-      gold: 600,
+      scrip: 600,
       kills: 1,
       deaths: 2,
       assists: 9,
@@ -257,7 +257,7 @@ export function makeRoster(): Record<string, PlayerState> {
       zone: 'top-river',
       level: 9,
       alive: false,
-      respawnTick: 268,
+      respawnCycle: 268,
       integ: 0,
     }),
   ]
@@ -319,18 +319,18 @@ export function makeScoreboard(): ScoreboardEntry[] {
       kills: p.kills,
       deaths: p.deaths,
       assists: p.assists,
-      gold: p.gold,
+      scrip: p.scrip,
       level: p.level,
       items: p.items,
       alive: p.alive,
-      respawnTick: p.respawnTick,
+      respawnCycle: p.respawnCycle,
     }),
   )
 }
 
 // ── Full game state / tick message ───────────────────────────────────────
 
-/** Sample net-worth trend history (one sample per tick, per team). */
+/** Sample net-worth trend history (one sample per cycle, per team). */
 export const SAMPLE_NET_WORTH_HISTORY: { chaff: number[]; audit: number[] } = {
   chaff: [3200, 3400, 3800, 4200, 4600, 5100, 5400, 5900],
   audit: [3100, 3300, 3500, 3700, 3900, 4150, 4300, 4500],
@@ -338,14 +338,14 @@ export const SAMPLE_NET_WORTH_HISTORY: { chaff: number[]; audit: number[] } = {
 
 /** A few sample {@link GameEvent}s for combat-log / ticker stories. */
 export const SAMPLE_EVENTS: GameEvent[] = [
-  { tick: 238, type: 'kill', payload: { killer: 'p1', victim: 'e2', zone: 'mid-river' } },
-  { tick: 239, type: 'ice_destroyed', payload: { team: 'audit', zone: 'mid-t1-audit' } },
-  { tick: 240, type: 'cache_spawn', payload: { zone: 'cache-top', cache: 'dd' } },
+  { cycle: 238, type: 'kill', payload: { killer: 'p1', victim: 'e2', zone: 'mid-river' } },
+  { cycle: 239, type: 'ice_destroyed', payload: { team: 'audit', zone: 'mid-t1-audit' } },
+  { cycle: 240, type: 'cache_spawn', payload: { zone: 'cache-top', cache: 'dd' } },
 ]
 
 /**
  * A fully-valid {@link GameState}. Mostly useful as a base for
- * {@link makeTickMessage}; the store's `updateFromTick` only reads a subset, but
+ * {@link makeTickMessage}; the store's `updateFromCycle` only reads a subset, but
  * this keeps the whole shape type-correct for stories that need it directly.
  */
 export function makeGameState(overrides: Partial<GameState> = {}): GameState {
@@ -353,7 +353,7 @@ export function makeGameState(overrides: Partial<GameState> = {}): GameState {
   const zones: Record<string, ZoneRuntimeState> = {}
   for (const p of Object.values(players)) zones[p.zone] ??= makeZone(p.zone)
   return {
-    tick: 240,
+    cycle: 240,
     phase: 'playing',
     teams: { chaff: makeTeamState('chaff'), audit: makeTeamState('audit') },
     players,
@@ -365,7 +365,7 @@ export function makeGameState(overrides: Partial<GameState> = {}): GameState {
       makeIce('audit', 'mid-t2-audit'),
       makeIce('chaff', 'mid-t1-chaff'),
     ],
-    ancients: { chaff: makeAncient('chaff'), audit: makeAncient('audit') },
+    terminals: { chaff: makeTerminal('chaff'), audit: makeTerminal('audit') },
     caches: [makeCache()],
     tenant: makeTenant(),
     backup: null,
@@ -373,22 +373,22 @@ export function makeGameState(overrides: Partial<GameState> = {}): GameState {
     winner: null,
     surrenderVotes: { chaff: new Set<string>(), audit: new Set<string>() },
     timeOfDay: 'day',
-    dayNightTick: 12,
+    dayNightCycle: 12,
     ...overrides,
   }
 }
 
 /**
- * A {@link TickStateMessage} ready to feed `store.updateFromTick(...)`. The
+ * A {@link CycleStateMessage} ready to feed `store.updateFromCycle(...)`. The
  * store treats the `state` as a `PlayerVisibleState`; `makeGameState()` is a
  * superset of the fields it reads, so a cast keeps this both ergonomic and
  * type-honest for story seeding.
  */
-export function makeTickMessage(overrides: Partial<GameState> = {}): TickStateMessage {
+export function makeTickMessage(overrides: Partial<GameState> = {}): CycleStateMessage {
   const state = makeGameState(overrides)
   return {
-    type: 'tick_state',
-    tick: state.tick,
-    state: state as unknown as TickStateMessage['state'],
+    type: 'cycle_state',
+    cycle: state.cycle,
+    state: state as unknown as CycleStateMessage['state'],
   }
 }

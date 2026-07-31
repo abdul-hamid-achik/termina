@@ -1,7 +1,7 @@
 import type { GameState, SiltDwellerState } from '~~/shared/types/game'
 import {
   SILT_DWELLERS,
-  SILT_DWELLER_INTERVAL_TICKS,
+  SILT_DWELLER_INTERVAL_CYCLES,
   MAX_NEUTRALS_PER_CAMP,
   type SiltDwellerType,
 } from '~~/shared/constants/balance'
@@ -34,12 +34,12 @@ const JUNGLE_ZONES = [
  *  doesn't have (one-lane has no jungle). `existingNeutrals` is used to enforce
  *  MAX_NEUTRALS_PER_CAMP — camps at cap are skipped (no new spawns). */
 export function spawnSiltDwellers(
-  tick: number,
+  cycle: number,
   hasZone?: (zoneId: string) => boolean,
   existingNeutrals: SiltDwellerState[] = [],
 ): SiltDwellerState[] {
-  // Spawn at tick 60, then every 60 ticks
-  if (tick === 0 || tick % SILT_DWELLER_INTERVAL_TICKS !== 0) return []
+  // Spawn at cycle 60, then every 60 ticks
+  if (cycle === 0 || cycle % SILT_DWELLER_INTERVAL_CYCLES !== 0) return []
 
   // Count live neutrals per zone to enforce the cap
   const liveCountByZone = new Map<string, number>()
@@ -168,7 +168,7 @@ export function applyNeutralActions(
 
     events.push({
       _tag: 'damage',
-      tick: state.tick,
+      cycle: state.cycle,
       sourceId: action.neutralId,
       targetId: action.targetId,
       amount: hit.damageDealt,

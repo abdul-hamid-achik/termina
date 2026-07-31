@@ -4,43 +4,43 @@ import type { GameState } from '~~/shared/types/game'
 
 function baseState(): GameState {
   return {
-    tick: 0,
+    cycle: 0,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
     },
     players: {},
     zones: {},
     waves: [],
     neutrals: [],
     ice: [],
-    ancients: {
+    terminals: {
       chaff: { team: 'chaff', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
       audit: { team: 'audit', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
     },
     caches: [],
-    tenant: { alive: true, integ: 5000, maxInteg: 5000, deathTick: null },
+    tenant: { alive: true, integ: 5000, maxInteg: 5000, deathCycle: null },
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
-    dayNightTick: 0,
+    dayNightCycle: 0,
   } as GameState
 }
 
 describe('applyScenario (dev seed scenarios)', () => {
-  it('tenant_dead kills Tenant and stamps deathTick at the current tick', () => {
-    const s = applyScenario({ ...baseState(), tick: 7 }, 'tenant_dead')
+  it('tenant_dead kills Tenant and stamps deathCycle at the current tick', () => {
+    const s = applyScenario({ ...baseState(), cycle: 7 }, 'tenant_dead')
     expect(s.tenant.alive).toBe(false)
     expect(s.tenant.integ).toBe(0)
-    expect(s.tenant.deathTick).toBe(7)
+    expect(s.tenant.deathCycle).toBe(7)
   })
 
   it('core_vulnerable marks only the Audit Ancient vulnerable', () => {
     const s = applyScenario(baseState(), 'core_vulnerable')
-    expect(s.ancients.audit.vulnerable).toBe(true)
-    expect(s.ancients.chaff.vulnerable).toBe(false)
+    expect(s.terminals.audit.vulnerable).toBe(true)
+    expect(s.terminals.chaff.vulnerable).toBe(false)
   })
 
   it('night flips timeOfDay', () => {
@@ -50,15 +50,15 @@ describe('applyScenario (dev seed scenarios)', () => {
   it('self_dead kills the human player with a pending respawn', () => {
     const base = {
       ...baseState(),
-      tick: 5,
+      cycle: 5,
       players: {
-        human1: { id: 'human1', alive: true, integ: 600, maxInteg: 600, respawnTick: null },
+        human1: { id: 'human1', alive: true, integ: 600, maxInteg: 600, respawnCycle: null },
       },
     } as unknown as GameState
     const s = applyScenario(base, 'self_dead', { humanId: 'human1' })
     expect(s.players.human1!.alive).toBe(false)
     expect(s.players.human1!.integ).toBe(0)
-    expect(s.players.human1!.respawnTick).toBe(35)
+    expect(s.players.human1!.respawnCycle).toBe(35)
   })
 
   it('self_dead is a no-op without a matching humanId', () => {

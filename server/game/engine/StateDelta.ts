@@ -5,12 +5,12 @@ import type { PlayerVisibleState } from '~~/shared/types/game'
  *
  * The engine uses immutable spread updates — unchanged fields keep the same
  * object reference across ticks. `filterStateForPlayer` passes through several
- * fields by reference (teams, ice, ancients, tenant, backup, caches, neutrals,
- * timeOfDay, dayNightTick, mapId, mode, tutorialStep). By comparing each field
+ * fields by reference (teams, ice, terminals, tenant, backup, caches, neutrals,
+ * timeOfDay, dayNightCycle, mapId, mode, tutorialStep). By comparing each field
  * by reference (===, O(1)), we can skip re-sending fields that didn't change.
  *
  * Fields that are always new objects (players, zones, waves, events,
- * visibleZones) are always sent — the engine rebuilds them each tick.
+ * visibleZones) are always sent — the engine rebuilds them each cycle.
  *
  * On reconnect, the caller sends a full_state (not a delta) to resync.
  */
@@ -22,7 +22,7 @@ export function computeDelta(
 ): Partial<PlayerVisibleState> {
   if (!lastSent) return current // First tick or post-reconnect — send full state
 
-  const delta: Partial<PlayerVisibleState> = { tick: current.tick }
+  const delta: Partial<PlayerVisibleState> = { cycle: current.cycle }
   let hasChanges = false
 
   // Always-changed fields: include unconditionally.
@@ -46,8 +46,8 @@ export function computeDelta(
     delta.ice = current.ice
     hasChanges = true
   }
-  if (current.ancients !== lastSent.ancients) {
-    delta.ancients = current.ancients
+  if (current.terminals !== lastSent.terminals) {
+    delta.terminals = current.terminals
     hasChanges = true
   }
   if (current.neutrals !== lastSent.neutrals) {
@@ -70,8 +70,8 @@ export function computeDelta(
     delta.timeOfDay = current.timeOfDay
     hasChanges = true
   }
-  if (current.dayNightTick !== lastSent.dayNightTick) {
-    delta.dayNightTick = current.dayNightTick
+  if (current.dayNightCycle !== lastSent.dayNightCycle) {
+    delta.dayNightCycle = current.dayNightCycle
     hasChanges = true
   }
   if (current.mapId !== lastSent.mapId) {
@@ -87,7 +87,7 @@ export function computeDelta(
     hasChanges = true
   }
 
-  return hasChanges ? delta : { tick: current.tick }
+  return hasChanges ? delta : { cycle: current.cycle }
 }
 
 /**
@@ -97,7 +97,7 @@ export function computeDelta(
  */
 const lastSentCache = new Map<string, Map<string, PlayerVisibleState>>()
 
-/** Record the state sent to a player this tick (for next tick's delta). */
+/** Record the state sent to a player this cycle (for next cycle's delta). */
 export function recordSentState(gameId: string, playerId: string, state: PlayerVisibleState): void {
   let gameMap = lastSentCache.get(gameId)
   if (!gameMap) {
@@ -107,7 +107,7 @@ export function recordSentState(gameId: string, playerId: string, state: PlayerV
   gameMap.set(playerId, state)
 }
 
-/** Clear the cache for a player (forces full_state on next tick). */
+/** Clear the cache for a player (forces full_state on next cycle). */
 export function clearSentState(gameId: string, playerId: string): void {
   lastSentCache.get(gameId)?.delete(playerId)
 }

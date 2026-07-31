@@ -3,24 +3,24 @@ import { getGameRuntime } from '~~/server/plugins/game-server'
 import { readSnapshot } from '~~/server/game/engine/StateSnapshot'
 import { readActions } from '~~/server/game/engine/ActionLog'
 import { createInMemoryStateManager } from '~~/server/game/engine/StateManager'
-import { processTick, submitAction } from '~~/server/game/engine/GameLoop'
+import { processCycle, submitAction } from '~~/server/game/engine/GameLoop'
 import type { GameState } from '~~/shared/types/game'
 
 /**
- * Step-through replay frames — a compact per-tick player/team summary that
- * the scrubber can render at any tick T.
+ * Step-through replay frames — a compact per-cycle player/team summary that
+ * the scrubber can render at any cycle T.
  *
  * The frames are produced by re-running every persisted action through
- * processTick from a freshly-initialised state. Bot AI is NOT re-injected
+ * processCycle from a freshly-initialised state. Bot AI is NOT re-injected
  * because the bot's submitted actions are already in the action log — see
  * the "no registerBots" comment below.
  *
  * Caveats (deliberate trade-offs for V1):
  * - World-side AI (wave waves, neutrals, tenant, caches) uses Math.random
  *   and will diverge from the original game. Player-side evolution (INTEG,
- *   gold, items, K/D/A, position) follows the recorded action stream and
+ *   scrip, items, K/D/A, position) follows the recorded action stream and
  *   is the only thing the scrubber UI relies on today.
- * - The replay is bounded by the action log's tick range, so a game with
+ * - The replay is bounded by the action log's cycle range, so a game with
  *   no logged actions returns an empty `frames` array.
  */
 
@@ -31,7 +31,7 @@ interface FramePlayer {
   bw: number
   maxBw: number
   level: number
-  gold: number
+  scrip: number
   kills: number
   deaths: number
   assists: number
@@ -41,7 +41,7 @@ interface FramePlayer {
 }
 
 interface Frame {
-  tick: number
+  cycle: number
   teams: {
     chaff: { kills: number; iceKills: number }
     audit: { kills: number; iceKills: number }
@@ -60,7 +60,7 @@ function summarize(state: GameState): Frame {
       bw: p.bw,
       maxBw: p.maxBw,
       level: p.level,
-      gold: p.gold,
+      scrip: p.scrip,
       kills: p.kills,
       deaths: p.deaths,
       assists: p.assists,
@@ -70,7 +70,7 @@ function summarize(state: GameState): Frame {
     }
   }
   return {
-    tick: state.tick,
+    cycle: state.cycle,
     teams: {
       chaff: {
         kills: state.teams.chaff.kills,
@@ -106,14 +106,14 @@ export default defineEventHandler(async (event) => {
   }
 
   const actions = await Effect.runPromise(readActions(runtime.redisService, gameId))
-  // The last persisted tick caps the replay length. Snapshots may run a few
+  // The last persisted cycle caps the replay length. Snapshots may run a few
   // ticks ahead of the action log if the log was trimmed, so use whichever
   // is bigger as an upper bound.
-  const lastActionTick = actions.reduce((max, a) => (a.tick > max ? a.tick : max), 0)
-  const lastTick = Math.max(lastActionTick, snap.state.tick)
+  const lastActionCycle = actions.reduce((max, a) => (a.cycle > max ? a.cycle : max), 0)
+  const lastCycle = Math.max(lastActionCycle, snap.state.cycle)
 
   // Distinct gameId for the replay so re-running doesn't poke any live
-  // game's queue. Importantly we do NOT call registerBots, so processTick's
+  // game's queue. Importantly we do NOT call registerBots, so processCycle's
   // bot-AI step short-circuits and the action log is the sole input source.
   const replayId = `replay_${gameId}_${Date.now()}`
   const sm = createInMemoryStateManager()
@@ -126,12 +126,12 @@ export default defineEventHandler(async (event) => {
   await Effect.runPromise(sm.createGame(replayId, setup))
   await Effect.runPromise(sm.updateState(replayId, (s) => ({ ...s, phase: 'playing' as const })))
 
-  // Bucket actions by their tick for O(1) lookup as we step forward.
+  // Bucket actions by their cycle for O(1) lookup as we step forward.
   const actionsByTick = new Map<number, typeof actions>()
   for (const a of actions) {
-    const bucket = actionsByTick.get(a.tick) ?? []
+    const bucket = actionsByTick.get(a.cycle) ?? []
     bucket.push(a)
-    actionsByTick.set(a.tick, bucket)
+    actionsByTick.set(a.cycle, bucket)
   }
 
   const frames: Frame[] = []
@@ -140,16 +140,16 @@ export default defineEventHandler(async (event) => {
   frames.push(summarize(initial))
 
   let current = initial
-  for (let t = 1; t <= lastTick; t++) {
+  for (let t = 1; t <= lastCycle; t++) {
     const tickActions = actionsByTick.get(t) ?? []
     for (const a of tickActions) {
       submitAction(replayId, a.playerId, a.command)
     }
-    const result = await Effect.runPromise(processTick(replayId, current))
+    const result = await Effect.runPromise(processCycle(replayId, current))
     current = result.state
     await Effect.runPromise(sm.updateState(replayId, () => current))
     frames.push(summarize(current))
-    // Bail out early if processTick declared the game over so we don't
+    // Bail out early if processCycle declared the game over so we don't
     // grind through ticks past the win.
     if (current.phase === 'ended') break
   }

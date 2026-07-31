@@ -20,12 +20,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 300,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 5,
     ice: 18,
     kills: 0,
@@ -39,7 +39,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -67,11 +67,11 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     playerMap[p.id] = p
   }
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -104,7 +104,7 @@ describe('Socket Hero', () => {
       const updatedEnemy = result.state.players['e1']!
       expect(hasBuff(updatedEnemy, 'root')).toBe(true)
       const root = updatedEnemy.buffs.find((b) => b.id === 'root')
-      expect(root!.ticksRemaining).toBe(2)
+      expect(root!.cyclesRemaining).toBe(2)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -264,7 +264,7 @@ describe('Socket Hero', () => {
       expect(hasBuff(result.state.players['e1']!, 'broadcast_slow')).toBe(true)
       expect(hasBuff(result.state.players['e2']!, 'broadcast_slow')).toBe(true)
       const slow = result.state.players['e1']!.buffs.find((b) => b.id === 'broadcast_slow')
-      expect(slow!.ticksRemaining).toBe(3)
+      expect(slow!.cyclesRemaining).toBe(3)
       // A meaningful move-fail chance, not the old dead stacks:1 (=1%).
       expect(slow!.stacks).toBe(20) // rank 1 (level 6)
     })
@@ -311,20 +311,20 @@ describe('Socket Hero', () => {
       const state = makeState([player, enemy])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'p1', targetId: 'e1' },
       })
 
       expect(hasBuff(updated.players['p1']!, 'handshake_vision_e1')).toBe(true)
       const visionBuff = updated.players['p1']!.buffs.find((b) => b.id === 'handshake_vision_e1')
-      expect(visionBuff!.ticksRemaining).toBe(5)
+      expect(visionBuff!.cyclesRemaining).toBe(5)
     })
 
     it('stacks a link on the target and slows at 3 stacks (Persistent Connection)', () => {
       let state = makeState([makePlayer(), makeEnemy()])
       const attack = {
-        tick: 10,
+        cycle: 10,
         type: 'attack' as const,
         payload: { attackerId: 'p1', targetId: 'e1' },
       }
@@ -339,7 +339,7 @@ describe('Socket Hero', () => {
       state = resolvePassive(state, 'p1', attack)
       const slow = state.players['e1']!.buffs.find((b) => b.id === 'slow')
       expect(slow?.stacks).toBe(20)
-      expect(slow?.ticksRemaining).toBe(2)
+      expect(slow?.cyclesRemaining).toBe(2)
       expect(state.players['e1']!.buffs.find((b) => b.id === 'socket_link')!.stacks).toBe(0)
     })
 
@@ -349,7 +349,7 @@ describe('Socket Hero', () => {
       const state = makeState([player, enemy])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'e1', targetId: 'p1' },
       })
@@ -363,7 +363,7 @@ describe('Socket Hero', () => {
       const state = makeState([player, enemy])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'tick_end',
         payload: {},
       })

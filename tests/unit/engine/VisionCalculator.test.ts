@@ -20,12 +20,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 200,
     level: 1,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -40,11 +40,11 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
   return {
-    tick: 1,
+    cycle: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -265,7 +265,7 @@ describe('VisionCalculator', () => {
             deaths: 2,
             assists: 4,
             level: 11,
-            gold: 3000,
+            scrip: 3000,
           }),
         },
       })
@@ -278,7 +278,7 @@ describe('VisionCalculator', () => {
       expect(enemy.assists).toBe(4)
       expect(enemy.level).toBe(11)
       // ...but economy/position stay hidden.
-      expect('gold' in enemy).toBe(false)
+      expect('scrip' in enemy).toBe(false)
       expect('items' in enemy).toBe(false)
       expect('zone' in enemy).toBe(false)
     })
@@ -361,7 +361,7 @@ describe('VisionCalculator', () => {
             zone: 'mid-river',
             name: 'InvisEnemy',
             integ: 300,
-            buffs: [{ id: 'invisible', stacks: 1, ticksRemaining: 5, source: 'e1' }],
+            buffs: [{ id: 'invisible', stacks: 1, cyclesRemaining: 5, source: 'e1' }],
           }),
         },
         zones,
@@ -391,7 +391,7 @@ describe('VisionCalculator', () => {
             zone: 'mid-river',
             name: 'InvisEnemy',
             integ: 300,
-            buffs: [{ id: 'invisible', stacks: 1, ticksRemaining: 5, source: 'e1' }],
+            buffs: [{ id: 'invisible', stacks: 1, cyclesRemaining: 5, source: 'e1' }],
           }),
         },
         zones,
@@ -409,7 +409,7 @@ describe('VisionCalculator', () => {
             id: 'p1',
             team: 'chaff',
             zone: 'mid-river',
-            buffs: [{ id: 'dust_reveal', stacks: 1, ticksRemaining: 2, source: 'p1' }],
+            buffs: [{ id: 'dust_reveal', stacks: 1, cyclesRemaining: 2, source: 'p1' }],
           }),
           e1: makePlayer({
             id: 'e1',
@@ -417,7 +417,7 @@ describe('VisionCalculator', () => {
             zone: 'mid-river',
             name: 'InvisEnemy',
             integ: 300,
-            buffs: [{ id: 'invisible', stacks: 1, ticksRemaining: 5, source: 'e1' }],
+            buffs: [{ id: 'invisible', stacks: 1, cyclesRemaining: 5, source: 'e1' }],
           }),
         },
       })
@@ -435,14 +435,14 @@ describe('VisionCalculator', () => {
             id: 'p1',
             team: 'chaff',
             zone: 'mid-river',
-            buffs: [{ id: 'dust_reveal', stacks: 1, ticksRemaining: 2, source: 'p1' }],
+            buffs: [{ id: 'dust_reveal', stacks: 1, cyclesRemaining: 2, source: 'p1' }],
           }),
           e1: makePlayer({
             id: 'e1',
             team: 'audit',
             zone: 'mid-t1-audit', // adjacent to mid-river
             name: 'InvisEnemy',
-            buffs: [{ id: 'invisible', stacks: 1, ticksRemaining: 5, source: 'e1' }],
+            buffs: [{ id: 'invisible', stacks: 1, cyclesRemaining: 5, source: 'e1' }],
           }),
         },
       })
@@ -461,8 +461,8 @@ describe('VisionCalculator', () => {
             zone: 'mid-river',
             name: 'InvisCarrier',
             buffs: [
-              { id: 'dust_reveal', stacks: 1, ticksRemaining: 2, source: 'p1' },
-              { id: 'invisible', stacks: 1, ticksRemaining: 5, source: 'p1' },
+              { id: 'dust_reveal', stacks: 1, cyclesRemaining: 2, source: 'p1' },
+              { id: 'invisible', stacks: 1, cyclesRemaining: 5, source: 'p1' },
             ],
           }),
           e2: makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', name: 'AuditViewer' }),
@@ -513,7 +513,7 @@ describe('VisionCalculator', () => {
       const tracepath = {
         id: 'tracepath_vision',
         stacks: 1,
-        ticksRemaining: 3,
+        cyclesRemaining: 3,
         source: 'p1',
       }
       const base = calculateVision(

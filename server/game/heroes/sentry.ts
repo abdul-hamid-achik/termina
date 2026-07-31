@@ -108,7 +108,7 @@ function resolveQ(
       state: updatePlayers(state, players),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -160,14 +160,14 @@ function resolveW(
       caster = applyBuff(caster, {
         id: 'shield',
         stacks: shieldAmount,
-        ticksRemaining: W_DURATION,
+        cyclesRemaining: W_DURATION,
         source: player.id,
       })
       return {
         state: updatePlayer(state, caster),
         events: [
           {
-            tick: state.tick,
+            cycle: state.cycle,
             type: 'ability_cast',
             payload: {
               playerId: player.id,
@@ -184,7 +184,7 @@ function resolveW(
     const shielded = applyBuff(targetPlayer, {
       id: 'shield',
       stacks: shieldAmount,
-      ticksRemaining: W_DURATION,
+      cyclesRemaining: W_DURATION,
       source: player.id,
     })
 
@@ -192,7 +192,7 @@ function resolveW(
       state: updatePlayers(state, [caster, shielded]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -227,7 +227,7 @@ function resolveE(
       applyBuff(e, {
         id: 'slow',
         stacks: E_SLOW_VALUE,
-        ticksRemaining: E_SLOW_DURATION,
+        cyclesRemaining: E_SLOW_DURATION,
         source: player.id,
       }),
     )
@@ -236,7 +236,7 @@ function resolveE(
       state: updatePlayers(state, [caster, ...slowed]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -273,13 +273,13 @@ function resolveR(
       let updated = applyBuff(p, {
         id: 'shield',
         stacks: R_SHIELD,
-        ticksRemaining: R_DURATION,
+        cyclesRemaining: R_DURATION,
         source: player.id,
       })
       updated = applyBuff(updated, {
         id: 'defenseBuff',
         stacks: R_DEFENSE_BONUS,
-        ticksRemaining: R_DURATION,
+        cyclesRemaining: R_DURATION,
         source: player.id,
       })
       return updated
@@ -289,7 +289,7 @@ function resolveR(
       state: updatePlayers(state, allAffected),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -322,7 +322,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
     applyBuff(p, {
       id: 'overwatch',
       stacks: OVERWATCH_PLATE_BONUS,
-      ticksRemaining: 2,
+      cyclesRemaining: 2,
       source: 'sentry_overwatch',
     }),
   )

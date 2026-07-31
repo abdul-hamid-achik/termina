@@ -20,12 +20,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 260,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 7,
     ice: 24,
     kills: 0,
@@ -39,7 +39,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -67,11 +67,11 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     playerMap[p.id] = p
   }
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -95,7 +95,7 @@ describe('Cache Hero', () => {
       const state = makeState([player, enemy])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'damage_taken',
         payload: { targetId: 'p1', attackerId: 'e1', damage: 100 },
       })
@@ -110,12 +110,12 @@ describe('Cache Hero', () => {
       let state = makeState([player, enemy])
 
       state = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'damage_taken',
         payload: { targetId: 'p1', attackerId: 'e1', damage: 100 },
       })
       state = resolvePassive(state, 'p1', {
-        tick: 11,
+        cycle: 11,
         type: 'damage_taken',
         payload: { targetId: 'p1', attackerId: 'e1', damage: 100 },
       })
@@ -132,7 +132,7 @@ describe('Cache Hero', () => {
       // Max energy = 700 * 0.3 = 210
       // Take 2000 damage (15% = 300, but capped at 210)
       state = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'damage_taken',
         payload: { targetId: 'p1', attackerId: 'e1', damage: 2000 },
       })
@@ -146,7 +146,7 @@ describe('Cache Hero', () => {
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'p1', targetId: 'e1', damage: 100 },
       })
@@ -160,7 +160,7 @@ describe('Cache Hero', () => {
       const state = makeState([player, enemy])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'damage_taken',
         payload: { targetId: 'e1', attackerId: 'p1', damage: 100 },
       })
@@ -173,7 +173,7 @@ describe('Cache Hero', () => {
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'damage_taken',
         payload: { targetId: 'p1', attackerId: 'e1', damage: 0 },
       })
@@ -200,7 +200,7 @@ describe('Cache Hero', () => {
       player = applyBuff(player, {
         id: 'cachedEnergy',
         stacks: 100,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'p1',
       })
       const enemy = makeEnemy()
@@ -227,7 +227,7 @@ describe('Cache Hero', () => {
       player = applyBuff(player, {
         id: 'cachedEnergy',
         stacks: 100,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'p1',
       })
       const enemy = makeEnemy()
@@ -309,7 +309,7 @@ describe('Cache Hero', () => {
       player = applyBuff(player, {
         id: 'cachedEnergy',
         stacks: 150,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'p1',
       })
       const state = makeState([player])
@@ -327,7 +327,7 @@ describe('Cache Hero', () => {
       player = applyBuff(player, {
         id: 'cachedEnergy',
         stacks: 150,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'p1',
       })
       const state = makeState([player])
@@ -388,7 +388,7 @@ describe('Cache Hero', () => {
       expect(hasBuff(updatedEnemy, 'antiHeal')).toBe(true)
       const debuff = updatedEnemy.buffs.find((b) => b.id === 'antiHeal')
       expect(debuff!.stacks).toBe(50) // 50% reduced healing
-      expect(debuff!.ticksRemaining).toBe(3)
+      expect(debuff!.cyclesRemaining).toBe(3)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -469,7 +469,7 @@ describe('Cache Hero', () => {
       player = applyBuff(player, {
         id: 'cachedEnergy',
         stacks: 200,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'p1',
       })
       const enemy1 = makeEnemy()
@@ -488,7 +488,7 @@ describe('Cache Hero', () => {
       player = applyBuff(player, {
         id: 'cachedEnergy',
         stacks: 100,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'p1',
       })
       const enemy1 = makeEnemy()
@@ -501,7 +501,7 @@ describe('Cache Hero', () => {
       expect(hasBuff(result.state.players['e2']!, 'slow')).toBe(true)
       const slow = result.state.players['e1']!.buffs.find((b) => b.id === 'slow')
       expect(slow!.stacks).toBe(35) // 35% slow
-      expect(slow!.ticksRemaining).toBe(2)
+      expect(slow!.cyclesRemaining).toBe(2)
     })
 
     it('consumes all cached energy', () => {
@@ -509,7 +509,7 @@ describe('Cache Hero', () => {
       player = applyBuff(player, {
         id: 'cachedEnergy',
         stacks: 200,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'p1',
       })
       const state = makeState([player])
@@ -536,7 +536,7 @@ describe('Cache Hero', () => {
       player = applyBuff(player, {
         id: 'cachedEnergy',
         stacks: 200,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'p1',
       })
       const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'chaff' })
@@ -582,7 +582,7 @@ describe('Cache Hero', () => {
   describe('Stun/Silence blocking', () => {
     it('prevents casting when stunned', () => {
       const player = makePlayer({
-        buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 1, source: 'enemy' }],
+        buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 1, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -595,7 +595,7 @@ describe('Cache Hero', () => {
 
     it('prevents casting when silenced', () => {
       const player = makePlayer({
-        buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 2, source: 'enemy' }],
+        buffs: [{ id: 'silence', stacks: 1, cyclesRemaining: 2, source: 'enemy' }],
       })
       const state = makeState([player])
 

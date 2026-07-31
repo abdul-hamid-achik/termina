@@ -7,7 +7,7 @@ import {
   applyBuff,
   hasBuff,
   getBuffStacks,
-  tickAllBuffs,
+  cycleAllBuffs,
 } from '~~/server/game/heroes/_base'
 // Register lambda hero (side-effect import)
 import '../../../server/game/heroes/lambda'
@@ -27,12 +27,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 400,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 1,
     ice: 17,
     kills: 0,
@@ -46,7 +46,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -74,11 +74,11 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     playerMap[p.id] = p
   }
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -146,7 +146,7 @@ describe('Lambda Hero', () => {
       player = applyBuff(player, {
         id: 'closureActive',
         stacks: 1,
-        ticksRemaining: 10,
+        cyclesRemaining: 10,
         source: 'p1',
       })
       const enemy = makeEnemy()
@@ -164,7 +164,7 @@ describe('Lambda Hero', () => {
       closurePlayer = applyBuff(closurePlayer, {
         id: 'closureActive',
         stacks: 1,
-        ticksRemaining: 10,
+        cyclesRemaining: 10,
         source: 'p1',
       })
       const enemy1 = makeEnemy()
@@ -190,7 +190,7 @@ describe('Lambda Hero', () => {
       player = applyBuff(player, {
         id: 'closureActive',
         stacks: 1,
-        ticksRemaining: 10,
+        cyclesRemaining: 10,
         source: 'p1',
       })
       const enemy = makeEnemy()
@@ -260,7 +260,7 @@ describe('Lambda Hero', () => {
       const state = makeState([player])
       const cast = Effect.runSync(resolveAbility(state, 'p1', 'w'))
 
-      // Roam to top-river while the mark (ticksRemaining 3) is up.
+      // Roam to top-river while the mark (cyclesRemaining 3) is up.
       let s: GameState = {
         ...cast.state,
         players: {
@@ -269,13 +269,13 @@ describe('Lambda Hero', () => {
         },
       }
 
-      // Away for 2 ticks (ticksRemaining 3 → 2 → 1) — still away, mark still up.
-      for (let i = 0; i < 2; i++) s = tickAllBuffs(s)
+      // Away for 2 ticks (cyclesRemaining 3 → 2 → 1) — still away, mark still up.
+      for (let i = 0; i < 2; i++) s = cycleAllBuffs(s)
       expect(s.players['p1']!.zone).toBe('top-river')
       expect(hasBuff(s.players['p1']!, 'returnMark')).toBe(true)
 
       // The next (3rd) tick expires it → snap back to mid-river.
-      s = tickAllBuffs(s)
+      s = cycleAllBuffs(s)
       expect(s.players['p1']!.zone).toBe('mid-river')
       expect(hasBuff(s.players['p1']!, 'returnMark')).toBe(false)
 
@@ -301,7 +301,7 @@ describe('Lambda Hero', () => {
       player = applyBuff(player, {
         id: 'closureActive',
         stacks: 1,
-        ticksRemaining: 10,
+        cyclesRemaining: 10,
         source: 'p1',
       })
       const state = makeState([player])
@@ -346,7 +346,7 @@ describe('Lambda Hero', () => {
       expect(hasBuff(updatedEnemy, 'slow')).toBe(true)
       const slow = updatedEnemy.buffs.find((b) => b.id === 'slow')
       expect(slow!.stacks).toBe(30) // 30% slow
-      expect(slow!.ticksRemaining).toBe(2)
+      expect(slow!.cyclesRemaining).toBe(2)
     })
 
     it('does not damage allies', () => {
@@ -395,7 +395,7 @@ describe('Lambda Hero', () => {
       closurePlayer = applyBuff(closurePlayer, {
         id: 'closureActive',
         stacks: 1,
-        ticksRemaining: 10,
+        cyclesRemaining: 10,
         source: 'p1',
       })
       const enemy1 = makeEnemy()
@@ -450,7 +450,7 @@ describe('Lambda Hero', () => {
       player = applyBuff(player, {
         id: 'closureActive',
         stacks: 1,
-        ticksRemaining: 10,
+        cyclesRemaining: 10,
         source: 'p1',
       })
       const enemy = makeEnemy()
@@ -462,7 +462,7 @@ describe('Lambda Hero', () => {
       expect(hasBuff(updatedEnemy, 'stun')).toBe(true)
       const stun = updatedEnemy.buffs.find((b) => b.id === 'stun')
       // raw 2 = one gated action: a cast-applied disable is reaped same-tick.
-      expect(stun!.ticksRemaining).toBe(2)
+      expect(stun!.cyclesRemaining).toBe(2)
     })
 
     it('does not stun without closureActive', () => {
@@ -481,7 +481,7 @@ describe('Lambda Hero', () => {
       player = applyBuff(player, {
         id: 'closureActive',
         stacks: 1,
-        ticksRemaining: 10,
+        cyclesRemaining: 10,
         source: 'p1',
       })
       const enemy = makeEnemy()
@@ -498,7 +498,7 @@ describe('Lambda Hero', () => {
       player = applyBuff(player, {
         id: 'closureActive',
         stacks: 1,
-        ticksRemaining: 10,
+        cyclesRemaining: 10,
         source: 'p1',
       })
       const enemy = makeEnemy()
@@ -579,7 +579,7 @@ describe('Lambda Hero', () => {
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'ability_cast',
         payload: { playerId: 'p1', ability: 'q' },
       })
@@ -592,13 +592,13 @@ describe('Lambda Hero', () => {
       player = applyBuff(player, {
         id: 'closureCasts',
         stacks: 1,
-        ticksRemaining: 4,
+        cyclesRemaining: 4,
         source: 'p1',
       })
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'ability_cast',
         payload: { playerId: 'p1', ability: 'q' },
       })
@@ -611,13 +611,13 @@ describe('Lambda Hero', () => {
       player = applyBuff(player, {
         id: 'closureCasts',
         stacks: 2,
-        ticksRemaining: 4,
+        cyclesRemaining: 4,
         source: 'p1',
       })
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'ability_cast',
         payload: { playerId: 'p1', ability: 'q' },
       })
@@ -630,7 +630,7 @@ describe('Lambda Hero', () => {
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'ability_cast',
         payload: { playerId: 'e1', ability: 'q' },
       })
@@ -643,7 +643,7 @@ describe('Lambda Hero', () => {
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'p1', targetId: 'e1' },
       })
@@ -656,13 +656,13 @@ describe('Lambda Hero', () => {
       player = applyBuff(player, {
         id: 'closureActive',
         stacks: 1,
-        ticksRemaining: 10,
+        cyclesRemaining: 10,
         source: 'p1',
       })
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'ability_cast',
         payload: { playerId: 'p1', ability: 'q' },
       })
@@ -676,20 +676,20 @@ describe('Lambda Hero', () => {
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'ability_cast',
         payload: { playerId: 'p1', ability: 'q' },
       })
 
       const castsBuff = updated.players['p1']!.buffs.find((b) => b.id === 'closureCasts')
-      expect(castsBuff!.ticksRemaining).toBe(4)
+      expect(castsBuff!.cyclesRemaining).toBe(4)
     })
   })
 
   describe('Stun/Silence blocking', () => {
     it('prevents casting when stunned', () => {
       const player = makePlayer({
-        buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 1, source: 'enemy' }],
+        buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 1, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -702,7 +702,7 @@ describe('Lambda Hero', () => {
 
     it('prevents casting when silenced', () => {
       const player = makePlayer({
-        buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 2, source: 'enemy' }],
+        buffs: [{ id: 'silence', stacks: 1, cyclesRemaining: 2, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

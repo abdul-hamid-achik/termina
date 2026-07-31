@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import HeroPortrait from '~/components/avatars/HeroPortrait.vue'
-import { DAY_DURATION_TICKS, NIGHT_DURATION_TICKS } from '~~/shared/constants/balance'
+import { DAY_DURATION_CYCLES, NIGHT_DURATION_CYCLES } from '~~/shared/constants/balance'
 import { FACTION_META } from '~~/shared/constants/world'
-import type { TeamState, AncientState } from '~~/shared/types/game'
-import { goldLead, formatGoldShort, dayNightReadout } from '~/utils/strategy'
+import type { TeamState, TerminalState } from '~~/shared/types/game'
+import { scripLead, formatScripShort, dayNightReadout } from '~/utils/strategy'
 import { formatSeconds } from '~/utils/gameClock'
 
 const props = defineProps<{
-  tick: number
+  cycle: number
   gameTime: string
-  gold: number
+  scrip: number
   kills: number
   deaths: number
   assists: number
@@ -19,20 +19,20 @@ const props = defineProps<{
   reconnecting?: boolean
   latency?: number
   timeOfDay?: 'day' | 'night'
-  dayNightTick?: number
+  dayNightCycle?: number
   /** Team-level macro state (renders the always-on macro row when present). */
   teams?: { chaff: TeamState; audit: TeamState } | null
-  ancients?: { chaff: AncientState; audit: AncientState } | null
+  terminals?: { chaff: TerminalState; audit: TerminalState } | null
   netWorthChaff?: number
   netWorthAudit?: number
   /** Bumped by the parent when the local player scores a kill → KDA pop. */
   kdaPopKey?: number
 }>()
 
-// The bar shows no tick countdown — the combat log's theater header is the
+// The bar shows no cycle countdown — the combat log's theater header is the
 // game's single clock (four duplicate countdowns was a legibility complaint).
 
-function formatGold(n: number): string {
+function formatScrip(n: number): string {
   return n.toLocaleString()
 }
 
@@ -46,17 +46,17 @@ const dayNightTitle = computed(() => {
     : 'Day — full vision range'
 })
 
-function formatTimeRemaining(tick: number, timeOfDay: string): string {
-  const totalTicks = timeOfDay === 'day' ? DAY_DURATION_TICKS : NIGHT_DURATION_TICKS
-  const remaining = totalTicks - tick
+function formatTimeRemaining(cycle: number, timeOfDay: string): string {
+  const totalTicks = timeOfDay === 'day' ? DAY_DURATION_CYCLES : NIGHT_DURATION_CYCLES
+  const remaining = totalTicks - cycle
   const seconds = Math.ceil(remaining * 4)
   return formatSeconds(seconds)
 }
 
 // ── Macro row (team score / net worth / ice / Core INTEG) ──────
-const lead = computed(() => goldLead(props.netWorthChaff ?? 0, props.netWorthAudit ?? 0))
+const lead = computed(() => scripLead(props.netWorthChaff ?? 0, props.netWorthAudit ?? 0))
 
-function corePct(a: AncientState | undefined): number {
+function corePct(a: TerminalState | undefined): number {
   if (!a || a.maxInteg <= 0) return 0
   return Math.round((a.integ / a.maxInteg) * 100)
 }
@@ -64,14 +64,14 @@ function corePct(a: AncientState | undefined): number {
 
 <template>
   <div class="flex flex-col border-b border-border bg-bg-secondary" data-testid="game-state-bar">
-    <!-- Row 1: self state + tick heartbeat -->
+    <!-- Row 1: self state + cycle heartbeat -->
     <div
       class="flex items-center gap-2 overflow-x-auto px-3 py-1.5 text-[0.8rem] whitespace-nowrap t-mono-num"
     >
       <HeroPortrait v-if="heroId" :hero-id="heroId" :size="24" />
       <span class="inline-flex gap-1">
         <span class="t-caption">Cycle</span>
-        <span class="text-text-primary">{{ tick }}</span>
+        <span class="text-text-primary">{{ cycle }}</span>
       </span>
       <span class="text-border">|</span>
       <span class="inline-flex gap-1">
@@ -81,14 +81,14 @@ function corePct(a: AncientState | undefined): number {
       <span class="inline-flex items-center gap-1" :title="dayNightTitle">
         <span v-if="timeOfDay === 'day'" class="text-gold text-glow-gold">Day</span>
         <span v-else class="text-self text-glow-sm">Night</span>
-        <span v-if="dayNightTick !== undefined && timeOfDay" class="t-caption">
-          ({{ formatTimeRemaining(dayNightTick, timeOfDay) }})
+        <span v-if="dayNightCycle !== undefined && timeOfDay" class="t-caption">
+          ({{ formatTimeRemaining(dayNightCycle, timeOfDay) }})
         </span>
       </span>
       <span class="text-border">|</span>
       <span class="inline-flex gap-1">
         <span class="t-caption">Scrip</span>
-        <span class="text-gold text-glow-gold font-bold">{{ formatGold(gold) }}</span>
+        <span class="text-gold text-glow-gold font-bold">{{ formatScrip(scrip) }}</span>
       </span>
       <span class="text-border">|</span>
       <span class="inline-flex gap-1">
@@ -135,7 +135,7 @@ function corePct(a: AncientState | undefined): number {
           v-if="lead.leader"
           :class="lead.leader === 'chaff' ? 'text-chaff' : 'text-audit'"
           class="font-bold"
-          >{{ FACTION_META[lead.leader].short }} +{{ formatGoldShort(lead.amount) }}</span
+          >{{ FACTION_META[lead.leader].short }} +{{ formatScripShort(lead.amount) }}</span
         >
         <span v-else class="text-text-dim">even</span>
       </span>
@@ -147,19 +147,19 @@ function corePct(a: AncientState | undefined): number {
         ><span class="text-text-muted">/</span
         ><span class="text-audit">{{ teams.audit.iceKills }}</span>
       </span>
-      <template v-if="ancients">
+      <template v-if="terminals">
         <span class="text-border">|</span>
         <!-- Terminal INTEG — turns urgent once vulnerable -->
         <span class="inline-flex items-center gap-1">
           <span class="t-caption">TERMINAL</span>
           <span
-            :class="ancients.chaff.vulnerable ? 'text-warn animate-pulse font-bold' : 'text-chaff'"
-            >{{ FACTION_META.chaff.short }} {{ corePct(ancients.chaff) }}%</span
+            :class="terminals.chaff.vulnerable ? 'text-warn animate-pulse font-bold' : 'text-chaff'"
+            >{{ FACTION_META.chaff.short }} {{ corePct(terminals.chaff) }}%</span
           >
           <span class="text-text-muted">/</span>
           <span
-            :class="ancients.audit.vulnerable ? 'text-warn animate-pulse font-bold' : 'text-audit'"
-            >{{ FACTION_META.audit.short }} {{ corePct(ancients.audit) }}%</span
+            :class="terminals.audit.vulnerable ? 'text-warn animate-pulse font-bold' : 'text-audit'"
+            >{{ FACTION_META.audit.short }} {{ corePct(terminals.audit) }}%</span
           >
         </span>
       </template>

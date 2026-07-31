@@ -11,7 +11,7 @@ const TIERS: TalentTier[] = [10, 15, 20, 25]
 /**
  * The lowest tier the player has reached but not yet chosen a talent for.
  * Drives the prompt's visibility — it appears the tick a talent unlocks and
- * vanishes once the choice lands in `player.talents` on the next tick_state.
+ * vanishes once the choice lands in `player.talents` on the next cycle_state.
  */
 const pending = computed(() => {
   const p = props.player

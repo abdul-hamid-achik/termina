@@ -5,7 +5,7 @@ import { seedGame, HUMAN, ENEMY } from './harness'
  * Channeled teleport (town portal scroll) — the rotation backbone. Using a TP
  * scroll starts a multi-tick channel (tp_channeling) toward the hero's fountain;
  * it only moves the hero once the channel finishes, and any incoming damage
- * interrupts it. Both run through the real processTick (buff-tick completion in
+ * interrupts it. Both run through the real processCycle (buff-tick completion in
  * _base, damage cancel in the attack phase).
  */
 describe('teleport (town portal scroll)', () => {
@@ -42,8 +42,8 @@ describe('teleport (town portal scroll)', () => {
   it('a completed teleport emits a teleport_complete event on the client-bound channel', async () => {
     // The completion must reach the SAME _tag event channel the client reads
     // (allEvents → onEvents), so the combat log can narrate "teleported to …".
-    // tickAllBuffs authors it as a wire-format event on state.events, which the
-    // client never reads — processTick bridges it into the _tag channel.
+    // cycleAllBuffs authors it as a wire-format event on state.events, which the
+    // client never reads — processCycle bridges it into the _tag channel.
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me0 = await game.me()
     const fountain = me0.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
@@ -83,13 +83,13 @@ describe('teleport (town portal scroll)', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           zone: 'mid-river',
-          // Shadow expires this tick (ticksRemaining 1) and its zone differs from
-          // the current one, so tickAllBuffs snaps the hero to it.
+          // Shadow expires this cycle (cyclesRemaining 1) and its zone differs from
+          // the current one, so cycleAllBuffs snaps the hero to it.
           buffs: [
             {
               id: 'nextHopShadow',
               stacks: 1,
-              ticksRemaining: 1,
+              cyclesRemaining: 1,
               source: HUMAN,
               destination: 'mid-t1-chaff',
             },

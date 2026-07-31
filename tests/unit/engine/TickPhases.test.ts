@@ -8,33 +8,33 @@ import {
   processSpecialActions,
 } from '~~/server/game/engine/GameLoop'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import { initializeAncients } from '~~/server/game/engine/AncientSystem'
+import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
 import {
-  HARDEN_DURATION_TICKS,
-  DAY_DURATION_TICKS,
-  NIGHT_DURATION_TICKS,
-  WAVE_INTERVAL_TICKS,
+  HARDEN_DURATION_CYCLES,
+  DAY_DURATION_CYCLES,
+  NIGHT_DURATION_CYCLES,
+  WAVE_INTERVAL_CYCLES,
 } from '~~/shared/constants/balance'
 
 function makeState(overrides: Partial<GameState> = {}): GameState {
   return {
-    tick: 0,
+    cycle: 0,
     phase: 'playing',
     teams: {
       chaff: {
         id: 'chaff',
         kills: 0,
         iceKills: 0,
-        gold: 0,
-        hardenUsedTick: null,
+        scrip: 0,
+        hardenUsedCycle: null,
         glyphCooldown: 0,
       },
       audit: {
         id: 'audit',
         kills: 0,
         iceKills: 0,
-        gold: 0,
-        hardenUsedTick: null,
+        scrip: 0,
+        hardenUsedCycle: null,
         glyphCooldown: 0,
       },
     },
@@ -43,14 +43,14 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     waves: [],
     neutrals: [],
     ice: initializeIce(),
-    ancients: initializeAncients(),
+    terminals: initializeAncients(),
     caches: [],
-    tenant: { alive: false, integ: 0, maxInteg: 5000, deathTick: null },
+    tenant: { alive: false, integ: 0, maxInteg: 5000, deathCycle: null },
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
-    dayNightTick: 0,
+    dayNightCycle: 0,
     ...overrides,
   }
 }
@@ -63,50 +63,50 @@ describe('expireGlyph', () => {
 
   it('does not expire while still within duration', () => {
     const state = makeState({
-      tick: 3,
+      cycle: 3,
       teams: {
         chaff: {
           id: 'chaff',
           kills: 0,
           iceKills: 0,
-          gold: 0,
-          hardenUsedTick: 1,
+          scrip: 0,
+          hardenUsedCycle: 1,
           glyphCooldown: 0,
         },
         audit: {
           id: 'audit',
           kills: 0,
           iceKills: 0,
-          gold: 0,
-          hardenUsedTick: null,
+          scrip: 0,
+          hardenUsedCycle: null,
           glyphCooldown: 0,
         },
       },
       ice: initializeIce().map((t) => (t.team === 'chaff' ? { ...t, invulnerable: true } : t)),
     })
     const result = expireGlyph(state)
-    // tick=3, used=1, HARDEN_DURATION_TICKS=5 → 2 < 5, still invulnerable
+    // cycle =3, used=1, HARDEN_DURATION_CYCLES=5 → 2 < 5, still invulnerable
     expect(result.ice.find((t) => t.team === 'chaff')!.invulnerable).toBe(true)
   })
 
   it('drops chaff invulnerability when duration is up', () => {
     const state = makeState({
-      tick: HARDEN_DURATION_TICKS + 5,
+      cycle: HARDEN_DURATION_CYCLES + 5,
       teams: {
         chaff: {
           id: 'chaff',
           kills: 0,
           iceKills: 0,
-          gold: 0,
-          hardenUsedTick: 5,
+          scrip: 0,
+          hardenUsedCycle: 5,
           glyphCooldown: 0,
         },
         audit: {
           id: 'audit',
           kills: 0,
           iceKills: 0,
-          gold: 0,
-          hardenUsedTick: null,
+          scrip: 0,
+          hardenUsedCycle: null,
           glyphCooldown: 0,
         },
       },
@@ -120,22 +120,22 @@ describe('expireGlyph', () => {
 
   it('expires both teams independently when both glyphs are up', () => {
     const state = makeState({
-      tick: HARDEN_DURATION_TICKS + 1,
+      cycle: HARDEN_DURATION_CYCLES + 1,
       teams: {
         chaff: {
           id: 'chaff',
           kills: 0,
           iceKills: 0,
-          gold: 0,
-          hardenUsedTick: 1,
+          scrip: 0,
+          hardenUsedCycle: 1,
           glyphCooldown: 0,
         },
         audit: {
           id: 'audit',
           kills: 0,
           iceKills: 0,
-          gold: 0,
-          hardenUsedTick: 1,
+          scrip: 0,
+          hardenUsedCycle: 1,
           glyphCooldown: 0,
         },
       },
@@ -170,14 +170,14 @@ describe('processSpecialActions', () => {
           maxBw: 100,
           level: 5,
           xp: 0,
-          gold: 5000,
+          scrip: 5000,
           items: [null, null, null, null, null, null],
           plate: 0,
           ice: 0,
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
           buffs: [],
           alive: true,
-          respawnTick: null,
+          respawnCycle: null,
           kills: 0,
           deaths: 0,
           assists: 0,
@@ -211,15 +211,15 @@ describe('processSpecialActions', () => {
 
 describe('runSpawning', () => {
   it('returns the same state when nothing spawns and nothing expires', () => {
-    const state = makeState({ tick: 1 })
+    const state = makeState({ cycle: 1 })
     const result = runSpawning(state)
-    // tick=1 isn't a wave-wave or cache tick; no caches/wards exist to expire
+    // cycle =1 isn't a wave-wave or cache cycle; no caches/wards exist to expire
     expect(result.waves).toEqual([])
     expect(result.caches ?? []).toEqual([])
   })
 
   it('spawns waves on a wave tick', () => {
-    const state = makeState({ tick: WAVE_INTERVAL_TICKS })
+    const state = makeState({ cycle: WAVE_INTERVAL_CYCLES })
     const result = runSpawning(state)
     expect(result.waves.length).toBeGreaterThan(0)
   })
@@ -227,20 +227,20 @@ describe('runSpawning', () => {
 
 describe('runNPCAI', () => {
   it('runs without error on an empty state', () => {
-    const state = makeState({ tick: 1 })
+    const state = makeState({ cycle: 1 })
     const result = runNPCAI(state, { heroAttackers: new Set(), priorEvents: [] })
-    expect(result.state.tick).toBe(1)
+    expect(result.state.cycle).toBe(1)
     expect(Array.isArray(result.events)).toBe(true)
   })
 
   it('damages a hero in hollow when Tenant is alive', () => {
     const state = makeState({
-      tick: 1,
+      cycle: 1,
       tenant: {
         alive: true,
         integ: 5000,
         maxInteg: 5000,
-        deathTick: null,
+        deathCycle: null,
         zone: 'hollow',
       } as never,
       players: {
@@ -256,14 +256,14 @@ describe('runNPCAI', () => {
           maxBw: 100,
           level: 5,
           xp: 0,
-          gold: 0,
+          scrip: 0,
           items: [null, null, null, null, null, null],
           plate: 0,
           ice: 0,
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
           buffs: [],
           alive: true,
-          respawnTick: null,
+          respawnCycle: null,
           kills: 0,
           deaths: 0,
           assists: 0,
@@ -282,33 +282,33 @@ describe('runNPCAI', () => {
 })
 
 describe('progressDayNight', () => {
-  it('increments dayNightTick without emitting events mid-cycle', () => {
-    const state = makeState({ timeOfDay: 'day', dayNightTick: 50 })
+  it('increments dayNightCycle without emitting events mid-cycle', () => {
+    const state = makeState({ timeOfDay: 'day', dayNightCycle: 50 })
     const result = progressDayNight(state)
-    expect(result.state.dayNightTick).toBe(51)
+    expect(result.state.dayNightCycle).toBe(51)
     expect(result.state.timeOfDay).toBe('day')
     expect(result.events).toEqual([])
   })
 
   it('flips day → night and emits night_falls when day duration is up', () => {
-    const state = makeState({ timeOfDay: 'day', dayNightTick: DAY_DURATION_TICKS - 1, tick: 10 })
+    const state = makeState({ timeOfDay: 'day', dayNightCycle: DAY_DURATION_CYCLES - 1, cycle: 10 })
     const result = progressDayNight(state)
     expect(result.state.timeOfDay).toBe('night')
-    expect(result.state.dayNightTick).toBe(0)
+    expect(result.state.dayNightCycle).toBe(0)
     expect(result.events).toHaveLength(1)
     expect(result.events[0]!._tag).toBe('night_falls')
-    expect(result.events[0]!.tick).toBe(10)
+    expect(result.events[0]!.cycle).toBe(10)
   })
 
   it('flips night → day and emits day_breaks when night duration is up', () => {
     const state = makeState({
       timeOfDay: 'night',
-      dayNightTick: NIGHT_DURATION_TICKS - 1,
-      tick: 20,
+      dayNightCycle: NIGHT_DURATION_CYCLES - 1,
+      cycle: 20,
     })
     const result = progressDayNight(state)
     expect(result.state.timeOfDay).toBe('day')
-    expect(result.state.dayNightTick).toBe(0)
+    expect(result.state.dayNightCycle).toBe(0)
     expect(result.events).toHaveLength(1)
     expect(result.events[0]!._tag).toBe('day_breaks')
   })

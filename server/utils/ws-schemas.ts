@@ -14,7 +14,7 @@ const targetRefSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('neutral'), index: z.number().int().min(0).max(10_000) }),
   z.object({ kind: z.literal('ice'), zone: zoneId }),
   z.object({ kind: z.literal('tenant') }),
-  z.object({ kind: z.literal('ancient') }),
+  z.object({ kind: z.literal('terminal') }),
   z.object({ kind: z.literal('zone'), zone: zoneId }),
   z.object({ kind: z.literal('self') }),
 ])
@@ -37,12 +37,10 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ward'), zone: zoneId }),
   z.object({ type: z.literal('backup') }),
   z.object({ type: z.literal('grab') }),
-  z.object({ type: z.literal('scan') }),
-  z.object({ type: z.literal('who') }),
-  z.object({ type: z.literal('net') }),
-  z.object({ type: z.literal('look') }),
-  z.object({ type: z.literal('status') }),
-  z.object({ type: z.literal('map') }),
+  // Trap #9: scan/who/net/look/status/map/help are CLIENT_ONLY (local readouts
+  // in GameScreen). Omitting them from the wire schema means a buggy client
+  // that submits one gets a validation error instead of silently burning the
+  // player's one action for the cycle. See shared/constants/commands.ts.
   z.object({
     type: z.literal('chat'),
     channel: z.enum(['team', 'all']),
@@ -78,7 +76,7 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
     type: z.literal('reconnect'),
     gameId: shortId,
     playerId: shortId,
-    lastTick: z.number().int().min(0).optional(),
+    lastCycle: z.number().int().min(0).optional(),
   }),
   z.object({ type: z.literal('join_game'), gameId: shortId }),
   z.object({ type: z.literal('hero_pick'), lobbyId: shortId, heroId: shortId }),

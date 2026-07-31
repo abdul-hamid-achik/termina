@@ -121,7 +121,7 @@ describe('InventoryBar', () => {
     it('item on cooldown shows tooltip without [USE] and never emits', async () => {
       mockPointer(true)
       const buffs: BuffState[] = [
-        { id: 'item_cd_trauma_patch', stacks: 1, ticksRemaining: 2, source: 'item' },
+        { id: 'item_cd_trauma_patch', stacks: 1, cyclesRemaining: 2, source: 'item' },
       ]
       const wrapper = mountBar(DEFAULT_ITEMS, buffs)
 

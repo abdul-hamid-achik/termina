@@ -84,7 +84,7 @@ describe('Hero Definitions', () => {
         expect(p.name).toBeTruthy()
         expect(p.description.length).toBeGreaterThan(0)
         expect(p.bwCost).toBe(0)
-        expect(p.cooldownTicks).toBe(0)
+        expect(p.cooldownCycles).toBe(0)
         expect(p.targetType).toBe('none')
         expect(p.effects.length).toBeGreaterThan(0)
       })
@@ -121,7 +121,7 @@ describe('Hero Definitions', () => {
           expect(ability.name).toBeTruthy()
           expect(ability.description.length).toBeGreaterThan(0)
           expect(ability.bwCost).toBeGreaterThanOrEqual(0)
-          expect(ability.cooldownTicks).toBeGreaterThan(0)
+          expect(ability.cooldownCycles).toBeGreaterThan(0)
           expect(ability.effects.length).toBeGreaterThan(0)
         })
       }

@@ -3,12 +3,12 @@ import { Effect, Schedule, Fiber } from 'effect'
 import type { GameEvent, GameState, TeamId } from '~~/shared/types/game'
 import type { Command } from '~~/shared/types/commands'
 import {
-  TICK_DURATION_MS,
-  RESPAWN_BASE_TICKS,
-  RESPAWN_PER_LEVEL_TICKS,
+  CYCLE_DURATION_MS,
+  RESPAWN_BASE_CYCLES,
+  RESPAWN_PER_LEVEL_CYCLES,
   RESPAWN_FREE_LEVELS,
-  FOUNTAIN_HEAL_PER_TICK_PERCENT,
-  FOUNTAIN_BW_PER_TICK_PERCENT,
+  FOUNTAIN_HEAL_PER_CYCLE_PERCENT,
+  FOUNTAIN_BW_PER_CYCLE_PERCENT,
   XP_PER_LEVEL,
   MAX_LEVEL,
   HERO_KILL_XP_BASE,
@@ -16,17 +16,17 @@ import {
   ASSIST_XP_RATIO,
   POWER_SPIKE_LEVELS,
   IN_COMBAT_BUFF_DURATION,
-  DAY_DURATION_TICKS,
-  NIGHT_DURATION_TICKS,
-  HARDEN_DURATION_TICKS,
+  DAY_DURATION_CYCLES,
+  NIGHT_DURATION_CYCLES,
+  HARDEN_DURATION_CYCLES,
 } from '~~/shared/constants/balance'
 import type { StateManagerApi } from './StateManager'
 import { scaledTickIntervalMs, scaledRespawnTicks, fastGameFactor } from './fastGame'
 import { resolveActions, validateAction, type PlayerAction } from './ActionResolver'
 import { advanceTutorialAfterTick, TUTORIAL_STEP_COUNT } from '~~/server/game/modes/tutorial'
-import { distributePassiveGold, awardKill, xpComebackMultiplier } from './GoldDistributor'
+import { distributePassiveGold, awardKill, xpComebackMultiplier } from './ScripDistributor'
 import { runWaveAI, applyWaveActions, enforceWaveZoneCap } from './WaveAI'
-import { ensureAncients, updateAncientVulnerability, checkAncientWin } from './AncientSystem'
+import { ensureTerminals, updateAncientVulnerability, checkTerminalWin } from './TerminalSystem'
 import { runIceAI, applyIceActions } from './IceAI'
 import { runTenantAI, processTenantDamage } from './TenantAI'
 import { removeExpiredCaches, processCacheBuffs } from './CacheAI'
@@ -42,7 +42,7 @@ import { computeDelta, recordSentState, clearGameSentStates, getSentState } from
 import {
   levelUpHero,
   processDoTs,
-  tickAllBuffs,
+  cycleAllBuffs,
   resolvePassive,
   getTalentTree,
 } from '~~/server/game/heroes'
@@ -88,7 +88,7 @@ const KEEPS_ATTACK = new Set(['attack', 'use', 'surrender', 'select_talent', 'bu
  *    blink→stun→nuke reachable inside one 4s tick.
  *  - the out-of-band verbs, one slot each: picking a talent used to overwrite a
  *    queued cast, because everything shared a single latest-wins slot.
- *  - 'main': move/attack/cast/buy/… — still exactly one per tick.
+ *  - 'main': move/attack/cast/buy/… — still exactly one per cycle.
  */
 function actionSlot(command: Command): string {
   if (command.type === 'use') return 'item'
@@ -130,12 +130,12 @@ function trackHeroDamage(gameId: string, state: GameState, events: GameEngineEve
       victimMap = new Map()
       game.set(e.targetId, victimMap)
     }
-    victimMap.set(e.sourceId, state.tick)
+    victimMap.set(e.sourceId, state.cycle)
   }
   // Prune contributions older than the window
   for (const [victimId, victimMap] of game) {
     for (const [attackerId, tick] of victimMap) {
-      if (state.tick - tick > ASSIST_WINDOW_TICKS) victimMap.delete(attackerId)
+      if (state.cycle - tick > ASSIST_WINDOW_TICKS) victimMap.delete(attackerId)
     }
     if (victimMap.size === 0) game.delete(victimId)
   }
@@ -158,7 +158,7 @@ export interface PlayerFarm {
 const gameFarm = new Map<string, Map<string, PlayerFarm>>()
 
 /**
- * Tally farm off the emitted events rather than off a counter beside the gold
+ * Tally farm off the emitted events rather than off a counter beside the scrip
  * award. The two `creep_*` events fire exactly where the reward lands (past the
  * resolver's INTEG window, team and index checks), so a tally derived from them
  * cannot disagree with the "+38g last-hit" lines the player actually watched go
@@ -236,22 +236,22 @@ function drainActions(gameId: string): PlayerAction[] {
  * Process a single game tick.
  * This is the core of the game loop extracted as a pure function for testability.
  */
-export function processTick(
+export function processCycle(
   gameId: string,
   state: GameState,
 ): Effect.Effect<{
   state: GameState
   events: GameEngineEvent[]
   rejectedActions: Array<{ playerId: string; reason: string }>
-  /** Coaching lines to push to a player this tick (tutorial guidance). */
+  /** Coaching lines to push to a player this cycle (tutorial guidance). */
   notices: Array<{ playerId: string; message: string }>
-  /** All actions drained this tick — exposed so callers can persist them. */
+  /** All actions drained this cycle — exposed so callers can persist them. */
   actions: PlayerAction[]
 }> {
   return Effect.gen(function* () {
-    // ensureAncients backfills `ancients` on states created before the
+    // ensureTerminals backfills `terminals` on states created before the
     // Ancient existed (resumed snapshots, older fixtures).
-    let currentState: GameState = ensureAncients({ ...state, tick: state.tick + 1, events: [] })
+    let currentState: GameState = ensureTerminals({ ...state, cycle: state.cycle + 1, events: [] })
     const allEvents: GameEngineEvent[] = []
     const rejectedActions: Array<{ playerId: string; reason: string }> = []
     const notices: Array<{ playerId: string; message: string }> = []
@@ -270,7 +270,7 @@ export function processTick(
       const bot = currentState.players[botId]
       if (!bot) continue
       // Alive bots skip the AI turn if a surrender vote is already queued for
-      // this tick (AFK-converted humans voting to end should not also charge).
+      // this cycle (AFK-converted humans voting to end should not also charge).
       // Dead bots still run decideBotAction so tryBuyback can fire — the old
       // `if (bot.alive)` gate made buyback unreachable forever.
       if (bot.alive && hasQueuedCommand(gameId, botId, 'surrender')) continue
@@ -301,7 +301,7 @@ export function processTick(
             ...currentState.players,
             [action.playerId]: {
               ...actor,
-              lastActionTick: currentState.tick,
+              lastActionCycle: currentState.cycle,
               ...(cancelsWalk ? { moveTarget: null } : {}),
               ...(cancelsAttack ? { attackTarget: null } : {}),
             },
@@ -311,7 +311,7 @@ export function processTick(
     }
 
     // 1.3. Standing-order continuation — players with a queued destination or
-    // attack target and no explicit order this tick keep walking / keep
+    // attack target and no explicit order this cycle keep walking / keep
     // swinging, through the normal validate/resolve pipeline (so root, stun and
     // taunt still gate them). Added AFTER the activity stamping above: a
     // continuation is not player activity, and AFK detection must still see an
@@ -361,7 +361,7 @@ export function processTick(
         validActions.push(action)
       } else if (!action.synthesized) {
         // Synthesized auto-path continuations fail silently: a rooted walker
-        // would otherwise get "Cannot move while rooted" warnings every tick
+        // would otherwise get "Cannot move while rooted" warnings every cycle
         // for an order they issued long ago. The walk resumes when the
         // disable expires (moveTarget persists).
         rejectedActions.push({ playerId: action.playerId, reason: error })
@@ -395,7 +395,7 @@ export function processTick(
       }
       // Graduating used to drop the player into the app's worst state: the
       // scripted hints stop, the banner says "you're in free play", and they are
-      // left in an endless 2v2 with no menu and — because SURRENDER_MIN_TICK is
+      // left in an endless 2v2 with no menu and — because SURRENDER_MIN_CYCLE is
       // 225 (15 min) and the tutorial ends around tick 60 — no way to quit for
       // another ~11 minutes. Closing the tab was the only real option. End the
       // game on graduation instead: the win block below preserves an
@@ -442,14 +442,14 @@ export function processTick(
     // phase, which resolves before NPCs act); the buff refresh is idempotent.
     currentState = applyInCombatBuffs(currentState, npcResult.events)
 
-    // 5.7. Recompute Ancient vulnerability after all ice damage this tick
+    // 5.7. Recompute Ancient vulnerability after all ice damage this cycle
     // (hero attacks in resolveActions + wave attacks in NPC AI).
     currentState = updateAncientVulnerability(currentState)
 
     // 6–7. Spawn waves / neutrals / caches; expire caches + wards
     currentState = runSpawning(currentState)
 
-    // 8. Distribute passive gold
+    // 8. Distribute passive scrip
     currentState = distributePassiveGold(currentState)
 
     // 9. Handle respawns
@@ -466,9 +466,9 @@ export function processTick(
 
     // 10.6. Tick all buffs (decrement durations, remove expired)
     const eventsBeforeBuffTick = currentState.events.length
-    currentState = tickAllBuffs(currentState)
-    // tickAllBuffs authors teleport_complete as a wire-format event on
-    // state.events, which the client never reads (updateFromTick ignores it).
+    currentState = cycleAllBuffs(currentState)
+    // cycleAllBuffs authors teleport_complete as a wire-format event on
+    // state.events, which the client never reads (updateFromCycle ignores it).
     // Bridge those into the _tag/allEvents channel so a completed teleport
     // actually reaches the combat log — mirroring teleport_cancelled, which is
     // already authored as a _tag event in the resolver.
@@ -476,13 +476,13 @@ export function processTick(
       if (e.type === 'teleport_complete') {
         allEvents.push({
           _tag: 'teleport_complete',
-          tick: e.tick,
+          cycle: e.cycle,
           playerId: e.payload.playerId as string,
           destination: e.payload.destination as string,
           ...(e.payload.source ? { source: e.payload.source as 'return' | 'next_hop' } : {}),
         })
       } else if (e.type === 'ability_used' && e.payload.effect === 'dmz_explosion') {
-        // Firewall DMZ explosion mutates enemy INTEG inside tickAllBuffs but only
+        // Firewall DMZ explosion mutates enemy INTEG inside cycleAllBuffs but only
         // authors a wire ability_used event. Bridge its per-victim INTEG loss into
         // the _tag/allEvents damage channel (BEFORE trackHeroDamage/handleDeaths
         // below) so the blast yields kill credit, assists, bounty, and triggers
@@ -493,7 +493,7 @@ export function processTick(
           if (v.amount > 0) {
             allEvents.push({
               _tag: 'damage',
-              tick: e.tick,
+              cycle: e.cycle,
               sourceId: casterId,
               targetId: v.id,
               amount: v.amount,
@@ -505,7 +505,7 @@ export function processTick(
     }
 
     // 11. Handle deaths — check for newly dead players, attribute kills.
-    // Damage dealt this tick (attacks, abilities, DoTs) feeds assist credit.
+    // Damage dealt this cycle (attacks, abilities, DoTs) feeds assist credit.
     trackHeroDamage(gameId, currentState, allEvents)
     currentState = handleDeaths(gameId, currentState, allEvents, resolved.heroAttackers)
 
@@ -534,13 +534,13 @@ export function processTick(
     // (dev/test, never production) and every 25 ticks, log how the game is
     // converging toward an Ancient kill — ice standing per team and Ancient
     // HP/vulnerability — so a watcher can see whether games end on time.
-    if (fastGameFactor() > 1 && currentState.tick % 25 === 0) {
+    if (fastGameFactor() > 1 && currentState.cycle % 25 === 0) {
       const iceUp = (team: string) =>
         currentState.ice.filter((t) => t.team === team && t.alive).length
-      const anc = currentState.ancients
+      const anc = currentState.terminals
       engineLog.info('📊 Game progress', {
         gameId,
-        tick: currentState.tick,
+        cycle: currentState.cycle,
         ice: `R${iceUp('chaff')}:D${iceUp('audit')}`,
         chaffAncient: `${anc?.chaff.integ ?? '?'}${anc?.chaff.vulnerable ? '!' : ''}`,
         auditAncient: `${anc?.audit.integ ?? '?'}${anc?.audit.vulnerable ? '!' : ''}`,
@@ -556,11 +556,11 @@ export function processTick(
     // 13.5. AFK takeover — every 60 ticks, replace any human who has stopped
     // acting (past the AFK threshold) with a bot so their team isn't left a
     // player down. convertToBot adds them to the bot roster, so the driver at
-    // the top of this pipeline issues their actions from next tick; we flag the
+    // the top of this pipeline issues their actions from next cycle; we flag the
     // slot `aiControlled` for the UI and emit an afk_takeover event. No-reclaim:
     // the WS action path drops a reconnecting human's input via isGameBot, and
     // detectAFKPlayers skips aiControlled slots so this fires exactly once.
-    if (currentState.tick % 60 === 0) {
+    if (currentState.cycle % 60 === 0) {
       for (const afk of detectAFKPlayers(currentState)) {
         const player = currentState.players[afk.playerId]
         if (!player) continue
@@ -582,7 +582,7 @@ export function processTick(
         }
         allEvents.push({
           _tag: 'afk_takeover',
-          tick: currentState.tick,
+          cycle: currentState.cycle,
           playerId: afk.playerId,
           heroId: player.heroId,
           team: player.team,
@@ -592,7 +592,7 @@ export function processTick(
     }
 
     // 14. Store events on state — merge instead of overwrite so wire-format
-    // events pushed directly onto state during the tick (e.g. tickAllBuffs'
+    // events pushed directly onto state during the tick (e.g. cycleAllBuffs'
     // teleport_complete) aren't dropped.
     currentState = {
       ...currentState,
@@ -600,7 +600,7 @@ export function processTick(
     }
 
     yield* Effect.logDebug('Tick processed').pipe(
-      Effect.annotateLogs({ gameId, tick: currentState.tick, actionCount: validActions.length }),
+      Effect.annotateLogs({ gameId, cycle: currentState.cycle, actionCount: validActions.length }),
     )
 
     tallyFarm(gameId, allEvents)
@@ -612,7 +612,7 @@ export function processTick(
 // ── Game lifecycle ─────────────────────────────────────────────
 
 export interface GameCallbacks {
-  onTickState: (
+  onCycleState: (
     gameId: string,
     playerId: string,
     state: ReturnType<typeof filterStateForPlayer>,
@@ -639,7 +639,7 @@ export interface GameCallbacks {
    */
   onTutorialCompleted?: (gameId: string, playerId: string) => void
   /**
-   * Fires once per tick with the unfiltered (fogless) state. Optional —
+   * Fires once per cycle with the unfiltered (fogless) state. Optional —
    * implemented by the plugin to broadcast to spectators. Skipped if not set.
    */
   onSpectatorTick?: (gameId: string, state: GameState) => void
@@ -661,13 +661,13 @@ function buildGameLoop(
   redis?: RedisServiceApi,
   snapshotMeta?: SnapshotMeta,
 ): Effect.Effect<void> {
-  // Run a single tick with per-tick error recovery so one bad tick
+  // Run a single tick with per-cycle error recovery so one bad tick
   // doesn't kill the entire game loop.
   const tickLoop = Effect.gen(function* () {
     const currentState = yield* stateManager.getState(gameId)
     if (currentState.phase === 'ended') {
       // The game can be ended out-of-band — the test-only force-end hook, or a
-      // resumed already-finished snapshot — without processTick having fired
+      // resumed already-finished snapshot — without processCycle having fired
       // the game-over broadcast below. If a winner is set, fire onGameOver once
       // so the client receives game_over and renders the post-game screen, then
       // stop. (A normal in-tick end fires onGameOver at the bottom of this loop
@@ -691,27 +691,27 @@ function buildGameLoop(
       rejectedActions,
       notices,
       actions,
-    } = yield* processTick(gameId, currentState)
+    } = yield* processCycle(gameId, currentState)
     // Observability: warn when a tick's engine work eats into the schedule
     // budget (>50% of the interval). Sustained breaches are what push
     // Schedule.fixed into its running-behind regime (a slowed game clock) — this
     // is the early signal that the "~N games per instance" ceiling is being hit.
     const tickMs = performance.now() - tickStart
-    if (tickMs > TICK_DURATION_MS * 0.5) {
+    if (tickMs > CYCLE_DURATION_MS * 0.5) {
       engineLog.warn('Slow tick', {
         gameId,
-        tick: currentState.tick,
+        cycle: currentState.cycle,
         tickMs: Math.round(tickMs),
-        budgetMs: TICK_DURATION_MS,
+        budgetMs: CYCLE_DURATION_MS,
         players: Object.keys(currentState.players).length,
       })
     }
     yield* stateManager.updateState(gameId, () => newState)
 
-    // Tutorial completion: processTick advanced the human past the last scripted
+    // Tutorial completion: processCycle advanced the human past the last scripted
     // step → fire the callback (the plugin persists players.tutorialCompleted) so
     // the client funnel stops routing this player to practice. Detected here, not
-    // in processTick, because only the loop fiber holds the callbacks handle.
+    // in processCycle, because only the loop fiber holds the callbacks handle.
     if (
       callbacks.onTutorialCompleted &&
       (currentState.tutorialStep ?? 0) < TUTORIAL_STEP_COUNT &&
@@ -727,14 +727,14 @@ function buildGameLoop(
       }
     }
 
-    // Persist this tick's actions for replay/debugging. Forked so a slow
+    // Persist this cycle's actions for replay/debugging. Forked so a slow
     // Redis write never blocks the broadcast.
     if (redis && actions.length > 0) {
       yield* Effect.forkDaemon(
         appendActions(
           redis,
           gameId,
-          actions.map((a) => ({ tick: newState.tick, playerId: a.playerId, command: a.command })),
+          actions.map((a) => ({ cycle: newState.cycle, playerId: a.playerId, command: a.command })),
         ),
       )
     }
@@ -762,14 +762,14 @@ function buildGameLoop(
     }
 
     // Log every 10th tick to verify loop is alive
-    if (newState.tick % 10 === 0) {
-      engineLog.debug('Tick', { gameId, tick: newState.tick })
+    if (newState.cycle % 10 === 0) {
+      engineLog.debug('Tick', { gameId, cycle: newState.cycle })
     }
 
     // Persist a leaver record (best-effort, Redis) for each AFK takeover this
     // tick performed. Driven off the emitted event so it fires exactly once per
-    // player: processTick owns the detection + bot swap; the fiber owns the
-    // Redis write (processTick has no Redis handle).
+    // player: processCycle owns the detection + bot swap; the fiber owns the
+    // Redis write (processCycle has no Redis handle).
     for (const event of events) {
       if (event._tag !== 'afk_takeover') continue
       recordLeaverSafe(event.playerId, gameId, newState, 'afk', redis)
@@ -778,7 +778,7 @@ function buildGameLoop(
 
     // Periodic state snapshot (best-effort; failures don't break the loop).
     // Forked so a slow Redis write doesn't block tick broadcast.
-    if (redis && newState.tick % SNAPSHOT_EVERY_N_TICKS === 0) {
+    if (redis && newState.cycle % SNAPSHOT_EVERY_N_TICKS === 0) {
       yield* Effect.forkDaemon(writeSnapshot(redis, gameId, newState, snapshotMeta))
     }
 
@@ -790,10 +790,10 @@ function buildGameLoop(
       const fullState = filterStateForPlayer(newState, playerId, gameId)
       const delta = computeDelta(fullState, getSentState(gameId, playerId))
       try {
-        callbacks.onTickState(gameId, playerId, delta as PlayerVisibleState)
+        callbacks.onCycleState(gameId, playerId, delta as PlayerVisibleState)
         recordSentState(gameId, playerId, fullState)
       } catch (err) {
-        engineLog.warn('Failed to send tick_state', { gameId, playerId, error: String(err) })
+        engineLog.warn('Failed to send cycle_state', { gameId, playerId, error: String(err) })
       }
     }
 
@@ -811,7 +811,7 @@ function buildGameLoop(
       callbacks.onEvents(gameId, events)
     }
 
-    // Check win — phase is set to 'ended' by processTick (ice or surrender)
+    // Check win — phase is set to 'ended' by processCycle (ice or surrender)
     if (newState.phase === 'ended') {
       const winner = newState.winner ?? checkWinCondition(newState)
       if (winner) {
@@ -820,7 +820,7 @@ function buildGameLoop(
         // with `phase === 'ended'` — 403'd on the [WATCH REPLAY] link this
         // screen is about to offer. Awaited, not forked: the fiber is
         // interrupted two lines down, and writeSnapshot swallows its own errors.
-        if (redis && newState.tick % SNAPSHOT_EVERY_N_TICKS !== 0) {
+        if (redis && newState.cycle % SNAPSHOT_EVERY_N_TICKS !== 0) {
           yield* writeSnapshot(redis, gameId, newState, snapshotMeta)
         }
         clearGameSentStates(gameId)
@@ -836,13 +836,13 @@ function buildGameLoop(
     }),
   )
 
-  // scaledTickIntervalMs is a no-op (returns TICK_DURATION_MS) unless the
+  // scaledTickIntervalMs is a no-op (returns CYCLE_DURATION_MS) unless the
   // dev/test-only TERMINA_TEST_FAST_GAME accelerator is active — fastGame.ts.
-  const tickIntervalMs = scaledTickIntervalMs(TICK_DURATION_MS)
+  const cycleIntervalMs = scaledTickIntervalMs(CYCLE_DURATION_MS)
   return Effect.gen(function* () {
     yield* stateManager.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const }))
-    engineLog.info('Game loop starting', { gameId, tickIntervalMs })
-    yield* Effect.repeat(tickLoop, Schedule.fixed(`${tickIntervalMs} millis`))
+    engineLog.info('Game loop starting', { gameId, cycleIntervalMs })
+    yield* Effect.repeat(tickLoop, Schedule.fixed(`${cycleIntervalMs} millis`))
   }).pipe(
     Effect.catchAll((error) => {
       engineLog.error('Game loop fatal error', { gameId, error: String(error) })
@@ -938,14 +938,14 @@ export function processSpecialActions(
         if (player) {
           events.push({
             _tag: 'heal',
-            tick: currentState.tick,
+            cycle: currentState.cycle,
             sourceId: 'buyback',
             targetId: action.playerId,
             amount: player.maxInteg,
           })
           events.push({
             _tag: 'power_spike',
-            tick: currentState.tick,
+            cycle: currentState.cycle,
             playerId: action.playerId,
             spikeType: 'core_item',
             itemId: 'buyback',
@@ -969,7 +969,7 @@ export function processSpecialActions(
           currentState = result.state
           events.push({
             _tag: 'surrender_vote',
-            tick: currentState.tick,
+            cycle: currentState.cycle,
             playerId: action.playerId,
             team: player.team,
             votesFor: result.votes?.for ?? 0,
@@ -980,7 +980,7 @@ export function processSpecialActions(
             currentState = { ...currentState, phase: 'ended', winner }
             events.push({
               _tag: 'surrendered',
-              tick: currentState.tick,
+              cycle: currentState.cycle,
               team: player.team,
               winner,
             })
@@ -1027,7 +1027,7 @@ export function processSpecialActions(
             const selectedTalent = tierTalents.find((t) => t.id === selectedTalentId)
             events.push({
               _tag: 'talent_selected',
-              tick: currentState.tick,
+              cycle: currentState.cycle,
               playerId: action.playerId,
               talentId: selectedTalentId,
               tier: action.command.tier,
@@ -1052,7 +1052,7 @@ export function processSpecialActions(
 }
 
 /**
- * Hero passive hook (processTick step 11.5). Synthesizes the wire-format
+ * Hero passive hook (processCycle step 11.5). Synthesizes the wire-format
  * GameEvent stream the 18 hero passives were written against and folds
  * `resolvePassive` over every alive hero player for each event.
  *
@@ -1063,7 +1063,7 @@ export function processSpecialActions(
  *   tick_end (cron/mutex/daemon/kernel/malloc/sentry/firewall/proxy).
  *
  * Keep the synthesized list lean (no per-wave events) — the fold is
- * O(players x events) immutable state copies per tick.
+ * O(players x events) immutable state copies per cycle.
  */
 export function runHeroPassives(
   state: GameState,
@@ -1097,7 +1097,7 @@ export function runHeroPassives(
           )
         : undefined
       synthesized.push({
-        tick: state.tick,
+        cycle: state.cycle,
         type: 'attack',
         payload: {
           attackerId: action.playerId,
@@ -1113,7 +1113,7 @@ export function runHeroPassives(
           )
         : undefined
       synthesized.push({
-        tick: state.tick,
+        cycle: state.cycle,
         type: 'ability_cast',
         payload: {
           playerId: action.playerId,
@@ -1124,7 +1124,7 @@ export function runHeroPassives(
       })
     } else if (cmd.type === 'use') {
       synthesized.push({
-        tick: state.tick,
+        cycle: state.cycle,
         type: 'item_used',
         payload: { playerId: action.playerId },
       })
@@ -1136,14 +1136,14 @@ export function runHeroPassives(
   for (const [pid, zone] of preTickZones) {
     const player = state.players[pid]
     if (player && player.zone !== zone) {
-      synthesized.push({ tick: state.tick, type: 'move', payload: { playerId: pid } })
+      synthesized.push({ cycle: state.cycle, type: 'move', payload: { playerId: pid } })
     }
   }
 
   for (const e of allEvents) {
     if (e._tag === 'damage' && state.players[e.targetId]) {
       synthesized.push({
-        tick: state.tick,
+        cycle: state.cycle,
         type: 'damage_taken',
         payload: {
           targetId: e.targetId,
@@ -1155,14 +1155,14 @@ export function runHeroPassives(
       })
     } else if (e._tag === 'kill') {
       synthesized.push({
-        tick: state.tick,
+        cycle: state.cycle,
         type: 'kill',
         payload: { killerId: e.killerId, victimId: e.victimId },
       })
     }
   }
 
-  synthesized.push({ tick: state.tick, type: 'tick_end', payload: {} })
+  synthesized.push({ cycle: state.cycle, type: 'tick_end', payload: {} })
 
   let updated = state
   for (const event of synthesized) {
@@ -1198,7 +1198,7 @@ export function runNPCAI(
   s = neutralResult.state
   events.push(...neutralResult.events)
 
-  // ICE — priorEvents lets ice aggro heroes that attacked them this tick
+  // ICE — priorEvents lets ice aggro heroes that attacked them this cycle
   const iceResult = applyIceActions(s, runIceAI(s, ctx.heroAttackers, ctx.priorEvents))
   s = iceResult.state
   events.push(...iceResult.events)
@@ -1222,7 +1222,7 @@ export function runNPCAI(
       }
       events.push({
         _tag: 'damage',
-        tick: s.tick,
+        cycle: s.cycle,
         sourceId: 'tenant',
         targetId: action.targetId,
         amount: hit.damageDealt,
@@ -1249,7 +1249,7 @@ export function runNPCAI(
 }
 
 /**
- * Spawn periodic content for the tick: wave waves, jungle neutrals, caches;
+ * Spawn periodic content for the cycle: wave waves, jungle neutrals, caches;
  * and clean up expired caches and wards. Pure: same state object if nothing
  * spawned and nothing expired.
  */
@@ -1259,7 +1259,7 @@ export function runSpawning(state: GameState): GameState {
   // so subset maps (one-lane) don't spawn into uninitialized top/bot/jungle zones.
   const hasZone = (zoneId: string) => zoneId in s.zones
 
-  const newWaves = spawnWaveUnits(s.tick, hasZone)
+  const newWaves = spawnWaveUnits(s.cycle, hasZone)
   if (newWaves.length > 0) {
     s = { ...s, waves: [...s.waves, ...newWaves] }
   }
@@ -1267,13 +1267,13 @@ export function runSpawning(state: GameState): GameState {
   // Defensive cap: never let waves stack unboundedly in a zone
   s = enforceWaveZoneCap(s)
 
-  const newNeutrals = spawnSiltDwellers(s.tick, hasZone, s.neutrals ?? [])
+  const newNeutrals = spawnSiltDwellers(s.cycle, hasZone, s.neutrals ?? [])
   if (newNeutrals.length > 0) {
     s = { ...s, neutrals: [...(s.neutrals ?? []), ...newNeutrals] }
   }
 
   const activeCacheZones = new Set<string>((s.caches ?? []).map((r) => r.zone))
-  const newCaches = spawnCaches(s.tick, hasZone, activeCacheZones)
+  const newCaches = spawnCaches(s.cycle, hasZone, activeCacheZones)
   if (newCaches.length > 0) {
     s = { ...s, caches: [...(s.caches ?? []), ...newCaches] }
   }
@@ -1281,7 +1281,7 @@ export function runSpawning(state: GameState): GameState {
   s = removeExpiredCaches(s)
   s = processCacheBuffs(s)
 
-  const updatedZones = removeExpiredWards(s.zones, s.tick)
+  const updatedZones = removeExpiredWards(s.zones, s.cycle)
   if (updatedZones !== s.zones) {
     s = { ...s, zones: updatedZones }
   }
@@ -1294,10 +1294,10 @@ export function runSpawning(state: GameState): GameState {
  * Pure: returns a new state if anything changed, the same state otherwise.
  */
 export function expireGlyph(state: GameState): GameState {
-  const chaffUsed = state.teams.chaff.hardenUsedTick
-  const auditUsed = state.teams.audit.hardenUsedTick
-  const chaffExpired = chaffUsed !== null && state.tick - chaffUsed >= HARDEN_DURATION_TICKS
-  const auditExpired = auditUsed !== null && state.tick - auditUsed >= HARDEN_DURATION_TICKS
+  const chaffUsed = state.teams.chaff.hardenUsedCycle
+  const auditUsed = state.teams.audit.hardenUsedCycle
+  const chaffExpired = chaffUsed !== null && state.cycle - chaffUsed >= HARDEN_DURATION_CYCLES
+  const auditExpired = auditUsed !== null && state.cycle - auditUsed >= HARDEN_DURATION_CYCLES
 
   if (!chaffExpired && !auditExpired) return state
 
@@ -1321,33 +1321,33 @@ export function progressDayNight(state: GameState): {
 } {
   const events: GameEngineEvent[] = []
   let timeOfDay = state.timeOfDay
-  let dayNightTick = state.dayNightTick + 1
+  let dayNightCycle = state.dayNightCycle + 1
 
-  if (timeOfDay === 'day' && dayNightTick >= DAY_DURATION_TICKS) {
+  if (timeOfDay === 'day' && dayNightCycle >= DAY_DURATION_CYCLES) {
     timeOfDay = 'night'
-    dayNightTick = 0
-    events.push({ _tag: 'night_falls', tick: state.tick })
-  } else if (timeOfDay === 'night' && dayNightTick >= NIGHT_DURATION_TICKS) {
+    dayNightCycle = 0
+    events.push({ _tag: 'night_falls', cycle: state.cycle })
+  } else if (timeOfDay === 'night' && dayNightCycle >= NIGHT_DURATION_CYCLES) {
     timeOfDay = 'day'
-    dayNightTick = 0
-    events.push({ _tag: 'day_breaks', tick: state.tick })
+    dayNightCycle = 0
+    events.push({ _tag: 'day_breaks', cycle: state.cycle })
   }
 
   return {
-    state: { ...state, timeOfDay, dayNightTick },
+    state: { ...state, timeOfDay, dayNightCycle },
     events,
   }
 }
 
 // ── Helper functions ───────────────────────────────────────────
 
-/** Handle player respawns: set alive if respawnTick has been reached. */
+/** Handle player respawns: set alive if respawnCycle has been reached. */
 function handleRespawns(state: GameState): GameState {
   const players = { ...state.players }
   let changed = false
 
   for (const [pid, player] of Object.entries(players)) {
-    if (!player.alive && player.respawnTick !== null && state.tick >= player.respawnTick) {
+    if (!player.alive && player.respawnCycle !== null && state.cycle >= player.respawnCycle) {
       const spawnZone = player.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
       players[pid] = {
         ...player,
@@ -1355,7 +1355,7 @@ function handleRespawns(state: GameState): GameState {
         integ: player.maxInteg,
         bw: player.maxBw,
         zone: spawnZone,
-        respawnTick: null,
+        respawnCycle: null,
       }
       changed = true
     }
@@ -1379,8 +1379,8 @@ function applyFountainHealing(state: GameState): GameState {
     // Skip healing if player is in combat (soft check — full combat tracking would need a separate system)
     const inCombat = player.buffs.some((b) => b.id === 'inCombat')
     if (isInFountain && !inCombat) {
-      const hpHeal = Math.floor((player.maxInteg * FOUNTAIN_HEAL_PER_TICK_PERCENT) / 100)
-      const mpHeal = Math.floor((player.maxBw * FOUNTAIN_BW_PER_TICK_PERCENT) / 100)
+      const hpHeal = Math.floor((player.maxInteg * FOUNTAIN_HEAL_PER_CYCLE_PERCENT) / 100)
+      const mpHeal = Math.floor((player.maxBw * FOUNTAIN_BW_PER_CYCLE_PERCENT) / 100)
       players[pid] = {
         ...player,
         integ: Math.min(player.maxInteg, player.integ + hpHeal),
@@ -1393,7 +1393,7 @@ function applyFountainHealing(state: GameState): GameState {
   return changed ? { ...state, players } : state
 }
 
-/** Handle newly dead players — set respawn timers, attribute kills/assists, award gold/XP. */
+/** Handle newly dead players — set respawn timers, attribute kills/assists, award scrip/XP. */
 function handleDeaths(
   gameId: string,
   state: GameState,
@@ -1405,7 +1405,7 @@ function handleDeaths(
   let changed = false
 
   for (const [pid, player] of Object.entries(players)) {
-    if (!player.alive && player.respawnTick === null) {
+    if (!player.alive && player.respawnCycle === null) {
       if (player.buffs.some((b) => b.id === 'backup')) {
         players[pid] = {
           ...player,
@@ -1421,7 +1421,7 @@ function handleDeaths(
         }
         events.push({
           _tag: 'backup_used',
-          tick: state.tick,
+          cycle: state.cycle,
           playerId: pid,
         })
         changed = true
@@ -1432,8 +1432,8 @@ function handleDeaths(
       const scaledLevels = Math.max(0, player.level - RESPAWN_FREE_LEVELS)
       // scaledRespawnTicks keeps wall-clock respawn time at production pace
       // when the TERMINA_TEST_FAST_GAME accelerator is active (no-op otherwise).
-      const respawnTicks = scaledRespawnTicks(
-        RESPAWN_BASE_TICKS + RESPAWN_PER_LEVEL_TICKS * scaledLevels,
+      const respawnCycles = scaledRespawnTicks(
+        RESPAWN_BASE_CYCLES + RESPAWN_PER_LEVEL_CYCLES * scaledLevels,
       )
       const newDeaths = alreadyCounted ? player.deaths : player.deaths + 1
       // Compute from the post-death death count so the displayed buyback cost
@@ -1442,7 +1442,7 @@ function handleDeaths(
 
       players[pid] = {
         ...player,
-        respawnTick: state.tick + respawnTicks,
+        respawnCycle: state.cycle + respawnCycles,
         deaths: newDeaths,
         killStreak: 0,
         buybackCost,
@@ -1455,14 +1455,14 @@ function handleDeaths(
       if (!alreadyCounted) {
         events.push({
           _tag: 'death',
-          tick: state.tick,
+          cycle: state.cycle,
           playerId: pid,
-          respawnTick: state.tick + respawnTicks,
+          respawnCycle: state.cycle + respawnCycles,
         })
       }
 
       // Everyone who damaged the victim recently shares credit — direct
-      // attackers from this tick plus DoT/ability/item damage in the window.
+      // attackers from this cycle plus DoT/ability/item damage in the window.
       const contributors = new Set(getDamageContributors(gameId, pid))
       if (heroAttackers) {
         for (const [attackerId, victimId] of heroAttackers.entries()) {
@@ -1471,7 +1471,7 @@ function handleDeaths(
       }
       contributors.delete(pid)
 
-      // Killer preference: a direct attacker this tick, else any recent contributor
+      // Killer preference: a direct attacker this cycle, else any recent contributor
       let killerId: string | null = null
       if (heroAttackers) {
         for (const [attackerId, victimId] of heroAttackers.entries()) {
@@ -1489,13 +1489,13 @@ function handleDeaths(
       recentHeroDamage.get(gameId)?.delete(pid)
 
       if (killerId && players[killerId]) {
-        // Award kill gold
+        // Award kill scrip
         const assisters = [...contributors].filter((id) => id !== killerId && players[id])
         // The bounty is streak- and comeback-scaled, and the assist share is
-        // split N ways — so the reported amounts are read back off the gold diff
+        // split N ways — so the reported amounts are read back off the scrip diff
         // rather than recomputed here, where they could drift from awardKill.
-        const goldBefore = new Map<string, number>(
-          [killerId, ...assisters].map((id): [string, number] => [id, players[id]?.gold ?? 0]),
+        const scripBefore = new Map<string, number>(
+          [killerId, ...assisters].map((id): [string, number] => [id, players[id]?.scrip ?? 0]),
         )
         const tempState: GameState = { ...state, players }
         // `player` is the loop's original victim — its killStreak still holds the
@@ -1523,7 +1523,7 @@ function handleDeaths(
         // Award XP for hero kill to killer. The killer's team earns a comeback
         // multiplier from the average team level gap (xpComebackMultiplier), so a
         // team behind in levels catches up instead of snowballing further — the
-        // XP mirror of the gold comeback bounty applied in awardKill above.
+        // XP mirror of the scrip comeback bounty applied in awardKill above.
         const victim = players[pid]!
         const killerForXp = players[killerId]!
         const xpMult = xpComebackMultiplier({ ...state, players }, killerForXp.team)
@@ -1581,7 +1581,7 @@ function handleDeaths(
         // killStreak is how fed they were; the killer's streak was just bumped.
         events.push({
           _tag: 'kill',
-          tick: state.tick,
+          cycle: state.cycle,
           killerId,
           victimId: pid,
           assisters,
@@ -1592,12 +1592,12 @@ function handleDeaths(
         // …and what it paid. Pushed after the kill line so the feed reads
         // "X terminated Y" then "You earned 240g". These reasons deliberately
         // avoid the words the client suppresses as farming noise.
-        for (const [id, before] of goldBefore) {
-          const gained = (players[id]?.gold ?? 0) - before
+        for (const [id, before] of scripBefore) {
+          const gained = (players[id]?.scrip ?? 0) - before
           if (gained > 0) {
             events.push({
               _tag: 'gold_change',
-              tick: state.tick,
+              cycle: state.cycle,
               playerId: id,
               amount: gained,
               reason: id === killerId ? 'hero kill' : 'assist',
@@ -1610,15 +1610,15 @@ function handleDeaths(
     }
   }
 
-  // Backup expiry sweep: tickBuffs preserves the backup buff at ticksRemaining ===
-  // 0 so the death loop above can proc it. If the player survived this tick
+  // Backup expiry sweep: cycleBuffs preserves the backup buff at cyclesRemaining ===
+  // 0 so the death loop above can proc it. If the player survived this cycle
   // (no death → no backup consumption), remove the expired backup now so it
   // doesn't linger as a stale buff.
   for (const [pid, player] of Object.entries(players)) {
-    if (player.alive && player.buffs.some((b) => b.id === 'backup' && b.ticksRemaining <= 0)) {
+    if (player.alive && player.buffs.some((b) => b.id === 'backup' && b.cyclesRemaining <= 0)) {
       players[pid] = {
         ...player,
-        buffs: player.buffs.filter((b) => !(b.id === 'backup' && b.ticksRemaining <= 0)),
+        buffs: player.buffs.filter((b) => !(b.id === 'backup' && b.cyclesRemaining <= 0)),
       }
       changed = true
     }
@@ -1641,7 +1641,7 @@ function checkLevelUps(state: GameState, events: GameEngineEvent[]): GameState {
       players[pid] = levelUpHero(player)
       events.push({
         _tag: 'level_up',
-        tick: state.tick,
+        cycle: state.cycle,
         playerId: pid,
         newLevel,
       })
@@ -1650,7 +1650,7 @@ function checkLevelUps(state: GameState, events: GameEngineEvent[]): GameState {
       if ((POWER_SPIKE_LEVELS as readonly number[]).includes(newLevel)) {
         events.push({
           _tag: 'power_spike',
-          tick: state.tick,
+          cycle: state.cycle,
           playerId: pid,
           spikeType: `level_${newLevel}` as 'level_6' | 'level_12' | 'level_18',
           message: `${player.name} reached level ${newLevel}! Ultimate powers online.`,
@@ -1664,7 +1664,7 @@ function checkLevelUps(state: GameState, events: GameEngineEvent[]): GameState {
   return changed ? { ...state, players } : state
 }
 
-/** Apply inCombat buff to players who dealt or received hero damage this tick. */
+/** Apply inCombat buff to players who dealt or received hero damage this cycle. */
 function applyInCombatBuffs(state: GameState, events: GameEngineEvent[]): GameState {
   const combatPlayers = new Set<string>()
   for (const event of events) {
@@ -1688,12 +1688,12 @@ function applyInCombatBuffs(state: GameState, events: GameEngineEvent[]): GameSt
     const existing = player.buffs.findIndex((b) => b.id === 'inCombat')
     const buffs = [...player.buffs]
     if (existing >= 0) {
-      buffs[existing] = { ...buffs[existing]!, ticksRemaining: IN_COMBAT_BUFF_DURATION }
+      buffs[existing] = { ...buffs[existing]!, cyclesRemaining: IN_COMBAT_BUFF_DURATION }
     } else {
       buffs.push({
         id: 'inCombat',
         stacks: 1,
-        ticksRemaining: IN_COMBAT_BUFF_DURATION,
+        cyclesRemaining: IN_COMBAT_BUFF_DURATION,
         source: 'system',
       })
     }
@@ -1726,7 +1726,7 @@ function trackIceKills(
 
       events.push({
         _tag: 'ice_kill',
-        tick: state.tick,
+        cycle: state.cycle,
         zone: after.zone,
         team: after.team,
         killerTeam,
@@ -1742,10 +1742,10 @@ function trackIceKills(
 /**
  * A team wins by destroying the enemy Ancient ("the Terminal"). The
  * Ancient becomes attackable once any of its team's T3 ice is down —
- * see AncientSystem for the vulnerability/attack rules.
+ * see TerminalSystem for the vulnerability/attack rules.
  */
 function checkWinCondition(state: GameState): TeamId | null {
-  return checkAncientWin(state)
+  return checkTerminalWin(state)
 }
 
 // NOTE: the server used to maintain a global `state.lastSeen` here (and auto-emit

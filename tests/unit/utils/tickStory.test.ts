@@ -9,31 +9,31 @@ import {
 
 /** Shorthand line factory. */
 function line(overrides: Partial<CombatLine> & { text: string }): CombatLine {
-  return { tick: 1, type: 'damage', ...overrides }
+  return { cycle: 1, type: 'damage', ...overrides }
 }
 
 describe('digestFarmNoise', () => {
-  it('folds all farm-tagged lines of a tick into one dim summary', () => {
+  it('folds all farm-tagged lines of a cycle into one dim summary', () => {
     const out = digestFarmNoise([
       line({ text: 'Kernel hit a wave for 60', salience: 'ally', farmKind: 'hit' }),
       line({ text: 'Ping hit a wave for 55', salience: 'ally', farmKind: 'hit' }),
       line({
-        text: 'You last-hit a line wave (+38g)',
-        type: 'gold',
+        text: 'You last-hit a line wave (+38sc)',
+        type: 'scrip',
         salience: 'mine-out',
         farmKind: 'lasthit',
-        goldAmount: 38,
+        scripAmount: 38,
       }),
       line({
-        text: 'Kernel last-hit a sweep wave (+45g)',
-        type: 'gold',
+        text: 'Kernel last-hit a sweep wave (+45sc)',
+        type: 'scrip',
         salience: 'ally',
         farmKind: 'lasthit',
-        goldAmount: 45,
+        scripAmount: 45,
       }),
       line({
         text: 'Echo cleared a stub camp in Chaff Jungle (North)',
-        type: 'gold',
+        type: 'scrip',
         salience: 'ally',
         farmKind: 'camp',
       }),
@@ -42,7 +42,7 @@ describe('digestFarmNoise', () => {
 
     const farm = out.filter((l) => l.type === 'farm')
     expect(farm).toHaveLength(1)
-    expect(farm[0]!.text).toBe('farm: you +38g (1 last-hit) · team 1 wave, 1 camp')
+    expect(farm[0]!.text).toBe('farm: you +38sc (1 last-hit) · team 1 wave, 1 camp')
     // Untagged lines survive untouched.
     expect(out.some((l) => l.text === 'a kill happened')).toBe(true)
     // No raw farm line survives.
@@ -59,11 +59,11 @@ describe('digestFarmNoise', () => {
 
   it('attributes visible ENEMY camp clears and burns to enemy, never to team', () => {
     const out = digestFarmNoise([
-      line({ text: 'Thread cleared a camp', type: 'gold', salience: 'world', farmKind: 'camp' }),
+      line({ text: 'Thread cleared a camp', type: 'scrip', salience: 'world', farmKind: 'camp' }),
       line({ text: 'Thread burned a wave', type: 'system', salience: 'world', farmKind: 'burn' }),
       line({
-        text: 'Kernel last-hit a wave (+40g)',
-        type: 'gold',
+        text: 'Kernel last-hit a wave (+40sc)',
+        type: 'scrip',
         salience: 'ally',
         farmKind: 'lasthit',
       }),
@@ -75,19 +75,19 @@ describe('digestFarmNoise', () => {
   it('marks the digest mine-out when it carries MY rewards (so the ME filter keeps it)', () => {
     const mine = digestFarmNoise([
       line({
-        text: 'You last-hit a wave (+38g)',
-        type: 'gold',
+        text: 'You last-hit a wave (+38sc)',
+        type: 'scrip',
         salience: 'mine-out',
         farmKind: 'lasthit',
-        goldAmount: 38,
+        scripAmount: 38,
       }),
     ])
     expect(mine[0]!.salience).toBe('mine-out')
 
     const others = digestFarmNoise([
       line({
-        text: 'Kernel last-hit a wave (+40g)',
-        type: 'gold',
+        text: 'Kernel last-hit a wave (+40sc)',
+        type: 'scrip',
         salience: 'ally',
         farmKind: 'lasthit',
       }),
@@ -95,32 +95,32 @@ describe('digestFarmNoise', () => {
     expect(others[0]!.salience).toBe('world')
   })
 
-  it('produces one summary per tick, in tick order', () => {
+  it('produces one summary per cycle, in cycle order', () => {
     const out = digestFarmNoise([
-      line({ tick: 1, text: 'a', salience: 'ally', farmKind: 'hit' }),
+      line({ cycle: 1, text: 'a', salience: 'ally', farmKind: 'hit' }),
       line({
-        tick: 1,
+        cycle: 1,
         text: 'lh',
-        type: 'gold',
+        type: 'scrip',
         salience: 'ally',
         farmKind: 'lasthit',
       }),
-      line({ tick: 2, text: 'b', salience: 'ally', farmKind: 'hit' }),
+      line({ cycle: 2, text: 'b', salience: 'ally', farmKind: 'hit' }),
       line({
-        tick: 2,
+        cycle: 2,
         text: 'lh2',
-        type: 'gold',
+        type: 'scrip',
         salience: 'ally',
         farmKind: 'lasthit',
       }),
     ])
-    expect(out.map((l) => [l.tick, l.type])).toEqual([
+    expect(out.map((l) => [l.cycle, l.type])).toEqual([
       [1, 'farm'],
       [2, 'farm'],
     ])
   })
 
-  it('emits no summary for a tick with only untagged lines', () => {
+  it('emits no summary for a cycle with only untagged lines', () => {
     const out = digestFarmNoise([line({ text: 'You hit Kernel for 84', salience: 'mine-out' })])
     expect(out).toHaveLength(1)
     expect(out[0]!.type).toBe('damage')
@@ -128,7 +128,7 @@ describe('digestFarmNoise', () => {
 })
 
 describe('buildTickStoryView', () => {
-  it('orders a tick: my lines first, kills/objectives next, farm digest last', () => {
+  it('orders a cycle: my lines first, kills/objectives next, farm digest last', () => {
     const out = buildTickStoryView([
       line({ text: 'ally chip', salience: 'ally' }),
       line({ text: 'enemy farm', salience: 'world', farmKind: 'hit' }),
@@ -157,8 +157,8 @@ describe('buildTickStoryView', () => {
 
   it('never reorders across ticks', () => {
     const out = buildTickStoryView([
-      line({ tick: 2, text: 'later kill', type: 'kill' }),
-      line({ tick: 1, text: 'early chip', salience: 'world' }),
+      line({ cycle: 2, text: 'later kill', type: 'kill' }),
+      line({ cycle: 1, text: 'early chip', salience: 'world' }),
     ])
     expect(out.map((l) => l.text)).toEqual(['early chip', 'later kill'])
   })
@@ -174,9 +174,9 @@ describe('buildTickStoryView', () => {
 
 describe('buildTickRecaps', () => {
   /** Damage landing ON the local player. */
-  function incoming(tick: number, source: string, amount: number): CombatLine {
+  function incoming(cycle: number, source: string, amount: number): CombatLine {
     return {
-      tick,
+      cycle,
       text: `${source} hit You for ${amount}`,
       type: 'damage',
       salience: 'mine-in',
@@ -187,9 +187,9 @@ describe('buildTickRecaps', () => {
   }
 
   /** Damage the local player deals. */
-  function outgoing(tick: number, target: string, amount: number): CombatLine {
+  function outgoing(cycle: number, target: string, amount: number): CombatLine {
     return {
-      tick,
+      cycle,
       text: `You hit ${target} for ${amount}`,
       type: 'damage',
       salience: 'mine-out',
@@ -199,7 +199,7 @@ describe('buildTickRecaps', () => {
     }
   }
 
-  it('sums the tick into one sentence instead of leaving the player to add it up', () => {
+  it('sums the cycle into one sentence instead of leaving the player to add it up', () => {
     const recaps = buildTickRecaps([
       incoming(12, 'Mutex', 84),
       incoming(12, 'Mutex', 22),
@@ -233,19 +233,25 @@ describe('buildTickRecaps', () => {
   it('ignores everyone else’s fight and every non-damage line', () => {
     const recaps = buildTickRecaps([
       {
-        tick: 4,
+        cycle: 4,
         text: 'Kernel hit Thread for 90',
         type: 'damage',
         salience: 'ally',
         dmgAmount: 90,
       },
-      { tick: 4, text: 'Thread hit Echo for 70', type: 'damage', salience: 'world', dmgAmount: 70 },
-      { tick: 4, text: 'You restored 60', type: 'healing', salience: 'mine-in', dmgAmount: 60 },
+      {
+        cycle: 4,
+        text: 'Thread hit Echo for 70',
+        type: 'damage',
+        salience: 'world',
+        dmgAmount: 70,
+      },
+      { cycle: 4, text: 'You restored 60', type: 'healing', salience: 'mine-in', dmgAmount: 60 },
     ])
     expect(recaps.size).toBe(0)
   })
 
-  it('reports one recap per tick and never merges ticks', () => {
+  it('reports one recap per cycle and never merges ticks', () => {
     const recaps = buildTickRecaps([incoming(1, 'Mutex', 30), incoming(2, 'Mutex', 40)])
     expect([...recaps.keys()].sort((a, b) => a - b)).toEqual([1, 2])
     expect(recaps.get(1)!.taken).toBe(30)
@@ -253,11 +259,11 @@ describe('buildTickRecaps', () => {
   })
 
   it('counts a collapsed structure run at its RUN total, not its first hit', () => {
-    // The ice/Core chip the player is dealing arrives as one line per tick and
+    // The ice/Core chip the player is dealing arrives as one line per cycle and
     // is collapsed before it ever reaches the recap; reading the surviving
     // line's original dmgAmount would report a fifth of the breach.
-    const run = [1, 2, 3].map((tick) => ({
-      ...outgoing(tick, 'ice (mid-t1-audit)', 70),
+    const run = [1, 2, 3].map((cycle) => ({
+      ...outgoing(cycle, 'ice (mid-t1-audit)', 70),
       dedupKey: 'dmg:me->ice_mid-t1-audit',
     }))
     const collapsed = collapseStructureDamage(

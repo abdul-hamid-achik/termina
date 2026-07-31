@@ -22,10 +22,10 @@ export function applyScenario(
   switch (scenario) {
     case 'tenant_dead':
       // Tenant slain at the current tick → the objective ticker shows a respawn
-      // countdown (deathTick + TENANT_RESPAWN_TICKS).
+      // countdown (deathCycle + TENANT_RESPAWN_CYCLES).
       return {
         ...state,
-        tenant: { ...state.tenant, alive: false, integ: 0, deathTick: state.tick },
+        tenant: { ...state.tenant, alive: false, integ: 0, deathCycle: state.cycle },
       }
 
     case 'self_dead': {
@@ -39,7 +39,7 @@ export function applyScenario(
         ...state,
         players: {
           ...state.players,
-          [humanId]: { ...human, alive: false, integ: 0, respawnTick: state.tick + 30 },
+          [humanId]: { ...human, alive: false, integ: 0, respawnCycle: state.cycle + 30 },
         },
       }
     }
@@ -49,9 +49,9 @@ export function applyScenario(
       // strip should flag it urgent.
       return {
         ...state,
-        ancients: {
-          ...state.ancients,
-          audit: { ...state.ancients.audit, vulnerable: true },
+        terminals: {
+          ...state.terminals,
+          audit: { ...state.terminals.audit, vulnerable: true },
         },
       }
 

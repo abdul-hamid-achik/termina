@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import StatusLines from '~~/app/components/game/StatusLines.vue'
 import { buildTrace } from '~~/app/components/game/traceModel'
-import type { AncientState, TeamId } from '~~/shared/types/game'
+import type { TerminalState, TeamId } from '~~/shared/types/game'
 
-const ANCIENTS: Record<TeamId, AncientState> = {
+const ANCIENTS: Record<TeamId, TerminalState> = {
   chaff: { team: 'chaff', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
   audit: { team: 'audit', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
 }
@@ -14,7 +14,7 @@ function mountLines(over: Partial<Parameters<typeof mount>[0]> = {}) {
     playerZone: 'mid-t2-chaff',
     playerTeam: 'chaff',
     contacts: [],
-    ancients: ANCIENTS,
+    terminals: ANCIENTS,
   })
   return mount(StatusLines, {
     props: {
@@ -23,7 +23,7 @@ function mountLines(over: Partial<Parameters<typeof mount>[0]> = {}) {
       alive: true,
       netLead: 'CHF +1.2k',
       nextTickIn: 3,
-      tick: 240,
+      cycle: 240,
       canAct: true,
       enemyCount: 0,
       allyHeadcount: 1,
@@ -60,7 +60,7 @@ describe('StatusLines', () => {
       playerZone: 'hollow',
       playerTeam: 'chaff',
       contacts: [],
-      ancients: ANCIENTS,
+      terminals: ANCIENTS,
     })
     const wrapper = mount(StatusLines, {
       props: {
@@ -69,7 +69,7 @@ describe('StatusLines', () => {
         alive: true,
         netLead: 'even',
         nextTickIn: 3,
-        tick: 240,
+        cycle: 240,
         canAct: true,
         enemyCount: 0,
         allyHeadcount: 1,

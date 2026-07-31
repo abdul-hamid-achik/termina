@@ -8,7 +8,7 @@ const SALVE_COST = ITEMS.trauma_patch!.cost
 function mountQuickBuy(
   overrides: Partial<{
     pinnedItems: string[]
-    gold: number
+    scrip: number
     canBuy: boolean
     recommendedItems: string[]
   }> = {},
@@ -16,7 +16,7 @@ function mountQuickBuy(
   return mount(QuickBuy, {
     props: {
       pinnedItems: ['trauma_patch'],
-      gold: SALVE_COST + 100,
+      scrip: SALVE_COST + 100,
       canBuy: true,
       ...overrides,
     },
@@ -42,7 +42,7 @@ describe('QuickBuy', () => {
   })
 
   it('hides [BUY] when unaffordable but keeps unpin reachable', () => {
-    const wrapper = mountQuickBuy({ gold: 0 })
+    const wrapper = mountQuickBuy({ scrip: 0 })
 
     expect(wrapper.find('[data-testid="quickbuy-buy-trauma_patch"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="quickbuy-unpin-trauma_patch"]').exists()).toBe(true)
@@ -71,7 +71,7 @@ describe('QuickBuy', () => {
     it('shows role suggestions (no unpin) when nothing is pinned', () => {
       const wrapper = mountQuickBuy({
         pinnedItems: [],
-        gold: 99999,
+        scrip: 99999,
         recommendedItems: ['edge_kit', 'null_pointer'],
       })
       expect(wrapper.text()).toContain('Suggested')

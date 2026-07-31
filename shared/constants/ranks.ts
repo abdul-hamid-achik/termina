@@ -19,7 +19,7 @@ export const RANK_TIERS: RankTier[] = [
   { id: 'iron', name: 'Iron', minMmr: 0 },
   { id: 'bronze', name: 'Bronze', minMmr: 700 },
   { id: 'silver', name: 'Silver', minMmr: 1000 },
-  { id: 'gold', name: 'Gold', minMmr: 1300 },
+  { id: 'scrip', name: 'Gold', minMmr: 1300 },
   { id: 'platinum', name: 'Platinum', minMmr: 1600 },
   { id: 'diamond', name: 'Diamond', minMmr: 1900 },
   { id: 'terminal', name: 'Terminal', minMmr: 2200 },

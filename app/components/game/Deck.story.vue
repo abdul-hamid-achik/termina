@@ -18,7 +18,7 @@ function heroFrom(p: PlayerState) {
     cooldowns: p.cooldowns,
     items: p.items,
     buffs: p.buffs,
-    gold: p.gold,
+    scrip: p.scrip,
     alive: p.alive,
   }
 }
@@ -43,7 +43,7 @@ const fullBuild = heroFrom(
   makePlayer({
     name: 'six_slotted',
     level: 25,
-    gold: 18_400,
+    scrip: 18_400,
     integ: 2400,
     maxInteg: 2400,
     bw: 1100,
@@ -59,13 +59,13 @@ const fullBuild = heroFrom(
     // A realistic mix: a survival buff (green), a movement steroid (green), an
     // enemy debuff on us (red), and an item-cooldown marker that the HUD hides.
     buffs: [
-      { id: 'airgap', stacks: 1, ticksRemaining: 4, source: 'item', destination: 'p1' },
-      { id: 'haste', stacks: 1, ticksRemaining: 3, source: 'cache', destination: 'p1' },
-      { id: 'veil_discord', stacks: 25, ticksRemaining: 4, source: 'enemy', destination: 'p1' },
+      { id: 'airgap', stacks: 1, cyclesRemaining: 4, source: 'item', destination: 'p1' },
+      { id: 'haste', stacks: 1, cyclesRemaining: 3, source: 'cache', destination: 'p1' },
+      { id: 'veil_discord', stacks: 25, cyclesRemaining: 4, source: 'enemy', destination: 'p1' },
       {
         id: 'item_cd_hardshell',
         stacks: 1,
-        ticksRemaining: 25,
+        cyclesRemaining: 25,
         source: 'item',
         destination: 'p1',
       },
@@ -85,26 +85,26 @@ const buffShowcase = heroFrom(
     items: [SAMPLE_ITEMS.treads, null, null, null, null, null],
     buffs: [
       // Real effects — these render:
-      { id: 'heapGrowth', stacks: 24, ticksRemaining: 999, source: 'ability', destination: 'p1' },
-      { id: 'resonance', stacks: 5, ticksRemaining: 999, source: 'ability', destination: 'p1' },
+      { id: 'heapGrowth', stacks: 24, cyclesRemaining: 999, source: 'ability', destination: 'p1' },
+      { id: 'resonance', stacks: 5, cyclesRemaining: 999, source: 'ability', destination: 'p1' },
       {
         id: 'gait_rig_attack',
         stacks: 12,
-        ticksRemaining: 999,
+        cyclesRemaining: 999,
         source: 'item',
         destination: 'p1',
       },
-      { id: 'stun', stacks: 1, ticksRemaining: 2, source: 'enemy', destination: 'p1' },
+      { id: 'stun', stacks: 1, cyclesRemaining: 2, source: 'enemy', destination: 'p1' },
       {
         id: 'trauma_patch_regen',
         stacks: 40,
-        ticksRemaining: 4,
+        cyclesRemaining: 4,
         source: 'item',
         destination: 'p1',
       },
       // Engine bookkeeping — the strip must NOT show these:
-      { id: 'stealthIdle', stacks: 1, ticksRemaining: 3, source: 'ability', destination: 'p1' },
-      { id: 'inCombat', stacks: 1, ticksRemaining: 2, source: 'system', destination: 'p1' },
+      { id: 'stealthIdle', stacks: 1, cyclesRemaining: 3, source: 'ability', destination: 'p1' },
+      { id: 'inCombat', stacks: 1, cyclesRemaining: 2, source: 'system', destination: 'p1' },
     ],
   }),
 )
@@ -134,7 +134,7 @@ const noBuild = heroFrom(
   makePlayer({
     name: 'fresh_spawn',
     level: 1,
-    gold: 600,
+    scrip: 600,
     integ: 560,
     maxInteg: 560,
     bw: 280,

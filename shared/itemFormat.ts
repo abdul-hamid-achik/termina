@@ -5,7 +5,7 @@ import type {
   ItemCategory,
   ItemCategoryId,
 } from '~~/shared/types/items'
-import { WAVE_GOLD_MIN, WAVE_GOLD_MAX } from '~~/shared/constants/balance'
+import { WAVE_SCRIP_MIN, WAVE_SCRIP_MAX } from '~~/shared/constants/balance'
 
 /**
  * Pure, human-readable formatting + aggregation of item data for the items
@@ -44,27 +44,27 @@ export function aggregateStats(items: ItemDef[]): ItemStats {
   return total
 }
 
-/** Total gold cost of a list of items. */
+/** Total scrip cost of a list of items. */
 export function totalCost(items: ItemDef[]): number {
   return items.reduce((sum, it) => sum + it.cost, 0)
 }
 
-/** Average gold from one wave last-hit (the in-game bounty range midpoint). */
-const AVG_WAVE_GOLD = (WAVE_GOLD_MIN + WAVE_GOLD_MAX) / 2
+/** Average scrip from one wave last-hit (the in-game bounty range midpoint). */
+const AVG_WAVE_SCRIP = (WAVE_SCRIP_MIN + WAVE_SCRIP_MAX) / 2
 
 /**
- * Roughly how many wave last-hits a gold amount represents — makes an abstract
+ * Roughly how many wave last-hits a scrip amount represents — makes an abstract
  * build cost tangible for a newcomer ("this build ≈ N last-hits") and teaches
  * that last-hitting is how items get funded. Uses the average wave bounty.
  */
-export function lastHitsToAfford(gold: number): number {
-  if (gold <= 0) return 0
-  return Math.ceil(gold / AVG_WAVE_GOLD)
+export function lastHitsToAfford(scrip: number): number {
+  if (scrip <= 0) return 0
+  return Math.ceil(scrip / AVG_WAVE_SCRIP)
 }
 
 /** Item active cooldown in whole seconds (0 ⇒ no cooldown), given the 4s batch clock ms. */
 export function activeCooldownSeconds(active: ItemActiveDef, tickMs: number): number {
-  return Math.round((active.cooldownTicks * tickMs) / 1000)
+  return Math.round((active.cooldownCycles * tickMs) / 1000)
 }
 
 /** Sort a list of items by cost ascending (stable on equal cost via name). */

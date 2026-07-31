@@ -46,12 +46,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 5000,
     level: 1,
     xp: 0,
-    gold: 0,
+    scrip: 0,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 0,
     ice: 0,
     kills: 0,
@@ -65,7 +65,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -75,11 +75,11 @@ function makeState(players: PlayerState[]): GameState {
   const playerMap: Record<string, PlayerState> = {}
   for (const p of players) playerMap[p.id] = p
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -163,7 +163,7 @@ function castAndMeasure(
     caster = applyBuff(caster, {
       id: 'feedbackLoop',
       stacks: 50,
-      ticksRemaining: 999,
+      cyclesRemaining: 999,
       source: 'p1',
     })
   }
@@ -173,7 +173,7 @@ function castAndMeasure(
     caster = applyBuff(caster, {
       id: 'cachedEnergy',
       stacks: 100,
-      ticksRemaining: 9999,
+      cyclesRemaining: 9999,
       source: 'p1',
     })
   }
@@ -216,7 +216,7 @@ function castAndMeasure(
 /**
  * Does this ability's constant declare any instant damage-type effects? DoT-only
  * and delayed-damage abilities are excluded — their damage is applied later
- * (by `processDoTs`, `TrapSystem`, or `tickAllBuffs`), not on the cast tick, so
+ * (by `processDoTs`, `TrapSystem`, or `cycleAllBuffs`), not on the cast tick, so
  * INTEG won't drop here.
  */
 function declaresInstantDamage(heroId: string, slot: AbilitySlot): boolean {
@@ -225,7 +225,7 @@ function declaresInstantDamage(heroId: string, slot: AbilitySlot): boolean {
   // Delayed-damage abilities: the damage is armed on cast but applied later.
   const delayed = new Set<string>([
     'socket.w', // traps detonate via TrapSystem.processTraps
-    'firewall.w', // DMZ explosion on buff expiry via tickAllBuffs
+    'firewall.w', // DMZ explosion on buff expiry via cycleAllBuffs
   ])
   if (delayed.has(`${heroId}.${slot}`)) return false
   // Regex R: damage scales with the target's missing mana. The parity test
@@ -258,9 +258,9 @@ describe('Hero data parity: resolver vs shared constants', () => {
           expect(manaSpent).toBe(getAbilityBwCost(ability, slot, maxRankLevel))
         })
 
-        it(`${slot.toUpperCase()}: ${ability.name} — constant cooldownTicks matches resolver`, () => {
+        it(`${slot.toUpperCase()}: ${ability.name} — constant cooldownCycles matches resolver`, () => {
           const { cooldownSet } = castAndMeasure(heroId, slot)
-          expect(cooldownSet).toBe(ability.cooldownTicks)
+          expect(cooldownSet).toBe(ability.cooldownCycles)
         })
 
         it(`${slot.toUpperCase()}: ${ability.name} — targetType is castable by the resolver`, () => {

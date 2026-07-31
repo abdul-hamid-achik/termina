@@ -6,16 +6,16 @@ import {
   type PlayerSetup,
   type StateManagerApi,
 } from '~~/server/game/engine/StateManager'
-import { processTick, submitAction } from '~~/server/game/engine/GameLoop'
+import { processCycle, submitAction } from '~~/server/game/engine/GameLoop'
 import { filterStateForPlayer } from '~~/server/game/engine/VisionCalculator'
 import { buyItem, sellItem } from '~~/server/game/items/shop'
 import { getItem } from '~~/shared/constants/items'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import {
   KILL_BOUNTY_BASE,
-  ASSIST_GOLD,
-  PASSIVE_GOLD_PER_TICK,
-  SURRENDER_MIN_TICK,
+  ASSIST_SCRIP,
+  PASSIVE_SCRIP_PER_CYCLE,
+  SURRENDER_MIN_CYCLE,
   COMEBACK_BONUS_MAX,
   COMEBACK_PENALTY_MAX,
 } from '~~/shared/constants/balance'
@@ -23,7 +23,7 @@ import { HERO_IDS } from '~~/shared/constants/heroes'
 
 /**
  * Integration tests for the game lifecycle, driven through the REAL engine
- * (`createInMemoryStateManager` + `submitAction` + `processTick`) — the same
+ * (`createInMemoryStateManager` + `submitAction` + `processCycle`) — the same
  * pipeline `scripts/simulate-game.ts` uses for full bot matches.
  *
  * NOTE: These tests deliberately avoid importing `server/plugins/game-server.ts`
@@ -40,7 +40,7 @@ import { HERO_IDS } from '~~/shared/constants/heroes'
  *   in tests/integration/websocket-service.test.ts.
  * - Action rate limiting: enforced per-connection in server/routes/ws.ts via
  *   server/utils/RateLimiter.ts before commands ever reach the engine (the
- *   engine itself dedupes to one action per player per tick). Covered by
+ *   engine itself dedupes to one action per player per cycle). Covered by
  *   tests/unit/utils/RateLimiter.test.ts.
  */
 
@@ -62,7 +62,7 @@ async function startGame(gameId: string, players: PlayerSetup[]): Promise<StateM
 /** Run one engine tick and persist the result, mirroring the real game loop. */
 async function runTick(sm: StateManagerApi, gameId: string) {
   const state = await Effect.runPromise(sm.getState(gameId))
-  const result = await Effect.runPromise(processTick(gameId, state))
+  const result = await Effect.runPromise(processCycle(gameId, state))
   await Effect.runPromise(sm.updateState(gameId, () => result.state))
   return result
 }
@@ -83,7 +83,7 @@ function setPlayer(state: GameState, id: string, patch: Partial<PlayerState>): G
 
 /** Fountain healing/regen is skipped while inCombat — used to freeze INTEG/BW. */
 function inCombatBuff() {
-  return { id: 'inCombat', stacks: 1, ticksRemaining: 3, source: 'system' }
+  return { id: 'inCombat', stacks: 1, cyclesRemaining: 3, source: 'system' }
 }
 
 function makePlayers(prefix: string, perTeam: number): PlayerSetup[] {
@@ -118,9 +118,9 @@ describe('Game Flow Integration', () => {
           ice: sieged.ice.map((t) =>
             t.zone === 'mid-t3-audit' ? { ...t, alive: false, integ: 0 } : t,
           ),
-          ancients: {
-            ...sieged.ancients,
-            audit: { ...sieged.ancients.audit, integ: 400 },
+          terminals: {
+            ...sieged.terminals,
+            audit: { ...sieged.terminals.audit, integ: 400 },
           },
         }
       })
@@ -128,13 +128,13 @@ describe('Game Flow Integration', () => {
       const allEvents: GameEngineEvent[] = []
       let final: GameState | null = null
       for (let i = 0; i < 60; i++) {
-        submitAction(gameId, 'fg_r0', { type: 'attack', target: { kind: 'ancient' } })
+        submitAction(gameId, 'fg_r0', { type: 'attack', target: { kind: 'terminal' } })
         const result = await runTick(sm, gameId)
         allEvents.push(...result.events)
         final = result.state
         if (i === 0) {
           // The engine recomputed vulnerability from the dead T3 ice
-          expect(result.state.ancients.audit.vulnerable).toBe(true)
+          expect(result.state.terminals.audit.vulnerable).toBe(true)
         }
         if (result.state.phase === 'ended') break
       }
@@ -143,19 +143,19 @@ describe('Game Flow Integration', () => {
       const endState = final!
       expect(endState.phase).toBe('ended')
       expect(endState.winner).toBe('chaff')
-      expect(endState.ancients.audit.alive).toBe(false)
-      expect(endState.ancients.audit.integ).toBe(0)
-      expect(endState.ancients.chaff.alive).toBe(true)
+      expect(endState.terminals.audit.alive).toBe(false)
+      expect(endState.terminals.audit.integ).toBe(0)
+      expect(endState.terminals.chaff.alive).toBe(true)
 
       // Hero damage was routed to the Ancient and its destruction was
-      // announced via the dedicated ancient_destroyed event (not a reused
+      // announced via the dedicated terminal_destroyed event (not a reused
       // ice_kill, which would render a misleading "ice in <base>" line).
-      expect(allEvents.some((e) => e._tag === 'damage' && e.targetId === 'ancient_audit')).toBe(
+      expect(allEvents.some((e) => e._tag === 'damage' && e.targetId === 'terminal_audit')).toBe(
         true,
       )
       expect(
         allEvents.some(
-          (e) => e._tag === 'ancient_destroyed' && e.team === 'audit' && e.killerTeam === 'chaff',
+          (e) => e._tag === 'terminal_destroyed' && e.team === 'audit' && e.killerTeam === 'chaff',
         ),
       ).toBe(true)
     })
@@ -163,8 +163,8 @@ describe('Game Flow Integration', () => {
     it('handles surrender vote — passes at the 60% threshold, not below', async () => {
       const gameId = uid('ff')
       const sm = await startGame(gameId, makePlayers('ff', 5))
-      // Surrender opens at SURRENDER_MIN_TICK; jump straight past the gate
-      await arrange(sm, gameId, (s) => ({ ...s, tick: SURRENDER_MIN_TICK }))
+      // Surrender opens at SURRENDER_MIN_CYCLE; jump straight past the gate
+      await arrange(sm, gameId, (s) => ({ ...s, cycle: SURRENDER_MIN_CYCLE }))
 
       // 2 of 5 alive players = 40% — below the 60% threshold (needs 3)
       submitAction(gameId, 'ff_r0', { type: 'surrender', vote: 'yes' })
@@ -192,7 +192,7 @@ describe('Game Flow Integration', () => {
   })
 
   describe('Gold Distribution Integration', () => {
-    it('distributes gold correctly in a team fight (killer bounty + assist pot, no double-dip)', async () => {
+    it('distributes scrip correctly in a team fight (killer bounty + assist pot, no double-dip)', async () => {
       const gameId = uid('tf')
       const sm = await startGame(gameId, makePlayers('tf', 2))
       // killer + assister + victim share a zone; the 2nd audit player idles in
@@ -212,7 +212,7 @@ describe('Game Flow Integration', () => {
       expect(softened.integ).toBeLessThan(softened.maxInteg)
       expect(softened.alive).toBe(true)
 
-      // Arrange a lethal blow, snapshot gold, then the killer finishes
+      // Arrange a lethal blow, snapshot scrip, then the killer finishes
       await arrange(sm, gameId, (s) => setPlayer(s, 'tf_d0', { integ: 1 }))
       const before = await Effect.runPromise(sm.getState(gameId))
 
@@ -235,20 +235,20 @@ describe('Game Flow Integration', () => {
         assisters: ['tf_r1'],
       })
 
-      const killerDelta = after.players['tf_r0']!.gold - before.players['tf_r0']!.gold
-      const assistDelta = after.players['tf_r1']!.gold - before.players['tf_r1']!.gold
-      const victimDelta = after.players['tf_d0']!.gold - before.players['tf_d0']!.gold
+      const killerDelta = after.players['tf_r0']!.scrip - before.players['tf_r0']!.scrip
+      const assistDelta = after.players['tf_r1']!.scrip - before.players['tf_r1']!.scrip
+      const victimDelta = after.players['tf_d0']!.scrip - before.players['tf_d0']!.scrip
 
       // Killer: base bounty (victim streak 0, balanced net-worths → ×1)
-      // plus this tick's passive gold. NOT the assist pot too.
-      expect(killerDelta).toBe(KILL_BOUNTY_BASE + PASSIVE_GOLD_PER_TICK)
-      // Sole assister collects the full assist pot plus passive gold.
-      expect(assistDelta).toBe(ASSIST_GOLD + PASSIVE_GOLD_PER_TICK)
-      // The dead victim earns nothing this tick.
+      // plus this cycle's passive scrip. NOT the assist pot too.
+      expect(killerDelta).toBe(KILL_BOUNTY_BASE + PASSIVE_SCRIP_PER_CYCLE)
+      // Sole assister collects the full assist pot plus passive scrip.
+      expect(assistDelta).toBe(ASSIST_SCRIP + PASSIVE_SCRIP_PER_CYCLE)
+      // The dead victim earns nothing this cycle.
       expect(victimDelta).toBe(0)
     })
 
-    it('handles multi-kill gold distribution — consecutive kills build streak, each pays a bounty', async () => {
+    it('handles multi-kill scrip distribution — consecutive kills build streak, each pays a bounty', async () => {
       const gameId = uid('mk')
       const sm = await startGame(gameId, makePlayers('mk', 2))
       await arrange(sm, gameId, (s) => {
@@ -273,11 +273,11 @@ describe('Game Flow Integration', () => {
           (e) => e._tag === 'kill' && e.killerId === 'mk_r0' && e.victimId === 'mk_d0',
         ),
       ).toBe(true)
-      const delta1 = r1.state.players['mk_r0']!.gold - before1.players['mk_r0']!.gold
-      expect(delta1 - PASSIVE_GOLD_PER_TICK).toBeGreaterThanOrEqual(minBounty)
-      expect(delta1 - PASSIVE_GOLD_PER_TICK).toBeLessThanOrEqual(maxBounty)
+      const delta1 = r1.state.players['mk_r0']!.scrip - before1.players['mk_r0']!.scrip
+      expect(delta1 - PASSIVE_SCRIP_PER_CYCLE).toBeGreaterThanOrEqual(minBounty)
+      expect(delta1 - PASSIVE_SCRIP_PER_CYCLE).toBeLessThanOrEqual(maxBounty)
 
-      // Kill #2, next tick — the double kill
+      // Kill #2, next cycle — the double kill
       await arrange(sm, gameId, (s) => setPlayer(s, 'mk_d1', { integ: 1 }))
       const before2 = await Effect.runPromise(sm.getState(gameId))
       submitAction(gameId, 'mk_r0', { type: 'attack', target: { kind: 'hero', name: 'mk_d1' } })
@@ -288,9 +288,9 @@ describe('Game Flow Integration', () => {
           (e) => e._tag === 'kill' && e.killerId === 'mk_r0' && e.victimId === 'mk_d1',
         ),
       ).toBe(true)
-      const delta2 = r2.state.players['mk_r0']!.gold - before2.players['mk_r0']!.gold
-      expect(delta2 - PASSIVE_GOLD_PER_TICK).toBeGreaterThanOrEqual(minBounty)
-      expect(delta2 - PASSIVE_GOLD_PER_TICK).toBeLessThanOrEqual(maxBounty)
+      const delta2 = r2.state.players['mk_r0']!.scrip - before2.players['mk_r0']!.scrip
+      expect(delta2 - PASSIVE_SCRIP_PER_CYCLE).toBeGreaterThanOrEqual(minBounty)
+      expect(delta2 - PASSIVE_SCRIP_PER_CYCLE).toBeLessThanOrEqual(maxBounty)
 
       // Multi-kill bookkeeping: two kills, a 2-streak, one death per victim
       const killer = r2.state.players['mk_r0']!
@@ -312,16 +312,16 @@ describe('Game Flow Integration', () => {
       await Effect.runPromise(sm.createGame('g1', setup))
 
       const s0 = await Effect.runPromise(sm.getState('g1'))
-      const startGold = s0.players.p1!.gold
+      const startGold = s0.players.p1!.scrip
       const afterBuy = await Effect.runPromise(buyItem(s0, 'p1', 'scrap_lot'))
-      const branchCost = startGold - afterBuy.players.p1!.gold
+      const branchCost = startGold - afterBuy.players.p1!.scrip
       expect(branchCost).toBeGreaterThan(0)
       expect(afterBuy.players.p1!.items.filter((i) => i === 'scrap_lot')).toHaveLength(1)
 
       // Sell it back — refund is 50% of cost (floored)
       const slot = afterBuy.players.p1!.items.indexOf('scrap_lot')
       const afterSell = await Effect.runPromise(sellItem(afterBuy, 'p1', slot))
-      const refunded = afterSell.players.p1!.gold - afterBuy.players.p1!.gold
+      const refunded = afterSell.players.p1!.scrip - afterBuy.players.p1!.scrip
       expect(refunded).toBe(Math.floor(branchCost * 0.5))
       expect(afterSell.players.p1!.items[slot]).toBeNull()
     })
@@ -335,7 +335,7 @@ describe('Game Flow Integration', () => {
       expect(itemHp).toBeGreaterThan(0)
 
       // Buy an INTEG item through the engine — maxInteg grows by the item bonus
-      await arrange(sm, gameId, (s) => setPlayer(s, 'ihp_r0', { gold: 5_000 }))
+      await arrange(sm, gameId, (s) => setPlayer(s, 'ihp_r0', { scrip: 5_000 }))
       submitAction(gameId, 'ihp_r0', { type: 'buy', item: 'bulwark_plate' })
       let result = await runTick(sm, gameId)
       const bought = result.state.players['ihp_r0']!
@@ -374,7 +374,7 @@ describe('Game Flow Integration', () => {
       // Drain to ~50% BW first (inCombat blocks fountain BW regen)
       await arrange(sm, gameId, (s) =>
         setPlayer(s, 'imp_r0', {
-          gold: 5_000,
+          scrip: 5_000,
           bw: Math.floor(baseMaxMp / 2),
           buffs: [inCombatBuff()],
         }),
@@ -409,7 +409,7 @@ describe('Game Flow Integration', () => {
       }
 
       await arrange(sm, gameId, (s) =>
-        setPlayer(s, 'inv_r0', { gold: 50_000, items: [...sixItems] }),
+        setPlayer(s, 'inv_r0', { scrip: 50_000, items: [...sixItems] }),
       )
       const state = await Effect.runPromise(sm.getState(gameId))
 
@@ -418,9 +418,9 @@ describe('Game Flow Integration', () => {
       const error = await Effect.runPromise(Effect.flip(buyItem(state, 'inv_r0', 'bulwark_plate')))
       expect(error._tag).toBe('InventoryFullError')
 
-      // and the state is untouched — no gold deducted, no item granted
+      // and the state is untouched — no scrip deducted, no item granted
       const unchanged = await Effect.runPromise(sm.getState(gameId))
-      expect(unchanged.players['inv_r0']!.gold).toBe(50_000)
+      expect(unchanged.players['inv_r0']!.scrip).toBe(50_000)
       expect(unchanged.players['inv_r0']!.items.filter(Boolean)).toHaveLength(6)
     })
   })
@@ -457,7 +457,7 @@ describe('Game Flow Integration', () => {
       const enemy = view.players['vis_d0']!
       expect(enemy).toMatchObject({ id: 'vis_d0', fogged: true })
       expect('zone' in enemy).toBe(false)
-      expect('gold' in enemy).toBe(false)
+      expect('scrip' in enemy).toBe(false)
 
       // Waves in fogged zones are stripped from the payload
       expect(view.waves.some((c) => c.id === 'wave_fog_probe')).toBe(false)

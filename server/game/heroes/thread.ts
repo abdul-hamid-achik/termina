@@ -97,7 +97,7 @@ function resolveQ(
     caster = applyBuff(caster, {
       id: 'forkAtk',
       stacks: Q_ATK_BUFF,
-      ticksRemaining: Q_BUFF_DURATION,
+      cyclesRemaining: Q_BUFF_DURATION,
       source: player.id,
     })
 
@@ -108,7 +108,7 @@ function resolveQ(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -146,7 +146,7 @@ function resolveW(
     caster = applyBuff(caster, {
       id: 'shield',
       stacks: shieldAmount,
-      ticksRemaining: 3,
+      cyclesRemaining: 3,
       source: player.id,
     })
 
@@ -154,7 +154,7 @@ function resolveW(
       state: updatePlayer(state, caster),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -200,7 +200,7 @@ function resolveE(
     const updatedTarget = applyBuff(targetPlayer, {
       id: 'yield',
       stacks: 25, // 25% bonus damage
-      ticksRemaining: E_DEBUFF_DURATION,
+      cyclesRemaining: E_DEBUFF_DURATION,
       source: player.id,
     })
 
@@ -208,7 +208,7 @@ function resolveE(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -240,7 +240,7 @@ function resolveR(
     caster = applyBuff(caster, {
       id: 'threadPool',
       stacks: 1,
-      ticksRemaining: R_BUFF_DURATION,
+      cyclesRemaining: R_BUFF_DURATION,
       source: player.id,
     })
 
@@ -248,7 +248,7 @@ function resolveR(
       state: updatePlayer(state, caster),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,

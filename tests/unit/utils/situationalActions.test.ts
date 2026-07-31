@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { computeSituationalActions, type SituationalContext } from '~~/app/utils/situationalActions'
-import { SURRENDER_MIN_TICK, HARDEN_COOLDOWN_TICKS } from '~~/shared/constants/balance'
+import { SURRENDER_MIN_CYCLE, HARDEN_COOLDOWN_CYCLES } from '~~/shared/constants/balance'
 import type { PlayerState, WaveUnitState } from '~~/shared/types/game'
 
 const player = (over: Partial<PlayerState> = {}): PlayerState =>
@@ -13,7 +13,7 @@ const baseCtx = (over: Partial<SituationalContext> = {}): SituationalContext => 
   backup: null,
   caches: [],
   teams: null,
-  tick: 0,
+  cycle: 0,
   ...over,
 })
 
@@ -68,7 +68,7 @@ describe('computeSituationalActions', () => {
       cmds(
         baseCtx({
           player: player({
-            buffs: [{ id: 'breached', stacks: 1, ticksRemaining: 2, source: 'enemy' }],
+            buffs: [{ id: 'breached', stacks: 1, cyclesRemaining: 2, source: 'enemy' }],
           }),
         }),
       ),
@@ -77,19 +77,19 @@ describe('computeSituationalActions', () => {
 
   it('hides HARDEN while the team harden is on cooldown', () => {
     const onCd = baseCtx({
-      tick: 10,
-      teams: { chaff: { hardenUsedTick: 10 }, audit: {} } as never,
+      cycle: 10,
+      teams: { chaff: { hardenUsedCycle: 10 }, audit: {} } as never,
     })
     expect(cmds(onCd)).not.toContain('harden')
     const offCd = baseCtx({
-      tick: 10 + HARDEN_COOLDOWN_TICKS,
-      teams: { chaff: { hardenUsedTick: 10 }, audit: {} } as never,
+      cycle: 10 + HARDEN_COOLDOWN_CYCLES,
+      teams: { chaff: { hardenUsedCycle: 10 }, audit: {} } as never,
     })
     expect(cmds(offCd)).toContain('harden')
   })
 
   it('offers SURRENDER only once the surrender window opens', () => {
-    expect(cmds(baseCtx({ tick: SURRENDER_MIN_TICK - 1 }))).not.toContain('surrender')
-    expect(cmds(baseCtx({ tick: SURRENDER_MIN_TICK }))).toContain('surrender')
+    expect(cmds(baseCtx({ cycle: SURRENDER_MIN_CYCLE - 1 }))).not.toContain('surrender')
+    expect(cmds(baseCtx({ cycle: SURRENDER_MIN_CYCLE }))).toContain('surrender')
   })
 })

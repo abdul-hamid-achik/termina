@@ -82,7 +82,7 @@ function resolveQ(
     caster = applyBuff(caster, {
       id: 'allocate',
       stacks: 25,
-      ticksRemaining: 3,
+      cyclesRemaining: 3,
       source: player.id,
     })
 
@@ -90,7 +90,7 @@ function resolveQ(
       state: updatePlayer(state, caster),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -146,7 +146,7 @@ function resolveW(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -196,8 +196,8 @@ function resolveE(
     updatedTarget = applyBuff(updatedTarget, {
       id: 'stun',
       stacks: 1,
-      // 2 = one gated action: reaped same-tick by tickAllBuffs (see applyBuff note)
-      ticksRemaining: 2,
+      // 2 = one gated action: reaped same-tick by cycleAllBuffs (see applyBuff note)
+      cyclesRemaining: 2,
       source: player.id,
     })
 
@@ -205,7 +205,7 @@ function resolveE(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -254,7 +254,7 @@ function resolveR(
       ),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -270,7 +270,7 @@ function resolveR(
 }
 
 // ── Passive: Heap Growth ────────────────────────────────────────
-// +1 attack per 100 gold. Applied as a buff with stacks = bonus attack.
+// +1 attack per 100 scrip. Applied as a buff with stacks = bonus attack.
 
 function resolveHeroPassive(state: GameState, playerId: string, _event: GameEvent): GameState {
   const player = state.players[playerId]
@@ -278,7 +278,7 @@ function resolveHeroPassive(state: GameState, playerId: string, _event: GameEven
 
   const bonusAttack = Math.min(
     HEAP_GROWTH_MAX_BONUS,
-    Math.floor(player.gold / 100) * HEAP_GROWTH_PER_100_GOLD,
+    Math.floor(player.scrip / 100) * HEAP_GROWTH_PER_100_GOLD,
   )
   const currentBonus = getBuffStacks(player, 'heapGrowth')
 
@@ -286,7 +286,7 @@ function resolveHeroPassive(state: GameState, playerId: string, _event: GameEven
     const updated = applyBuff(player, {
       id: 'heapGrowth',
       stacks: bonusAttack,
-      ticksRemaining: 9999,
+      cyclesRemaining: 9999,
       source: playerId,
     })
     return updatePlayer(state, updated)

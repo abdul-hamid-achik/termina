@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { runIceAI, applyIceActions, type IceAction } from '~~/server/game/engine/IceAI'
-import { initializeAncients } from '~~/server/game/engine/AncientSystem'
+import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
 import type { GameState, PlayerState, WaveUnitState } from '~~/shared/types/game'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
@@ -21,12 +21,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 200,
     level: 1,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -52,17 +52,17 @@ function makeWave(overrides: Partial<WaveUnitState> = {}): WaveUnitState {
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
   return {
-    tick: 1,
+    cycle: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
     waves: [],
     ice: initializeIce(),
-    ancients: initializeAncients(),
+    terminals: initializeAncients(),
     events: [],
     ...overrides,
   }
@@ -176,7 +176,7 @@ describe('IceAI', () => {
       const priorEvents: GameEngineEvent[] = [
         {
           _tag: 'damage',
-          tick: 1,
+          cycle: 1,
           sourceId: 'attacker',
           targetId: 'ice_mid-t1-chaff',
           amount: 60,
@@ -206,7 +206,7 @@ describe('IceAI', () => {
       const priorEvents: GameEngineEvent[] = [
         {
           _tag: 'damage',
-          tick: 1,
+          cycle: 1,
           sourceId: 'attacker',
           targetId: 'ice_top-t1-chaff',
           amount: 60,
@@ -345,7 +345,7 @@ describe('IceAI', () => {
               team: 'audit',
               zone: 'mid-t1-chaff',
               integ: 500,
-              buffs: [{ id, stacks: 1, ticksRemaining: 2, source: 'x' }],
+              buffs: [{ id, stacks: 1, cyclesRemaining: 2, source: 'x' }],
             }),
           },
         })
@@ -359,7 +359,7 @@ describe('IceAI', () => {
 
     it('emits a damage event naming the ice that fired', () => {
       const player = makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', integ: 500 })
-      const state = makeGameState({ tick: 7, players: { p1: player } })
+      const state = makeGameState({ cycle: 7, players: { p1: player } })
 
       const actions: IceAction[] = [
         { iceZone: 'mid-t1-chaff', targetType: 'hero', targetId: 'p1', damage: ICE_ATTACK },
@@ -370,7 +370,7 @@ describe('IceAI', () => {
       expect(events).toEqual([
         {
           _tag: 'damage',
-          tick: 7,
+          cycle: 7,
           // Same id convention selectIceTarget reads for hero→ice damage.
           sourceId: 'ice_mid-t1-chaff',
           targetId: 'p1',
@@ -392,7 +392,7 @@ describe('IceAI', () => {
             team: 'audit',
             zone: 'mid-t1-chaff',
             integ: 500,
-            buffs: [{ id: 'shield', stacks: 999, ticksRemaining: 5, source: 'x' }],
+            buffs: [{ id: 'shield', stacks: 999, cyclesRemaining: 5, source: 'x' }],
           }),
         },
       })

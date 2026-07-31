@@ -12,8 +12,8 @@ describe('parseSpectatorMessage', () => {
   it('parses a spectator_tick with tick + state', () => {
     const state = { teams: {}, players: {}, timeOfDay: 'day' }
     expect(
-      parseSpectatorMessage(JSON.stringify({ type: 'spectator_tick', tick: 42, state })),
-    ).toEqual({ type: 'tick', tick: 42, state })
+      parseSpectatorMessage(JSON.stringify({ type: 'spectator_tick', cycle: 42, state })),
+    ).toEqual({ type: 'cycle', cycle: 42, state })
   })
 
   it('formats an error as "code: message"', () => {

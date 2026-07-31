@@ -107,7 +107,7 @@ describe('talents', () => {
 describe('exotic tier-25 cast effects', () => {
   // Assertions use the tick's damage/heal EVENTS (filtered to the caster as
   // source) rather than absolute INTEG — heroes regen during a tick, so INTEG deltas
-  // are noisy. `dmgFromMe`/`healOnMe` read game.lastEvents after each tick.
+  // are noisy. `dmgFromMe`/`healOnMe` read game.lastEvents after each cycle.
 
   it('global_ultimate lets Regex R hit an enemy in a far zone', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'regex', heroEnemy: 'daemon' })
@@ -132,7 +132,7 @@ describe('exotic tier-25 cast effects', () => {
             zone: 'top-river',
             bw: 100,
             maxBw: 500,
-            buffs: [{ id: 'breached', stacks: 1, ticksRemaining: 5, source: 'test' }],
+            buffs: [{ id: 'breached', stacks: 1, cyclesRemaining: 5, source: 'test' }],
           },
         },
       }))
@@ -219,7 +219,7 @@ describe('exotic tier-25 cast effects', () => {
             maxInteg: 1000,
             bw: 500,
             alive: true,
-            respawnTick: 0,
+            respawnCycle: 0,
           },
         },
       }))

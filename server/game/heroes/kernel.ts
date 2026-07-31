@@ -88,8 +88,8 @@ function resolveQ(
     const stunned = applyBuff(targetPlayer, {
       id: 'stun',
       stacks: 1,
-      // 2 = one gated action: reaped same-tick by tickAllBuffs (see applyBuff note)
-      ticksRemaining: 2,
+      // 2 = one gated action: reaped same-tick by cycleAllBuffs (see applyBuff note)
+      cyclesRemaining: 2,
       source: player.id,
     })
 
@@ -97,7 +97,7 @@ function resolveQ(
       state: updatePlayers(state, [caster, stunned]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -131,7 +131,7 @@ function resolveW(
     caster = applyBuff(caster, {
       id: 'shield',
       stacks: shieldAmount,
-      ticksRemaining: 3,
+      cyclesRemaining: 3,
       source: player.id,
     })
 
@@ -139,7 +139,7 @@ function resolveW(
       state: updatePlayer(state, caster),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -173,7 +173,7 @@ function resolveE(
       applyBuff(e, {
         id: 'taunt',
         stacks: 1,
-        ticksRemaining: 2,
+        cyclesRemaining: 2,
         source: player.id,
       }),
     )
@@ -182,7 +182,7 @@ function resolveE(
       state: updatePlayers(state, [caster, ...taunted]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -197,7 +197,7 @@ function resolveE(
   })
 }
 
-// R: Panic — force all enemies in zone to move to random adjacent zone next tick
+// R: Panic — force all enemies in zone to move to random adjacent zone next cycle
 function resolveR(
   state: GameState,
   player: PlayerState,
@@ -218,7 +218,7 @@ function resolveR(
       const randomZone = adjacent[Math.floor(Math.random() * adjacent.length)] ?? e.zone
       return applyBuff(
         { ...e, zone: randomZone },
-        { id: 'feared', stacks: 1, ticksRemaining: 1, source: player.id },
+        { id: 'feared', stacks: 1, cyclesRemaining: 1, source: player.id },
       )
     })
 
@@ -226,7 +226,7 @@ function resolveR(
       state: updatePlayers(state, [caster, ...displaced]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -252,7 +252,7 @@ function resolveHeroPassive(state: GameState, playerId: string, _event: GameEven
     const updated = applyBuff(player, {
       id: 'hardened',
       stacks: 1,
-      ticksRemaining: 9999,
+      cyclesRemaining: 9999,
       source: playerId,
     })
     return updatePlayer(state, updated)

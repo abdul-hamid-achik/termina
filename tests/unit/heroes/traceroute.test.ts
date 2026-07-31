@@ -7,7 +7,7 @@ import {
   applyBuff,
   hasBuff,
   getBuffStacks,
-  tickAllBuffs,
+  cycleAllBuffs,
 } from '~~/server/game/heroes/_base'
 // Register traceroute hero
 import '../../../server/game/heroes/traceroute'
@@ -27,12 +27,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 290,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 2,
     ice: 14,
     kills: 0,
@@ -46,7 +46,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -86,11 +86,11 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     playerMap[p.id] = p
   }
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -135,7 +135,7 @@ describe('Traceroute Hero', () => {
 
     it('Hop Count stacks amplify Probe damage (+20% per hop — formerly a dead multiplier)', () => {
       let player = makePlayer({ level: 1 })
-      player = applyBuff(player, { id: 'hopCount', stacks: 3, ticksRemaining: 2, source: 'p1' })
+      player = applyBuff(player, { id: 'hopCount', stacks: 3, cyclesRemaining: 2, source: 'p1' })
       const enemy = makeEnemy() // isolated → 1.35 bonus too
       const state = makeState([player, enemy])
 
@@ -236,7 +236,7 @@ describe('Traceroute Hero', () => {
       const updatedEnemy = result.state.players['e1']!
       expect(hasBuff(updatedEnemy, 'root')).toBe(true)
       const root = updatedEnemy.buffs.find((b) => b.id === 'root')
-      expect(root!.ticksRemaining).toBe(2)
+      expect(root!.cyclesRemaining).toBe(2)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -303,7 +303,7 @@ describe('Traceroute Hero', () => {
       const updated = result.state.players['p1']!
       expect(hasBuff(updated, 'nextHopShadow')).toBe(true)
       const buff = updated.buffs.find((b) => b.id === 'nextHopShadow')
-      expect(buff!.ticksRemaining).toBe(2)
+      expect(buff!.cyclesRemaining).toBe(2)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -360,13 +360,13 @@ describe('Traceroute Hero', () => {
         },
       }
 
-      // Tick 1: shadow still pending (ticksRemaining 2 → 1), no return yet.
-      s = tickAllBuffs(s)
+      // Tick 1: shadow still pending (cyclesRemaining 2 → 1), no return yet.
+      s = cycleAllBuffs(s)
       expect(s.players['p1']!.zone).toBe('top-river')
       expect(hasBuff(s.players['p1']!, 'nextHopShadow')).toBe(true)
 
       // Tick 2: shadow expires → snap back to mid-river.
-      s = tickAllBuffs(s)
+      s = cycleAllBuffs(s)
       expect(s.players['p1']!.zone).toBe('mid-river')
       expect(hasBuff(s.players['p1']!, 'nextHopShadow')).toBe(false)
 
@@ -381,8 +381,8 @@ describe('Traceroute Hero', () => {
       const state = makeState([player])
       let s = Effect.runSync(resolveAbility(state, 'p1', 'e')).state
 
-      s = tickAllBuffs(s) // ticksRemaining 2 → 1
-      s = tickAllBuffs(s) // expires; destination === zone, so no teleport
+      s = cycleAllBuffs(s) // cyclesRemaining 2 → 1
+      s = cycleAllBuffs(s) // expires; destination === zone, so no teleport
 
       expect(s.players['p1']!.zone).toBe('mid-river')
       expect(s.events.find((e) => e.type === 'teleport_complete')).toBeUndefined()
@@ -409,7 +409,7 @@ describe('Traceroute Hero', () => {
       expect(hasBuff(result.state.players['e1']!, 'revealed')).toBe(true)
       expect(hasBuff(result.state.players['e2']!, 'revealed')).toBe(true)
       const reveal = result.state.players['e1']!.buffs.find((b) => b.id === 'revealed')
-      expect(reveal!.ticksRemaining).toBe(3)
+      expect(reveal!.cyclesRemaining).toBe(3)
     })
 
     it('reveals enemies in different zones (global)', () => {
@@ -433,7 +433,7 @@ describe('Traceroute Hero', () => {
       expect(hasBuff(updated, 'fullTraceDmg')).toBe(true)
       const dmgBuff = updated.buffs.find((b) => b.id === 'fullTraceDmg')
       expect(dmgBuff!.stacks).toBe(50)
-      expect(dmgBuff!.ticksRemaining).toBe(2)
+      expect(dmgBuff!.cyclesRemaining).toBe(2)
     })
 
     it('does not affect allied players', () => {
@@ -474,7 +474,7 @@ describe('Traceroute Hero', () => {
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'move',
         payload: { playerId: 'p1', from: 'mid-t1-chaff', to: 'mid-river' },
       })
@@ -487,13 +487,13 @@ describe('Traceroute Hero', () => {
       player = applyBuff(player, {
         id: 'hopCount',
         stacks: 2,
-        ticksRemaining: 2,
+        cyclesRemaining: 2,
         source: 'p1',
       })
       let state = makeState([player])
 
       state = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'move',
         payload: { playerId: 'p1', from: 'mid-t1-chaff', to: 'mid-river' },
       })
@@ -502,7 +502,7 @@ describe('Traceroute Hero', () => {
 
       // Try to go above 3
       state = resolvePassive(state, 'p1', {
-        tick: 11,
+        cycle: 11,
         type: 'move',
         payload: { playerId: 'p1', from: 'mid-river', to: 'top-river' },
       })
@@ -515,13 +515,13 @@ describe('Traceroute Hero', () => {
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'move',
         payload: { playerId: 'p1', from: 'mid-t1-chaff', to: 'mid-river' },
       })
 
       const buff = updated.players['p1']!.buffs.find((b) => b.id === 'hopCount')
-      expect(buff!.ticksRemaining).toBe(2) // decay timer reset
+      expect(buff!.cyclesRemaining).toBe(2) // decay timer reset
     })
 
     it('does not trigger on other players move', () => {
@@ -530,7 +530,7 @@ describe('Traceroute Hero', () => {
       const state = makeState([player, enemy])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'move',
         payload: { playerId: 'e1', from: 'mid-t1-chaff', to: 'mid-river' },
       })
@@ -543,7 +543,7 @@ describe('Traceroute Hero', () => {
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'tick_end',
         payload: {},
       })
@@ -555,7 +555,7 @@ describe('Traceroute Hero', () => {
   describe('Stun/Silence blocking', () => {
     it('prevents casting when stunned', () => {
       const player = makePlayer({
-        buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 1, source: 'enemy' }],
+        buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 1, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -568,7 +568,7 @@ describe('Traceroute Hero', () => {
 
     it('prevents casting when silenced', () => {
       const player = makePlayer({
-        buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 2, source: 'enemy' }],
+        buffs: [{ id: 'silence', stacks: 1, cyclesRemaining: 2, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

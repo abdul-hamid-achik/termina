@@ -45,7 +45,7 @@ interface MatchSummary {
   mode: string
   winner: 'chaff' | 'audit' | null
   team: 'chaff' | 'audit' | null
-  durationTicks: number | null
+  durationCycles: number | null
   createdAt: string | null
 }
 
@@ -293,7 +293,7 @@ function formatDate(dateStr: string | null): string {
                 {{ m.result }}
               </td>
               <td class="border-b border-border/50 px-1.5 py-1 text-text-dim">
-                {{ formatDuration(m.durationTicks) }}
+                {{ formatDuration(m.durationCycles) }}
               </td>
               <td class="border-b border-border/50 px-1.5 py-1 text-text-dim">
                 {{ formatDate(m.createdAt) }}

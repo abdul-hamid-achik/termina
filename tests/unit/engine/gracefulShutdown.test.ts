@@ -11,7 +11,7 @@ const META: SnapshotMeta = {
 
 const mockState = (): GameState =>
   ({
-    tick: 7,
+    cycle: 7,
     surrenderVotes: { chaff: new Set<string>(), audit: new Set<string>() },
   }) as unknown as GameState
 

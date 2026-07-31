@@ -31,12 +31,12 @@ function makePlayer(over: Partial<PlayerState> = {}): PlayerState {
     maxBw: 200,
     level: 1,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -110,7 +110,7 @@ describe('ActionRow', () => {
       backup: null,
       caches: [],
       teams: null,
-      tick: 100,
+      cycle: 100,
     })
     const strip = actions.find((a) => a.label === 'STRIP')
     expect(strip?.cmd).toBe('attack wave:2')
@@ -125,7 +125,7 @@ describe('ActionRow', () => {
       backup: null,
       caches: [],
       teams: null,
-      tick: 100,
+      cycle: 100,
     })
     expect(healthy.some((a) => a.label === 'BURN')).toBe(false)
 
@@ -136,7 +136,7 @@ describe('ActionRow', () => {
       backup: null,
       caches: [],
       teams: null,
-      tick: 100,
+      cycle: 100,
     })
     const burn = burnable.find((a) => a.label === 'BURN')
     expect(burn?.cmd).toBe('burn')

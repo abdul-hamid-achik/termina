@@ -9,14 +9,14 @@ import type {
   TeamState,
   TeamId,
   IceState,
-  AncientState,
+  TerminalState,
   WaveUnitState,
   SiltDwellerState,
   TenantState,
   CacheState,
 } from '~~/shared/types/game'
 import type {
-  TickStateMessage,
+  CycleStateMessage,
   PlayerEndStats,
   AnnouncementMessage,
 } from '~~/shared/types/protocol'
@@ -25,14 +25,14 @@ import type {
 // connection/[ERROR] messages) — drives the AnnouncementToast colour.
 export type AnnouncementLevel = AnnouncementMessage['level'] | 'error'
 import { isShopZoneFor, ZONE_MAP } from '~~/shared/constants/zones'
-import { TICK_DURATION_MS } from '~~/shared/constants/balance'
+import { CYCLE_DURATION_MS } from '~~/shared/constants/balance'
 import { gameLog } from '~/utils/logger'
 import { playerNetWorth } from '~/utils/strategy'
 
 /** How many ticks of team net-worth history to keep for the trend sparkline. */
 const NET_WORTH_HISTORY_MAX = 40
 
-/** How often (ms) the client-side tick countdown refreshes. */
+/** How often (ms) the client-side cycle countdown refreshes. */
 const COUNTDOWN_REFRESH_MS = 100
 
 export interface ScoreboardEntry {
@@ -45,11 +45,11 @@ export interface ScoreboardEntry {
   kills: number
   deaths: number
   assists: number
-  gold: number
+  scrip: number
   level: number
   items: (string | null)[]
   alive: boolean
-  respawnTick: number | null
+  respawnCycle: number | null
   fogged: boolean
   aiControlled?: boolean // true once an AFK player was replaced by a bot
 }
@@ -59,34 +59,34 @@ export const useGameStore = defineStore('game', () => {
   const gameId = ref<string | null>(null)
   const playerId = ref<string | null>(null)
   const phase = ref<GamePhase>('waiting')
-  const tick = ref(0)
+  const cycle = ref(0)
   const player = ref<PlayerState | null>(null)
   // The zones MAP (every zone, fogged ones stripped) — used for per-zone data
   // lookups. NOT the fog list: `visibleZones` here is the map keyed by id.
   const visibleZones = ref<Record<string, ZoneRuntimeState>>({})
   // The server's fog list — the ids of zones THIS player can actually see this
-  // tick (own + adjacent + ward/ice vision). Distinct from the zones map
+  // cycle (own + adjacent + ward/ice vision). Distinct from the zones map
   // (which carries all zones); drives map fog-dimming + the net readout vision %.
   const visibleZoneIds = ref<string[]>([])
   const allPlayers = ref<Record<string, PlayerState>>({})
   const teams = ref<{ chaff: TeamState; audit: TeamState } | null>(null)
   const ice = ref<IceState[]>([])
-  const ancients = ref<{ chaff: AncientState; audit: AncientState } | null>(null)
+  const terminals = ref<{ chaff: TerminalState; audit: TerminalState } | null>(null)
   const waves = ref<WaveUnitState[]>([])
   const neutrals = ref<SiltDwellerState[]>([])
-  // Objective layer — streamed in every tick payload (PlayerVisibleState) but
-  // previously discarded by updateFromTick. Surfaced here for the net readout HUD.
+  // Objective layer — streamed in every cycle payload (PlayerVisibleState) but
+  // previously discarded by updateFromCycle. Surfaced here for the net readout HUD.
   const tenant = ref<TenantState | null>(null)
   const caches = ref<CacheState[]>([])
-  const backup = ref<{ zone: string; tick: number; holderId: string | null } | null>(null)
-  // Last-seen position per player (zone + tick) — drives "last seen mid 4t ago"
+  const backup = ref<{ zone: string; cycle: number; holderId: string | null } | null>(null)
+  // Last-seen position per player (zone + cycle) — drives "last seen mid 4t ago"
   // for fogged enemies. Server only includes positions the team is allowed to know.
-  const lastSeen = ref<Record<string, { zone: string; tick: number }>>({})
+  const lastSeen = ref<Record<string, { zone: string; cycle: number }>>({})
   // Last-known net worth per player — carried forward while a player is fogged so
-  // the gold-lead readout stays stable instead of cratering whenever enemies
-  // drop out of vision (you can't see a fogged enemy's gold).
+  // the scrip-lead readout stays stable instead of cratering whenever enemies
+  // drop out of vision (you can't see a fogged enemy's scrip).
   const knownNetWorth = ref<Record<string, number>>({})
-  // Per-team net-worth history (one sample per tick) for the trend sparkline.
+  // Per-team net-worth history (one sample per cycle) for the trend sparkline.
   const netWorthHistory = ref<{ chaff: number[]; audit: number[] }>({ chaff: [], audit: [] })
   const events = ref<GameEvent[]>([])
   // Monotonic counter + the most-recent batch. Consumers (audio/shake/flash/KDA)
@@ -104,7 +104,7 @@ export const useGameStore = defineStore('game', () => {
   // (info messages like "Reconnected" must NOT read as amber warnings).
   const lastAnnouncementLevel = ref<AnnouncementLevel>('warning')
   const nextTickIn = ref(0)
-  const lastTickAt = ref<number | null>(null)
+  const lastCycleAt = ref<number | null>(null)
   const scoreboard = ref<ScoreboardEntry[]>([])
   const gameOverStats = ref<Record<string, PlayerEndStats> | null>(null)
   const gameOverMmrChange = ref<number | null>(null)
@@ -122,21 +122,21 @@ export const useGameStore = defineStore('game', () => {
   const mode = ref<GameMode | undefined>(undefined)
   /** Tutorial progress (0-based step); drives the in-game tutorial banner. */
   const tutorialStep = ref<number | undefined>(undefined)
-  const dayNightTick = ref(0)
+  const dayNightCycle = ref(0)
 
-  // Track if player has acted this tick (resets each tick)
-  const lastActionTick = ref<number>(-1)
+  // Track if player has acted this cycle (resets each cycle)
+  const lastActionCycle = ref<number>(-1)
   // The item slot is tracked separately: the server queues item actives in
   // their own per-player slot (GameLoop.actionSlot), so spending one leaves the
   // tick's main decision — the ability, the attack, the step — still available.
   const lastItemActionTick = ref<number>(-1)
 
-  // Human-readable description of the action queued for the next tick,
-  // e.g. "move mid-river". Cleared when the tick resolves.
+  // Human-readable description of the action queued for the next cycle,
+  // e.g. "move mid-river". Cleared when the cycle resolves.
   const pendingCommand = ref<string | null>(null)
 
-  // Command typed while the player had already acted this tick. It is
-  // buffered client-side and auto-sent when the next tick arrives.
+  // Command typed while the player had already acted this cycle. It is
+  // buffered client-side and auto-sent when the next cycle arrives.
   const bufferedCommand = ref<string | null>(null)
 
   // Client-side countdown timer handle (see _ensureCountdownTimer)
@@ -152,14 +152,14 @@ export const useGameStore = defineStore('game', () => {
 
   const canAct = computed(() => {
     if (!player.value || !isAlive.value) return false
-    // Can act if we haven't acted this tick yet
-    return lastActionTick.value !== tick.value
+    // Can act if we haven't acted this cycle yet
+    return lastActionCycle.value !== cycle.value
   })
 
-  /** Whether the free item-active slot is still open this tick. */
+  /** Whether the free item-active slot is still open this cycle. */
   const canUseItem = computed(() => {
     if (!player.value || !isAlive.value) return false
-    return lastItemActionTick.value !== tick.value
+    return lastItemActionTick.value !== cycle.value
   })
 
   const canBuy = computed(() => {
@@ -214,18 +214,18 @@ export const useGameStore = defineStore('game', () => {
 
   // ── Actions ─────────────────────────────────────────────────────
 
-  /** Recompute the ms remaining until the next tick from wall-clock time. */
+  /** Recompute the ms remaining until the next cycle from wall-clock time. */
   function _updateCountdown() {
-    if (lastTickAt.value == null) {
+    if (lastCycleAt.value == null) {
       nextTickIn.value = 0
       return
     }
-    nextTickIn.value = Math.max(0, TICK_DURATION_MS - (Date.now() - lastTickAt.value))
+    nextTickIn.value = Math.max(0, CYCLE_DURATION_MS - (Date.now() - lastCycleAt.value))
   }
 
   /**
    * Start the ~100ms client interval that keeps `nextTickIn` live between
-   * tick_state arrivals. Idempotent — safe to call on every tick.
+   * cycle_state arrivals. Idempotent — safe to call on every cycle.
    */
   function _ensureCountdownTimer() {
     if (countdownTimer) return
@@ -237,11 +237,11 @@ export const useGameStore = defineStore('game', () => {
       clearInterval(countdownTimer)
       countdownTimer = null
     }
-    lastTickAt.value = null
+    lastCycleAt.value = null
     nextTickIn.value = 0
   }
 
-  /** Buffer a command typed while waiting; it is sent on the next tick. */
+  /** Buffer a command typed while waiting; it is sent on the next cycle. */
   function bufferCommand(cmd: string) {
     bufferedCommand.value = cmd
   }
@@ -253,7 +253,7 @@ export const useGameStore = defineStore('game', () => {
     return cmd
   }
 
-  function updateFromTick(msg: TickStateMessage) {
+  function updateFromCycle(msg: CycleStateMessage) {
     const state = msg.state as {
       phase: GamePhase
       players: Record<string, PlayerState>
@@ -261,36 +261,36 @@ export const useGameStore = defineStore('game', () => {
       visibleZones?: string[]
       teams: { chaff: TeamState; audit: TeamState }
       ice?: IceState[]
-      ancients?: { chaff: AncientState; audit: AncientState }
+      terminals?: { chaff: TerminalState; audit: TerminalState }
       waves?: WaveUnitState[]
       neutrals?: SiltDwellerState[]
       tenant?: TenantState
       caches?: CacheState[]
-      backup?: { zone: string; tick: number; holderId: string | null } | null
+      backup?: { zone: string; cycle: number; holderId: string | null } | null
       timeOfDay?: 'day' | 'night'
-      dayNightTick?: number
+      dayNightCycle?: number
       mapId?: string
       mode?: GameMode
       tutorialStep?: number
     }
 
-    gameLog.trace('tick_state', {
-      tick: msg.tick,
+    gameLog.trace('cycle_state', {
+      cycle: msg.cycle,
       players: Object.keys(state.players).length,
       zones: Object.keys(state.zones).length,
     })
 
-    if (msg.tick !== tick.value) {
+    if (msg.cycle !== cycle.value) {
       pendingCommand.value = null
     }
-    tick.value = msg.tick
-    // Anchor the client-side countdown to this tick's arrival time
-    lastTickAt.value = Date.now()
+    cycle.value = msg.cycle
+    // Anchor the client-side countdown to this cycle's arrival time
+    lastCycleAt.value = Date.now()
     _updateCountdown()
     _ensureCountdownTimer()
     // phase + teams are delta-OMITTED when unchanged (StateDelta), so they must
     // be merge-guarded like every field below — an unconditional assign clobbers
-    // them to undefined on every steady tick (blanks the score banner/scoreboard
+    // them to undefined on every steady cycle (blanks the score banner/scoreboard
     // and corrupts any phase check). players + zones are always sent, so stay
     // unconditional.
     if (state.phase) phase.value = state.phase
@@ -301,7 +301,7 @@ export const useGameStore = defineStore('game', () => {
     visibleZoneIds.value = state.visibleZones ?? Object.keys(state.zones)
     if (state.teams) teams.value = state.teams
     if (state.ice) ice.value = state.ice
-    if (state.ancients) ancients.value = state.ancients
+    if (state.terminals) terminals.value = state.terminals
     if (state.waves) waves.value = state.waves
     if (state.neutrals) neutrals.value = state.neutrals
     if (state.tenant) tenant.value = state.tenant
@@ -316,7 +316,7 @@ export const useGameStore = defineStore('game', () => {
       const seen = { ...lastSeen.value }
       for (const p of Object.values(state.players)) {
         const zone = (p as { zone?: string }).zone
-        if (zone && p.alive) seen[p.id] = { zone, tick: msg.tick }
+        if (zone && p.alive) seen[p.id] = { zone, cycle: msg.cycle }
       }
       lastSeen.value = seen
     }
@@ -327,7 +327,7 @@ export const useGameStore = defineStore('game', () => {
       const known = { ...knownNetWorth.value }
       for (const p of Object.values(state.players)) {
         if (!(p as { fogged?: boolean }).fogged) {
-          known[p.id] = playerNetWorth(p as { gold?: number; items?: (string | null)[] })
+          known[p.id] = playerNetWorth(p as { scrip?: number; items?: (string | null)[] })
         }
       }
       knownNetWorth.value = known
@@ -345,7 +345,7 @@ export const useGameStore = defineStore('game', () => {
       }
     }
     if (state.timeOfDay) timeOfDay.value = state.timeOfDay
-    if (state.dayNightTick !== undefined) dayNightTick.value = state.dayNightTick
+    if (state.dayNightCycle !== undefined) dayNightCycle.value = state.dayNightCycle
     if (state.mapId) mapId.value = state.mapId
     if (state.mode) mode.value = state.mode
     if (state.tutorialStep !== undefined) tutorialStep.value = state.tutorialStep
@@ -366,11 +366,11 @@ export const useGameStore = defineStore('game', () => {
         kills: p.kills ?? 0,
         deaths: p.deaths ?? 0,
         assists: p.assists ?? 0,
-        gold: isFogged ? 0 : (p.gold ?? 0),
+        scrip: isFogged ? 0 : (p.scrip ?? 0),
         level: p.level ?? 0,
         items: isFogged ? [] : (p.items ?? []),
         alive: (p.alive as boolean) ?? true,
-        respawnTick: (p.respawnTick as number | null) ?? null,
+        respawnCycle: (p.respawnCycle as number | null) ?? null,
         fogged: isFogged,
         aiControlled: (p as { aiControlled?: boolean }).aiControlled ?? false,
       }
@@ -409,18 +409,18 @@ export const useGameStore = defineStore('game', () => {
     stats: Record<string, PlayerEndStats>,
     mmrChange?: number,
     ranked = true,
-    durationTicks?: number,
+    durationCycles?: number,
   ) {
     winner.value = winnerTeam
     gameOverStats.value = stats
     gameOverMmrChange.value = mmrChange ?? null
     gameOverRanked.value = ranked
-    gameOverDurationTicks.value = durationTicks ?? null
+    gameOverDurationTicks.value = durationCycles ?? null
     phase.value = 'ended'
   }
 
   /**
-   * Record that a command went to the server this tick, against the slot it
+   * Record that a command went to the server this cycle, against the slot it
    * competes for. The slot is derived from the command line itself (the caller
    * already passes the raw input) so the two client gates can never disagree
    * with the server's queue: `use …` consumes only the item slot, everything
@@ -429,22 +429,22 @@ export const useGameStore = defineStore('game', () => {
   function markActionSent(description?: string, slot?: 'main' | 'item') {
     const verb = description?.trim().split(/\s+/)[0]?.toLowerCase()
     const resolved = slot ?? (verb === 'use' ? 'item' : 'main')
-    if (resolved === 'item') lastItemActionTick.value = tick.value
-    else lastActionTick.value = tick.value
+    if (resolved === 'item') lastItemActionTick.value = cycle.value
+    else lastActionCycle.value = cycle.value
     if (description) pendingCommand.value = description
   }
 
   function reset() {
     gameId.value = null
     phase.value = 'waiting'
-    tick.value = 0
+    cycle.value = 0
     player.value = null
     visibleZones.value = {}
     visibleZoneIds.value = []
     allPlayers.value = {}
     teams.value = null
     ice.value = []
-    ancients.value = null
+    terminals.value = null
     waves.value = []
     neutrals.value = []
     tenant.value = null
@@ -465,12 +465,12 @@ export const useGameStore = defineStore('game', () => {
     gameOverMmrChange.value = null
     gameOverRanked.value = true
     winner.value = null
-    lastActionTick.value = -1
+    lastActionCycle.value = -1
     lastItemActionTick.value = -1
     pendingCommand.value = null
     bufferedCommand.value = null
     timeOfDay.value = 'day'
-    dayNightTick.value = 0
+    dayNightCycle.value = 0
     mapId.value = undefined
     mode.value = undefined
     tutorialStep.value = undefined
@@ -481,14 +481,14 @@ export const useGameStore = defineStore('game', () => {
     gameId,
     playerId,
     phase,
-    tick,
+    cycle,
     player,
     visibleZones,
     visibleZoneIds,
     allPlayers,
     teams,
     ice,
-    ancients,
+    terminals,
     waves,
     neutrals,
     tenant,
@@ -504,7 +504,7 @@ export const useGameStore = defineStore('game', () => {
     announcementSeq,
     lastAnnouncementLevel,
     nextTickIn,
-    lastTickAt,
+    lastCycleAt,
     pendingCommand,
     bufferedCommand,
     scoreboard,
@@ -513,10 +513,10 @@ export const useGameStore = defineStore('game', () => {
     gameOverRanked,
     gameOverDurationTicks,
     winner,
-    lastActionTick,
+    lastActionCycle,
     lastItemActionTick,
     timeOfDay,
-    dayNightTick,
+    dayNightCycle,
     mapId,
     mode,
     tutorialStep,
@@ -534,7 +534,7 @@ export const useGameStore = defineStore('game', () => {
     allyPlayers,
     netWorth,
     // Actions
-    updateFromTick,
+    updateFromCycle,
     addEvents,
     addAnnouncement,
     setPhase,

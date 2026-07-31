@@ -1,7 +1,7 @@
 /**
  * Which match a server-pushed message belongs to (server/plugins/game-server.ts).
  *
- * Nothing in the client-facing protocol carries a gameId: tick_state,
+ * Nothing in the client-facing protocol carries a gameId: cycle_state,
  * announcement and game_over are indistinguishable between matches once they
  * land. The game callbacks route purely by playerId, so an abandoned match that
  * finishes later — a practice game keeps ticking with zero input and reaches its
@@ -65,18 +65,18 @@ describe('sendToGamePeer', () => {
       stats: {},
       mmrChange: 0,
       ranked: false,
-      durationTicks: 900,
+      durationCycles: 900,
     })
     expect(send).not.toHaveBeenCalled()
   })
 
   it('drops the stale board too, not just the verdict', () => {
-    // Every tick of the dead game was being painted over the live one.
+    // Every cycle of the dead game was being painted over the live one.
     const send = connect('p_moved', 'game_ranked')
     sendToGamePeer('dev_abandoned', 'p_moved', {
-      type: 'tick_state',
-      tick: 120,
-      state: { tick: 120 } as never,
+      type: 'cycle_state',
+      cycle: 120,
+      state: { cycle: 120 } as never,
     })
     expect(send).not.toHaveBeenCalled()
   })

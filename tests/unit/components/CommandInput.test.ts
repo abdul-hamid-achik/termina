@@ -16,12 +16,12 @@ function makePlayer(over: Partial<PlayerState> = {}): PlayerState {
     maxBw: 300,
     level: 7,
     xp: 0,
-    gold: 1000,
+    scrip: 1000,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 5,
     ice: 5,
     kills: 0,
@@ -112,7 +112,7 @@ describe('CommandInput', () => {
       const notice = wrapper.find('[data-testid="buffered-command"]')
       expect(notice.exists()).toBe(true)
       expect(notice.text()).toContain('cast q')
-      expect(notice.text()).toContain('next tick')
+      expect(notice.text()).toContain('next cycle')
     })
 
     it('shows the pending command in the placeholder while waiting', () => {

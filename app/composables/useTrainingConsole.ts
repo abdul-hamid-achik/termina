@@ -59,7 +59,7 @@ function maxBwAt(hero: HeroDef, level: number): number {
 /**
  * The /heroes training-console state machine: a safe, offline dry-run of a kit
  * (real ability data, cooldowns + bw on the 4s scheduler) resolved against a
- * practice dummy. Extracted from the page so the cast / advance-tick / DoT /
+ * practice dummy. Extracted from the page so the cast / advance-cycle / DoT /
  * respawn rules are unit-tested — mirroring useLoadout. `hero` and the selected
  * `level` are reactive; changing either resets the console.
  */
@@ -67,7 +67,7 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
   const level = ref<number>(CONSOLE_LEVELS[0]!)
   const bw = ref(0)
   const cooldowns = reactive<Record<ConsoleSlot, number>>({ q: 0, w: 0, e: 0, r: 0 })
-  const tick = ref(0)
+  const cycle = ref(0)
   const log = ref<string[]>([])
   const dummyHp = ref(dummyMax)
   const dots = ref<ActiveDot[]>([])
@@ -106,7 +106,7 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
   function reset() {
     bw.value = maxBw.value
     for (const s of SLOTS) cooldowns[s] = 0
-    tick.value = 0
+    cycle.value = 0
     dummyHp.value = dummyMax
     dots.value = []
     statuses.value = []
@@ -138,7 +138,7 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
       return
     }
     bw.value -= cost
-    cooldowns[slot] = ab.cooldownTicks
+    cooldowns[slot] = ab.cooldownCycles
     castCount.value++
     pushLog(`> cast ${slot}`, `  ${hero.value.name} casts ${ab.name} — ${abilitySummary(ab)}`)
 
@@ -210,11 +210,11 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
       }
     }
     const dealt = totalDamage.value - before
-    pushLog(`  ⇒ combo landed ${landed}: ${dealt} burst dmg this combo (DoTs tick on advance)`)
+    pushLog(`  ⇒ combo landed ${landed}: ${dealt} burst dmg this combo (DoTs cycle on advance)`)
   }
 
-  function advanceTick() {
-    tick.value++
+  function advanceCycle() {
+    cycle.value++
     // Resolve damage-over-time before regen/cooldowns so the dummy drains live.
     if (dots.value.length > 0) {
       let dmg = 0
@@ -226,7 +226,7 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
       if (dmg > 0) {
         dummyHp.value = Math.max(0, dummyHp.value - dmg)
         totalDamage.value += dmg
-        pushLog(`— dot tick: −${dmg}  ·  ${DUMMY_NAME} ${dummyHp.value}/${dummyMax}`)
+        pushLog(`— dot cycle: −${dmg}  ·  ${DUMMY_NAME} ${dummyHp.value}/${dummyMax}`)
         checkDummy()
       }
     }
@@ -245,7 +245,7 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
     // regen rate that does not exist.
     const refill = Math.max(2, Math.round(maxBw.value * 0.05))
     bw.value = Math.min(maxBw.value, bw.value + refill)
-    pushLog(`— scheduler cycle ${tick.value}  (+${refill} bw sandbox refill · cooldowns −1)`)
+    pushLog(`— scheduler cycle ${cycle.value}  (+${refill} bw sandbox refill · cooldowns −1)`)
   }
 
   watch([hero, level], reset, { immediate: true })
@@ -259,7 +259,7 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
     maxBw,
     bw,
     cooldowns,
-    tick,
+    cycle,
     log,
     dummyHp,
     dots,
@@ -272,7 +272,7 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
     unlockLevelFor,
     cast,
     castCombo,
-    advanceTick,
+    advanceCycle,
     reset,
   }
 }

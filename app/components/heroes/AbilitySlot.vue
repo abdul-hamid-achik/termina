@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { AbilityDef } from '~~/shared/types/hero'
-import { TICK_DURATION_MS } from '~~/shared/constants/balance'
+import { CYCLE_DURATION_MS } from '~~/shared/constants/balance'
 import { formatEffect, cooldownSeconds } from '~~/shared/abilityFormat'
 
 const props = defineProps<{
@@ -33,7 +33,7 @@ const unaffordable = computed(
   () => props.bwAvailable !== undefined && props.bwAvailable < cost.value,
 )
 const disabled = computed(() => onCooldown.value || unaffordable.value)
-const cdSeconds = computed(() => cooldownSeconds(props.ability, TICK_DURATION_MS))
+const cdSeconds = computed(() => cooldownSeconds(props.ability, CYCLE_DURATION_MS))
 
 function onClick() {
   if (props.interactive && !disabled.value) emit('cast')
@@ -81,7 +81,7 @@ function onClick() {
 
     <div class="flex gap-3 text-[0.65rem] text-text-dim">
       <span v-if="cost > 0"><span class="text-ability">bw</span> {{ cost }}</span>
-      <span v-if="ability.cooldownTicks > 0"
+      <span v-if="ability.cooldownCycles > 0"
         ><span class="text-ability">cd</span> {{ cdSeconds }}s</span
       >
       <span class="uppercase">{{ ability.targetType }}</span>

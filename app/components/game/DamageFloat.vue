@@ -5,7 +5,7 @@
  * fades once; the parent (GameScreen) pushes entries on `damage`/`heal` events
  * involving the local player and prunes them after the animation. Color-coded:
  * damage TAKEN is audit-red (-N), DEALT is chaff-green (N), HEALING is teal
- * (+N), GOLD is amber (+Ng) — last-hit income is a reward, not a hit, so it
+ * (+N), SCRIP is amber (+Nsc) — last-hit income is a reward, not a hit, so it
  * carries the currency suffix to stay unmistakable next to a damage number.
  *
  * Numbers rise in two lanes: what happens TO you on the side the HUD keeps your
@@ -15,7 +15,7 @@
 export interface DamageFloatEntry {
   id: number
   amount: number
-  kind: 'taken' | 'dealt' | 'heal' | 'gold'
+  kind: 'taken' | 'dealt' | 'heal' | 'scrip'
   /** Which lane this number belongs to (see the component's `anchor` prop). */
   anchor?: 'self' | 'target'
 }
@@ -51,18 +51,18 @@ function offsetStyle(id: number, anchor: 'self' | 'target'): Record<string, stri
 function floatClass(kind: DamageFloatEntry['kind']): string {
   if (kind === 'taken') return 'text-audit text-glow-audit'
   if (kind === 'heal') return 'text-healing'
-  if (kind === 'gold') return 'text-gold text-glow-gold'
+  if (kind === 'scrip') return 'text-gold text-glow-gold'
   return 'text-chaff text-glow-chaff' // dealt
 }
 
 function floatPrefix(kind: DamageFloatEntry['kind']): string {
   if (kind === 'taken') return '-'
-  if (kind === 'heal' || kind === 'gold') return '+'
+  if (kind === 'heal' || kind === 'scrip') return '+'
   return ''
 }
 
 function floatSuffix(kind: DamageFloatEntry['kind']): string {
-  return kind === 'gold' ? 'g' : ''
+  return kind === 'scrip' ? 'sc' : ''
 }
 </script>
 

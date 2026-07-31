@@ -7,11 +7,11 @@ import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 
 function makeGameState(): GameState {
   return {
-    tick: 42,
+    cycle: 42,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 1, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 2, iceKills: 1, gold: 0 },
+      chaff: { id: 'chaff', kills: 1, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 2, iceKills: 1, scrip: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -19,12 +19,12 @@ function makeGameState(): GameState {
     neutrals: [],
     ice: initializeIce(),
     caches: [],
-    tenant: { alive: true, integ: 5000, maxInteg: 5000, deathTick: null },
+    tenant: { alive: true, integ: 5000, maxInteg: 5000, deathCycle: null },
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(['p1', 'p2']), audit: new Set(['p3']) },
     timeOfDay: 'day',
-    dayNightTick: 0,
+    dayNightCycle: 0,
   }
 }
 
@@ -74,7 +74,7 @@ describe('StateSnapshot', () => {
     const result = await Effect.runPromise(readSnapshot(redis, 'g1'))
 
     expect(result).not.toBeNull()
-    expect(result!.state.tick).toBe(42)
+    expect(result!.state.cycle).toBe(42)
     expect(result!.state.teams.audit.kills).toBe(2)
   })
 

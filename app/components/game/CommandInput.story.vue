@@ -5,7 +5,7 @@ import CommandInput from './CommandInput.vue'
 
 // The autocomplete/validation pulls from the player, visible zones, roster and
 // item table — wire all of them so the suggestions + inline preview are live.
-const player = makePlayer({ zone: 'mid-river', gold: 1800 })
+const player = makePlayer({ zone: 'mid-river', scrip: 1800 })
 const allPlayers = makeRoster()
 const visibleZones = {
   'mid-river': makeZone('mid-river'),
@@ -29,13 +29,13 @@ const TICK = 240
           :visible-zones="visibleZones"
           :all-players="allPlayers"
           :items="ITEMS"
-          :tick="TICK"
+          :cycle="TICK"
           :can-act="true"
         />
       </div>
     </Variant>
 
-    <!-- Action already sent this tick: prompt stays hot for pre-typing. -->
+    <!-- Action already sent this cycle: prompt stays hot for pre-typing. -->
     <Variant title="waiting (action sent)">
       <div class="bg-bg-primary" style="width: 520px">
         <CommandInput
@@ -43,14 +43,14 @@ const TICK = 240
           :visible-zones="visibleZones"
           :all-players="allPlayers"
           :items="ITEMS"
-          :tick="TICK"
+          :cycle="TICK"
           :can-act="false"
           pending-command="move top-river"
         />
       </div>
     </Variant>
 
-    <!-- A command buffered while waiting — sends next tick. -->
+    <!-- A command buffered while waiting — sends next cycle. -->
     <Variant title="buffered command">
       <div class="bg-bg-primary" style="width: 520px">
         <CommandInput
@@ -58,7 +58,7 @@ const TICK = 240
           :visible-zones="visibleZones"
           :all-players="allPlayers"
           :items="ITEMS"
-          :tick="TICK"
+          :cycle="TICK"
           :can-act="false"
           buffered-command="cast r"
         />
@@ -71,7 +71,7 @@ const TICK = 240
         <CommandInput
           :player="player"
           :items="ITEMS"
-          :tick="TICK"
+          :cycle="TICK"
           disabled
           placeholder="You are dead — buyback or wait"
         />

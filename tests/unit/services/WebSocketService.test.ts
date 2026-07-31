@@ -156,8 +156,8 @@ describe('WebSocketService', () => {
       await runWithService((svc) =>
         Effect.gen(function* () {
           yield* svc.addConnection('game_3', 'player_3', ws)
-          yield* svc.sendToPlayer('player_3', { type: 'tick_state', tick: 1 })
-          expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ type: 'tick_state', tick: 1 }))
+          yield* svc.sendToPlayer('player_3', { type: 'cycle_state', cycle: 1 })
+          expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ type: 'cycle_state', cycle: 1 }))
         }),
       )
     })
@@ -245,7 +245,7 @@ describe('WebSocketService', () => {
           yield* svc.addConnection('game_5', 'p1', ws1)
           yield* svc.addConnection('game_5', 'p2', ws2)
           yield* svc.broadcastFiltered('game_5', (playerId: string) => {
-            if (playerId === 'p1') return { type: 'tick_state', tick: 1, state: {} }
+            if (playerId === 'p1') return { type: 'cycle_state', cycle: 1, state: {} }
             return null
           })
           expect(ws1.send).toHaveBeenCalled()

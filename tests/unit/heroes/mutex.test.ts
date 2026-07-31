@@ -26,12 +26,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 260,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 6,
     ice: 20,
     kills: 0,
@@ -45,7 +45,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -73,11 +73,11 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     playerMap[p.id] = p
   }
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -107,7 +107,7 @@ describe('Mutex Hero', () => {
       expect(hasBuff(updatedEnemy, 'root')).toBe(true)
       const root = updatedEnemy.buffs.find((b) => b.id === 'root')
       // raw 2 = one gated action: a cast-applied disable is reaped same-tick.
-      expect(root!.ticksRemaining).toBe(2)
+      expect(root!.cyclesRemaining).toBe(2)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -210,11 +210,11 @@ describe('Mutex Hero', () => {
 
       const shield = updated.buffs.find((b) => b.id === 'shield')
       expect(shield!.stacks).toBe(180) // Level 1 shield = 180
-      expect(shield!.ticksRemaining).toBe(2)
+      expect(shield!.cyclesRemaining).toBe(2)
 
       const defBuff = updated.buffs.find((b) => b.id === 'criticalSectionDefense')
       expect(defBuff!.stacks).toBe(10)
-      expect(defBuff!.ticksRemaining).toBe(2)
+      expect(defBuff!.cyclesRemaining).toBe(2)
     })
 
     it('scales shield amount with level', () => {
@@ -271,7 +271,7 @@ describe('Mutex Hero', () => {
       expect(hasBuff(updatedEnemy, 'slow')).toBe(true)
       const slow = updatedEnemy.buffs.find((b) => b.id === 'slow')
       expect(slow!.stacks).toBe(30) // 10% * 3 hits
-      expect(slow!.ticksRemaining).toBe(2)
+      expect(slow!.cyclesRemaining).toBe(2)
     })
 
     it('does not affect allies', () => {
@@ -336,7 +336,7 @@ describe('Mutex Hero', () => {
       expect(updatedEnemy.integ).toBeLessThan(enemy.integ)
       expect(hasBuff(updatedEnemy, 'feared')).toBe(true)
       const feared = updatedEnemy.buffs.find((b) => b.id === 'feared')
-      expect(feared!.ticksRemaining).toBe(2)
+      expect(feared!.cyclesRemaining).toBe(2)
     })
 
     it('deals bonus damage per Deadlock stack', () => {
@@ -345,7 +345,7 @@ describe('Mutex Hero', () => {
       playerWithStacks = applyBuff(playerWithStacks, {
         id: 'deadlock',
         stacks: 5,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'p1',
       })
       const enemy1 = makeEnemy()
@@ -422,7 +422,7 @@ describe('Mutex Hero', () => {
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'tick_end',
         payload: {},
       })
@@ -438,13 +438,13 @@ describe('Mutex Hero', () => {
       player = applyBuff(player, {
         id: 'deadlockZone',
         stacks: 1,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'mid-river',
       })
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 11,
+        cycle: 11,
         type: 'tick_end',
         payload: {},
       })
@@ -457,19 +457,19 @@ describe('Mutex Hero', () => {
       player = applyBuff(player, {
         id: 'deadlock',
         stacks: 5,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'p1',
       })
       player = applyBuff(player, {
         id: 'deadlockZone',
         stacks: 1,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'mid-river',
       })
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 15,
+        cycle: 15,
         type: 'tick_end',
         payload: {},
       })
@@ -482,19 +482,19 @@ describe('Mutex Hero', () => {
       player = applyBuff(player, {
         id: 'deadlock',
         stacks: 3,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'p1',
       })
       player = applyBuff(player, {
         id: 'deadlockZone',
         stacks: 1,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'mid-river',
       })
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 11,
+        cycle: 11,
         type: 'move',
         payload: { playerId: 'p1', from: 'mid-river', to: 'top-river' },
       })
@@ -508,7 +508,7 @@ describe('Mutex Hero', () => {
       player = applyBuff(player, {
         id: 'deadlock',
         stacks: 3,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'p1',
       })
 
@@ -526,7 +526,7 @@ describe('Mutex Hero', () => {
   describe('Stun/Silence blocking', () => {
     it('prevents casting when stunned', () => {
       const player = makePlayer({
-        buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 1, source: 'enemy' }],
+        buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 1, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -539,7 +539,7 @@ describe('Mutex Hero', () => {
 
     it('prevents casting when silenced', () => {
       const player = makePlayer({
-        buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 2, source: 'enemy' }],
+        buffs: [{ id: 'silence', stacks: 1, cyclesRemaining: 2, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

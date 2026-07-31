@@ -49,7 +49,7 @@ const NEARLY_FULL_ROSTER = [
       </div>
     </Variant>
 
-    <!-- Backfilling with bots: the gold "filling with AI opponents" banner shows
+    <!-- Backfilling with bots: the scrip "filling with AI opponents" banner shows
          and bot slots type in over the empty slots. -->
     <Variant title="filling with bots">
       <div class="flex justify-center bg-bg-primary p-4">

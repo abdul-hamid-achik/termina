@@ -17,7 +17,7 @@ const burnout: ItemDef = {
   cost: 2750,
   stats: { bw: 150, attack: 15 },
   consumable: false,
-  active: { id: 'a', name: 'Energy Burst', description: 'Nuke.', cooldownTicks: 18 },
+  active: { id: 'a', name: 'Energy Burst', description: 'Nuke.', cooldownCycles: 18 },
 }
 
 function mountSummary(items: ItemDef[] = [], maxSlots = 6) {
@@ -37,7 +37,7 @@ describe('LoadoutSummary', () => {
   })
 
   it('shows the ≈ last-hits economy cue for a build (cost / avg wave bounty)', () => {
-    const wrapper = mountSummary([bulwark_plate, burnout]) // 5250g → ceil(5250/40) = 132
+    const wrapper = mountSummary([bulwark_plate, burnout]) // 5250sc → ceil(5250/40) = 132
     const lh = wrapper.find('[data-testid="loadout-lasthits"]')
     expect(lh.exists()).toBe(true)
     expect(lh.text()).toContain('132')

@@ -20,7 +20,7 @@ export interface PlayerScoreRow {
   kills: number
   deaths: number
   assists: number
-  gold: number
+  scrip: number
   zone: string
   alive: boolean
   /** AFK→bot takeover marker (live spectate only; replay rows leave it unset). */
@@ -81,7 +81,7 @@ defineProps<{
             ><span class="text-text-muted">/</span
             ><span class="text-text-dim">{{ p.assists }}</span>
           </td>
-          <td class="px-2 py-1 text-gold">{{ p.gold.toLocaleString() }}</td>
+          <td class="px-2 py-1 text-gold">{{ p.scrip.toLocaleString() }}</td>
           <td class="px-2 py-1 text-zone t-caption">{{ p.zone }}</td>
         </tr>
       </tbody>

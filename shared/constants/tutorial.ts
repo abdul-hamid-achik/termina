@@ -31,7 +31,7 @@ export interface TutorialStep {
  *
  * 15 cycles ≈ 60s at the 4s batch clock.
  */
-export const TUTORIAL_STEP_DEADLINE_TICKS = 15
+export const TUTORIAL_STEP_DEADLINE_CYCLES = 15
 
 /** Ordered tutorial flow: each step unlocks exactly one new command type. */
 export const TUTORIAL_FLOW: readonly TutorialStep[] = [
@@ -40,7 +40,7 @@ export const TUTORIAL_FLOW: readonly TutorialStep[] = [
     // The player spawns in the fountain. `move base` only reaches the base, and
     // the step deliberately holds until they leave it (see
     // advanceTutorialAfterTick) — so the hint must name a destination that
-    // actually satisfies the step. Movement auto-paths one zone per tick, so a
+    // actually satisfies the step. Movement auto-paths one zone per cycle, so a
     // single command walks the whole way.
     //
     // Send them to their OWN T1 ice, not `mid` (which aliases to mid-river).

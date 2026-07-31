@@ -329,10 +329,10 @@ describe('ws route — action', () => {
 
   it('submits a valid action to the game loop', () => {
     const { peer } = openPeerInGame('p_act', 'game_1')
-    sendMsg(peer, { type: 'action', command: { type: 'attack', target: { kind: 'ancient' } } })
+    sendMsg(peer, { type: 'action', command: { type: 'attack', target: { kind: 'terminal' } } })
     expect(submitAction).toHaveBeenCalledWith('game_1', 'p_act', {
       type: 'attack',
-      target: { kind: 'ancient' },
+      target: { kind: 'terminal' },
     })
   })
 
@@ -485,13 +485,13 @@ describe('ws route — reconnect', () => {
     const runtime = mockRuntime()
     vi.mocked(getGameRuntime).mockReturnValue(runtime as never)
     vi.mocked(getReconnectPayload).mockReturnValue({
-      tick: 42,
-      state: { tick: 42, zones: {} },
-      events: [{ type: 'kill', tick: 41 }],
+      cycle: 42,
+      state: { cycle: 42, zones: {} },
+      events: [{ type: 'kill', cycle: 41 }],
     } as never)
     const peer = openAuthedPeer('p_rc1')
     vi.mocked(getPlayerGame).mockReturnValue('game_1') // reconnect requires ownership
-    sendMsg(peer, { type: 'reconnect', gameId: 'game_1', playerId: 'p_rc1', lastTick: 40 })
+    sendMsg(peer, { type: 'reconnect', gameId: 'game_1', playerId: 'p_rc1', lastCycle: 40 })
 
     expect(runtime.wsService.addConnection).toHaveBeenCalledWith('game_1', 'p_rc1', peer.websocket)
     expect(getReconnectPayload).toHaveBeenCalledWith('game_1', 'p_rc1', 40)
@@ -499,9 +499,9 @@ describe('ws route — reconnect', () => {
     expect(msgs).toContainEqual(
       expect.objectContaining({ type: 'announcement', message: 'Reconnected to game' }),
     )
-    expect(msgs).toContainEqual(expect.objectContaining({ type: 'full_state', tick: 42 }))
+    expect(msgs).toContainEqual(expect.objectContaining({ type: 'full_state', cycle: 42 }))
     expect(msgs).toContainEqual(
-      expect.objectContaining({ type: 'events', tick: 42, events: [{ type: 'kill', tick: 41 }] }),
+      expect.objectContaining({ type: 'events', cycle: 42, events: [{ type: 'kill', cycle: 41 }] }),
     )
   })
 
@@ -509,7 +509,7 @@ describe('ws route — reconnect', () => {
     const runtime = mockRuntime()
     vi.mocked(getGameRuntime).mockReturnValue(runtime as never)
     vi.mocked(getReconnectPayload).mockReturnValue({
-      tick: 7,
+      cycle: 7,
       state: {},
       events: [],
     } as never)
@@ -544,13 +544,13 @@ describe('ws route — request_state', () => {
   it('returns full_state for the joined game', () => {
     const { peer } = openPeerInGame('p_rs1', 'game_5')
     vi.mocked(getReconnectPayload).mockReturnValue({
-      tick: 9,
-      state: { tick: 9 },
+      cycle: 9,
+      state: { cycle: 9 },
       events: [],
     } as never)
     sendMsg(peer, { type: 'request_state' })
     expect(getReconnectPayload).toHaveBeenCalledWith('game_5', 'p_rs1')
-    expect(lastMessage(peer)).toMatchObject({ type: 'full_state', tick: 9 })
+    expect(lastMessage(peer)).toMatchObject({ type: 'full_state', cycle: 9 })
   })
 
   it('returns game_not_found when the game state is gone', () => {

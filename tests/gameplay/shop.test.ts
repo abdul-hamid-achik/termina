@@ -1,15 +1,15 @@
 import { describe, it, expect } from 'vitest'
 import { seedGame, HUMAN, ENEMY } from './harness'
 import { ITEMS } from '~~/shared/constants/items'
-import { PASSIVE_GOLD_PER_TICK } from '~~/shared/constants/balance'
+import { PASSIVE_SCRIP_PER_CYCLE } from '~~/shared/constants/balance'
 
 /**
  * Replaces tests/e2e/flows/game_buy_resolves.yml — a buy action lands the item
  * in the player's inventory across a tick. The human spawns in the fountain (a
- * shop zone) with starting gold, so scrap_lot is affordable.
+ * shop zone) with starting scrip, so scrap_lot is affordable.
  */
 describe('shop', () => {
-  it('buying an item resolves it into the inventory after one tick', async () => {
+  it('buying an item resolves it into the inventory after one cycle', async () => {
     const game = await seedGame('laning', { heroSelf: 'echo' })
 
     game.buy('scrap_lot')
@@ -21,14 +21,14 @@ describe('shop', () => {
 
   it('buying deducts exactly the item cost (net of the tick passive income)', async () => {
     const game = await seedGame('laning', { heroSelf: 'echo' })
-    const before = (await game.me()).gold
+    const before = (await game.me()).scrip
 
     game.buy('scrap_lot')
     await game.tick()
 
     const me = await game.me()
-    // The only gold movements this idle tick are the buy and passive income.
-    expect(me.gold).toBe(before - ITEMS.scrap_lot!.cost + PASSIVE_GOLD_PER_TICK)
+    // The only scrip movements this idle tick are the buy and passive income.
+    expect(me.scrip).toBe(before - ITEMS.scrap_lot!.cost + PASSIVE_SCRIP_PER_CYCLE)
   })
 
   it('buying emits an item_purchased event so the buy is confirmed in the log', async () => {
@@ -110,7 +110,7 @@ describe('shop', () => {
     await game.tick()
     const after = (await game.player(ENEMY)).integ
 
-    // 300 code, reduced by ice (~15%) → ~255 — well above per-tick regen.
+    // 300 code, reduced by ice (~15%) → ~255 — well above per-cycle regen.
     expect(after).toBeLessThan(before)
     expect(before - after).toBeGreaterThan(200)
   })
@@ -132,14 +132,14 @@ describe('shop', () => {
     game.submit({ type: 'use', item: 'hardshell' })
     await game.tick()
 
-    // Hardshell applies a multi-tick airgap buff (still present after this tick).
+    // Hardshell applies a multi-tick airgap buff (still present after this cycle).
     expect((await game.me()).buffs.some((b) => b.id === 'airgap')).toBe(true)
   })
 
   it('Refresher Orb resets a spent ability so it can be cast again (the double-cast combo)', async () => {
     // The reason Refresher exists: an ability you just spent comes back online.
     // The unit test sets cooldowns artificially; this drives the real sequence —
-    // cast → on cooldown → refresh → cast again — through processTick.
+    // cast → on cooldown → refresh → cast again — through processCycle.
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
@@ -241,7 +241,7 @@ describe('shop', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
-          buffs: [{ id: 'stack_overflow_buff', stacks: 1, ticksRemaining: 10, source: HUMAN }],
+          buffs: [{ id: 'stack_overflow_buff', stacks: 1, cyclesRemaining: 10, source: HUMAN }],
         },
         [ENEMY]: { ...s.players[ENEMY]!, integ: s.players[ENEMY]!.maxInteg },
       },

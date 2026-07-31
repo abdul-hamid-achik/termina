@@ -15,9 +15,9 @@ import {
 import {
   BUYBACK_BASE_COST,
   BUYBACK_COST_PER_LEVEL,
-  BUYBACK_COOLDOWN_TICKS,
-  TENANT_BACKUP_TICKS,
-  TENANT_RESPAWN_TICKS,
+  BUYBACK_COOLDOWN_CYCLES,
+  TENANT_BACKUP_CYCLES,
+  TENANT_RESPAWN_CYCLES,
   NIGHT_VISION_PENALTY,
 } from '~~/shared/constants/balance'
 
@@ -34,12 +34,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 200,
     level: 1,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -54,11 +54,11 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
   return {
-    tick: 1,
+    cycle: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -82,56 +82,56 @@ describe('systems-gaps: BUYBACK success', () => {
     expect(expected).toBe(305)
   })
 
-  it('a dead player with enough gold buys back: gold deducted, full INTEG/BW, fountain, cooldown', () => {
+  it('a dead player with enough scrip buys back: scrip deducted, full INTEG/BW, fountain, cooldown', () => {
     const player = makePlayer({
       level: 5,
       deaths: 2,
       alive: false,
-      respawnTick: 200,
+      respawnCycle: 200,
       integ: 0,
       bw: 0,
-      gold: 2000,
+      scrip: 2000,
       zone: 'audit-base',
     })
     const cost = calculateBuybackCost(player) // 100 + 125 + 20 = 245
     expect(cost).toBe(245)
 
-    const state = makeGameState({ tick: 50, players: { p1: player } })
+    const state = makeGameState({ cycle: 50, players: { p1: player } })
     const result = buyback(state, 'p1')
 
     expect(result.success).toBe(true)
     const after = result.newState!.players['p1']!
-    expect(after.gold).toBe(2000 - cost)
+    expect(after.scrip).toBe(2000 - cost)
     expect(after.alive).toBe(true)
     expect(after.integ).toBe(after.maxInteg)
     expect(after.bw).toBe(after.maxBw)
-    expect(after.respawnTick).toBeNull()
+    expect(after.respawnCycle).toBeNull()
     expect(after.zone).toBe('chaff-fountain')
-    expect(after.buybackCooldown).toBe(50 + BUYBACK_COOLDOWN_TICKS)
+    expect(after.buybackCooldown).toBe(50 + BUYBACK_COOLDOWN_CYCLES)
   })
 
   it('canBuyback rejects when on cooldown and when too poor', () => {
-    const onCd = makePlayer({ alive: false, gold: 5000, buybackCooldown: 100 })
-    const cdState = makeGameState({ tick: 50, players: { p1: onCd } })
+    const onCd = makePlayer({ alive: false, scrip: 5000, buybackCooldown: 100 })
+    const cdState = makeGameState({ cycle: 50, players: { p1: onCd } })
     expect(canBuyback(cdState, 'p1').can).toBe(false)
 
-    const poor = makePlayer({ alive: false, gold: 0, level: 1 })
-    const poorState = makeGameState({ tick: 50, players: { p1: poor } })
+    const poor = makePlayer({ alive: false, scrip: 0, level: 1 })
+    const poorState = makeGameState({ cycle: 50, players: { p1: poor } })
     expect(canBuyback(poorState, 'p1').can).toBe(false)
   })
 
-  it('GameLoop processSpecialActions wires buyback: deducts gold + emits heal/power_spike', () => {
+  it('GameLoop processSpecialActions wires buyback: deducts scrip + emits heal/power_spike', () => {
     const player = makePlayer({
       level: 5,
       deaths: 2,
       alive: false,
-      respawnTick: 200,
+      respawnCycle: 200,
       integ: 0,
       bw: 0,
-      gold: 2000,
+      scrip: 2000,
     })
     const cost = calculateBuybackCost(player)
-    const state = makeGameState({ tick: 50, players: { p1: player } })
+    const state = makeGameState({ cycle: 50, players: { p1: player } })
 
     const actions: PlayerAction[] = [{ playerId: 'p1', command: { type: 'buyback' } }]
     const { state: after, events, rejectedActions } = processSpecialActions(state, actions)
@@ -139,7 +139,7 @@ describe('systems-gaps: BUYBACK success', () => {
     expect(rejectedActions).toHaveLength(0)
     const ap = after.players['p1']!
     expect(ap.alive).toBe(true)
-    expect(ap.gold).toBe(2000 - cost)
+    expect(ap.scrip).toBe(2000 - cost)
     expect(ap.integ).toBe(ap.maxInteg)
 
     const heal = events.find(
@@ -183,8 +183,8 @@ describe('systems-gaps: TALENT stat-bonus effect', () => {
 describe('systems-gaps: BACKUP ground pickup', () => {
   it('pickupBackup in hollow applies backup buff, clears the ground backup, emits backup_picked', () => {
     const state = makeGameState({
-      tick: 120,
-      backup: { zone: 'hollow', tick: 100, holderId: null },
+      cycle: 120,
+      backup: { zone: 'hollow', cycle: 100, holderId: null },
       players: { p1: makePlayer({ id: 'p1', zone: 'hollow' }) },
     })
 
@@ -192,8 +192,8 @@ describe('systems-gaps: BACKUP ground pickup', () => {
 
     const buff = after.players['p1']!.buffs.find((b) => b.id === 'backup')!
     expect(buff).toBeDefined()
-    expect(buff.stacks).toBe(TENANT_BACKUP_TICKS)
-    expect(buff.ticksRemaining).toBe(TENANT_BACKUP_TICKS)
+    expect(buff.stacks).toBe(TENANT_BACKUP_CYCLES)
+    expect(buff.cyclesRemaining).toBe(TENANT_BACKUP_CYCLES)
     expect(after.backup).toBeNull()
     expect(event).not.toBeNull()
     expect(event!._tag).toBe('backup_picked')
@@ -202,7 +202,7 @@ describe('systems-gaps: BACKUP ground pickup', () => {
 
   it('pickupBackup is a no-op when the player is outside hollow (in-pit guard)', () => {
     const state = makeGameState({
-      backup: { zone: 'hollow', tick: 100, holderId: null },
+      backup: { zone: 'hollow', cycle: 100, holderId: null },
       players: { p1: makePlayer({ id: 'p1', zone: 'mid-river' }) },
     })
     const { state: after, event } = pickupBackup(state, 'p1')
@@ -213,26 +213,26 @@ describe('systems-gaps: BACKUP ground pickup', () => {
 })
 
 describe('systems-gaps: TENANT respawn path', () => {
-  it('processTenantDamage revives a dead Tenant once TENANT_RESPAWN_TICKS have elapsed', () => {
-    const deathTick = 100
+  it('processTenantDamage revives a dead Tenant once TENANT_RESPAWN_CYCLES have elapsed', () => {
+    const deathCycle = 100
     const state = makeGameState({
-      tick: deathTick + TENANT_RESPAWN_TICKS,
-      tenant: { alive: false, integ: 0, maxInteg: 5000, deathTick } as TenantState,
+      cycle: deathCycle + TENANT_RESPAWN_CYCLES,
+      tenant: { alive: false, integ: 0, maxInteg: 5000, deathCycle } as TenantState,
     })
     const result = processTenantDamage(state, new Map())
 
     expect(result.state.tenant.alive).toBe(true)
     expect(result.state.tenant.integ).toBeGreaterThan(0)
-    expect(result.state.tenant.deathTick).toBeNull()
+    expect(result.state.tenant.deathCycle).toBeNull()
     const respawnEvt = result.events.find((e) => e._tag === 'tenant_respawn')
     expect(respawnEvt).toBeDefined()
   })
 
   it('processTenantDamage does NOT revive before the respawn timer', () => {
-    const deathTick = 100
+    const deathCycle = 100
     const state = makeGameState({
-      tick: deathTick + TENANT_RESPAWN_TICKS - 1,
-      tenant: { alive: false, integ: 0, maxInteg: 5000, deathTick } as TenantState,
+      cycle: deathCycle + TENANT_RESPAWN_CYCLES - 1,
+      tenant: { alive: false, integ: 0, maxInteg: 5000, deathCycle } as TenantState,
     })
     const result = processTenantDamage(state, new Map())
     expect(result.state.tenant.alive).toBe(false)
@@ -281,7 +281,7 @@ describe('systems-gaps: VISION gaps', () => {
           zone: 'audit-base',
           name: 'RevealedEnemy',
           integ: 321,
-          buffs: [{ id: 'revealed', stacks: 1, ticksRemaining: 5, source: 'p1' }],
+          buffs: [{ id: 'revealed', stacks: 1, cyclesRemaining: 5, source: 'p1' }],
         }),
       },
     })
@@ -337,7 +337,7 @@ describe('systems-gaps: VISION gaps', () => {
           zone: neighbor,
           name: 'InvisAdj',
           integ: 277,
-          buffs: [{ id: 'invisible', stacks: 1, ticksRemaining: 5, source: 'e1' }],
+          buffs: [{ id: 'invisible', stacks: 1, cyclesRemaining: 5, source: 'e1' }],
         }),
       },
     })

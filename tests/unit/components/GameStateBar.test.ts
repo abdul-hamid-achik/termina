@@ -3,9 +3,9 @@ import { mount } from '@vue/test-utils'
 import GameStateBar from '~~/app/components/game/GameStateBar.vue'
 
 const baseProps = {
-  tick: 42,
+  cycle: 42,
   gameTime: '02:48',
-  gold: 1234,
+  scrip: 1234,
   kills: 3,
   deaths: 1,
   assists: 5,
@@ -34,7 +34,7 @@ describe('GameStateBar', () => {
       // only the tick number.
       const wrapper = mountBar(baseProps)
       expect(wrapper.find('[data-testid="tick-countdown"]').exists()).toBe(false)
-      expect(wrapper.text()).not.toContain('next tick')
+      expect(wrapper.text()).not.toContain('next cycle')
     })
   })
 
@@ -43,13 +43,13 @@ describe('GameStateBar', () => {
       w.findAll('[title]').map((el) => el.attributes('title') ?? '')
 
     it('explains full vision by day', () => {
-      const wrapper = mountBar({ ...baseProps, timeOfDay: 'day', dayNightTick: 5 })
+      const wrapper = mountBar({ ...baseProps, timeOfDay: 'day', dayNightCycle: 5 })
       expect(wrapper.text()).toContain('Day')
       expect(titles(wrapper).some((t) => t.includes('full vision'))).toBe(true)
     })
 
     it('explains reduced vision at night', () => {
-      const wrapper = mountBar({ ...baseProps, timeOfDay: 'night', dayNightTick: 5 })
+      const wrapper = mountBar({ ...baseProps, timeOfDay: 'night', dayNightCycle: 5 })
       expect(wrapper.text()).toContain('Night')
       expect(titles(wrapper).some((t) => t.includes('vision is reduced'))).toBe(true)
     })
@@ -57,10 +57,10 @@ describe('GameStateBar', () => {
 
   describe('macro strip', () => {
     const teams = {
-      chaff: { id: 'chaff', kills: 12, iceKills: 3, gold: 0, hardenUsedTick: null },
-      audit: { id: 'audit', kills: 8, iceKills: 1, gold: 0, hardenUsedTick: null },
+      chaff: { id: 'chaff', kills: 12, iceKills: 3, scrip: 0, hardenUsedCycle: null },
+      audit: { id: 'audit', kills: 8, iceKills: 1, scrip: 0, hardenUsedCycle: null },
     }
-    const ancients = {
+    const terminals = {
       chaff: { team: 'chaff', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
       audit: { team: 'audit', integ: 3000, maxInteg: 6000, alive: true, vulnerable: true },
     }
@@ -73,7 +73,7 @@ describe('GameStateBar', () => {
       const w = mountBar({
         ...baseProps,
         teams,
-        ancients,
+        terminals,
         netWorthChaff: 12000,
         netWorthAudit: 8000,
       })

@@ -24,11 +24,13 @@ const BANNED = [
   'deny',
   'creep',
   'jungle',
-  'gold',
+  'gold', // currency is scrip — prose must not say scrip
   'radiant',
   'dire',
   'melee',
   'ranged',
+  'mana', // resource is BW
+  'mainframe', // structure is Terminal
 ] as const
 
 const BANNED_RE = new RegExp(`\\b(${BANNED.join('|')})s?\\b`, 'i')

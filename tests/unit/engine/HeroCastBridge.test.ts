@@ -12,7 +12,7 @@ import {
   validateAction,
   type PlayerAction,
 } from '~~/server/game/engine/ActionResolver'
-import { processTick, submitAction } from '~~/server/game/engine/GameLoop'
+import { processCycle, submitAction } from '~~/server/game/engine/GameLoop'
 import { processDoTs, resolveAbility, getBuffStacks } from '~~/server/game/heroes'
 import {
   getEffectiveAttack,
@@ -25,7 +25,7 @@ import type { WaveUnitState, GameState, PlayerState } from '~~/shared/types/game
 import { HEROES } from '~~/shared/constants/heroes'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeTenant } from '~~/server/game/map/spawner'
-import { initializeAncients } from '~~/server/game/engine/AncientSystem'
+import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
 
 function statsAtLevel(heroId: string, level: number) {
   const hero = HEROES[heroId]!
@@ -38,7 +38,7 @@ function statsAtLevel(heroId: string, level: number) {
   }
 }
 
-/** Player whose hp/mp pools match the hero's stats so the per-tick
+/** Player whose hp/mp pools match the hero's stats so the per-cycle
  * maxInteg/maxBw recalculation doesn't shift values mid-test. */
 function makeHero(heroId: string, overrides: Partial<PlayerState> = {}, level = 1): PlayerState {
   const s = statsAtLevel(heroId, level)
@@ -54,12 +54,12 @@ function makeHero(heroId: string, overrides: Partial<PlayerState> = {}, level = 
     maxBw: s.maxBw,
     level,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: s.plate,
     ice: s.ice,
     kills: 0,
@@ -75,7 +75,7 @@ function makeHero(heroId: string, overrides: Partial<PlayerState> = {}, level = 
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -83,25 +83,25 @@ function makeHero(heroId: string, overrides: Partial<PlayerState> = {}, level = 
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
   return {
-    tick: 1,
+    cycle: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
     },
     players: {},
     zones: initializeZoneStates(),
     waves: [],
     neutrals: [],
     ice: initializeIce(),
-    ancients: initializeAncients(),
+    terminals: initializeAncients(),
     caches: [],
     tenant: initializeTenant(),
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
-    dayNightTick: 0,
+    dayNightCycle: 0,
     ...overrides,
   }
 }
@@ -152,7 +152,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     const used = result.events.find((e) => e._tag === 'ability_used')
     expect(used).toMatchObject({ playerId: 'p1', abilityId: 'mutex-q', targetId: 'p2' })
     const cd = result.events.find((e) => e._tag === 'cooldown_used')
-    expect(cd).toMatchObject({ abilityId: 'q', cooldownTicks: 8 })
+    expect(cd).toMatchObject({ abilityId: 'q', cooldownCycles: 8 })
   })
 
   it('the cast is emitted BEFORE the damage it causes (cause, then effect)', () => {
@@ -207,7 +207,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
       status: 'root',
       // The advertised duration is not the applied one — report what the engine
       // actually wrote, so "(2t)" in the log is a number the player can trust.
-      ticksRemaining: root.ticksRemaining,
+      cyclesRemaining: root.cyclesRemaining,
     })
   })
 
@@ -219,7 +219,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
           id: 'p2',
           name: 'Enemy',
           team: 'audit',
-          buffs: [{ id: 'root', stacks: 1, ticksRemaining: 3, source: 'someone' }],
+          buffs: [{ id: 'root', stacks: 1, cyclesRemaining: 3, source: 'someone' }],
         }),
       },
     })
@@ -611,14 +611,14 @@ describe('cast bridge: abilities vs waves and neutrals', () => {
       players: { p1: makeHero('mutex', { id: 'p1', zone: LANE }) },
       waves: [wave({ integ: 30 })],
     })
-    const goldBefore = state.players['p1']!.gold
+    const scripBefore = state.players['p1']!.scrip
 
     const result = run(state, [{ playerId: 'p1', command: { type: 'cast', ability: 'e' } }])
 
     expect(result.state.waves[0]!.integ).toBe(0)
     const lastHit = result.events.find((e) => e._tag === 'wave_strip')
     expect(lastHit).toMatchObject({ playerId: 'p1', waveId: 'c1', waveType: 'line' })
-    expect(result.state.players['p1']!.gold).toBeGreaterThan(goldBefore)
+    expect(result.state.players['p1']!.scrip).toBeGreaterThan(scripBefore)
     expect(result.state.players['p1']!.xp).toBeGreaterThan(0)
   })
 
@@ -671,14 +671,14 @@ describe('cast bridge: abilities vs waves and neutrals', () => {
       players: { p1: makeHero('mutex', { id: 'p1', zone: camp }) },
       neutrals: [{ id: 'n1', zone: camp, integ: 100, maxInteg: 250, type: 'stub', alive: true }],
     })
-    const goldBefore = state.players['p1']!.gold
+    const scripBefore = state.players['p1']!.scrip
 
     const result = run(state, [{ playerId: 'p1', command: { type: 'cast', ability: 'e' } }])
 
     expect(result.events).toContainEqual(
       expect.objectContaining({ _tag: 'neutral_killed', playerId: 'p1', neutralId: 'n1' }),
     )
-    expect(result.state.players['p1']!.gold).toBeGreaterThan(goldBefore)
+    expect(result.state.players['p1']!.scrip).toBeGreaterThan(scripBefore)
     // The dead neutral is swept out of the board by the award pass.
     expect(result.state.neutrals).toHaveLength(0)
   })
@@ -725,7 +725,7 @@ describe('basic-attack path: shield, phase shift, fear', () => {
           id: 'p2',
           name: 'Enemy',
           team: 'audit',
-          buffs: [{ id: 'shield', stacks: 500, ticksRemaining: 3, source: 'ally' }],
+          buffs: [{ id: 'shield', stacks: 500, cyclesRemaining: 3, source: 'ally' }],
         }),
       },
     })
@@ -757,7 +757,7 @@ describe('basic-attack path: shield, phase shift, fear', () => {
           id: 'p2',
           name: 'Enemy',
           team: 'audit',
-          buffs: [{ id: 'phaseShift', stacks: 1, ticksRemaining: 2, source: 'p2' }],
+          buffs: [{ id: 'phaseShift', stacks: 1, cyclesRemaining: 2, source: 'p2' }],
         }),
       },
     })
@@ -775,7 +775,7 @@ describe('basic-attack path: shield, phase shift, fear', () => {
         p1: makeHero('echo', {
           id: 'p1',
           zone: 'mid-river',
-          buffs: [{ id: 'feared', stacks: 1, ticksRemaining: 2, source: 'e1' }],
+          buffs: [{ id: 'feared', stacks: 1, cyclesRemaining: 2, source: 'e1' }],
         }),
       },
     })
@@ -798,7 +798,7 @@ describe('basic-attack path: shield, phase shift, fear', () => {
         p1: makeHero('echo', {
           id: 'p1',
           zone: 'mid-river',
-          buffs: [{ id: 'taunt', stacks: 1, ticksRemaining: 2, source: 'e1' }],
+          buffs: [{ id: 'taunt', stacks: 1, cyclesRemaining: 2, source: 'e1' }],
         }),
       },
     })
@@ -823,12 +823,12 @@ describe('slow mechanic (deterministic move-fail)', () => {
     // Slow blocks when (tick * stacks) % 100 < stacks. At tick 4 with 30% slow:
     // (4*30)%100 = 20 < 30 → blocked. No RNG involved.
     const state = makeGameState({
-      tick: 4,
+      cycle: 4,
       players: {
         p1: makeHero('echo', {
           id: 'p1',
           zone: 'mid-river',
-          buffs: [{ id: 'slow', stacks: 30, ticksRemaining: 2, source: 'e1' }],
+          buffs: [{ id: 'slow', stacks: 30, cyclesRemaining: 2, source: 'e1' }],
         }),
       },
     })
@@ -841,12 +841,12 @@ describe('slow mechanic (deterministic move-fail)', () => {
   it('lets the move through on a tick where the pattern misses', () => {
     // At tick 1 with 30% slow: (1*30)%100 = 30, not < 30 → passes.
     const state = makeGameState({
-      tick: 1,
+      cycle: 1,
       players: {
         p1: makeHero('echo', {
           id: 'p1',
           zone: 'mid-river',
-          buffs: [{ id: 'slow', stacks: 30, ticksRemaining: 2, source: 'e1' }],
+          buffs: [{ id: 'slow', stacks: 30, cyclesRemaining: 2, source: 'e1' }],
         }),
       },
     })
@@ -866,7 +866,7 @@ describe('reveal and stealth vision wiring', () => {
           name: 'Sneak',
           team: 'audit',
           zone: 'mid-river',
-          buffs: [{ id: 'stealth', stacks: 1, ticksRemaining: 5, source: 'enemy' }],
+          buffs: [{ id: 'stealth', stacks: 1, cyclesRemaining: 5, source: 'enemy' }],
         }),
       },
     })
@@ -885,8 +885,8 @@ describe('reveal and stealth vision wiring', () => {
           team: 'audit',
           zone: 'audit-base', // not normally visible from mid-river
           buffs: [
-            { id: 'stealth', stacks: 1, ticksRemaining: 5, source: 'enemy' },
-            { id: 'revealed', stacks: 1, ticksRemaining: 3, source: 'viewer' },
+            { id: 'stealth', stacks: 1, cyclesRemaining: 5, source: 'enemy' },
+            { id: 'revealed', stacks: 1, cyclesRemaining: 3, source: 'viewer' },
           ],
         }),
       },
@@ -912,7 +912,7 @@ describe('reveal and stealth vision wiring', () => {
           name: 'Sneak',
           team: 'audit',
           zone: 'audit-base',
-          buffs: [{ id: 'revealed', stacks: 1, ticksRemaining: 3, source: 'ally2' }],
+          buffs: [{ id: 'revealed', stacks: 1, cyclesRemaining: 3, source: 'ally2' }],
         }),
       },
     })
@@ -922,7 +922,7 @@ describe('reveal and stealth vision wiring', () => {
   })
 })
 
-describe('passive hook (processTick step 11.5)', () => {
+describe('passive hook (processCycle step 11.5)', () => {
   it('mutex deadlock stacks accrue across ticks while standing still', () => {
     const gameId = `passive_test_${Math.random().toString(36).slice(2, 8)}`
     let state = makeGameState({
@@ -930,19 +930,19 @@ describe('passive hook (processTick step 11.5)', () => {
     })
 
     // Tick 1: tick_end sets the zone tracker
-    state = Effect.runSync(processTick(gameId, state)).state
+    state = Effect.runSync(processCycle(gameId, state)).state
     // Tick 2: still in the same zone — first deadlock stack
-    state = Effect.runSync(processTick(gameId, state)).state
+    state = Effect.runSync(processCycle(gameId, state)).state
     const stacksAfter2 = getBuffStacks(state.players['p1']!, 'deadlock')
     expect(stacksAfter2).toBe(1)
 
     // Tick 3: second stack
-    state = Effect.runSync(processTick(gameId, state)).state
+    state = Effect.runSync(processCycle(gameId, state)).state
     expect(getBuffStacks(state.players['p1']!, 'deadlock')).toBe(2)
 
     // Moving resets the stacks (move event from the zone diff)
     submitAction(gameId, 'p1', { type: 'move', zone: 'mid-t1-chaff' })
-    state = Effect.runSync(processTick(gameId, state)).state
+    state = Effect.runSync(processCycle(gameId, state)).state
     expect(state.players['p1']!.zone).toBe('mid-t1-chaff')
     expect(getBuffStacks(state.players['p1']!, 'deadlock')).toBe(0)
   })
@@ -951,7 +951,7 @@ describe('passive hook (processTick step 11.5)', () => {
     const plain = makeHero('mutex', { id: 'p1' })
     const stacked = makeHero('mutex', {
       id: 'p1',
-      buffs: [{ id: 'deadlock', stacks: 3, ticksRemaining: 9999, source: 'p1' }],
+      buffs: [{ id: 'deadlock', stacks: 3, cyclesRemaining: 9999, source: 'p1' }],
     })
     expect(getEffectiveAttack(stacked)).toBe(getEffectiveAttack(plain) + 9) // +3 per stack
     expect(getEffectivePlate(stacked)).toBe(getEffectivePlate(plain) + 3) // +1 per stack
@@ -969,7 +969,7 @@ describe('talents', () => {
     expect(getEffectiveAttack(talented)).toBe(getEffectiveAttack(plain) + 15)
   })
 
-  it('a selected +INTEG talent raises maxInteg through the per-tick recalc', () => {
+  it('a selected +INTEG talent raises maxInteg through the per-cycle recalc', () => {
     const echo = statsAtLevel('echo', 1)
     const state = makeGameState({
       players: {
@@ -981,7 +981,7 @@ describe('talents', () => {
     })
     const result = run(state, [])
     expect(result.state.players['p1']!.maxInteg).toBe(echo.maxInteg + 200)
-    // Percentage-preserving: the per-tick recalc scales current INTEG to the same %
+    // Percentage-preserving: the per-cycle recalc scales current INTEG to the same %
     // of the new max for ANY max change. This hero was at full INTEG, so it stays
     // full when the talent raises the ceiling — the same rule that scales current
     // INTEG when an INTEG item is bought/sold (see game-flow.test.ts).

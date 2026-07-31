@@ -4,7 +4,7 @@ export type TargetRef =
   | { kind: 'neutral'; index: number }
   | { kind: 'ice'; zone: string }
   | { kind: 'tenant' }
-  | { kind: 'ancient' }
+  | { kind: 'terminal' }
   | { kind: 'zone'; zone: string }
   | { kind: 'self' }
 

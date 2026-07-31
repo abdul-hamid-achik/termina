@@ -3,23 +3,23 @@ import { toGameEvent } from '~~/server/game/protocol/events'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 // toGameEvent is the single wire-serialization point for every engine event:
-// it strips the discriminant `_tag` into `type`, keeps `tick` at the top
+// it strips the discriminant `_tag` into `type`, keeps `cycle` at the top
 // level, and folds everything else into `payload`. The client combat log and
 // the e2e/integration assertions depend on this exact shape. (This coverage
 // previously lived in protocol.test.ts, deleted with the dead @effect/schema
 // layer; re-added focused on the live function.)
 describe('toGameEvent', () => {
-  it('maps _tag -> type, keeps tick top-level, folds the rest into payload', () => {
+  it('maps _tag -> type, keeps cycle top-level, folds the rest into payload', () => {
     const ev: GameEngineEvent = {
       _tag: 'damage',
-      tick: 42,
+      cycle: 42,
       sourceId: 'github_1',
       targetId: 'wave-3',
       amount: 72,
       damageType: 'kinetic',
     }
     expect(toGameEvent(ev)).toEqual({
-      tick: 42,
+      cycle: 42,
       type: 'damage',
       payload: {
         sourceId: 'github_1',
@@ -33,7 +33,7 @@ describe('toGameEvent', () => {
   it('never leaks the _tag into the payload', () => {
     const ev: GameEngineEvent = {
       _tag: 'kill',
-      tick: 10,
+      cycle: 10,
       killerId: 'a',
       victimId: 'b',
       assisters: ['c'],
@@ -44,29 +44,29 @@ describe('toGameEvent', () => {
     expect(wire.payload).toEqual({ killerId: 'a', victimId: 'b', assisters: ['c'] })
   })
 
-  it('serializes the ancient_destroyed event for the post-game / combat log', () => {
+  it('serializes the terminal_destroyed event for the post-game / combat log', () => {
     const ev: GameEngineEvent = {
-      _tag: 'ancient_destroyed',
-      tick: 124,
+      _tag: 'terminal_destroyed',
+      cycle: 124,
       team: 'chaff',
       killerTeam: 'audit',
     }
     expect(toGameEvent(ev)).toEqual({
-      tick: 124,
-      type: 'ancient_destroyed',
+      cycle: 124,
+      type: 'terminal_destroyed',
       payload: { team: 'chaff', killerTeam: 'audit' },
     })
   })
 
-  it('preserves tick === 0 (does not drop a falsy tick)', () => {
+  it('preserves cycle === 0 (does not drop a falsy cycle)', () => {
     const ev: GameEngineEvent = {
       _tag: 'death',
-      tick: 0,
+      cycle: 0,
       playerId: 'p1',
-      respawnTick: 5,
+      respawnCycle: 5,
     }
     const wire = toGameEvent(ev)
-    expect(wire.tick).toBe(0)
-    expect(wire.payload).toEqual({ playerId: 'p1', respawnTick: 5 })
+    expect(wire.cycle).toBe(0)
+    expect(wire.payload).toEqual({ playerId: 'p1', respawnCycle: 5 })
   })
 })

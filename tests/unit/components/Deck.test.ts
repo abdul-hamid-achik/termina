@@ -30,7 +30,7 @@ function makeHero(overrides: HeroOverrides = {}) {
     cooldowns: { q: 0, w: 0, e: 3, r: 0 },
     items: [null, null, null, null, null, null],
     buffs: [],
-    gold: 1000,
+    scrip: 1000,
     alive: true,
     ...overrides,
   }
@@ -186,7 +186,7 @@ describe('Deck cooldown readability', () => {
 
     await wrapper.find('[data-testid="ability-chip-q"]').trigger('mouseenter')
 
-    const cd = HEROES[HERO_ID]!.abilities.q.cooldownTicks
+    const cd = HEROES[HERO_ID]!.abilities.q.cooldownCycles
     expect(wrapper.find('[data-testid="ability-tooltip-q"]').text()).toContain(
       `${cd}c (${cd * 4}s)`,
     )
@@ -235,9 +235,9 @@ describe('Deck buff strip', () => {
     const wrapper = mountDeck(
       makeHero({
         buffs: [
-          { id: 'airgap', stacks: 1, ticksRemaining: 4 },
-          { id: 'veil_discord', stacks: 25, ticksRemaining: 4 },
-          { id: 'item_cd_hardshell', stacks: 1, ticksRemaining: 25 },
+          { id: 'airgap', stacks: 1, cyclesRemaining: 4 },
+          { id: 'veil_discord', stacks: 25, cyclesRemaining: 4 },
+          { id: 'item_cd_hardshell', stacks: 1, cyclesRemaining: 25 },
         ],
       }),
     )
@@ -259,7 +259,7 @@ describe('Deck buff strip', () => {
 
   it('shows no Buffs section when every effect is an internal marker', () => {
     const wrapper = mountDeck(
-      makeHero({ buffs: [{ id: 'item_cd_dagon', stacks: 1, ticksRemaining: 18 }] }),
+      makeHero({ buffs: [{ id: 'item_cd_dagon', stacks: 1, cyclesRemaining: 18 }] }),
     )
     expect(wrapper.text()).not.toContain('Buffs')
     wrapper.unmount()
@@ -269,8 +269,8 @@ describe('Deck buff strip', () => {
     const wrapper = mountDeck(
       makeHero({
         buffs: [
-          { id: 'tp_channeling', stacks: 1, ticksRemaining: 3 }, // neutral → text-ability
-          { id: 'gait_rig_attack', stacks: 15, ticksRemaining: 999 }, // permanent → no countdown
+          { id: 'tp_channeling', stacks: 1, cyclesRemaining: 3 }, // neutral → text-ability
+          { id: 'gait_rig_attack', stacks: 15, cyclesRemaining: 999 }, // permanent → no countdown
         ],
       }),
     )

@@ -102,7 +102,7 @@ function resolveQ(
     const damagedPrimary = dealDamage(targetPlayer, primaryDamage, 'kinetic')
     const events: GameEvent[] = [
       {
-        tick: state.tick,
+        cycle: state.cycle,
         type: 'ability_cast',
         payload: {
           playerId: player.id,
@@ -123,7 +123,7 @@ function resolveQ(
       const damagedBounce = dealDamage(bounceTarget, bounceDamage, 'kinetic') as PlayerState
       updatedTargets.push(damagedBounce)
       events.push({
-        tick: state.tick,
+        cycle: state.cycle,
         type: 'ability_cast',
         payload: {
           playerId: player.id,
@@ -161,7 +161,7 @@ function resolveW(
     caster = applyBuff(caster, {
       id: 'phaseShift',
       stacks: 1,
-      ticksRemaining: 1,
+      cyclesRemaining: 1,
       source: player.id,
     })
     // W is the phaseShift dodge only — movement is a fixed 1 zone/tick.
@@ -170,7 +170,7 @@ function resolveW(
       state: updatePlayer(state, caster),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: { playerId: player.id, ability: 'w', buff: 'phaseShift' },
         },
@@ -212,7 +212,7 @@ function resolveE(
     caster = applyBuff(caster, {
       id: 'feedbackLoop',
       stacks: 0,
-      ticksRemaining: 0,
+      cyclesRemaining: 0,
       source: player.id,
     })
 
@@ -223,7 +223,7 @@ function resolveE(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -278,7 +278,7 @@ function resolveR(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -318,27 +318,27 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
       updatedPlayer = applyBuff(player, {
         id: 'resonance',
         stacks: newStacks,
-        ticksRemaining: 30,
+        cyclesRemaining: 30,
         source: playerId,
       })
     } else {
       updatedPlayer = applyBuff(player, {
         id: 'resonance',
         stacks: 1,
-        ticksRemaining: 30,
+        cyclesRemaining: 30,
         source: playerId,
       })
     }
 
     // Keep exactly ONE resonanceTarget buff: drop any prior, then record the
     // current target in `destination`. removeBuff-then-applyBuff is required
-    // because applyBuff's in-place update refreshes only stacks/ticksRemaining,
+    // because applyBuff's in-place update refreshes only stacks/cyclesRemaining,
     // not destination.
     updatedPlayer = removeBuff(updatedPlayer, 'resonanceTarget')
     updatedPlayer = applyBuff(updatedPlayer, {
       id: 'resonanceTarget',
       stacks: 1,
-      ticksRemaining: 30,
+      cyclesRemaining: 30,
       source: playerId,
       destination: targetId,
     })
@@ -351,7 +351,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
       updatedPlayer = applyBuff(updatedPlayer, {
         id: 'feedbackLoop',
         stacks: currentStacks + stackValue,
-        ticksRemaining: 999,
+        cyclesRemaining: 999,
         source: playerId,
       })
     }

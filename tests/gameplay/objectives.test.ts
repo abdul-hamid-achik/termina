@@ -3,7 +3,7 @@ import { seedGame, HUMAN } from './harness'
 
 /**
  * Engine-truth coverage for the Tenant / backup objective loop, driven through
- * the real processTick (no browser/server/DB). Tenant can only be hit from the
+ * the real processCycle (no browser/server/DB). Tenant can only be hit from the
  * pit; killing it drops the backup on the ground; a hero in the pit then claims
  * it with the `backup` action and gains the respawn buff.
  */
@@ -55,7 +55,7 @@ describe('objectives: Tenant & backup', () => {
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'hollow', buffs: [] } },
-      backup: { zone: 'hollow', tick: s.tick, holderId: null },
+      backup: { zone: 'hollow', cycle: s.cycle, holderId: null },
     }))
 
     game.submit({ type: 'backup' })
@@ -77,10 +77,10 @@ describe('objectives: Tenant & backup', () => {
           ...s.players,
           [HUMAN]: {
             ...me,
-            alive: false, // just died this tick…
-            respawnTick: null, // …and not yet sent to the respawn queue
+            alive: false, // just died this cycle…
+            respawnCycle: null, // …and not yet sent to the respawn queue
             integ: 0,
-            buffs: [{ id: 'backup', stacks: 300, ticksRemaining: 300, source: 'tenant' }],
+            buffs: [{ id: 'backup', stacks: 300, cyclesRemaining: 300, source: 'tenant' }],
           },
         },
       }
@@ -90,7 +90,7 @@ describe('objectives: Tenant & backup', () => {
 
     const me = await game.me()
     expect(me.alive).toBe(true) // reborn, not respawning
-    expect(me.respawnTick).toBeNull()
+    expect(me.respawnCycle).toBeNull()
     expect(me.integ).toBe(me.maxInteg) // back at full INTEG
     expect(me.buffs.some((b) => b.id === 'backup')).toBe(false) // backup consumed
     expect(game.lastEvents.some((e) => e._tag === 'backup_used' && e.playerId === HUMAN)).toBe(true)
@@ -103,7 +103,7 @@ describe('objectives: caches', () => {
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'cache-top', buffs: [] } },
-      caches: [{ zone: 'cache-top', type: 'haste', tick: s.tick }],
+      caches: [{ zone: 'cache-top', type: 'haste', cycle: s.cycle }],
     }))
 
     game.submit({ type: 'grab' })
@@ -123,7 +123,7 @@ describe('objectives: caches', () => {
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'cache-top', buffs: [] } },
-      caches: [{ zone: 'cache-top', type: 'dd', tick: s.tick }],
+      caches: [{ zone: 'cache-top', type: 'dd', cycle: s.cycle }],
     }))
 
     game.submit({ type: 'grab' })
@@ -144,19 +144,19 @@ describe('objectives: jungle neutrals', () => {
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'silt-chaff-top' } },
-      // A stub at 1 INTEG — one basic attack finishes it (bounty 20g / 25xp).
+      // A stub at 1 INTEG — one basic attack finishes it (bounty 20sc / 25xp).
       neutrals: [
         { id: 'camp0', zone: 'silt-chaff-top', integ: 1, maxInteg: 250, type: 'stub', alive: true },
       ],
     }))
 
-    const goldBefore = (await game.me()).gold
+    const scripBefore = (await game.me()).scrip
     game.submit({ type: 'attack', target: { kind: 'neutral', index: 0 } })
     await game.tick()
 
     const me = await game.me()
-    // Bounty (20) dwarfs the 4/tick passive, so this isolates the camp gold.
-    expect(me.gold).toBeGreaterThanOrEqual(goldBefore + 20)
+    // Bounty (20) dwarfs the 4/tick passive, so this isolates the camp scrip.
+    expect(me.scrip).toBeGreaterThanOrEqual(scripBefore + 20)
     const state = await game.state()
     expect(state.neutrals.some((n) => n.id === 'camp0')).toBe(false) // removed on death
     expect(game.lastEvents.some((e) => e._tag === 'neutral_killed' && e.playerId === HUMAN)).toBe(

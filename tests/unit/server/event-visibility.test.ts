@@ -24,9 +24,9 @@ const state = {
 } as unknown as GameState
 
 const tpComplete = (playerId: string, destination: string): GameEngineEvent =>
-  ({ _tag: 'teleport_complete', tick: 1, playerId, destination }) as GameEngineEvent
+  ({ _tag: 'teleport_complete', cycle: 1, playerId, destination }) as GameEngineEvent
 const tpCancelled = (playerId: string): GameEngineEvent =>
-  ({ _tag: 'teleport_cancelled', tick: 1, playerId, reason: 'damage' }) as GameEngineEvent
+  ({ _tag: 'teleport_cancelled', cycle: 1, playerId, reason: 'damage' }) as GameEngineEvent
 
 describe('isEventVisibleToPlayer — teleport vision gating', () => {
   it('always shows your own and your allies teleports', () => {
@@ -62,7 +62,7 @@ describe('isEventVisibleToPlayer — teleport vision gating', () => {
 const neutralKilled = (playerId: string, zone: string): GameEngineEvent =>
   ({
     _tag: 'neutral_killed',
-    tick: 1,
+    cycle: 1,
     playerId,
     neutralId: 'n0',
     neutralType: 'stub',
@@ -71,7 +71,7 @@ const neutralKilled = (playerId: string, zone: string): GameEngineEvent =>
 const talentSelected = (playerId: string): GameEngineEvent =>
   ({
     _tag: 'talent_selected',
-    tick: 1,
+    cycle: 1,
     playerId,
     talentId: 't',
     tier: 10,
@@ -85,7 +85,7 @@ describe('isEventVisibleToPlayer — enemy-info leaks', () => {
     expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['silt-audit-bot']), state)).toBe(true)
   })
 
-  it('always shows your own / allied jungle kills (own gold/xp + shared vision)', () => {
+  it('always shows your own / allied jungle kills (own scrip/xp + shared vision)', () => {
     expect(
       isEventVisibleToPlayer(
         neutralKilled('me', 'silt-chaff-top'),
@@ -120,7 +120,7 @@ describe('isEventVisibleToPlayer — enemy-info leaks', () => {
     const spike = (playerId: string): GameEngineEvent =>
       ({
         _tag: 'power_spike',
-        tick: 1,
+        cycle: 1,
         playerId,
         spikeType: 'level_6',
         message: 'spike',
@@ -138,7 +138,7 @@ describe('isEventVisibleToPlayer — enemy-info leaks', () => {
 // ── Lock the PRE-EXISTING gating too (was a private fn before — untested) ──
 
 const ev = (tag: string, extra: Record<string, unknown>): GameEngineEvent =>
-  ({ _tag: tag, tick: 1, ...extra }) as GameEngineEvent
+  ({ _tag: tag, cycle: 1, ...extra }) as GameEngineEvent
 const vis = (e: GameEngineEvent, zones: string[] = []) =>
   isEventVisibleToPlayer(e, 'me', 'chaff', new Set(zones), state)
 
@@ -177,7 +177,7 @@ describe('isEventVisibleToPlayer — damage/heal', () => {
 })
 
 describe('isEventVisibleToPlayer — economy is team-private', () => {
-  it('shows your own and allied gold/last-hit/item events, hides the enemy', () => {
+  it('shows your own and allied scrip/last-hit/item events, hides the enemy', () => {
     for (const tag of ['wave_strip', 'gold_change', 'item_purchased', 'item_sold']) {
       expect(vis(ev(tag, { playerId: 'me' }))).toBe(true)
       expect(vis(ev(tag, { playerId: 'ally' }))).toBe(true)
@@ -251,11 +251,11 @@ describe('status_applied obeys the same fog rule as damage', () => {
   const cc = (sourceId: string, targetId: string): GameEngineEvent =>
     ({
       _tag: 'status_applied',
-      tick: 1,
+      cycle: 1,
       sourceId,
       targetId,
       status: 'stun',
-      ticksRemaining: 2,
+      cyclesRemaining: 2,
     }) as GameEngineEvent
 
   it('shows a disable involving me or my team', () => {

@@ -26,12 +26,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 320,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 2,
     ice: 13,
     kills: 0,
@@ -45,7 +45,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -73,11 +73,11 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     playerMap[p.id] = p
   }
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -145,7 +145,7 @@ describe('Cipher Hero', () => {
       player = applyBuff(player, {
         id: 'stealth',
         stacks: 1,
-        ticksRemaining: 5,
+        cyclesRemaining: 5,
         source: 'p1',
       })
       const enemy = makeEnemy()
@@ -197,7 +197,7 @@ describe('Cipher Hero', () => {
       const updated = result.state.players['p1']!
       expect(hasBuff(updated, 'stealth')).toBe(true)
       const stealth = updated.buffs.find((b) => b.id === 'stealth')
-      expect(stealth!.ticksRemaining).toBe(2)
+      expect(stealth!.cyclesRemaining).toBe(2)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -242,10 +242,10 @@ describe('Cipher Hero', () => {
       expect(hasBuff(updatedEnemy, 'revealed')).toBe(true)
       expect(hasBuff(updatedEnemy, 'silence')).toBe(true)
       const revealed = updatedEnemy.buffs.find((b) => b.id === 'revealed')
-      expect(revealed!.ticksRemaining).toBe(3)
+      expect(revealed!.cyclesRemaining).toBe(3)
       const silence = updatedEnemy.buffs.find((b) => b.id === 'silence')
       // raw 2 = one gated action: a cast-applied disable is reaped same-tick.
-      expect(silence!.ticksRemaining).toBe(2)
+      expect(silence!.cyclesRemaining).toBe(2)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -265,7 +265,7 @@ describe('Cipher Hero', () => {
       player = applyBuff(player, {
         id: 'stealth',
         stacks: 1,
-        ticksRemaining: 5,
+        cyclesRemaining: 5,
         source: 'p1',
       })
       const enemy = makeEnemy()
@@ -349,7 +349,7 @@ describe('Cipher Hero', () => {
       player = applyBuff(player, {
         id: 'stealth',
         stacks: 1,
-        ticksRemaining: 5,
+        cyclesRemaining: 5,
         source: 'p1',
       })
       const enemy = makeEnemy()
@@ -397,7 +397,7 @@ describe('Cipher Hero', () => {
       const state = makeState([player, enemy])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'p1', targetId: 'e1' },
       })
@@ -412,13 +412,13 @@ describe('Cipher Hero', () => {
       enemy = applyBuff(enemy, {
         id: 'encryptionKey',
         stacks: 2,
-        ticksRemaining: 3,
+        cyclesRemaining: 3,
         source: 'p1',
       })
       const state = makeState([player, enemy])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'p1', targetId: 'e1' },
       })
@@ -432,13 +432,13 @@ describe('Cipher Hero', () => {
       enemy = applyBuff(enemy, {
         id: 'encryptionKey',
         stacks: 4,
-        ticksRemaining: 3,
+        cyclesRemaining: 3,
         source: 'p1',
       })
       const state = makeState([player, enemy])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'p1', targetId: 'e1' },
       })
@@ -453,7 +453,7 @@ describe('Cipher Hero', () => {
       const state = makeState([player, enemy])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'e1', targetId: 'p1' },
       })
@@ -467,7 +467,7 @@ describe('Cipher Hero', () => {
       const state = makeState([player, enemy])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'tick_end',
         payload: {},
       })
@@ -479,7 +479,7 @@ describe('Cipher Hero', () => {
   describe('Stun/Silence blocking', () => {
     it('prevents casting when stunned', () => {
       const player = makePlayer({
-        buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 1, source: 'enemy' }],
+        buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 1, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -492,7 +492,7 @@ describe('Cipher Hero', () => {
 
     it('prevents casting when silenced', () => {
       const player = makePlayer({
-        buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 2, source: 'enemy' }],
+        buffs: [{ id: 'silence', stacks: 1, cyclesRemaining: 2, source: 'enemy' }],
       })
       const state = makeState([player])
 

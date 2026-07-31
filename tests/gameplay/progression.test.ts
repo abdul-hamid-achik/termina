@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { seedGame, HUMAN } from './harness'
-import { DAY_DURATION_TICKS, NIGHT_DURATION_TICKS } from '~~/shared/constants/balance'
+import { DAY_DURATION_CYCLES, NIGHT_DURATION_CYCLES } from '~~/shared/constants/balance'
 
 /**
- * Engine-truth coverage for hero leveling, driven through the real processTick
+ * Engine-truth coverage for hero leveling, driven through the real processCycle
  * checkLevelUps phase. XP thresholds: level 2 needs 100 XP, level 6 needs 700.
- * checkLevelUps grants at most ONE level per tick.
+ * checkLevelUps grants at most ONE level per cycle.
  */
 describe('progression: leveling up', () => {
   it('a hero that crosses the XP threshold gains a level and emits level_up', async () => {
@@ -94,21 +94,25 @@ describe('progression: leveling up', () => {
 // The cycle (night reduces vision) never crosses its 300/240-tick thresholds in
 // ordinary tests, so the transition went untested. These drive it directly.
 describe('progression: day/night cycle', () => {
-  it('day flips to night at DAY_DURATION_TICKS, resets the clock, and emits night_falls', async () => {
+  it('day flips to night at DAY_DURATION_CYCLES, resets the clock, and emits night_falls', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
-    await game.patch((s) => ({ ...s, timeOfDay: 'day', dayNightTick: DAY_DURATION_TICKS - 1 }))
+    await game.patch((s) => ({ ...s, timeOfDay: 'day', dayNightCycle: DAY_DURATION_CYCLES - 1 }))
 
     await game.tick()
 
     const state = await game.state()
     expect(state.timeOfDay).toBe('night')
-    expect(state.dayNightTick).toBe(0)
+    expect(state.dayNightCycle).toBe(0)
     expect(game.lastEvents.some((e) => e._tag === 'night_falls')).toBe(true)
   })
 
-  it('night flips back to day at NIGHT_DURATION_TICKS and emits day_breaks', async () => {
+  it('night flips back to day at NIGHT_DURATION_CYCLES and emits day_breaks', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
-    await game.patch((s) => ({ ...s, timeOfDay: 'night', dayNightTick: NIGHT_DURATION_TICKS - 1 }))
+    await game.patch((s) => ({
+      ...s,
+      timeOfDay: 'night',
+      dayNightCycle: NIGHT_DURATION_CYCLES - 1,
+    }))
 
     await game.tick()
 
@@ -119,13 +123,13 @@ describe('progression: day/night cycle', () => {
 
   it('stays day mid-cycle (just ticks the clock forward, no transition event)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
-    await game.patch((s) => ({ ...s, timeOfDay: 'day', dayNightTick: 10 }))
+    await game.patch((s) => ({ ...s, timeOfDay: 'day', dayNightCycle: 10 }))
 
     await game.tick()
 
     const state = await game.state()
     expect(state.timeOfDay).toBe('day')
-    expect(state.dayNightTick).toBe(11)
+    expect(state.dayNightCycle).toBe(11)
     expect(game.lastEvents.some((e) => e._tag === 'night_falls')).toBe(false)
   })
 })

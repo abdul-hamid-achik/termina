@@ -8,7 +8,7 @@
  *   - otherwise leave it armed.
  *
  * Runs right after action/movement resolution so a hero that moved INTO a
- * trapped zone this tick is caught the same tick. Emits a `damage` engine event
+ * trapped zone this cycle is caught the same tick. Emits a `damage` engine event
  * (kill/assist credit + client damage float) and a `trap_triggered` event
  * (narrative).
  */
@@ -28,10 +28,10 @@ export function processTraps(state: GameState): { state: GameState; events: Game
 
     const remaining: TrapState[] = []
     for (const trap of traps) {
-      if (state.tick >= trap.expiryTick) continue // expired — disarm silently
+      if (state.cycle >= trap.expiryTick) continue // expired — disarm silently
 
       // First enemy hero standing in the trapped zone (re-read from `updated`
-      // so a trap can't hit someone an earlier trap already killed this tick).
+      // so a trap can't hit someone an earlier trap already killed this cycle).
       const victim = Object.values(updated.players).find(
         (p): p is PlayerState =>
           p.alive && p.heroId !== null && p.team !== trap.team && p.zone === zoneId,
@@ -46,14 +46,14 @@ export function processTraps(state: GameState): { state: GameState; events: Game
       const revealed = applyBuff(damaged, {
         id: 'revealed',
         stacks: 1,
-        ticksRemaining: trap.revealDuration,
+        cyclesRemaining: trap.revealDuration,
         source: trap.owner,
       })
       updated = updatePlayer(updated, revealed)
 
       events.push({
         _tag: 'damage',
-        tick: state.tick,
+        cycle: state.cycle,
         sourceId: trap.owner,
         targetId: victim.id,
         amount: dealt,
@@ -61,7 +61,7 @@ export function processTraps(state: GameState): { state: GameState; events: Game
       })
       events.push({
         _tag: 'trap_triggered',
-        tick: state.tick,
+        cycle: state.cycle,
         owner: trap.owner,
         team: trap.team,
         zone: zoneId,

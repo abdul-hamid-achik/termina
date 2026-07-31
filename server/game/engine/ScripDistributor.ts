@@ -1,13 +1,13 @@
 import type { GameState, PlayerState, TeamId } from '~~/shared/types/game'
 import { getItem } from '~~/shared/constants/items'
 import {
-  PASSIVE_GOLD_PER_TICK,
-  WAVE_GOLD,
-  BREACH_UNIT_GOLD,
+  PASSIVE_SCRIP_PER_CYCLE,
+  WAVE_SCRIP,
+  BREACH_UNIT_SCRIP,
   KILL_BOUNTY_BASE,
   KILL_BOUNTY_PER_STREAK,
-  ASSIST_GOLD,
-  ICE_GOLD,
+  ASSIST_SCRIP,
+  ICE_SCRIP,
   COMEBACK_BONUS_MAX,
   COMEBACK_PENALTY_MAX,
   COMEBACK_FULL_GAP,
@@ -22,9 +22,9 @@ import {
  * 1 + COMEBACK_BONUS_MAX]. >1 means killer's team is behind (bonus).
  * Exported for tests.
  */
-/** A player's net worth: unspent gold plus the full cost of owned items. */
+/** A player's net worth: unspent scrip plus the full cost of owned items. */
 export function playerNetWorth(player: PlayerState): number {
-  let worth = player.gold
+  let worth = player.scrip
   for (const itemId of player.items) {
     if (!itemId) continue
     worth += getItem(itemId)?.cost ?? 0
@@ -39,7 +39,7 @@ export function comebackMultiplier(state: GameState, killerTeam: TeamId): number
     if (p.team === killerTeam) killerNet += playerNetWorth(p)
     else enemyNet += playerNetWorth(p)
   }
-  // Positive gap = killer is behind by `gap` gold
+  // Positive gap = killer is behind by `gap` scrip
   const gap = enemyNet - killerNet
   const ratio = Math.max(-1, Math.min(1, gap / COMEBACK_FULL_GAP))
   if (ratio >= 0) return 1 + ratio * COMEBACK_BONUS_MAX
@@ -76,7 +76,7 @@ export function xpComebackMultiplier(state: GameState, team: TeamId): number {
   return 1 + ratio * XP_COMEBACK_PENALTY_MAX
 }
 
-/** Award passive gold to all alive players. +1g per tick. */
+/** Award passive scrip to all alive players. +1g per cycle. */
 export function distributePassiveGold(state: GameState): GameState {
   const updatedPlayers = { ...state.players }
 
@@ -84,7 +84,7 @@ export function distributePassiveGold(state: GameState): GameState {
     if (player.alive) {
       updatedPlayers[pid] = {
         ...player,
-        gold: player.gold + PASSIVE_GOLD_PER_TICK,
+        scrip: player.scrip + PASSIVE_SCRIP_PER_CYCLE,
       }
     }
   }
@@ -92,8 +92,8 @@ export function distributePassiveGold(state: GameState): GameState {
   return { ...state, players: updatedPlayers }
 }
 
-/** Award gold for a last-hit on a wave. Line/Sweep: WAVE_GOLD (fixed, no
- * RNG), Breach: BREACH_UNIT_GOLD. */
+/** Award scrip for a last-hit on a wave. Line/Sweep: WAVE_SCRIP (fixed, no
+ * RNG), Breach: BREACH_UNIT_SCRIP. */
 export function awardLastHit(
   state: GameState,
   playerId: string,
@@ -102,16 +102,16 @@ export function awardLastHit(
   const player = state.players[playerId]
   if (!player) return state
 
-  const gold = waveType === 'breach' ? BREACH_UNIT_GOLD : WAVE_GOLD
+  const scrip = waveType === 'breach' ? BREACH_UNIT_SCRIP : WAVE_SCRIP
 
-  return updatePlayerGold(state, playerId, gold)
+  return updatePlayerGold(state, playerId, scrip)
 }
 
-// (Removed `awardDeny` — dead duplicate: resolveActions computes burn gold
+// (Removed `awardDeny` — dead duplicate: resolveActions computes burn scrip
 // inline and never called this.)
 
 /**
- * Award gold for a hero kill.
+ * Award scrip for a hero kill.
  * Killer: 200 + 50 * killStreak
  * Assisters: 100 split evenly among all assisters (excluding killer)
  */
@@ -140,11 +140,11 @@ export function awardKill(
   const killerGold = Math.round(baseGold * comebackMultiplier(state, killer.team))
   updatedState = updatePlayerGold(updatedState, killerId, killerGold)
 
-  // Assist gold split - exclude killer from assisters to prevent double-dipping
+  // Assist scrip split - exclude killer from assisters to prevent double-dipping
   if (assisters.length > 0) {
     const filteredAssisters = assisters.filter((id) => id !== killerId)
     if (filteredAssisters.length > 0) {
-      const assistGoldEach = Math.floor(ASSIST_GOLD / filteredAssisters.length)
+      const assistGoldEach = Math.floor(ASSIST_SCRIP / filteredAssisters.length)
       for (const assisterId of filteredAssisters) {
         updatedState = updatePlayerGold(updatedState, assisterId, assistGoldEach)
       }
@@ -154,12 +154,12 @@ export function awardKill(
   return updatedState
 }
 
-/** Award ice kill gold. Split evenly among all nearby allies. */
+/** Award ice kill scrip. Split evenly among all nearby allies. */
 export function awardIceKill(state: GameState, _zone: string, nearbyAllies: string[]): GameState {
   if (nearbyAllies.length === 0) return state
 
   let updatedState = state
-  const goldEach = Math.floor(ICE_GOLD / nearbyAllies.length)
+  const goldEach = Math.floor(ICE_SCRIP / nearbyAllies.length)
   for (const playerId of nearbyAllies) {
     updatedState = updatePlayerGold(updatedState, playerId, goldEach)
   }
@@ -167,7 +167,7 @@ export function awardIceKill(state: GameState, _zone: string, nearbyAllies: stri
   return updatedState
 }
 
-/** Helper: add gold to a player. */
+/** Helper: add scrip to a player. */
 function updatePlayerGold(state: GameState, playerId: string, amount: number): GameState {
   const player = state.players[playerId]
   if (!player) return state
@@ -178,7 +178,7 @@ function updatePlayerGold(state: GameState, playerId: string, amount: number): G
       ...state.players,
       [playerId]: {
         ...player,
-        gold: player.gold + amount,
+        scrip: player.scrip + amount,
       },
     },
   }

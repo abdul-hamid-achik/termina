@@ -20,12 +20,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 310,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 4,
     ice: 18,
     kills: 0,
@@ -39,7 +39,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -67,11 +67,11 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     playerMap[p.id] = p
   }
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -226,12 +226,12 @@ describe('Ping Hero', () => {
       expect(hasBuff(updatedEnemy, 'silence')).toBe(true)
       const silence = updatedEnemy.buffs.find((b) => b.id === 'silence')
       // raw 2 = one gated action: a cast-applied disable is reaped same-tick.
-      expect(silence!.ticksRemaining).toBe(2)
+      expect(silence!.cyclesRemaining).toBe(2)
 
       expect(hasBuff(updatedEnemy, 'attackReduction')).toBe(true)
       const atkReduce = updatedEnemy.buffs.find((b) => b.id === 'attackReduction')
       expect(atkReduce!.stacks).toBe(20)
-      expect(atkReduce!.ticksRemaining).toBe(3)
+      expect(atkReduce!.cyclesRemaining).toBe(3)
     })
 
     it('deducts mana and sets cooldown', () => {
@@ -300,7 +300,7 @@ describe('Ping Hero', () => {
       expect(hasBuff(updated, 'tracepath_speed')).toBe(false)
 
       const vision = updated.buffs.find((b) => b.id === 'tracepath_vision')
-      expect(vision!.ticksRemaining).toBe(3)
+      expect(vision!.cyclesRemaining).toBe(3)
     })
 
     it('deducts mana and sets cooldown', () => {
@@ -355,14 +355,14 @@ describe('Ping Hero', () => {
       expect(hasBuff(result.state.players['e2']!, 'flood_dot')).toBe(true)
 
       const dot = result.state.players['e1']!.buffs.find((b) => b.id === 'flood_dot')
-      expect(dot!.ticksRemaining).toBe(3)
-      expect(dot!.stacks).toBe(60) // 180 / 3 = 60 per tick at R1
+      expect(dot!.cyclesRemaining).toBe(3)
+      expect(dot!.stacks).toBe(60) // 180 / 3 = 60 per cycle at R1
 
       // Slow buff applied
       expect(hasBuff(result.state.players['e1']!, 'slow')).toBe(true)
       const slow = result.state.players['e1']!.buffs.find((b) => b.id === 'slow')
       expect(slow!.stacks).toBe(40) // 40% slow
-      expect(slow!.ticksRemaining).toBe(3)
+      expect(slow!.cyclesRemaining).toBe(3)
     })
 
     it('does not affect allies', () => {
@@ -402,7 +402,7 @@ describe('Ping Hero', () => {
 
       const dot1 = result1.state.players['e1']!.buffs.find((b) => b.id === 'flood_dot')
       const dot2 = result2.state.players['e2']!.buffs.find((b) => b.id === 'flood_dot')
-      expect(dot2!.stacks).toBeGreaterThan(dot1!.stacks) // Higher damage per tick at R3
+      expect(dot2!.stacks).toBeGreaterThan(dot1!.stacks) // Higher damage per cycle at R3
     })
   })
 
@@ -413,7 +413,7 @@ describe('Ping Hero', () => {
       const state = makeState([player, enemy])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'p1', targetId: 'e1', damage: 50 },
       })
@@ -422,7 +422,7 @@ describe('Ping Hero', () => {
       expect(hasBuff(updatedEnemy, 'latency')).toBe(true)
       const latency = updatedEnemy.buffs.find((b) => b.id === 'latency')
       expect(latency!.stacks).toBe(1)
-      expect(latency!.ticksRemaining).toBe(1)
+      expect(latency!.cyclesRemaining).toBe(1)
       expect(latency!.source).toBe('p1')
     })
 
@@ -432,7 +432,7 @@ describe('Ping Hero', () => {
       const state = makeState([player, enemy])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'tick_end',
         payload: {},
       })
@@ -446,7 +446,7 @@ describe('Ping Hero', () => {
       const state = makeState([player, enemy])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'someone_else', targetId: 'e1', damage: 50 },
       })
@@ -460,7 +460,7 @@ describe('Ping Hero', () => {
       const state = makeState([player, enemy])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'p1', targetId: 'e1', damage: 50 },
       })
@@ -470,7 +470,7 @@ describe('Ping Hero', () => {
 
     it('adds +1 tick to the victim’s next ability cooldown and is consumed (the formerly-dead effect)', () => {
       const player = makePlayer({
-        buffs: [{ id: 'latency', stacks: 1, ticksRemaining: 1, source: 'enemy' }],
+        buffs: [{ id: 'latency', stacks: 1, cyclesRemaining: 1, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -486,7 +486,7 @@ describe('Ping Hero', () => {
   describe('Stun/Silence blocking', () => {
     it('prevents casting when stunned', () => {
       const player = makePlayer({
-        buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 1, source: 'enemy' }],
+        buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 1, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -499,7 +499,7 @@ describe('Ping Hero', () => {
 
     it('prevents casting when silenced', () => {
       const player = makePlayer({
-        buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 2, source: 'enemy' }],
+        buffs: [{ id: 'silence', stacks: 1, cyclesRemaining: 2, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

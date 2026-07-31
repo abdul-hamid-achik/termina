@@ -35,12 +35,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 5000,
     level: 1,
     xp: 0,
-    gold: 0,
+    scrip: 0,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 0,
     ice: 0,
     kills: 0,
@@ -54,7 +54,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -64,11 +64,11 @@ function makeState(players: PlayerState[]): GameState {
   const playerMap: Record<string, PlayerState> = {}
   for (const p of players) playerMap[p.id] = p
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -137,7 +137,7 @@ function castAtLevel(
     caster = applyBuff(caster, {
       id: 'feedbackLoop',
       stacks: 50,
-      ticksRemaining: 999,
+      cyclesRemaining: 999,
       source: 'p1',
     })
   }
@@ -145,7 +145,7 @@ function castAtLevel(
     caster = applyBuff(caster, {
       id: 'cachedEnergy',
       stacks: 100,
-      ticksRemaining: 9999,
+      cyclesRemaining: 9999,
       source: 'p1',
     })
   }
@@ -265,7 +265,7 @@ describe('ability scaling', () => {
 
       // If debuffs exist, the higher level should last at least as long
       if (debuff1 && debuff3) {
-        expect(debuff3.ticksRemaining).toBeGreaterThanOrEqual(debuff1.ticksRemaining)
+        expect(debuff3.cyclesRemaining).toBeGreaterThanOrEqual(debuff1.cyclesRemaining)
       }
       // At minimum, both casts should succeed (verified by no throw)
     })

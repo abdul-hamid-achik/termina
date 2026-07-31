@@ -127,18 +127,18 @@ describe('lobby page', () => {
     await nextTick()
     lobby.countdown = 4
     await nextTick()
-    expect(playSound).not.toHaveBeenCalledWith('tick')
+    expect(playSound).not.toHaveBeenCalledWith('cycle')
 
     for (const n of [3, 2, 1]) {
       lobby.countdown = n
       await nextTick()
     }
-    expect(playSound.mock.calls.filter(([name]) => name === 'tick')).toHaveLength(3)
+    expect(playSound.mock.calls.filter(([name]) => name === 'cycle')).toHaveLength(3)
 
     // 0 is the hand-off to the game screen, not a beat of its own.
     lobby.countdown = 0
     await nextTick()
-    expect(playSound.mock.calls.filter(([name]) => name === 'tick')).toHaveLength(3)
+    expect(playSound.mock.calls.filter(([name]) => name === 'cycle')).toHaveLength(3)
     wrapper.unmount()
   })
 

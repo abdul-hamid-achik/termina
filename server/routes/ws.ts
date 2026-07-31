@@ -364,16 +364,16 @@ export default defineWebSocketHandler({
           )
           // Send the current state immediately (instead of waiting up to a
           // full tick) plus the visible events missed while disconnected.
-          const payload = getReconnectPayload(parsed.gameId, ctx.playerId, parsed.lastTick)
+          const payload = getReconnectPayload(parsed.gameId, ctx.playerId, parsed.lastCycle)
           if (payload) {
             peer.send(
-              JSON.stringify({ type: 'full_state', tick: payload.tick, state: payload.state }),
+              JSON.stringify({ type: 'full_state', cycle: payload.cycle, state: payload.state }),
             )
             if (payload.events.length > 0) {
               peer.send(
                 JSON.stringify({
                   type: 'events',
-                  tick: payload.tick,
+                  cycle: payload.cycle,
                   events: payload.events,
                 }),
               )
@@ -412,7 +412,7 @@ export default defineWebSocketHandler({
           peer.send(
             JSON.stringify({
               type: 'full_state',
-              tick: statePayload.tick,
+              cycle: statePayload.cycle,
               state: statePayload.state,
             }),
           )
@@ -507,7 +507,7 @@ export default defineWebSocketHandler({
           )
           peer.send(JSON.stringify({ type: 'announcement', message: 'Joined game', level: 'info' }))
           // Send current state immediately so the client renders without waiting
-          // for the next tick broadcast — required for manual-tick dev games (no
+          // for the next cycle broadcast — required for manual-tick dev games (no
           // auto-loop), and a faster first paint for normal games too.
           const joinState = getReconnectPayload(parsed.gameId, ctx.playerId)
           if (joinState) {
@@ -516,7 +516,11 @@ export default defineWebSocketHandler({
             const myTeam = joinState.state.players[ctx.playerId]?.team
             if (myTeam) setPlayerTeam(ctx.playerId, myTeam)
             peer.send(
-              JSON.stringify({ type: 'full_state', tick: joinState.tick, state: joinState.state }),
+              JSON.stringify({
+                type: 'full_state',
+                cycle: joinState.cycle,
+                state: joinState.state,
+              }),
             )
           }
         } catch (err) {

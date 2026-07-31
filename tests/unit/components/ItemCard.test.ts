@@ -13,7 +13,7 @@ const base: ItemDef = {
     id: 'dagon_active',
     name: 'Energy Burst',
     description: 'Deal 300 code damage to a target hero.',
-    cooldownTicks: 18,
+    cooldownCycles: 18,
     targetType: 'enemy',
   },
 }
@@ -45,7 +45,7 @@ describe('ItemCard', () => {
         id: 'a',
         name: 'Cast',
         description: 'does a thing',
-        cooldownTicks: 10,
+        cooldownCycles: 10,
         bwCost: 75,
       },
     }).text()

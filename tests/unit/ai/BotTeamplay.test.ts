@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { Effect } from 'effect'
-import { processTick } from '~~/server/game/engine/GameLoop'
+import { processCycle } from '~~/server/game/engine/GameLoop'
 import { registerBots, cleanupGame } from '~~/server/game/ai/BotManager'
 import type { GameState, PlayerState, WaveUnitState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { resetWaveIdCounter, initializeTenant } from '~~/server/game/map/spawner'
-import { initializeAncients } from '~~/server/game/engine/AncientSystem'
+import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
 
 /**
- * Bot decisions driven through the REAL processTick → decideBotAction →
+ * Bot decisions driven through the REAL processCycle → decideBotAction →
  * submitAction → resolveActions path, which BotAI.test.ts (decisions in
  * isolation) cannot reach. Both cases here are about a command the bot emits
  * actually LANDING: a `burn` outside the resolver's INTEG window and a Tenant
@@ -34,12 +34,12 @@ function makeBot(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 400,
     level: 8,
     xp: 0,
-    gold: 0,
+    scrip: 0,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -59,25 +59,25 @@ function makeState(
   overrides: Partial<GameState> = {},
 ): GameState {
   return {
-    tick: 40,
+    cycle: 40,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
     },
     players,
     zones: initializeZoneStates(),
     waves: [],
     neutrals: [],
     ice: initializeIce(),
-    ancients: initializeAncients(),
+    terminals: initializeAncients(),
     caches: [],
     tenant: initializeTenant(),
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
-    dayNightTick: 0,
+    dayNightCycle: 0,
     ...overrides,
   }
 }
@@ -134,7 +134,7 @@ describe('BotAI - integrated teamplay', () => {
     )
 
     const result = Effect.runSync(
-      processTick(GAME_ID, makeState({ [bot.id]: bot, [foe.id]: foe }, { waves })),
+      processCycle(GAME_ID, makeState({ [bot.id]: bot, [foe.id]: foe }, { waves })),
     )
 
     expect(result.events.some((e) => e._tag === 'wave_burn')).toBe(true)
@@ -165,7 +165,7 @@ describe('BotAI - integrated teamplay', () => {
     let state = makeState(players)
     const startHp = state.tenant.integ
     for (let i = 0; i < 12; i++) {
-      state = Effect.runSync(processTick(GAME_ID, state)).state
+      state = Effect.runSync(processCycle(GAME_ID, state)).state
     }
 
     expect(state.tenant.integ).toBeLessThan(startHp)

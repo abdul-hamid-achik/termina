@@ -1,6 +1,6 @@
 import { LANE_ROUTES_CORE } from '~~/shared/constants/lanes'
 import { ZONE_MAP } from '~~/shared/constants/zones'
-import type { AncientState, TeamId } from '~~/shared/types/game'
+import type { TerminalState, TeamId } from '~~/shared/types/game'
 
 /**
  * The trace model (C1a / R3-07): your route as hop depth, one summary line
@@ -32,14 +32,6 @@ export interface RouteLine {
   hostiles: number
   /** True when this is the player's current route. */
   active: boolean
-}
-
-export interface TerminalState {
-  team: TeamId
-  alive: boolean
-  vulnerable: boolean
-  integ: number
-  maxInteg: number
 }
 
 export interface TraceModel {
@@ -89,9 +81,9 @@ export function buildTrace(input: {
     alive: boolean
     fogged?: boolean
   }>
-  ancients: Record<TeamId, AncientState>
+  terminals: Record<TeamId, TerminalState>
 }): TraceModel {
-  const { playerZone, playerTeam, ancients } = input
+  const { playerZone, playerTeam, terminals: terminalByTeam } = input
   const currentRoute = routeOfZone(playerZone, playerTeam)
   const hopIndex = hopIndexOf(playerZone, playerTeam)
 
@@ -123,8 +115,8 @@ export function buildTrace(input: {
     }
   })
 
-  const terminals: TerminalState[] = (['chaff', 'audit'] as TeamId[]).map((team) => {
-    const a = ancients[team]!
+  const terminalList: TerminalState[] = (['chaff', 'audit'] as TeamId[]).map((team) => {
+    const a = terminalByTeam[team]!
     return {
       team,
       alive: a.alive,
@@ -134,7 +126,7 @@ export function buildTrace(input: {
     }
   })
 
-  return { currentRoute, hopIndex, routes, contacts, terminals }
+  return { currentRoute, hopIndex, routes, contacts, terminals: terminalList }
 }
 
 /** Per-zone display payload (was asciiMapModel's ZoneDisplay — kept because the

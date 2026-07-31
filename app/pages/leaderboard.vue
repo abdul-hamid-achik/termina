@@ -18,7 +18,7 @@ interface LeaderboardEntry {
 
 interface ActiveGame {
   gameId: string
-  tick: number
+  cycle: number
   chaffKills: number
   auditKills: number
   chaffHeroes: string[]
@@ -61,8 +61,8 @@ const activeGames = computed(() => activeData.value?.games ?? [])
 const { user } = useUserSession()
 const meId = computed(() => (user.value?.id as string | undefined) ?? null)
 
-function gameTime(tick: number): string {
-  return formatTickClock(tick)
+function gameTime(cycle: number): string {
+  return formatTickClock(cycle)
 }
 </script>
 
@@ -94,7 +94,7 @@ function gameTime(tick: number): string {
               <span class="text-chaff">{{ g.chaffKills }}</span>
               <span class="mx-1 text-text-muted">vs</span>
               <span class="text-audit">{{ g.auditKills }}</span>
-              <span class="ml-3 text-text-dim">@ {{ gameTime(g.tick) }}</span>
+              <span class="ml-3 text-text-dim">@ {{ gameTime(g.cycle) }}</span>
             </div>
             <div class="text-[0.7rem] text-text-dim">
               <span class="text-chaff">{{ g.chaffHeroes.join(', ') }}</span>

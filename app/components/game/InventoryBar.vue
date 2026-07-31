@@ -33,7 +33,7 @@ const {
 
 function getItemCooldown(itemId: string): number {
   const cdBuff = props.buffs.find((b) => b.id === `item_cd_${itemId}`)
-  return cdBuff?.ticksRemaining ?? 0
+  return cdBuff?.cyclesRemaining ?? 0
 }
 
 const slots = computed<SlotView[]>(() => {
@@ -162,8 +162,8 @@ function formatStats(def: ItemDef): string[] {
         <div v-if="slot.def.active" class="mt-1 border-t border-border pt-1">
           <span class="text-ability">Active: {{ slot.def.active.name }}</span>
           <div class="text-text-dim">{{ slot.def.active.description }}</div>
-          <div v-if="slot.def.active.cooldownTicks" class="text-text-dim">
-            CD: <span class="text-text-primary">{{ slot.def.active.cooldownTicks }}c</span>
+          <div v-if="slot.def.active.cooldownCycles" class="text-text-dim">
+            CD: <span class="text-text-primary">{{ slot.def.active.cooldownCycles }}c</span>
           </div>
         </div>
         <div v-if="slot.def.passive" class="mt-1 border-t border-border pt-1">

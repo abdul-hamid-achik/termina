@@ -8,7 +8,7 @@ import { ZONE_MAP, ZONES } from '~~/shared/constants/zones'
  * An interactive, no-game topology primer for /learn — the trace over the real
  * zone records so a newcomer can read the routes as depth and learn the
  * movement rule by feel: click any zone to hop there (a real game auto-paths
- * one zone per tick). The primer teleports the explorer; a real game walks.
+ * one zone per cycle). The primer teleports the explorer; a real game walks.
  */
 
 // Every zone, browsable. Grouped by the zone record's own type.
@@ -41,7 +41,7 @@ const trace = computed(() =>
     playerZone: selected.value,
     playerTeam: 'chaff',
     contacts: [],
-    ancients: {
+    terminals: {
       chaff: { team: 'chaff', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
       audit: { team: 'audit', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
     },
@@ -59,7 +59,7 @@ function onZoneClick(id: string) {
       <TraceRail :trace="trace" />
     </div>
 
-    <!-- Adjacent zones: what arrives next tick — clickable to hop. -->
+    <!-- Adjacent zones: what arrives next cycle — clickable to hop. -->
     <div
       class="flex flex-wrap gap-1"
       data-testid="map-primer-adjacent"
@@ -103,8 +103,8 @@ function onZoneClick(id: string) {
       <span class="text-chaff">{{ adjacent.length }}</span> adjacent zone{{
         adjacent.length === 1 ? ' arrives' : 's arrive'
       }}
-      next tick (bright dashed). In a game you can order a move to ANY zone — your hero walks there
-      one zone per tick.
+      next cycle (bright dashed). In a game you can order a move to ANY zone — your hero walks there
+      one zone per cycle.
     </p>
   </div>
 </template>

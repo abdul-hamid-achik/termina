@@ -18,12 +18,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 280,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -37,7 +37,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -59,11 +59,11 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     playerMap[p.id] = p
   }
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -74,7 +74,7 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     neutrals: [],
     ice: [],
     caches: [],
-    tenant: { alive: false, integ: 0, maxInteg: 0, deathTick: null },
+    tenant: { alive: false, integ: 0, maxInteg: 0, deathCycle: null },
     backup: null,
     events: [],
     ...overrides,
@@ -231,7 +231,7 @@ describe('Echo Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
 
       const buff = result.state.players['p1']!.buffs.find((b) => b.id === 'phaseShift')
-      expect(buff?.ticksRemaining).toBe(1)
+      expect(buff?.cyclesRemaining).toBe(1)
     })
 
     it('scales BW cost with level', () => {
@@ -277,7 +277,7 @@ describe('Echo Hero', () => {
       player = applyBuff(player, {
         id: 'feedbackLoop',
         stacks: 50,
-        ticksRemaining: 999,
+        cyclesRemaining: 999,
         source: 'p1',
       })
       const state = makeState([player])
@@ -292,7 +292,7 @@ describe('Echo Hero', () => {
       player = applyBuff(player, {
         id: 'feedbackLoop',
         stacks: 50,
-        ticksRemaining: 999,
+        cyclesRemaining: 999,
         source: 'p1',
       })
       const enemy = makeEnemy({ zone: 'top-river' })
@@ -310,7 +310,7 @@ describe('Echo Hero', () => {
       player = applyBuff(player, {
         id: 'feedbackLoop',
         stacks: 50,
-        ticksRemaining: 999,
+        cyclesRemaining: 999,
         source: 'p1',
       })
       const enemy = makeEnemy()
@@ -328,7 +328,7 @@ describe('Echo Hero', () => {
       player = applyBuff(player, {
         id: 'feedbackLoop',
         stacks: 100,
-        ticksRemaining: 999,
+        cyclesRemaining: 999,
         source: 'p1',
       })
       const enemy = makeEnemy()
@@ -345,7 +345,7 @@ describe('Echo Hero', () => {
       player = applyBuff(player, {
         id: 'feedbackLoop',
         stacks: 50,
-        ticksRemaining: 999,
+        cyclesRemaining: 999,
         source: 'p1',
       })
       const enemy = makeEnemy()
@@ -363,7 +363,7 @@ describe('Echo Hero', () => {
       player = applyBuff(player, {
         id: 'feedbackLoop',
         stacks: 50,
-        ticksRemaining: 999,
+        cyclesRemaining: 999,
         source: 'p1',
       })
       const enemy = makeEnemy()
@@ -447,7 +447,7 @@ describe('Echo Hero', () => {
       player = applyBuff(player, {
         id: 'resonance',
         stacks: 3,
-        ticksRemaining: 30,
+        cyclesRemaining: 30,
         source: 'p1',
       })
 
@@ -465,7 +465,7 @@ describe('Echo Hero', () => {
       player = applyBuff(player, {
         id: 'resonance',
         stacks: 5,
-        ticksRemaining: 30,
+        cyclesRemaining: 30,
         source: 'p1',
       })
 
@@ -475,7 +475,7 @@ describe('Echo Hero', () => {
 
   describe('Passive: Resonance build-up (resolveHeroPassive)', () => {
     const attackEvent = (attackerId: string, targetId: string): GameEvent => ({
-      tick: 10,
+      cycle: 10,
       type: 'attack',
       payload: { attackerId, targetId },
     })
@@ -486,7 +486,7 @@ describe('Echo Hero', () => {
 
     it('ignores non-attack events (state unchanged)', () => {
       const state = makeState([makePlayer()])
-      expect(resolveHeroPassive(state, 'p1', { tick: 10, type: 'heal', payload: {} })).toBe(state)
+      expect(resolveHeroPassive(state, 'p1', { cycle: 10, type: 'heal', payload: {} })).toBe(state)
     })
 
     it('returns state unchanged for an unknown player', () => {
@@ -561,7 +561,7 @@ describe('Echo Hero', () => {
   describe('Stun/Silence blocking', () => {
     it('prevents casting when stunned', () => {
       const player = makePlayer({
-        buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 1, source: 'enemy' }],
+        buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 1, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -575,7 +575,7 @@ describe('Echo Hero', () => {
 
     it('prevents casting when silenced', () => {
       const player = makePlayer({
-        buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 2, source: 'enemy' }],
+        buffs: [{ id: 'silence', stacks: 1, cyclesRemaining: 2, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

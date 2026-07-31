@@ -1,18 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { Effect } from 'effect'
-import { processTick } from '~~/server/game/engine/GameLoop'
+import { processCycle } from '~~/server/game/engine/GameLoop'
 import { registerBots, cleanupGame } from '~~/server/game/ai/BotManager'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { resetWaveIdCounter, initializeTenant } from '~~/server/game/map/spawner'
-import { initializeAncients } from '~~/server/game/engine/AncientSystem'
+import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
 
 /**
  * Integrated regression for the bot-AI frontier standstill. Previously
  * decideBotAction gated all forward progress on `fastGameFactor() > 1`, which is
  * always false in production, so bots returned null and froze at the frontier —
  * never pushing, attacking, or buying. This drives the real
- * processTick -> getBotPlayerIds -> decideBotAction -> submitAction -> resolveActions
+ * processCycle -> getBotPlayerIds -> decideBotAction -> submitAction -> resolveActions
  * path (the one BotAI.test.ts can't, since it tests the decision in isolation)
  * and asserts bots make net forward progress out of their own half of the map.
  *
@@ -36,12 +36,12 @@ function makeBot(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 280,
     level: 1,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -116,37 +116,37 @@ describe('BotAI - integrated forward progress', () => {
     )
 
     let state: GameState = {
-      tick: 0,
+      cycle: 0,
       phase: 'playing',
       teams: {
-        chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
-        audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+        chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
+        audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
       },
       players,
       zones: initializeZoneStates(),
       waves: [],
       neutrals: [],
       ice: initializeIce(),
-      ancients: initializeAncients(),
+      terminals: initializeAncients(),
       caches: [],
       tenant: initializeTenant(),
       backup: null,
       events: [],
       surrenderVotes: { chaff: new Set(), audit: new Set() },
       timeOfDay: 'day',
-      dayNightTick: 0,
+      dayNightCycle: 0,
     }
 
     const TICKS = 60
     let crossedFrontierTick = -1
     for (let i = 0; i < TICKS; i++) {
-      const result = Effect.runSync(processTick(GAME_ID, state))
+      const result = Effect.runSync(processCycle(GAME_ID, state))
       state = result.state
       const alive = chaffBots
         .map((b) => state.players[b.id])
         .filter((p): p is PlayerState => !!p && p.alive)
       if (crossedFrontierTick < 0 && alive.some((p) => !isChaffOwnSide(p.zone))) {
-        crossedFrontierTick = state.tick
+        crossedFrontierTick = state.cycle
       }
     }
 

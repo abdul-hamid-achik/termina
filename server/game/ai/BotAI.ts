@@ -16,7 +16,7 @@ import { getTalentTree } from '~~/shared/constants/talents'
 import { findPath, getDistance, areAdjacent } from '~~/server/game/map/topology'
 import {
   WARD_LIMIT_PER_TEAM,
-  HARDEN_COOLDOWN_TICKS,
+  HARDEN_COOLDOWN_CYCLES,
   SELL_REFUND_RATIO,
   BURN_HP_THRESHOLD,
   BREACH_BW_COST,
@@ -24,7 +24,7 @@ import {
 } from '~~/shared/constants/balance'
 import { LANE_ROUTES } from '~~/shared/constants/lanes'
 import { ZONE_MAP } from '~~/shared/constants/zones'
-import { ANCIENT_ZONES } from '~~/server/game/engine/AncientSystem'
+import { TERMINAL_ZONES } from '~~/server/game/engine/TerminalSystem'
 import { fastGameFactor } from '~~/server/game/engine/fastGame'
 import { getAbilityLevel } from '~~/server/game/heroes/_base'
 import { getAbilityBwCost } from '~~/shared/utils/ability'
@@ -70,27 +70,29 @@ const DEFENSIVE_COMBAT_ITEMS = ['hardshell', 'spite_plate', 'mirror_shell']
 function itemOffCooldown(bot: PlayerState, item: string): boolean {
   return (
     bot.items.includes(item) &&
-    !bot.buffs.some((b) => b.id === `item_cd_${item}` && b.ticksRemaining > 0)
+    !bot.buffs.some((b) => b.id === `item_cd_${item}` && b.cyclesRemaining > 0)
   )
 }
 
 /**
- * Deterministic pseudo-random in [0, 1) from (id, tick). Keeps bot behavior
+ * Deterministic pseudo-random in [0, 1) from (id, cycle). Keeps bot behavior
  * reproducible across tests (Math.random would make assertion-based tests flaky).
  * Uses a simple xfnv1a-ish hash; quality doesn't matter, only uniformity.
  */
-function deterministicRoll(id: string, tick: number): number {
+function deterministicRoll(id: string, cycle: number): number {
   let hash = 2166136261
   for (let i = 0; i < id.length; i++) {
     hash = Math.imul(hash ^ id.charCodeAt(i), 16777619)
   }
-  hash = Math.imul(hash ^ tick, 16777619)
+  hash = Math.imul(hash ^ cycle, 16777619)
   return ((hash >>> 0) % 10000) / 10000
 }
 
 /** Magic-immune / invulnerable targets negate the pure code-burst items (Burnout, Ethereal). */
 function isAirgapTarget(p: PlayerState): boolean {
-  return p.buffs.some((b) => (b.id === 'airgap' || b.id === 'invulnerable') && b.ticksRemaining > 0)
+  return p.buffs.some(
+    (b) => (b.id === 'airgap' || b.id === 'invulnerable') && b.cyclesRemaining > 0,
+  )
 }
 
 const HARD_CONTROL_EFFECTS = new Set(['stun', 'silence', 'root', 'taunt', 'fear', 'hex', 'cyclone'])
@@ -101,7 +103,7 @@ const HARD_CONTROL_EFFECTS = new Set(['stun', 'silence', 'root', 'taunt', 'fear'
  * Airgapped targets cannot be breached; skip.
  */
 function needsBreach(target: PlayerState, ability: AbilityDef): boolean {
-  if (target.buffs.some((b) => b.id === 'breached' && b.ticksRemaining > 0)) return false
+  if (target.buffs.some((b) => b.id === 'breached' && b.cyclesRemaining > 0)) return false
   if (isAirgapTarget(target)) return false
   const hardControl = ability.effects.some((e) => HARD_CONTROL_EFFECTS.has(e.type))
   const primarilyCode =
@@ -418,12 +420,12 @@ type AbilitySlot = 'q' | 'w' | 'e' | 'r'
 function canCastAbility(bot: PlayerState, ability: AbilityDef, slot: AbilitySlot): boolean {
   // Mirror the ActionResolver gates — most critically the auto-level unlock
   // (R locks until level 6). Without it, a level-1 bot facing an enemy hero
-  // burns its one action per tick on a cast the resolver always rejects:
+  // burns its one action per cycle on a cast the resolver always rejects:
   // it never attacks, never earns XP, never levels — and a whole game of
   // bots in that state deadlocks the match forever.
   // The cost has to be the RANK cost, not the registry's rank-1 headline: a
   // levelled bot reading the flat number queues casts it cannot pay for (up to
-  // 2.2x short at rank 4) and the resolver rejects them, burning the tick.
+  // 2.2x short at rank 4) and the resolver rejects them, burning the cycle.
   return (
     getAbilityLevel(bot.level, slot) >= 1 &&
     bot.cooldowns[slot] === 0 &&
@@ -434,14 +436,14 @@ function canCastAbility(bot: PlayerState, ability: AbilityDef, slot: AbilitySlot
 // A few abilities consume a SELF-BUILT resource and are wasted — or outright
 // rejected by the resolver — when cast without it. The generic ['r','q','w','e']
 // cast priority is blind to those resources, so without a guard the bot spends
-// its one action per tick on a near-zero or auto-rejected cast instead of
+// its one action per cycle on a near-zero or auto-rejected cast instead of
 // building the resource (attacking / using its other abilities). Swept from the
 // hero resolvers, these are the only resource-gated casts:
 //   • cache R (Eviction): black damage EQUALS stored energy; W (Flush): shield
-//     equals it. At low energy R is a lone slow on a 50-tick cooldown and W a
+//     equals it. At low energy R is a lone slow on a 50-cycle cooldown and W a
 //     ~0 shield — hold until it's worth spending (Cache's build-then-burst).
 //   • echo E (Feedback Loop): the resolver HARD-FAILS at 0 stored stacks, so
-//     casting it then just burns the tick. Stacks build from attacks.
+//     casting it then just burns the cycle. Stacks build from attacks.
 const CACHE_MIN_ENERGY_TO_EVICT = 60
 const CACHE_MIN_ENERGY_TO_FLUSH = 30
 
@@ -568,11 +570,11 @@ export function shouldRetreatFromThreat(
   const enemyHeroes = getEnemyHeroesInZone(state, bot)
 
   // Tier 1: Critical INTEG — always retreat below the configured floor.
-  // Slower bots (reactionDelayTicks > 0) have a per-tick chance to NOT react
+  // Slower bots (reactionDelayTicks > 0) have a per-cycle chance to NOT react
   // yet, simulating slower reflexes. But a bot at <half the floor never delays.
   if (hpPercent < config.retreatHpPercent) {
     if (config.reactionDelayTicks > 0 && hpPercent > config.retreatHpPercent * 0.5) {
-      const roll = deterministicRoll(bot.id, state.tick)
+      const roll = deterministicRoll(bot.id, state.cycle)
       if (roll < config.reactionDelayTicks / 10) return false
     }
     return true
@@ -621,10 +623,10 @@ function tryGetAbilityCommand(
 ): Command | null {
   // Difficulty has to bite where a player can feel it. tryCombo already rolls
   // abilityComboChance for the scripted opener, but this fallback took no config
-  // at all — so every bot, easy included, fired its ultimate the tick it came off
+  // at all — so every bot, easy included, fired its ultimate the cycle it came off
   // cooldown and the combo roll only changed WHICH ability came out. Rolled on a
   // separate salt so a bot that fails its combo roll can still cast.
-  if (deterministicRoll(`ability_${bot.id}`, state.tick) > config.abilityComboChance) return null
+  if (deterministicRoll(`ability_${bot.id}`, state.cycle) > config.abilityComboChance) return null
   const hero = bot.heroId ? HEROES[bot.heroId] : null
   if (!hero) return null
   const alliesInZone = getAlliedHeroesInZone(state, bot)
@@ -645,7 +647,7 @@ function tryGetAbilityCommand(
         (e) => e.id === target.name || e.name === target.name || e.heroId === target.name,
       )
       if (enemy && needsBreach(enemy, ability)) {
-        if (bot.buffs.some((b) => b.id === 'item_cd_breach' && b.ticksRemaining > 0)) {
+        if (bot.buffs.some((b) => b.id === 'item_cd_breach' && b.cyclesRemaining > 0)) {
           // On cooldown — don't waste the cast into a closed target either;
           // fall through to the next ability.
           continue
@@ -692,7 +694,7 @@ function isSelfCastViable(ability: AbilityDef): boolean {
  * ally in the zone, or the bot itself — NEVER an enemy. The per-hero resolvers
  * for these abilities (e.g. cron.q buff, proxy.r position swap, sentry heal)
  * reject any target whose team differs from the caster's, so a bot that aimed
- * one at an enemy would simply burn its one action for the tick.
+ * one at an enemy would simply burn its one action for the cycle.
  *
  * `skipIfHealthy` is set for heal/shield/buff abilities so we don't waste mana
  * topping off a full-INTEG team; otherwise the cast always lands on a friendly
@@ -701,7 +703,7 @@ function isSelfCastViable(ability: AbilityDef): boolean {
  * When the bot is alone (no allies in zone) the only candidate is itself. Some
  * ally resolvers (cron.q buff, proxy.r position-swap) explicitly reject a
  * self-target with "Target must be an ally", so emitting a self-cast there
- * would burn the tick. We only fall back to self when the ability is a heal or
+ * would burn the cycle. We only fall back to self when the ability is a heal or
  * shield — exactly the cases the resolvers accept on the caster (sentry.q/w,
  * proxy.w, cron.w) — and skip the cast otherwise.
  */
@@ -782,7 +784,7 @@ function tryCombo(
   enemiesInZone: PlayerState[],
   config: BotDifficultyConfig,
 ): Command | null {
-  if (deterministicRoll(`combo_${bot.id}`, state.tick) > config.abilityComboChance) return null
+  if (deterministicRoll(`combo_${bot.id}`, state.cycle) > config.abilityComboChance) return null
   const heroId = bot.heroId
   if (!heroId) return null
   const combos = HERO_COMBOS[heroId]
@@ -801,7 +803,7 @@ function tryCombo(
         const newComboState: ComboState = {
           currentCombo: comboState.currentCombo,
           comboIndex: comboState.comboIndex + 1,
-          lastComboTick: state.tick,
+          lastComboTick: state.cycle,
         }
         comboStates.set(bot.id, newComboState)
         const target = getAbilityTarget(
@@ -827,13 +829,13 @@ function tryCombo(
             enemy &&
             ability &&
             needsBreach(enemy, ability) &&
-            !bot.buffs.some((b) => b.id === 'item_cd_breach' && b.ticksRemaining > 0)
+            !bot.buffs.some((b) => b.id === 'item_cd_breach' && b.cyclesRemaining > 0)
           ) {
             // Don't advance combo index — re-try this step next cycle after breach.
             comboStates.set(bot.id, {
               currentCombo: comboState.currentCombo,
               comboIndex: comboState.comboIndex,
-              lastComboTick: state.tick,
+              lastComboTick: state.cycle,
             })
             return { type: 'breach', target }
           }
@@ -877,7 +879,7 @@ function tryCombo(
       comboStates.set(bot.id, {
         currentCombo: [combo.name],
         comboIndex: 1,
-        lastComboTick: state.tick,
+        lastComboTick: state.cycle,
       })
       const target = getAbilityTarget(
         HEROES[heroId]!.abilities[firstAbility.ability],
@@ -901,20 +903,20 @@ function tryBuyItem(bot: PlayerState): Command | null {
   if (getItemCount(bot) >= 6) return null
   // Keep one of each defensive consumable stocked before core items
   for (const item of BOT_CONSUMABLES) {
-    if (!bot.items.includes(item) && bot.gold >= itemCost(item)) {
+    if (!bot.items.includes(item) && bot.scrip >= itemCost(item)) {
       return { type: 'buy', item }
     }
   }
   // Support bots keep an CAMTAP on hand for team vision (placed by
   // tryPlaceWard). Cheap, so bought before saving for the next core item.
   const role = bot.heroId ? HEROES[bot.heroId]?.role : undefined
-  if (role === 'support' && !bot.items.includes('camtap') && bot.gold >= itemCost('camtap')) {
+  if (role === 'support' && !bot.items.includes('camtap') && bot.scrip >= itemCost('camtap')) {
     return { type: 'buy', item: 'camtap' }
   }
   const buildOrder = buildOrderForRole(role)
   for (const itemId of buildOrder) {
     if (bot.items.includes(itemId)) continue
-    if (bot.gold >= itemCost(itemId)) {
+    if (bot.scrip >= itemCost(itemId)) {
       return { type: 'buy', item: itemId }
     }
     break
@@ -944,7 +946,7 @@ function teamHasWardInZone(state: GameState, zoneId: string, team: TeamId): bool
  * strategic cache/river zone it's standing in or next to — giving its team
  * (including any human ally) map vision where it matters. Mirrors placeWard's
  * gates (team under WARD_LIMIT, zone not already team-warded) and validateAction's
- * current-or-adjacent rule, so the `ward` lands instead of wasting the tick.
+ * current-or-adjacent rule, so the `ward` lands instead of wasting the cycle.
  */
 export function tryPlaceWard(state: GameState, bot: PlayerState): Command | null {
   if (!bot.items.includes('camtap')) return null
@@ -964,7 +966,7 @@ function tryBuySentryWard(bot: PlayerState, state: GameState): Command | null {
   const role = bot.heroId ? HEROES[bot.heroId]?.role : undefined
   if (role !== 'support') return null
   if (bot.items.includes('sniffer')) return null
-  if (bot.gold < itemCost('sniffer')) return null
+  if (bot.scrip < itemCost('sniffer')) return null
   // Only buy sentries when the enemy has invisibility-capable heroes
   const hasInvisEnemy = Object.values(state.players).some(
     (p) => p.team !== bot.team && p.alive && p.heroId && INVIS_HEROES.has(p.heroId),
@@ -1003,7 +1005,7 @@ function tryPlaceSentryWard(state: GameState, bot: PlayerState): Command | null 
 const TENANT_START_HP_FRACTION = 0.7
 /** Below this he is a steal target — dive in even without the full squad. */
 const TENANT_SNIPE_HP_FRACTION = 0.4
-/** Minimum level to open a fresh Tenant (he hits for TENANT_ATTACK a tick). */
+/** Minimum level to open a fresh Tenant (he hits for TENANT_ATTACK a cycle). */
 const TENANT_START_MIN_LEVEL = 8
 /** Allies (excluding the bot) that must already be near the pit to open. */
 const TENANT_START_MIN_ALLIES = 2
@@ -1025,19 +1027,19 @@ const TENANT_HOLD_MIN_HP_PERCENT = 45
 
 /**
  * Tick at which each team last committed to Tenant, keyed `${gameId}|${team}`.
- * Without it the start condition re-fires every tick it holds, so the whole team
+ * Without it the start condition re-fires every cycle it holds, so the whole team
  * abandons its lanes and lives in the pit. Cleared per game by `cleanupBotGameState`.
  */
 const tenantAttempts = new Map<string, number>()
 
 type TenantPhase = 'open' | 'committed' | 'cooling'
 
-function tenantAttemptPhase(key: string, tick: number): TenantPhase {
+function tenantAttemptPhase(key: string, cycle: number): TenantPhase {
   const started = tenantAttempts.get(key)
-  // A tick BEHIND the recorded start means a different game reused the key
+  // A cycle BEHIND the recorded start means a different game reused the key
   // (unit fixtures, a fresh match) — treat it as no attempt on record.
-  if (started === undefined || tick < started) return 'open'
-  const elapsed = tick - started
+  if (started === undefined || cycle < started) return 'open'
+  const elapsed = cycle - started
   if (elapsed < TENANT_ATTEMPT_WINDOW_TICKS) return 'committed'
   if (elapsed < TENANT_ATTEMPT_WINDOW_TICKS + TENANT_TEAM_COOLDOWN_TICKS) return 'cooling'
   return 'open'
@@ -1075,7 +1077,7 @@ function tryTenant(
   if (distance > TENANT_MAX_TRAVEL_DISTANCE) return null
 
   const key = `${gameId}|${bot.team}`
-  const phase = tenantAttemptPhase(key, state.tick)
+  const phase = tenantAttemptPhase(key, state.cycle)
   const hpFraction = tenant.maxInteg > 0 ? tenant.integ / tenant.maxInteg : 0
   const snipe = hpFraction < TENANT_SNIPE_HP_FRACTION
 
@@ -1097,7 +1099,7 @@ function tryTenant(
         getDistance(p.zone, 'hollow', hasZone) <= 2,
     ).length
     if (alliesNear < (snipe ? 1 : TENANT_START_MIN_ALLIES)) return null
-    tenantAttempts.set(key, state.tick)
+    tenantAttempts.set(key, state.cycle)
   }
 
   if (bot.zone === 'hollow') {
@@ -1131,7 +1133,7 @@ function tryBackup(
 }
 
 /** Buyback — when dead and the game is still winnable, buy back if the bot
- *  has enough gold and the cooldown is clear. Only when there's a fight to
+ *  has enough scrip and the cooldown is clear. Only when there's a fight to
  *  join (enemies near our structures) or the Ancient is threatened. */
 function tryBuyback(
   state: GameState,
@@ -1139,12 +1141,12 @@ function tryBuyback(
   hasZone?: (id: string) => boolean,
 ): Command | null {
   if (bot.alive) return null
-  if (bot.respawnTick === null) return null
+  if (bot.respawnCycle === null) return null
   // Can't buyback if on cooldown
-  if (bot.buybackCooldown !== undefined && state.tick < bot.buybackCooldown) return null
-  if (bot.gold < bot.buybackCost) return null
+  if (bot.buybackCooldown !== undefined && state.cycle < bot.buybackCooldown) return null
+  if (bot.scrip < bot.buybackCost) return null
   // Don't buyback if respawn is imminent (within 2 ticks)
-  if (bot.respawnTick - state.tick <= 2) return null
+  if (bot.respawnCycle - state.cycle <= 2) return null
   // Buyback when the Ancient is under threat or allies are fighting near our base
   const enemyTeam: TeamId = bot.team === 'chaff' ? 'audit' : 'chaff'
   const ourBaseZone = bot.team === 'chaff' ? 'chaff-base' : 'audit-base'
@@ -1179,8 +1181,8 @@ function cheapestSellableItem(bot: PlayerState): string | null {
 function tryGlyph(state: GameState, bot: PlayerState): Command | null {
   // Harden is a team command — any teammate can issue it. Check cooldown.
   const teamState = state.teams[bot.team]
-  if (teamState.hardenUsedTick !== null) {
-    if (state.tick - teamState.hardenUsedTick < HARDEN_COOLDOWN_TICKS) return null
+  if (teamState.hardenUsedCycle !== null) {
+    if (state.cycle - teamState.hardenUsedCycle < HARDEN_COOLDOWN_CYCLES) return null
   }
   // Only harden when an enemy hero is attacking one of our ice that's low
   const ourIce = state.ice.filter((t) => t.team === bot.team && t.alive)
@@ -1293,12 +1295,12 @@ function tryFarmJungle(
 /**
  * Burn an allied wave out from under the enemy laner. Mirrors resolveDenyPhase's
  * window exactly — own team, at or below BURN_HP_THRESHOLD of the INTEG it SPAWNED
- * with — so the command resolves instead of silently burning the tick, and uses
+ * with — so the command resolves instead of silently burning the cycle, and uses
  * the zone-local index the resolver reads.
  *
  * Only fires with an enemy hero in the zone: with nobody to burn, killing your
- * own wave for half gold just weakens your wave. Callers therefore place it in
- * the combat branch, below abilities, as a better use of a tick than one more
+ * own wave for half scrip just weakens your wave. Callers therefore place it in
+ * the combat branch, below abilities, as a better use of a cycle than one more
  * right-click on a hero.
  */
 function tryBurn(state: GameState, bot: PlayerState, config: BotDifficultyConfig): Command | null {
@@ -1321,39 +1323,39 @@ function tryBurn(state: GameState, bot: PlayerState, config: BotDifficultyConfig
 
 /**
  * The wave a bot swings at. On a failed last-hit roll it drops to the
- * SECOND-lowest wave rather than to no action at all: same tick spent, same
- * damage dealt into the wave, only the gold is missed. Returning null on a miss
+ * SECOND-lowest wave rather than to no action at all: same cycle spent, same
+ * damage dealt into the wave, only the scrip is missed. Returning null on a miss
  * was the original standstill bug — bots stopped out-clearing the incoming wave
  * and never reached a ice (pinned by BotForwardProgress).
  */
 function pickWaveTarget(
   enemyWaves: WaveUnitState[],
   bot: PlayerState,
-  tick: number,
+  cycle: number,
   config: BotDifficultyConfig,
 ): WaveUnitState {
   const byHp = [...enemyWaves].sort((a, b) => a.integ - b.integ)
   const lowest = byHp[0]!
   if (byHp.length < 2) return lowest
-  if (deterministicRoll(`lasthit_${bot.id}`, tick) < config.lastHitAccuracy) return lowest
+  if (deterministicRoll(`lasthit_${bot.id}`, cycle) < config.lastHitAccuracy) return lowest
   return byHp[1]!
 }
 
 /** Attack the enemy Ancient when in the enemy base and it is vulnerable. */
 function tryAttackAncient(state: GameState, bot: PlayerState): Command | null {
   const enemyTeam: TeamId = bot.team === 'chaff' ? 'audit' : 'chaff'
-  if (bot.zone !== ANCIENT_ZONES[enemyTeam]) return null
+  if (bot.zone !== TERMINAL_ZONES[enemyTeam]) return null
   // Optional chaining guards old snapshots/fixtures created before Ancients existed
-  const ancient = state.ancients?.[enemyTeam]
+  const ancient = state.terminals?.[enemyTeam]
   if (!ancient || !ancient.alive || !ancient.vulnerable) return null
-  return { type: 'attack', target: { kind: 'ancient' } }
+  return { type: 'attack', target: { kind: 'terminal' } }
 }
 
 /**
  * Pick a talent when the bot has reached a tier but not chosen yet. Deterministic
  * (no RNG, for replayable sims): prefer a concrete power talent (stat / damage
  * boost) over a situational one, else take the first option. select_talent is an
- * out-of-band special action, but decideBotAction returns one command per tick,
+ * out-of-band special action, but decideBotAction returns one command per cycle,
  * so we only offer this when the bot has nothing more urgent to do (see caller).
  */
 function tryPickTalent(bot: PlayerState): Command | null {
@@ -1375,7 +1377,7 @@ function tryPickTalent(bot: PlayerState): Command | null {
  * Mid-fight item micro for tactically-aware bots. Returns a `use` for one owned,
  * off-cooldown combat active (self-cast or targeted), or null. Called only when
  * enemy heroes share the bot's zone (the combat block), so it never fires out of
- * a fight. One use per tick, naturally rate-limited by each item's cooldown.
+ * a fight. One use per cycle, naturally rate-limited by each item's cooldown.
  *
  * Gated on `threatAssessment` so naive (easy) bots stay naive while medium+ bots
  * stop sitting on their items — the most visible "bots ignore their inventory"
@@ -1392,7 +1394,7 @@ function tryPickTalent(bot: PlayerState): Command | null {
  *    makes its victim invulnerable, so it removes a second threat rather than
  *    shielding the one we're trying to kill. Skipped in a 1v1.
  *  - Stack Overflow (double next ability) only when an ability is ready to spend
- *    the charge next tick, so it's never wasted on a pure right-click.
+ *    the charge next cycle, so it's never wasted on a pure right-click.
  */
 export function tryUseCombatItem(
   bot: PlayerState,
@@ -1478,7 +1480,7 @@ export function decideBotAction(
     // Buyback when the game needs us (Ancient threatened or allies teamfighting)
     const buybackCmd = tryBuyback(state, bot, hasZone)
     if (buybackCmd) return buybackCmd
-    if (bot.respawnTick !== null && state.tick >= bot.respawnTick) {
+    if (bot.respawnCycle !== null && state.cycle >= bot.respawnCycle) {
       const fountain = getFountainZone(bot.team)
       if (bot.zone !== fountain) {
         return { type: 'move', zone: fountain }
@@ -1502,7 +1504,7 @@ export function decideBotAction(
       if (
         nextCore &&
         sellItem &&
-        bot.gold + Math.floor(itemCost(sellItem) * SELL_REFUND_RATIO) >= itemCost(nextCore)
+        bot.scrip + Math.floor(itemCost(sellItem) * SELL_REFUND_RATIO) >= itemCost(nextCore)
       ) {
         return { type: 'sell', item: sellItem }
       }
@@ -1566,7 +1568,7 @@ export function decideBotAction(
     }
     return null
   }
-  // Spend a calm tick (no enemy hero in zone) banking an unlocked talent so bots
+  // Spend a calm cycle (no enemy hero in zone) banking an unlocked talent so bots
   // aren't permanently down 1–4 talents on human players, then dropping a ward
   // on a strategic spot for team vision.
   if (enemyHeroes.length === 0) {
@@ -1593,7 +1595,7 @@ export function decideBotAction(
   const enemyWaves = getEnemyWavesInZone(state, bot)
   if (enemyHeroes.length > 0) {
     // Pop a combat item (Hardshell/Spite Plate to survive, Stack Overflow/Veil to amp)
-    // before committing to a combo or right-click. One use per tick, naturally
+    // before committing to a combo or right-click. One use per cycle, naturally
     // rate-limited by each item's cooldown, so this can't starve the bot's
     // damage — it falls through to the combo/ability/attack below once items
     // are spent or on cooldown.
@@ -1604,7 +1606,7 @@ export function decideBotAction(
     const abilityCmd = tryGetAbilityCommand(state, bot, enemyHeroes, config)
     if (abilityCmd) return abilityCmd
     // Below the burst, above the right-click: denying a dying allied wave
-    // starves the laner opposite of gold + XP for the same one action.
+    // starves the laner opposite of scrip + XP for the same one action.
     const denyCmd = tryBurn(state, bot, config)
     if (denyCmd) return denyCmd
     const target = enemyHeroes.reduce((a, b) => (a.integ < b.integ ? a : b))
@@ -1625,9 +1627,9 @@ export function decideBotAction(
   // their base to finish it. The retreat-from-threat check already ran above,
   // so a low-INTEG bot still backs off rather than feeding into base defenses.
   const enemyTeamForClose: TeamId = bot.team === 'chaff' ? 'audit' : 'chaff'
-  const exposedAncient = state.ancients?.[enemyTeamForClose]
-  if (exposedAncient?.alive && exposedAncient.vulnerable) {
-    const baseZone = ANCIENT_ZONES[enemyTeamForClose]
+  const exposedTerminal = state.terminals?.[enemyTeamForClose]
+  if (exposedTerminal?.alive && exposedTerminal.vulnerable) {
+    const baseZone = TERMINAL_ZONES[enemyTeamForClose]
     if (bot.zone !== baseZone) {
       const path = findPath(bot.zone, baseZone, hasZone)
       if (path.length > 1) return { type: 'move', zone: path[1]! }
@@ -1648,7 +1650,7 @@ export function decideBotAction(
   // wave; it must never return null, which is what left production bots idling
   // in lane instead of pushing — one half of the "bots look stuck" report.
   if (enemyWaves.length > 0) {
-    const waveTarget = pickWaveTarget(enemyWaves, bot, state.tick, config)
+    const waveTarget = pickWaveTarget(enemyWaves, bot, state.cycle, config)
     // Wave targets use zone-local indices (Nth wave in the attacker's zone)
     const waveIdx = state.waves.filter((c) => c.zone === bot.zone).indexOf(waveTarget)
     return { type: 'attack', target: { kind: 'wave', index: waveIdx } }

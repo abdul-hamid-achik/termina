@@ -17,7 +17,7 @@ describe('standing attack orders', () => {
     // the quiet first frame of a match.
     await game.patch((s) => ({
       ...s,
-      tick: 60,
+      cycle: 60,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-t1-audit' } },
     }))
 
@@ -31,7 +31,7 @@ describe('standing attack orders', () => {
     expect(iceHits()).toBe(1)
     expect((await game.me()).attackTarget).toEqual({ kind: 'ice', zone: 'mid-t1-audit' })
 
-    // Nothing submitted this tick — the order carries itself.
+    // Nothing submitted this cycle — the order carries itself.
     await game.tick()
     expect(iceHits()).toBe(1)
     expect((await game.me()).attackTarget).toEqual({ kind: 'ice', zone: 'mid-t1-audit' })
@@ -97,7 +97,7 @@ describe('standing attack orders', () => {
     // leaves meanwhile. The re-swing then names a hero who is provably NOT in
     // the zone — which is exactly the shape of the VISION_BYPASS anti-cheat
     // hunts for. Judged as a cheat it would be dropped before the attack phase,
-    // so the order could never retire: a permanent per-tick violation log.
+    // so the order could never retire: a permanent per-cycle violation log.
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
 
     game.attackHero(ENEMY)
@@ -110,7 +110,7 @@ describe('standing attack orders', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 3, source: ENEMY }],
+          buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 3, source: ENEMY }],
         },
         [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t1-audit' },
       },
@@ -137,7 +137,7 @@ describe('standing attack orders', () => {
       ...s,
       players: {
         ...s.players,
-        [HUMAN]: { ...s.players[HUMAN]!, integ: 0, alive: false, respawnTick: null },
+        [HUMAN]: { ...s.players[HUMAN]!, integ: 0, alive: false, respawnCycle: null },
       },
     }))
     await game.tick()

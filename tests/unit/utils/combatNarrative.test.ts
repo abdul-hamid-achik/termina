@@ -35,8 +35,8 @@ const ctx: NarrativeContext = {
   itemName: (id) => `Item(${id})`,
 }
 
-function ev(type: string, payload: Record<string, unknown>, tick = 1): GameEvent {
-  return { tick, type, payload }
+function ev(type: string, payload: Record<string, unknown>, cycle = 1): GameEvent {
+  return { cycle, type, payload }
 }
 
 describe('eventToLine: salience', () => {
@@ -175,8 +175,8 @@ describe('eventToLine: kills', () => {
   })
 })
 
-describe('eventToLine: gold noise suppression', () => {
-  it('drops redundant last-hit gold lines', () => {
+describe('eventToLine: scrip noise suppression', () => {
+  it('drops redundant last-hit scrip lines', () => {
     expect(
       eventToLine(ev('gold_change', { playerId: 'me', amount: 40, reason: 'wave last hit' }), ctx),
     ).toBeNull()
@@ -184,12 +184,12 @@ describe('eventToLine: gold noise suppression', () => {
       eventToLine(ev('gold_change', { playerId: 'me', amount: 4, reason: 'passive' }), ctx),
     ).toBeNull()
   })
-  it('keeps meaningful gold lines', () => {
+  it('keeps meaningful scrip lines', () => {
     const line = eventToLine(
       ev('gold_change', { playerId: 'me', amount: -150, reason: 'buyback' }),
       ctx,
     )!
-    expect(line.text).toContain('lost 150g')
+    expect(line.text).toContain('lost 150sc')
   })
 })
 
@@ -212,7 +212,7 @@ describe('eventToLine: previously-orphaned events get real text', () => {
   })
   it('narrates tenant, caches, backup, wards', () => {
     expect(
-      eventToLine(ev('tenant_killed', { killerTeam: 'chaff', goldAwarded: 600 }), ctx)!.text,
+      eventToLine(ev('tenant_killed', { killerTeam: 'chaff', scripAwarded: 600 }), ctx)!.text,
     ).toContain('Tenant')
     expect(
       eventToLine(
@@ -233,12 +233,12 @@ describe('eventToLine: previously-orphaned events get real text', () => {
       )!.text,
     ).toContain('ward')
   })
-  it('confirms item buys and sells with the gold delta', () => {
+  it('confirms item buys and sells with the scrip delta', () => {
     const buy = eventToLine(
       ev('item_purchased', { playerId: 'me', itemId: 'jump_shunt', cost: 500 }),
       ctx,
     )!
-    expect(buy.type).toBe('gold')
+    expect(buy.type).toBe('scrip')
     expect(buy.text).toContain('acquired')
     expect(buy.text).toContain('Item(jump_shunt)')
     expect(buy.text).toContain('-500')
@@ -247,13 +247,13 @@ describe('eventToLine: previously-orphaned events get real text', () => {
       ev('item_sold', { playerId: 'me', itemId: 'scrap_lot', refund: 25 }),
       ctx,
     )!
-    expect(sell.type).toBe('gold')
+    expect(sell.type).toBe('scrip')
     expect(sell.text).toContain('sold')
     expect(sell.text).toContain('Item(scrap_lot)')
     expect(sell.text).toContain('+25')
   })
   it('keeps the exact victory phrasing for the core', () => {
-    const line = eventToLine(ev('ancient_destroyed', { team: 'audit', killerTeam: 'chaff' }), ctx)!
+    const line = eventToLine(ev('terminal_destroyed', { team: 'audit', killerTeam: 'chaff' }), ctx)!
     expect(line.type).toBe('victory')
     expect(line.text).toBe('CHAFF destroyed the AUDIT Terminal!')
     expect(line.text).not.toContain('ice')
@@ -264,8 +264,8 @@ describe('eventToLine: previously-orphaned events get real text', () => {
   })
 
   it('explains the two failures that used to be emitted then silently dropped', () => {
-    // Both are the server's answer to an action the player just spent a tick
-    // on — swallowing them left the tick looking like it did nothing at all.
+    // Both are the server's answer to an action the player just spent a cycle
+    // on — swallowing them left the cycle looking like it did nothing at all.
     const invuln = eventToLine(ev('ice_invulnerable', { zone: 'mid-t1-chaff' }), ctx)!
     expect(invuln.text).toContain('Harden')
     expect(invuln.text).toContain('mid-t1-chaff')
@@ -293,7 +293,7 @@ describe('buildCombatLines', () => {
       ev('kill', { killerId: 'me', victimId: 'enemy1', assisters: [] }, 3),
     ]
     const lines = buildCombatLines(events, ctx, collapseStructureDamage)
-    // two ice hits collapse to one running line; the last-hit gold is dropped; kill remains
+    // two ice hits collapse to one running line; the last-hit scrip is dropped; kill remains
     expect(lines).toHaveLength(2)
     const ice = lines.find((l) => l.dedupKey)!
     expect(ice.count).toBe(2)
@@ -351,8 +351,8 @@ describe('deriveKillFeed', () => {
     const feed = deriveKillFeed(
       [
         ev('ice_kill', { killerTeam: 'chaff', team: 'audit', zone: 'mid-t1-audit' }, 1),
-        ev('tenant_killed', { killerTeam: 'chaff', goldAwarded: 600 }, 2),
-        ev('ancient_destroyed', { killerTeam: 'chaff', team: 'audit' }, 3),
+        ev('tenant_killed', { killerTeam: 'chaff', scripAwarded: 600 }, 2),
+        ev('terminal_destroyed', { killerTeam: 'chaff', team: 'audit' }, 3),
       ],
       ctx,
     )
@@ -422,9 +422,9 @@ describe('actorSalience for single-actor events', () => {
 
 describe('eventToLine: narration coverage for every event type', () => {
   const cases: Array<[string, Record<string, unknown>, string]> = [
-    ['death', { playerId: 'enemy1', respawnTick: 5 }, 'terminated'],
+    ['death', { playerId: 'enemy1', respawnCycle: 5 }, 'terminated'],
     ['heal', { sourceId: 'me', targetId: 'ally1', amount: 50 }, 'restored 50'],
-    ['wave_strip', { playerId: 'me', waveType: 'line', goldAwarded: 40 }, 'last-hit'],
+    ['wave_strip', { playerId: 'me', waveType: 'line', scripAwarded: 40 }, 'last-hit'],
     ['wave_burn', { playerId: 'me', waveType: 'line' }, 'burned'],
     ['ability_used', { playerId: 'me', abilityId: 'q', targetId: 'enemy1' }, 'cast'],
     ['item_purchased', { playerId: 'me', itemId: 'burnout', cost: 2700 }, 'acquired'],
@@ -494,7 +494,7 @@ describe('eventToLine: crowd control', () => {
         sourceId: 'enemy1',
         targetId: 'me',
         status: 'root',
-        ticksRemaining: 1,
+        cyclesRemaining: 1,
       }),
       ctx,
     )!
@@ -506,7 +506,7 @@ describe('eventToLine: crowd control', () => {
   it('renders each disable id under its player-facing name', () => {
     const named = (status: string) =>
       eventToLine(
-        ev('status_applied', { sourceId: 'me', targetId: 'enemy1', status, ticksRemaining: 2 }),
+        ev('status_applied', { sourceId: 'me', targetId: 'enemy1', status, cyclesRemaining: 2 }),
         ctx,
       )!.text
     expect(named('stun')).toContain('STUNNED')
@@ -528,7 +528,7 @@ describe('eventToLine: crowd control', () => {
 
 describe('eventToLine: cause-before-effect salience', () => {
   it('ranks an enemy cast aimed at me as mine-in, not bystander noise', () => {
-    // The story view sorts a tick by salience, so an actor-only salience put the
+    // The story view sorts a cycle by salience, so an actor-only salience put the
     // enemy's spell (world) BELOW the damage it caused (mine-in) — the log
     // literally printed the effect before the cause.
     const line = eventToLine(
@@ -567,7 +567,7 @@ describe('eventToLine: cause-before-effect salience', () => {
 })
 
 /**
- * The drift guard. Every gap this wave closed (kill gold, status effects, the
+ * The drift guard. Every gap this wave closed (kill scrip, status effects, the
  * two suppressed failures) was the same defect: an event the engine emits that
  * the narrative layer silently forgets. Enumerate the union from its own source
  * so a new event type must either render a line or be added to the allow-list
@@ -624,10 +624,10 @@ describe('narration drift guard', () => {
     destination: 'mid-river',
     amount: 10,
     damage: 10,
-    goldAwarded: 40,
+    scripAwarded: 40,
     cost: 100,
     refund: 25,
-    // A reason the client does NOT treat as farm noise — gold suppression is
+    // A reason the client does NOT treat as farm noise — scrip suppression is
     // content-based (see REDUNDANT_GOLD), never type-based.
     reason: 'hero kill',
     abilityId: 'q',
@@ -635,7 +635,7 @@ describe('narration drift guard', () => {
     talentName: 'Sharp Edge',
     message: 'power spike',
     status: 'stun',
-    ticksRemaining: 2,
+    cyclesRemaining: 2,
     remainingTicks: 12,
     newLevel: 6,
     waveType: 'line',
@@ -648,7 +648,7 @@ describe('narration drift guard', () => {
     votesFor: 1,
     votesNeeded: 3,
     source: 'intercept_shell',
-    respawnTick: 5,
+    respawnCycle: 5,
     heroId: 'echo',
   }
 
@@ -678,17 +678,17 @@ describe('narration drift guard', () => {
 
 describe('combatLog label helpers', () => {
   it('ancientLabel resolves the team Terminal, or null for non-ancient ids', () => {
-    expect(ancientLabel('ancient_chaff')).toBe('the CHAFF Terminal')
-    expect(ancientLabel('ancient_audit')).toBe('the AUDIT Terminal')
+    expect(ancientLabel('terminal_chaff')).toBe('the CHAFF Terminal')
+    expect(ancientLabel('terminal_audit')).toBe('the AUDIT Terminal')
     // Unknown team falls back to a readable label rather than null/crash.
-    expect(ancientLabel('ancient_neutral')).toBe('the neutral Terminal')
+    expect(ancientLabel('terminal_neutral')).toBe('the neutral Terminal')
     expect(ancientLabel('ice_mid-t1-chaff')).toBeNull()
     expect(ancientLabel('hero_echo')).toBeNull()
   })
 
   it('isStructureTarget is true only for ice/ancient string ids', () => {
     expect(isStructureTarget('ice_mid-t1-chaff')).toBe(true)
-    expect(isStructureTarget('ancient_audit')).toBe(true)
+    expect(isStructureTarget('terminal_audit')).toBe(true)
     expect(isStructureTarget('hero_echo')).toBe(false)
     expect(isStructureTarget('creep_3')).toBe(false)
     // Non-string ids (null/undefined/number) are not structures.
@@ -711,13 +711,13 @@ describe('collapseStructureDamage (direct)', () => {
 
   it('collapses consecutive same-key lines, accumulating count + total', () => {
     const lines: CombatLine[] = [
-      { tick: 1, text: 'You hit the Terminal', type: 'damage', dedupKey: 'k', dmgAmount: 70 },
-      { tick: 2, text: 'You hit the Terminal', type: 'damage', dedupKey: 'k', dmgAmount: 50 },
+      { cycle: 1, text: 'You hit the Terminal', type: 'damage', dedupKey: 'k', dmgAmount: 70 },
+      { cycle: 2, text: 'You hit the Terminal', type: 'damage', dedupKey: 'k', dmgAmount: 50 },
     ]
     const out = collapseStructureDamage(lines, fmt)
     expect(out).toHaveLength(1)
     expect(out[0]!.count).toBe(2)
-    expect(out[0]!.tick).toBe(2) // keeps the latest tick
+    expect(out[0]!.cycle).toBe(2) // keeps the latest cycle
     expect(out[0]!.text).toBe('You hit the Terminal ×2 (120)')
     // internal bookkeeping fields are stripped from the result
     expect('total' in out[0]!).toBe(false)
@@ -726,17 +726,17 @@ describe('collapseStructureDamage (direct)', () => {
 
   it('treats a missing dmgAmount as 0 when accumulating', () => {
     const lines: CombatLine[] = [
-      { tick: 1, text: 'hit', type: 'damage', dedupKey: 'k' },
-      { tick: 2, text: 'hit', type: 'damage', dedupKey: 'k' },
+      { cycle: 1, text: 'hit', type: 'damage', dedupKey: 'k' },
+      { cycle: 2, text: 'hit', type: 'damage', dedupKey: 'k' },
     ]
     expect(collapseStructureDamage(lines, fmt)[0]!.text).toBe('hit ×2 (0)')
   })
 
   it('passes non-dedup lines through and a gap resets the run', () => {
     const lines: CombatLine[] = [
-      { tick: 1, text: 'A', type: 'damage', dedupKey: 'k', dmgAmount: 10 },
-      { tick: 2, text: 'kill', type: 'kill' }, // no dedupKey → passthrough + gap
-      { tick: 3, text: 'A', type: 'damage', dedupKey: 'k', dmgAmount: 10 },
+      { cycle: 1, text: 'A', type: 'damage', dedupKey: 'k', dmgAmount: 10 },
+      { cycle: 2, text: 'kill', type: 'kill' }, // no dedupKey → passthrough + gap
+      { cycle: 3, text: 'A', type: 'damage', dedupKey: 'k', dmgAmount: 10 },
     ]
     const out = collapseStructureDamage(lines, fmt)
     expect(out).toHaveLength(3) // the gap prevents collapsing across it
@@ -754,8 +754,8 @@ describe('eventToLine: remaining event-type lines', () => {
   })
   it('wave_strip → last-hit with gold', () => {
     expect(
-      line('wave_strip', { playerId: 'me', waveType: 'line', goldAwarded: 40 })!.text,
-    ).toContain('last-hit a line wave (+40g)')
+      line('wave_strip', { playerId: 'me', waveType: 'line', scripAwarded: 40 })!.text,
+    ).toContain('last-hit a line wave (+40sc)')
   })
   it('wave_burn → burn line', () => {
     expect(line('wave_burn', { playerId: 'me', waveType: 'sweep' })!.text).toContain(
@@ -820,7 +820,7 @@ describe('eventToLine: semantic hierarchy', () => {
   it('types a hero death as a headline, not as chip damage', () => {
     // A hero dying used to render `damage` — the same red, the same weight as a
     // wave taking 9 off a ice — and the OBJ filter dropped it entirely.
-    const death = eventToLine(ev('death', { playerId: 'enemy1', respawnTick: 20 }), ctx)!
+    const death = eventToLine(ev('death', { playerId: 'enemy1', respawnCycle: 20 }), ctx)!
     expect(death.type).toBe('kill')
   })
 
@@ -846,7 +846,7 @@ describe('eventToLine: semantic hierarchy', () => {
   })
 })
 
-describe('eventToLine: damage metadata for the tick recap', () => {
+describe('eventToLine: damage metadata for the cycle recap', () => {
   it('carries the amount and both labels on hero damage, not only structure chip', () => {
     const line = eventToLine(
       ev('damage', { sourceId: 'enemy1', targetId: 'me', amount: 84, damageType: 'kinetic' }),
@@ -861,7 +861,7 @@ describe('eventToLine: damage metadata for the tick recap', () => {
 
   it('does NOT carry a trap hit — the paired damage event already does', () => {
     // REGRESSION: the engine emits BOTH trap_triggered and a damage event for one
-    // trap hit. Giving this line a dmgAmount made the per-tick recap, which sums
+    // trap hit. Giving this line a dmgAmount made the per-cycle recap, which sums
     // dmgAmount across lines, report every trap at double its real damage.
     const line = eventToLine(
       ev('trap_triggered', { owner: 'enemy1', targetId: 'me', zone: 'mid-river', damage: 100 }),

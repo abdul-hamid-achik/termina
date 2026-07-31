@@ -12,7 +12,7 @@ import type { KillFeedEntry, KillCategory } from '~/utils/combatNarrative'
 const props = withDefaults(
   defineProps<{
     entries: KillFeedEntry[]
-    currentTick: number
+    currentCycle: number
     /** How many ticks a headline stays on screen (~4s/tick). */
     window?: number
     /** Max simultaneous banners. */
@@ -22,9 +22,9 @@ const props = withDefaults(
 )
 
 const recent = computed(() => {
-  const cutoff = props.currentTick - props.window
+  const cutoff = props.currentCycle - props.window
   return props.entries
-    .filter((e) => e.tick >= cutoff && e.tick <= props.currentTick)
+    .filter((e) => e.cycle >= cutoff && e.cycle <= props.currentCycle)
     .slice(-props.max)
 })
 
@@ -36,7 +36,7 @@ const categoryClass: Record<KillCategory, string> = {
 }
 
 function entryKey(e: KillFeedEntry): string {
-  return `${e.tick}-${e.category}-${e.killerId ?? ''}-${e.victimId ?? ''}`
+  return `${e.cycle}-${e.category}-${e.killerId ?? ''}-${e.victimId ?? ''}`
 }
 </script>
 

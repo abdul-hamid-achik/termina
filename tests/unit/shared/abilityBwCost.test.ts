@@ -9,7 +9,7 @@ const scaling: AbilityDef = {
   description: '',
   bwCost: 50,
   bwCostByLevel: [50, 65, 80, 95],
-  cooldownTicks: 5,
+  cooldownCycles: 5,
   targetType: 'hero',
   effects: [],
 }

@@ -8,14 +8,14 @@ import {
   type PlayerSetup,
   type StateManagerApi,
 } from '~~/server/game/engine/StateManager'
-import { processTick, submitAction } from '~~/server/game/engine/GameLoop'
+import { processCycle, submitAction } from '~~/server/game/engine/GameLoop'
 import { applyScenario, type KNOWN_SCENARIOS } from '~~/server/game/dev/scenarios'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 /**
  * In-process gameplay harness — the fast, deterministic home for "does this game
  * SITUATION resolve correctly" tests. It drives the REAL engine
- * (`createInMemoryStateManager` + `submitAction` + `processTick`) with ZERO infra:
+ * (`createInMemoryStateManager` + `submitAction` + `processCycle`) with ZERO infra:
  * no browser, no server, no Postgres, no Redis. It is the same pipeline
  * `server/game/dev/simulate-game.ts` and `tests/integration/game-flow.test.ts`
  * use, with the seed → act → advance → assert ceremony factored into one
@@ -39,7 +39,7 @@ import type { GameEngineEvent } from '~~/server/game/protocol/events'
  *    cast (no resolution, no events, no cooldown). The seed already carries enough
  *    BW; just zero the cooldowns (`cooldowns: { q:0,w:0,e:0,r:0 }`) and cast.
  *  - A 1-tick disable (most stuns are duration 1) is gone by the time you assert:
- *    it's applied during cast resolution, then `tickAllBuffs` decrements + reaps
+ *    it's applied during cast resolution, then `cycleAllBuffs` decrements + reaps
  *    it later in the SAME tick. To observe an applied debuff use a multi-tick one
  *    (a DoT, a longer slow) or assert its enforcement effect, not buff presence.
  *  - Per-tick regen is small but nonzero. For "took damage" prefer the damage
@@ -94,7 +94,7 @@ export async function seedGame(scenario: KnownScenario, opts: SeedOptions = {}):
   return new Run(sm, gameId)
 }
 
-/** A seeded game you can drive one tick at a time and read engine truth from. */
+/** A seeded game you can drive one cycle at a time and read engine truth from. */
 export class Run {
   /** Events emitted by the most recent `tick()`. */
   lastEvents: GameEngineEvent[] = []
@@ -137,7 +137,7 @@ export class Run {
   async tick(n = 1): Promise<this> {
     for (let i = 0; i < n; i++) {
       const state = await Effect.runPromise(this.sm.getState(this.gameId))
-      const result = await Effect.runPromise(processTick(this.gameId, state))
+      const result = await Effect.runPromise(processCycle(this.gameId, state))
       await Effect.runPromise(this.sm.updateState(this.gameId, () => result.state))
       this.lastEvents = result.events
       this.allEvents.push(...result.events)

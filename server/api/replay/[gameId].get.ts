@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Replays are post-game only. Mid-game snapshots are written every N ticks
-  // for crash recovery and carry the FULL unfogged state (positions, gold,
+  // for crash recovery and carry the FULL unfogged state (positions, scrip,
   // items, queued auto-path orders) — serving them while the game runs would
   // be a free maphack for anyone polling this public endpoint.
   if (snap.state.phase !== 'ended') {

@@ -9,7 +9,7 @@ import type { GameState, PlayerState, CacheState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import {
   CACHE_BUFF_TICKS,
-  CACHE_DURATION_TICKS,
+  CACHE_DURATION_CYCLES,
   REGEN_CACHE_HEAL_PERCENT,
 } from '~~/shared/constants/balance'
 
@@ -26,12 +26,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 200,
     level: 1,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -48,18 +48,18 @@ function makeCache(overrides: Partial<CacheState> = {}): CacheState {
   return {
     zone: 'cache-top',
     type: 'haste',
-    tick: 60,
+    cycle: 60,
     ...overrides,
   }
 }
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
   return {
-    tick: 60,
+    cycle: 60,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -67,7 +67,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     neutrals: [],
     ice: initializeIce(),
     caches: [],
-    tenant: { alive: true, integ: 5000, maxInteg: 5000, deathTick: null },
+    tenant: { alive: true, integ: 5000, maxInteg: 5000, deathCycle: null },
     backup: null,
     events: [],
     ...overrides,
@@ -79,35 +79,35 @@ describe('CacheAI', () => {
     it('should return haste buff with correct duration', () => {
       const buff = getCacheBuff('haste')
       expect(buff.id).toBe('haste')
-      expect(buff.ticksRemaining).toBe(CACHE_BUFF_TICKS.haste)
+      expect(buff.cyclesRemaining).toBe(CACHE_BUFF_TICKS.haste)
       expect(buff.source).toBe('cache_haste')
     })
 
     it('should return dd (double damage) buff', () => {
       const buff = getCacheBuff('dd')
       expect(buff.id).toBe('dd')
-      expect(buff.ticksRemaining).toBe(CACHE_BUFF_TICKS.dd)
+      expect(buff.cyclesRemaining).toBe(CACHE_BUFF_TICKS.dd)
       expect(buff.source).toBe('cache_dd')
     })
 
     it('should return regen buff', () => {
       const buff = getCacheBuff('regen')
       expect(buff.id).toBe('regen')
-      expect(buff.ticksRemaining).toBe(CACHE_BUFF_TICKS.regen)
+      expect(buff.cyclesRemaining).toBe(CACHE_BUFF_TICKS.regen)
       expect(buff.source).toBe('cache_regen')
     })
 
     it('should return arcane buff', () => {
       const buff = getCacheBuff('arcane')
       expect(buff.id).toBe('arcane')
-      expect(buff.ticksRemaining).toBe(CACHE_BUFF_TICKS.arcane)
+      expect(buff.cyclesRemaining).toBe(CACHE_BUFF_TICKS.arcane)
       expect(buff.source).toBe('cache_arcane')
     })
 
     it('should return invis buff', () => {
       const buff = getCacheBuff('invis')
       expect(buff.id).toBe('invis')
-      expect(buff.ticksRemaining).toBe(CACHE_BUFF_TICKS.invis)
+      expect(buff.cyclesRemaining).toBe(CACHE_BUFF_TICKS.invis)
       expect(buff.source).toBe('cache_invis')
     })
 
@@ -129,8 +129,8 @@ describe('CacheAI', () => {
   describe('pickupCache', () => {
     it('should add cache buff to player', () => {
       const state = makeGameState({
-        tick: 60,
-        caches: [makeCache({ zone: 'cache-top', type: 'haste', tick: 60 })],
+        cycle: 60,
+        caches: [makeCache({ zone: 'cache-top', type: 'haste', cycle: 60 })],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
@@ -143,8 +143,8 @@ describe('CacheAI', () => {
 
     it('should remove cache from ground', () => {
       const state = makeGameState({
-        tick: 60,
-        caches: [makeCache({ zone: 'cache-top', type: 'haste', tick: 60 })],
+        cycle: 60,
+        caches: [makeCache({ zone: 'cache-top', type: 'haste', cycle: 60 })],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
@@ -203,8 +203,8 @@ describe('CacheAI', () => {
 
     it('should emit cache_picked event', () => {
       const state = makeGameState({
-        tick: 60,
-        caches: [makeCache({ zone: 'cache-top', type: 'haste', tick: 60 })],
+        cycle: 60,
+        caches: [makeCache({ zone: 'cache-top', type: 'haste', cycle: 60 })],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
@@ -217,8 +217,8 @@ describe('CacheAI', () => {
 
     it('should pickup dd cache correctly', () => {
       const state = makeGameState({
-        tick: 60,
-        caches: [makeCache({ zone: 'cache-top', type: 'dd', tick: 60 })],
+        cycle: 60,
+        caches: [makeCache({ zone: 'cache-top', type: 'dd', cycle: 60 })],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
@@ -231,8 +231,8 @@ describe('CacheAI', () => {
 
     it('should pickup regen cache correctly', () => {
       const state = makeGameState({
-        tick: 60,
-        caches: [makeCache({ zone: 'cache-top', type: 'regen', tick: 60 })],
+        cycle: 60,
+        caches: [makeCache({ zone: 'cache-top', type: 'regen', cycle: 60 })],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
@@ -245,8 +245,8 @@ describe('CacheAI', () => {
 
     it('should pickup arcane cache correctly', () => {
       const state = makeGameState({
-        tick: 60,
-        caches: [makeCache({ zone: 'cache-top', type: 'arcane', tick: 60 })],
+        cycle: 60,
+        caches: [makeCache({ zone: 'cache-top', type: 'arcane', cycle: 60 })],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
@@ -259,8 +259,8 @@ describe('CacheAI', () => {
 
     it('should pickup invis cache correctly', () => {
       const state = makeGameState({
-        tick: 60,
-        caches: [makeCache({ zone: 'cache-top', type: 'invis', tick: 60 })],
+        cycle: 60,
+        caches: [makeCache({ zone: 'cache-top', type: 'invis', cycle: 60 })],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
@@ -288,8 +288,8 @@ describe('CacheAI', () => {
     it('should remove expired caches', () => {
       const spawnTick = 60
       const state = makeGameState({
-        tick: spawnTick + CACHE_DURATION_TICKS,
-        caches: [makeCache({ zone: 'cache-top', tick: spawnTick })],
+        cycle: spawnTick + CACHE_DURATION_CYCLES,
+        caches: [makeCache({ zone: 'cache-top', cycle: spawnTick })],
       })
 
       const result = removeExpiredCaches(state)
@@ -299,8 +299,8 @@ describe('CacheAI', () => {
     it('should keep non-expired caches', () => {
       const spawnTick = 60
       const state = makeGameState({
-        tick: spawnTick + CACHE_DURATION_TICKS - 1,
-        caches: [makeCache({ zone: 'cache-top', tick: spawnTick })],
+        cycle: spawnTick + CACHE_DURATION_CYCLES - 1,
+        caches: [makeCache({ zone: 'cache-top', cycle: spawnTick })],
       })
 
       const result = removeExpiredCaches(state)
@@ -309,10 +309,10 @@ describe('CacheAI', () => {
 
     it('should handle multiple caches with different ages', () => {
       const state = makeGameState({
-        tick: 85,
+        cycle: 85,
         caches: [
-          makeCache({ zone: 'cache-top', tick: 60 }),
-          makeCache({ zone: 'cache-bot', tick: 60 }),
+          makeCache({ zone: 'cache-top', cycle: 60 }),
+          makeCache({ zone: 'cache-bot', cycle: 60 }),
         ],
       })
 
@@ -322,8 +322,8 @@ describe('CacheAI', () => {
 
     it('should return unchanged state if no caches expire', () => {
       const state = makeGameState({
-        tick: 65,
-        caches: [makeCache({ zone: 'cache-top', tick: 60 })],
+        cycle: 65,
+        caches: [makeCache({ zone: 'cache-top', cycle: 60 })],
       })
 
       const result = removeExpiredCaches(state)
@@ -352,7 +352,7 @@ describe('CacheAI', () => {
   describe('processCacheBuffs', () => {
     it('should heal player with regen buff', () => {
       const state = makeGameState({
-        tick: 60,
+        cycle: 60,
         players: {
           p1: makePlayer({
             id: 'p1',
@@ -360,7 +360,7 @@ describe('CacheAI', () => {
             maxInteg: 500,
             bw: 100,
             maxBw: 200,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, cyclesRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
@@ -370,54 +370,54 @@ describe('CacheAI', () => {
       expect(result.players['p1']!.bw).toBeGreaterThan(100)
     })
 
-    it('heals Cron’s crontabHeal buff by the per-tick amount in its stacks (was dead)', () => {
+    it('heals Cron’s crontabHeal buff by the per-cycle amount in its stacks (was dead)', () => {
       const state = makeGameState({
-        tick: 60,
+        cycle: 60,
         players: {
           p1: makePlayer({
             id: 'p1',
             integ: 400,
             maxInteg: 1000,
-            buffs: [{ id: 'crontabHeal', stacks: 110, ticksRemaining: 4, source: 'cron' }],
+            buffs: [{ id: 'crontabHeal', stacks: 110, cyclesRemaining: 4, source: 'cron' }],
           }),
         },
       })
 
       const result = processCacheBuffs(state)
-      // The buff was applied but never processed — now it heals `stacks` per tick.
+      // The buff was applied but never processed — now it heals `stacks` per cycle.
       expect(result.players['p1']!.integ).toBe(510)
     })
 
     it('restores BW from Cron’s crontabMana buff (the advertised BW half of Crontab)', () => {
       const state = makeGameState({
-        tick: 60,
+        cycle: 60,
         players: {
           p1: makePlayer({
             id: 'p1',
             bw: 200,
             maxBw: 1000,
-            buffs: [{ id: 'crontabMana', stacks: 15, ticksRemaining: 4, source: 'cron' }],
+            buffs: [{ id: 'crontabMana', stacks: 15, cyclesRemaining: 4, source: 'cron' }],
           }),
         },
       })
 
       const result = processCacheBuffs(state)
       // Crontab's mpPerTick (15) was advertised in the event + description but
-      // never applied; the crontabMana buff now restores `stacks` BW per tick.
+      // never applied; the crontabMana buff now restores `stacks` BW per cycle.
       expect(result.players['p1']!.bw).toBe(215)
     })
 
-    it('should heal REGEN_CACHE_HEAL_PERCENT of max INTEG per tick with regen', () => {
+    it('should heal REGEN_CACHE_HEAL_PERCENT of max INTEG per cycle with regen', () => {
       const maxInteg = 500
       const expectedHeal = Math.floor(maxInteg * REGEN_CACHE_HEAL_PERCENT)
       const state = makeGameState({
-        tick: 60,
+        cycle: 60,
         players: {
           p1: makePlayer({
             id: 'p1',
             integ: 400,
             maxInteg,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, cyclesRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
@@ -426,17 +426,17 @@ describe('CacheAI', () => {
       expect(result.players['p1']!.integ).toBe(400 + expectedHeal)
     })
 
-    it('should heal REGEN_CACHE_HEAL_PERCENT of max BW per tick with regen', () => {
+    it('should heal REGEN_CACHE_HEAL_PERCENT of max BW per cycle with regen', () => {
       const maxBw = 200
       const expectedHeal = Math.floor(maxBw * REGEN_CACHE_HEAL_PERCENT)
       const state = makeGameState({
-        tick: 60,
+        cycle: 60,
         players: {
           p1: makePlayer({
             id: 'p1',
             bw: 100,
             maxBw,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, cyclesRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
@@ -447,13 +447,13 @@ describe('CacheAI', () => {
 
     it('should not exceed max INTEG with regen', () => {
       const state = makeGameState({
-        tick: 60,
+        cycle: 60,
         players: {
           p1: makePlayer({
             id: 'p1',
             integ: 490,
             maxInteg: 500,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, cyclesRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
@@ -464,13 +464,13 @@ describe('CacheAI', () => {
 
     it('should not exceed max BW with regen', () => {
       const state = makeGameState({
-        tick: 60,
+        cycle: 60,
         players: {
           p1: makePlayer({
             id: 'p1',
             bw: 195,
             maxBw: 200,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, cyclesRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
@@ -503,7 +503,7 @@ describe('CacheAI', () => {
             id: 'p1',
             integ: 0,
             alive: false,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, cyclesRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
@@ -518,7 +518,7 @@ describe('CacheAI', () => {
           p1: makePlayer({
             id: 'p1',
             integ: 400,
-            buffs: [{ id: 'haste', stacks: 1, ticksRemaining: 15, source: 'cache_haste' }],
+            buffs: [{ id: 'haste', stacks: 1, cyclesRemaining: 15, source: 'cache_haste' }],
           }),
         },
       })
@@ -533,7 +533,7 @@ describe('CacheAI', () => {
           p1: makePlayer({
             id: 'p1',
             integ: 400,
-            buffs: [{ id: 'dd', stacks: 1, ticksRemaining: 15, source: 'cache_dd' }],
+            buffs: [{ id: 'dd', stacks: 1, cyclesRemaining: 15, source: 'cache_dd' }],
           }),
         },
       })
@@ -549,7 +549,7 @@ describe('CacheAI', () => {
             id: 'p1',
             integ: 400,
             bw: 100,
-            buffs: [{ id: 'arcane', stacks: 1, ticksRemaining: 15, source: 'cache_arcane' }],
+            buffs: [{ id: 'arcane', stacks: 1, cyclesRemaining: 15, source: 'cache_arcane' }],
           }),
         },
       })
@@ -565,7 +565,7 @@ describe('CacheAI', () => {
           p1: makePlayer({
             id: 'p1',
             integ: 400,
-            buffs: [{ id: 'invis', stacks: 1, ticksRemaining: 15, source: 'cache_invis' }],
+            buffs: [{ id: 'invis', stacks: 1, cyclesRemaining: 15, source: 'cache_invis' }],
           }),
         },
       })
@@ -581,13 +581,13 @@ describe('CacheAI', () => {
             id: 'p1',
             integ: 400,
             maxInteg: 500,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, cyclesRemaining: 15, source: 'cache_regen' }],
           }),
           p2: makePlayer({
             id: 'p2',
             integ: 300,
             maxInteg: 600,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, cyclesRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
@@ -607,8 +607,8 @@ describe('CacheAI', () => {
             bw: 100,
             maxBw: 200,
             buffs: [
-              { id: 'haste', stacks: 1, ticksRemaining: 10, source: 'cache_haste' },
-              { id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' },
+              { id: 'haste', stacks: 1, cyclesRemaining: 10, source: 'cache_haste' },
+              { id: 'regen', stacks: 1, cyclesRemaining: 15, source: 'cache_regen' },
             ],
           }),
         },
@@ -624,8 +624,8 @@ describe('CacheAI', () => {
     it('should handle cache pickup at exact expiry tick', () => {
       const spawnTick = 60
       const state = makeGameState({
-        tick: spawnTick + CACHE_DURATION_TICKS - 1,
-        caches: [makeCache({ zone: 'cache-top', type: 'haste', tick: spawnTick })],
+        cycle: spawnTick + CACHE_DURATION_CYCLES - 1,
+        caches: [makeCache({ zone: 'cache-top', type: 'haste', cycle: spawnTick })],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
@@ -644,7 +644,7 @@ describe('CacheAI', () => {
             maxInteg: 500,
             bw: 200,
             maxBw: 200,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, cyclesRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
@@ -663,7 +663,7 @@ describe('CacheAI', () => {
             maxInteg: 500,
             bw: 200,
             maxBw: 200,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, cyclesRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
@@ -682,7 +682,7 @@ describe('CacheAI', () => {
             maxInteg: 500,
             bw: 100,
             maxBw: 200,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, cyclesRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })

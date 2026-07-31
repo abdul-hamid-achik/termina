@@ -17,7 +17,7 @@ const pct = computed(() =>
     : 0,
 )
 const destroyed = computed(() => props.integ <= 0)
-// Health colour shifts chaff → gold → audit as the bar drains.
+// Health colour shifts chaff → scrip → audit as the bar drains.
 const barColor = computed(() =>
   pct.value <= 25 ? 'bg-audit' : pct.value <= 50 ? 'bg-gold' : 'bg-chaff',
 )

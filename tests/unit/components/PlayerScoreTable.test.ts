@@ -12,7 +12,7 @@ function row(overrides: Partial<PlayerScoreRow> = {}): PlayerScoreRow {
     kills: 5,
     deaths: 2,
     assists: 7,
-    gold: 12450,
+    scrip: 12450,
     zone: 'mid-river',
     alive: true,
     ...overrides,
@@ -47,8 +47,8 @@ describe('PlayerScoreTable', () => {
     expect(noHp.text()).not.toContain('/1200')
   })
 
-  it('formats gold with thousands separators and renders K/D/A', () => {
-    const wrapper = mountTable([row({ gold: 12450, kills: 5, deaths: 2, assists: 7 })])
+  it('formats scrip with thousands separators and renders K/D/A', () => {
+    const wrapper = mountTable([row({ scrip: 12450, kills: 5, deaths: 2, assists: 7 })])
     expect(wrapper.text()).toContain('12,450')
     // K/D/A renders the three numbers in order.
     expect(wrapper.text()).toMatch(/5\s*\/\s*2\s*\/\s*7/)

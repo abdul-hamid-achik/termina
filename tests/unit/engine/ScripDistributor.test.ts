@@ -7,18 +7,18 @@ import {
   comebackMultiplier,
   xpComebackMultiplier,
   playerNetWorth,
-} from '~~/server/game/engine/GoldDistributor'
+} from '~~/server/game/engine/ScripDistributor'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { ITEMS } from '~~/shared/constants/items'
 import {
-  PASSIVE_GOLD_PER_TICK,
-  WAVE_GOLD,
-  BREACH_UNIT_GOLD,
+  PASSIVE_SCRIP_PER_CYCLE,
+  WAVE_SCRIP,
+  BREACH_UNIT_SCRIP,
   KILL_BOUNTY_BASE,
   KILL_BOUNTY_PER_STREAK,
-  ASSIST_GOLD,
-  ICE_GOLD,
+  ASSIST_SCRIP,
+  ICE_SCRIP,
   COMEBACK_BONUS_MAX,
   COMEBACK_PENALTY_MAX,
   COMEBACK_FULL_GAP,
@@ -40,12 +40,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 200,
     level: 1,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -60,11 +60,11 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
   return {
-    tick: 1,
+    cycle: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -72,39 +72,39 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     ice: initializeIce(),
     neutrals: [],
     caches: [],
-    tenant: { alive: false, integ: 0, maxInteg: 5000, deathTick: null },
+    tenant: { alive: false, integ: 0, maxInteg: 5000, deathCycle: null },
     backup: null,
     events: [],
     ...overrides,
   }
 }
 
-describe('GoldDistributor', () => {
+describe('ScripDistributor', () => {
   describe('distributePassiveGold', () => {
-    it('should give passive gold to alive players', () => {
+    it('should give passive scrip to alive players', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', gold: 100 }),
-          p2: makePlayer({ id: 'p2', gold: 200, team: 'audit' }),
+          p1: makePlayer({ id: 'p1', scrip: 100 }),
+          p2: makePlayer({ id: 'p2', scrip: 200, team: 'audit' }),
         },
       })
 
       const result = distributePassiveGold(state)
-      expect(result.players['p1']!.gold).toBe(100 + PASSIVE_GOLD_PER_TICK)
-      expect(result.players['p2']!.gold).toBe(200 + PASSIVE_GOLD_PER_TICK)
+      expect(result.players['p1']!.scrip).toBe(100 + PASSIVE_SCRIP_PER_CYCLE)
+      expect(result.players['p2']!.scrip).toBe(200 + PASSIVE_SCRIP_PER_CYCLE)
     })
 
-    it('should not give gold to dead players', () => {
+    it('should not give scrip to dead players', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', gold: 100, alive: false, integ: 0 }),
-          p2: makePlayer({ id: 'p2', gold: 200 }),
+          p1: makePlayer({ id: 'p1', scrip: 100, alive: false, integ: 0 }),
+          p2: makePlayer({ id: 'p2', scrip: 200 }),
         },
       })
 
       const result = distributePassiveGold(state)
-      expect(result.players['p1']!.gold).toBe(100)
-      expect(result.players['p2']!.gold).toBe(200 + PASSIVE_GOLD_PER_TICK)
+      expect(result.players['p1']!.scrip).toBe(100)
+      expect(result.players['p2']!.scrip).toBe(200 + PASSIVE_SCRIP_PER_CYCLE)
     })
 
     it('should handle empty player list', () => {
@@ -115,56 +115,56 @@ describe('GoldDistributor', () => {
   })
 
   describe('awardLastHit', () => {
-    it('should award fixed gold for line wave last hit (no RNG)', () => {
+    it('should award fixed scrip for line wave last hit (no RNG)', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', gold: 100 }) },
+        players: { p1: makePlayer({ id: 'p1', scrip: 100 }) },
       })
 
       const result = awardLastHit(state, 'p1', 'line')
-      const goldGained = result.players['p1']!.gold - 100
-      expect(goldGained).toBe(WAVE_GOLD)
+      const goldGained = result.players['p1']!.scrip - 100
+      expect(goldGained).toBe(WAVE_SCRIP)
     })
 
-    it('should award fixed gold for sweep wave last hit (no RNG)', () => {
+    it('should award fixed scrip for sweep wave last hit (no RNG)', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', gold: 100 }) },
+        players: { p1: makePlayer({ id: 'p1', scrip: 100 }) },
       })
 
       const result = awardLastHit(state, 'p1', 'sweep')
-      const goldGained = result.players['p1']!.gold - 100
-      expect(goldGained).toBe(WAVE_GOLD)
+      const goldGained = result.players['p1']!.scrip - 100
+      expect(goldGained).toBe(WAVE_SCRIP)
     })
 
-    it('should award fixed gold for breach wave last hit', () => {
+    it('should award fixed scrip for breach wave last hit', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', gold: 100 }) },
+        players: { p1: makePlayer({ id: 'p1', scrip: 100 }) },
       })
 
       const result = awardLastHit(state, 'p1', 'breach')
-      expect(result.players['p1']!.gold).toBe(100 + BREACH_UNIT_GOLD)
+      expect(result.players['p1']!.scrip).toBe(100 + BREACH_UNIT_SCRIP)
     })
 
     it('should return state unchanged for unknown player', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', gold: 100 }) },
+        players: { p1: makePlayer({ id: 'p1', scrip: 100 }) },
       })
 
       const result = awardLastHit(state, 'unknown', 'line')
       expect(result).toEqual(state)
     })
 
-    it('should produce consistent breach gold across multiple calls', () => {
+    it('should produce consistent breach scrip across multiple calls', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', gold: 0 }) },
+        players: { p1: makePlayer({ id: 'p1', scrip: 0 }) },
       })
 
       const results: number[] = []
       for (let i = 0; i < 10; i++) {
         const result = awardLastHit(state, 'p1', 'breach')
-        results.push(result.players['p1']!.gold)
+        results.push(result.players['p1']!.scrip)
       }
-      // All breach wave gold should be exactly BREACH_UNIT_GOLD
-      expect(results.every((g) => g === BREACH_UNIT_GOLD)).toBe(true)
+      // All breach wave scrip should be exactly BREACH_UNIT_SCRIP
+      expect(results.every((g) => g === BREACH_UNIT_SCRIP)).toBe(true)
     })
   })
 
@@ -172,120 +172,120 @@ describe('GoldDistributor', () => {
     it('should award base kill bounty to killer with 0 kills', () => {
       const state = makeGameState({
         players: {
-          killer: makePlayer({ id: 'killer', gold: 100, kills: 0 }),
-          victim: makePlayer({ id: 'victim', team: 'audit', gold: 100 }),
+          killer: makePlayer({ id: 'killer', scrip: 100, kills: 0 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', scrip: 100 }),
         },
       })
 
       const result = awardKill(state, 'killer', 'victim', [])
-      expect(result.players['killer']!.gold).toBe(100 + KILL_BOUNTY_BASE)
+      expect(result.players['killer']!.scrip).toBe(100 + KILL_BOUNTY_BASE)
     })
 
     it('applies the comeback BONUS to the bounty for a team far behind', () => {
       const state = makeGameState({
         players: {
-          killer: makePlayer({ id: 'killer', team: 'chaff', gold: 0 }),
-          victim: makePlayer({ id: 'victim', team: 'audit', gold: 10_000 }),
+          killer: makePlayer({ id: 'killer', team: 'chaff', scrip: 0 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', scrip: 10_000 }),
         },
       })
       const mult = comebackMultiplier(state, 'chaff') // far behind → 1.5
       expect(mult).toBeCloseTo(1.5, 5)
       const result = awardKill(state, 'killer', 'victim', [])
-      expect(result.players['killer']!.gold).toBe(Math.round(KILL_BOUNTY_BASE * mult))
+      expect(result.players['killer']!.scrip).toBe(Math.round(KILL_BOUNTY_BASE * mult))
     })
 
     it('applies the comeback PENALTY to the bounty for a team far ahead', () => {
       const state = makeGameState({
         players: {
-          killer: makePlayer({ id: 'killer', team: 'chaff', gold: 10_000 }),
-          victim: makePlayer({ id: 'victim', team: 'audit', gold: 0 }),
+          killer: makePlayer({ id: 'killer', team: 'chaff', scrip: 10_000 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', scrip: 0 }),
         },
       })
       const mult = comebackMultiplier(state, 'chaff') // far ahead → 0.7
       expect(mult).toBeCloseTo(0.7, 5)
       const result = awardKill(state, 'killer', 'victim', [])
-      expect(result.players['killer']!.gold).toBe(10_000 + Math.round(KILL_BOUNTY_BASE * mult))
+      expect(result.players['killer']!.scrip).toBe(10_000 + Math.round(KILL_BOUNTY_BASE * mult))
     })
 
     it('should award shutdown bonus based on the victim kill streak', () => {
       const state = makeGameState({
         players: {
-          killer: makePlayer({ id: 'killer', gold: 100 }),
-          victim: makePlayer({ id: 'victim', team: 'audit', gold: 100, killStreak: 3 }),
+          killer: makePlayer({ id: 'killer', scrip: 100 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', scrip: 100, killStreak: 3 }),
         },
       })
 
       const expectedGold = KILL_BOUNTY_BASE + KILL_BOUNTY_PER_STREAK * 3
       const result = awardKill(state, 'killer', 'victim', [])
-      expect(result.players['killer']!.gold).toBe(100 + expectedGold)
+      expect(result.players['killer']!.scrip).toBe(100 + expectedGold)
     })
 
     it('should cap the shutdown bonus at a 10 streak', () => {
       const state = makeGameState({
         players: {
-          killer: makePlayer({ id: 'killer', gold: 100 }),
-          victim: makePlayer({ id: 'victim', team: 'audit', gold: 100, killStreak: 15 }),
+          killer: makePlayer({ id: 'killer', scrip: 100 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', scrip: 100, killStreak: 15 }),
         },
       })
 
       const expectedGold = KILL_BOUNTY_BASE + KILL_BOUNTY_PER_STREAK * 10
       const result = awardKill(state, 'killer', 'victim', [])
-      expect(result.players['killer']!.gold).toBe(100 + expectedGold)
+      expect(result.players['killer']!.scrip).toBe(100 + expectedGold)
     })
 
     it('killer own streak does not inflate the bounty', () => {
       const state = makeGameState({
         players: {
-          killer: makePlayer({ id: 'killer', gold: 100, kills: 8, killStreak: 8 }),
-          victim: makePlayer({ id: 'victim', team: 'audit', gold: 100, killStreak: 0 }),
+          killer: makePlayer({ id: 'killer', scrip: 100, kills: 8, killStreak: 8 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', scrip: 100, killStreak: 0 }),
         },
       })
 
       const result = awardKill(state, 'killer', 'victim', [])
-      expect(result.players['killer']!.gold).toBe(100 + KILL_BOUNTY_BASE)
+      expect(result.players['killer']!.scrip).toBe(100 + KILL_BOUNTY_BASE)
     })
 
-    it('should split assist gold among assisters', () => {
+    it('should split assist scrip among assisters', () => {
       const state = makeGameState({
         players: {
-          killer: makePlayer({ id: 'killer', gold: 100, kills: 0 }),
-          victim: makePlayer({ id: 'victim', team: 'audit', gold: 100 }),
-          a1: makePlayer({ id: 'a1', gold: 100 }),
-          a2: makePlayer({ id: 'a2', gold: 100 }),
+          killer: makePlayer({ id: 'killer', scrip: 100, kills: 0 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', scrip: 100 }),
+          a1: makePlayer({ id: 'a1', scrip: 100 }),
+          a2: makePlayer({ id: 'a2', scrip: 100 }),
         },
       })
 
       const result = awardKill(state, 'killer', 'victim', ['a1', 'a2'])
-      const assistGoldEach = Math.floor(ASSIST_GOLD / 2)
-      expect(result.players['a1']!.gold).toBe(100 + assistGoldEach)
-      expect(result.players['a2']!.gold).toBe(100 + assistGoldEach)
+      const assistGoldEach = Math.floor(ASSIST_SCRIP / 2)
+      expect(result.players['a1']!.scrip).toBe(100 + assistGoldEach)
+      expect(result.players['a2']!.scrip).toBe(100 + assistGoldEach)
     })
 
-    it('should give full assist gold to single assister', () => {
+    it('should give full assist scrip to single assister', () => {
       const state = makeGameState({
         players: {
-          killer: makePlayer({ id: 'killer', gold: 100, kills: 0 }),
-          victim: makePlayer({ id: 'victim', team: 'audit', gold: 100 }),
-          a1: makePlayer({ id: 'a1', gold: 100 }),
+          killer: makePlayer({ id: 'killer', scrip: 100, kills: 0 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', scrip: 100 }),
+          a1: makePlayer({ id: 'a1', scrip: 100 }),
         },
       })
 
       const result = awardKill(state, 'killer', 'victim', ['a1'])
-      expect(result.players['a1']!.gold).toBe(100 + ASSIST_GOLD)
+      expect(result.players['a1']!.scrip).toBe(100 + ASSIST_SCRIP)
     })
 
-    it('should not give assist gold when no assisters', () => {
+    it('should not give assist scrip when no assisters', () => {
       const state = makeGameState({
         players: {
-          killer: makePlayer({ id: 'killer', gold: 100, kills: 0 }),
-          victim: makePlayer({ id: 'victim', team: 'audit', gold: 100 }),
+          killer: makePlayer({ id: 'killer', scrip: 100, kills: 0 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', scrip: 100 }),
         },
       })
 
       const result = awardKill(state, 'killer', 'victim', [])
-      // Only killer should get gold
-      expect(result.players['killer']!.gold).toBe(100 + KILL_BOUNTY_BASE)
-      expect(result.players['victim']!.gold).toBe(100)
+      // Only killer should get scrip
+      expect(result.players['killer']!.scrip).toBe(100 + KILL_BOUNTY_BASE)
+      expect(result.players['victim']!.scrip).toBe(100)
     })
 
     it('should prevent killer from double-dipping assist gold', () => {
@@ -294,31 +294,31 @@ describe('GoldDistributor', () => {
       // Audit: victim(100) + d1(100) + d2(100) = 300
       const state = makeGameState({
         players: {
-          killer: makePlayer({ id: 'killer', gold: 100, kills: 0 }),
-          victim: makePlayer({ id: 'victim', team: 'audit', gold: 100 }),
-          a1: makePlayer({ id: 'a1', gold: 100 }),
-          a2: makePlayer({ id: 'a2', gold: 100 }),
-          d1: makePlayer({ id: 'd1', team: 'audit', gold: 100 }),
-          d2: makePlayer({ id: 'd2', team: 'audit', gold: 100 }),
+          killer: makePlayer({ id: 'killer', scrip: 100, kills: 0 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', scrip: 100 }),
+          a1: makePlayer({ id: 'a1', scrip: 100 }),
+          a2: makePlayer({ id: 'a2', scrip: 100 }),
+          d1: makePlayer({ id: 'd1', team: 'audit', scrip: 100 }),
+          d2: makePlayer({ id: 'd2', team: 'audit', scrip: 100 }),
         },
       })
 
-      // Killer is also in assisters list (should not get assist gold)
+      // Killer is also in assisters list (should not get assist scrip)
       const result = awardKill(state, 'killer', 'victim', ['killer', 'a1', 'a2'])
 
-      // Killer should only get kill bounty, not assist gold
-      expect(result.players['killer']!.gold).toBe(100 + KILL_BOUNTY_BASE)
+      // Killer should only get kill bounty, not assist scrip
+      expect(result.players['killer']!.scrip).toBe(100 + KILL_BOUNTY_BASE)
 
-      // Assisters should split assist gold (100 / 2 = 50 each)
-      const assistGoldEach = Math.floor(ASSIST_GOLD / 2)
-      expect(result.players['a1']!.gold).toBe(100 + assistGoldEach)
-      expect(result.players['a2']!.gold).toBe(100 + assistGoldEach)
+      // Assisters should split assist scrip (100 / 2 = 50 each)
+      const assistGoldEach = Math.floor(ASSIST_SCRIP / 2)
+      expect(result.players['a1']!.scrip).toBe(100 + assistGoldEach)
+      expect(result.players['a2']!.scrip).toBe(100 + assistGoldEach)
     })
 
     it('should return state unchanged for unknown killer', () => {
       const state = makeGameState({
         players: {
-          victim: makePlayer({ id: 'victim', team: 'audit', gold: 100 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', scrip: 100 }),
         },
       })
 
@@ -329,7 +329,7 @@ describe('GoldDistributor', () => {
     it('should return state unchanged for unknown victim', () => {
       const state = makeGameState({
         players: {
-          killer: makePlayer({ id: 'killer', gold: 100, kills: 0 }),
+          killer: makePlayer({ id: 'killer', scrip: 100, kills: 0 }),
         },
       })
 
@@ -339,35 +339,35 @@ describe('GoldDistributor', () => {
   })
 
   describe('awardIceKill', () => {
-    it('should split ice gold evenly among nearby allies', () => {
+    it('should split ice scrip evenly among nearby allies', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', gold: 100 }),
-          p2: makePlayer({ id: 'p2', gold: 200 }),
+          p1: makePlayer({ id: 'p1', scrip: 100 }),
+          p2: makePlayer({ id: 'p2', scrip: 200 }),
         },
       })
 
       const result = awardIceKill(state, 'mid-t1-audit', ['p1', 'p2'])
-      const goldEach = Math.floor(ICE_GOLD / 2)
-      expect(result.players['p1']!.gold).toBe(100 + goldEach)
-      expect(result.players['p2']!.gold).toBe(200 + goldEach)
+      const goldEach = Math.floor(ICE_SCRIP / 2)
+      expect(result.players['p1']!.scrip).toBe(100 + goldEach)
+      expect(result.players['p2']!.scrip).toBe(200 + goldEach)
     })
 
-    it('should give all ice gold to a single ally', () => {
+    it('should give all ice scrip to a single ally', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', gold: 100 }),
+          p1: makePlayer({ id: 'p1', scrip: 100 }),
         },
       })
 
       const result = awardIceKill(state, 'mid-t1-audit', ['p1'])
-      expect(result.players['p1']!.gold).toBe(100 + ICE_GOLD)
+      expect(result.players['p1']!.scrip).toBe(100 + ICE_SCRIP)
     })
 
     it('should return state unchanged with no nearby allies', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', gold: 100 }),
+          p1: makePlayer({ id: 'p1', scrip: 100 }),
         },
       })
 
@@ -375,20 +375,20 @@ describe('GoldDistributor', () => {
       expect(result).toEqual(state)
     })
 
-    it('should floor the gold split (no fractional gold)', () => {
+    it('should floor the scrip split (no fractional scrip)', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', gold: 0 }),
-          p2: makePlayer({ id: 'p2', gold: 0 }),
-          p3: makePlayer({ id: 'p3', gold: 0 }),
+          p1: makePlayer({ id: 'p1', scrip: 0 }),
+          p2: makePlayer({ id: 'p2', scrip: 0 }),
+          p3: makePlayer({ id: 'p3', scrip: 0 }),
         },
       })
 
       const result = awardIceKill(state, 'mid-t1-audit', ['p1', 'p2', 'p3'])
-      const goldEach = Math.floor(ICE_GOLD / 3)
-      expect(result.players['p1']!.gold).toBe(goldEach)
-      expect(result.players['p2']!.gold).toBe(goldEach)
-      expect(result.players['p3']!.gold).toBe(goldEach)
+      const goldEach = Math.floor(ICE_SCRIP / 3)
+      expect(result.players['p1']!.scrip).toBe(goldEach)
+      expect(result.players['p2']!.scrip).toBe(goldEach)
+      expect(result.players['p3']!.scrip).toBe(goldEach)
     })
   })
 
@@ -396,29 +396,29 @@ describe('GoldDistributor', () => {
     it('returns ~1 when teams are equal in net worth', () => {
       const state = makeGameState({
         players: {
-          r1: makePlayer({ id: 'r1', gold: 1000 }),
-          d1: makePlayer({ id: 'd1', team: 'audit', gold: 1000 }),
+          r1: makePlayer({ id: 'r1', scrip: 1000 }),
+          d1: makePlayer({ id: 'd1', team: 'audit', scrip: 1000 }),
         },
       })
       expect(comebackMultiplier(state, 'chaff')).toBe(1)
     })
 
-    it('boosts kill gold for the team that is far behind', () => {
+    it('boosts kill scrip for the team that is far behind', () => {
       const state = makeGameState({
         players: {
-          r1: makePlayer({ id: 'r1', gold: 0 }),
-          d1: makePlayer({ id: 'd1', team: 'audit', gold: 10_000 }),
+          r1: makePlayer({ id: 'r1', scrip: 0 }),
+          d1: makePlayer({ id: 'd1', team: 'audit', scrip: 10_000 }),
         },
       })
       // Chaff is 10k behind → ratio capped at 1, multiplier = 1 + 0.5 = 1.5
       expect(comebackMultiplier(state, 'chaff')).toBeCloseTo(1.5, 5)
     })
 
-    it('penalizes kill gold for the team that is far ahead', () => {
+    it('penalizes kill scrip for the team that is far ahead', () => {
       const state = makeGameState({
         players: {
-          r1: makePlayer({ id: 'r1', gold: 10_000 }),
-          d1: makePlayer({ id: 'd1', team: 'audit', gold: 0 }),
+          r1: makePlayer({ id: 'r1', scrip: 10_000 }),
+          d1: makePlayer({ id: 'd1', team: 'audit', scrip: 0 }),
         },
       })
       // Chaff is 10k ahead → ratio = -1, multiplier = 1 - 0.3 = 0.7
@@ -430,8 +430,8 @@ describe('GoldDistributor', () => {
       const half = COMEBACK_FULL_GAP / 2
       const behind = makeGameState({
         players: {
-          r1: makePlayer({ id: 'r1', gold: 0 }),
-          d1: makePlayer({ id: 'd1', team: 'audit', gold: half }),
+          r1: makePlayer({ id: 'r1', scrip: 0 }),
+          d1: makePlayer({ id: 'd1', team: 'audit', scrip: half }),
         },
       })
       expect(comebackMultiplier(behind, 'chaff')).toBeCloseTo(1 + 0.5 * COMEBACK_BONUS_MAX, 5)
@@ -442,8 +442,8 @@ describe('GoldDistributor', () => {
       // Twice the full gap must not exceed the max bonus/penalty.
       const state = makeGameState({
         players: {
-          r1: makePlayer({ id: 'r1', gold: 0 }),
-          d1: makePlayer({ id: 'd1', team: 'audit', gold: COMEBACK_FULL_GAP * 2 }),
+          r1: makePlayer({ id: 'r1', scrip: 0 }),
+          d1: makePlayer({ id: 'd1', team: 'audit', scrip: COMEBACK_FULL_GAP * 2 }),
         },
       })
       expect(comebackMultiplier(state, 'chaff')).toBe(1 + COMEBACK_BONUS_MAX)
@@ -521,13 +521,13 @@ describe('GoldDistributor', () => {
   })
 
   describe('playerNetWorth', () => {
-    it('is just gold when the player holds no items', () => {
-      expect(playerNetWorth(makePlayer({ gold: 750 }))).toBe(750)
+    it('is just scrip when the player holds no items', () => {
+      expect(playerNetWorth(makePlayer({ scrip: 750 }))).toBe(750)
     })
 
     it('adds each held item’s shop cost and ignores empty slots', () => {
       const [a, b] = Object.keys(ITEMS)
-      const player = makePlayer({ gold: 600, items: [a!, null, b!, null, null, null] })
+      const player = makePlayer({ scrip: 600, items: [a!, null, b!, null, null, null] })
       expect(playerNetWorth(player)).toBe(600 + ITEMS[a!]!.cost + ITEMS[b!]!.cost)
     })
   })

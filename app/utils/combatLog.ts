@@ -14,12 +14,12 @@ export type CombatLineType =
   | 'damage'
   | 'healing'
   | 'kill'
-  | 'gold'
+  | 'scrip'
   | 'system'
   | 'ability'
   | 'victory'
   | 'objective'
-  // One dim roll-up line per tick summarizing everyone's farming (see
+  // One dim roll-up line per cycle summarizing everyone's farming (see
   // digestFarmNoise) — the story-mode replacement for the wave-hit firehose.
   | 'farm'
   // The rig's voice: the tactical recommendation FocusBanner used to pin above
@@ -37,7 +37,7 @@ export type CombatLineType =
 export type Salience = 'mine-in' | 'mine-out' | 'ally' | 'world'
 
 export interface CombatLine {
-  tick: number
+  cycle: number
   text: string
   type: CombatLineType
   salience?: Salience
@@ -53,7 +53,7 @@ export interface CombatLine {
    */
   dedupKey?: string
   /** Damage this line represents. On a collapsed run it is the run's total, so
-   *  the per-tick recap never has to re-derive it from the rendered text. */
+   *  the per-cycle recap never has to re-derive it from the rendered text. */
   dmgAmount?: number
   /** Who dealt / who received the damage, as already-resolved display labels.
    *  The recap groups by these; parsing them back out of `text` would break the
@@ -62,12 +62,12 @@ export interface CombatLine {
   targetLabel?: string
   /**
    * Farm-noise tag: what kind of farming beat this line narrates. Story mode
-   * (digestFarmNoise) folds all tagged lines of a tick into one dim summary
+   * (digestFarmNoise) folds all tagged lines of a cycle into one dim summary
    * line; verbose mode shows them raw. Untagged lines are never folded.
    */
   farmKind?: 'hit' | 'lasthit' | 'camp' | 'burn'
   /** Gold carried by a folded farm line (my last-hit reward in the summary). */
-  goldAmount?: number
+  scripAmount?: number
 }
 
 /** Working line with internal bookkeeping used only while collapsing. */
@@ -79,12 +79,12 @@ interface RunningLine extends CombatLine {
 /**
  * Resolve a raw target id to the readable name for a team's win structure —
  * the "Terminal" in Termina's terminal world — or null when the id is not an
- * ancient id. Mirrors the `ancient_<team>` ids produced by
- * AncientSystem.ancientTargetId (the internal name stays "ancient").
+ * ancient id. Mirrors the `terminal_<team>` ids produced by
+ * TerminalSystem.terminalTargetId (the internal name stays "ancient").
  */
 export function ancientLabel(id: string): string | null {
-  if (!id.startsWith('ancient_')) return null
-  const team = id.slice('ancient_'.length)
+  if (!id.startsWith('terminal_')) return null
+  const team = id.slice('terminal_'.length)
   if (team === 'chaff' || team === 'audit') {
     return `the ${FACTION_META[team as TeamId].label} Terminal`
   }
@@ -94,7 +94,7 @@ export function ancientLabel(id: string): string | null {
 /** True when a damage target id names a structure (ice or ancient). */
 export function isStructureTarget(targetId: unknown): boolean {
   return (
-    typeof targetId === 'string' && (targetId.startsWith('ice') || targetId.startsWith('ancient_'))
+    typeof targetId === 'string' && (targetId.startsWith('ice') || targetId.startsWith('terminal_'))
   )
 }
 
@@ -106,7 +106,7 @@ export function teamLabel(team: string): string {
 /**
  * Collapse consecutive structure-damage lines that share a `dedupKey` (same
  * source attacking the same structure) into a single running line instead of
- * one line per tick. The collapsed line keeps the latest tick, accumulates a
+ * one line per cycle. The collapsed line keeps the latest cycle, accumulates a
  * `count` and a damage `total`, and rewrites its text via `format`.
  *
  * Lines without a `dedupKey` (hero combat, kills, abilities, heals, …) are
@@ -128,9 +128,9 @@ export function collapseStructureDamage(
       prev.count = count
       prev.total = total
       // The surviving line now stands for the whole run, so its amount must be
-      // the run total — otherwise the tick recap counts only the first hit.
+      // the run total — otherwise the cycle recap counts only the first hit.
       prev.dmgAmount = total
-      prev.tick = line.tick
+      prev.cycle = line.cycle
       prev.text = format({ baseText: prev.baseText ?? prev.text, count, total })
       continue
     }
@@ -162,17 +162,17 @@ function storyPriority(line: CombatLine): number {
 }
 
 /**
- * Fold every farm-tagged line of a tick into ONE dim summary line:
+ * Fold every farm-tagged line of a cycle into ONE dim summary line:
  * "· farm: you +38g (last-hit) · team 4 waves, 1 camp · enemy farming in sight".
- * Untagged lines pass through untouched, in their original tick order.
+ * Untagged lines pass through untouched, in their original cycle order.
  */
 export function digestFarmNoise(lines: CombatLine[]): CombatLine[] {
   const out: CombatLine[] = []
-  let tick: number | null = null
+  let cycle: number | null = null
   let bucket: CombatLine[] = []
 
   const flush = () => {
-    if (tick === null || bucket.length === 0) return
+    if (cycle === null || bucket.length === 0) return
     let myGold = 0
     let myLastHits = 0
     let myCamps = 0
@@ -191,7 +191,7 @@ export function digestFarmNoise(lines: CombatLine[]): CombatLine[] {
       if (l.farmKind === 'lasthit') {
         if (side === 'mine') {
           myLastHits++
-          myGold += l.goldAmount ?? 0
+          myGold += l.scripAmount ?? 0
         } else if (side === 'enemy') enemyLastHits++
         else teamLastHits++
       } else if (l.farmKind === 'camp') {
@@ -208,7 +208,7 @@ export function digestFarmNoise(lines: CombatLine[]): CombatLine[] {
     }
     const parts: string[] = []
     if (myLastHits > 0)
-      parts.push(`you +${myGold}g (${myLastHits} last-hit${myLastHits === 1 ? '' : 's'})`)
+      parts.push(`you +${myGold}sc (${myLastHits} last-hit${myLastHits === 1 ? '' : 's'})`)
     if (myCamps > 0) parts.push(`you cleared ${myCamps === 1 ? 'a camp' : `${myCamps} camps`}`)
     if (myBurns > 0) parts.push(`you burned ${myBurns === 1 ? 'a wave' : `${myBurns} waves`}`)
     const teamBits: string[] = []
@@ -226,7 +226,7 @@ export function digestFarmNoise(lines: CombatLine[]): CombatLine[] {
       // The digest carrying MY rewards is mine — the ME filter must keep it.
       const hasMine = myLastHits > 0 || myCamps > 0 || myBurns > 0
       out.push({
-        tick,
+        cycle,
         text: `farm: ${parts.join(' · ')}`,
         type: 'farm',
         salience: hasMine ? 'mine-out' : 'world',
@@ -236,9 +236,9 @@ export function digestFarmNoise(lines: CombatLine[]): CombatLine[] {
   }
 
   for (const line of lines) {
-    if (line.tick !== tick) {
+    if (line.cycle !== cycle) {
       flush()
-      tick = line.tick
+      cycle = line.cycle
     }
     if (line.farmKind) bucket.push(line)
     else out.push(line)
@@ -262,10 +262,10 @@ export function digestTeamfightNoise(lines: CombatLine[], threshold = 4): Combat
   const flush = () => {
     if (bucket.length === 0) return
     if (bucket.length > threshold) {
-      const tick = bucket[0]!.tick
+      const cycle = bucket[0]!.cycle
       const total = bucket.reduce((s, l) => s + (l.dmgAmount ?? 0), 0)
       out.push({
-        tick,
+        cycle,
         text: `⚔ teamfight: ${bucket.length} hits trading${total > 0 ? ` (${total} dmg)` : ''}`,
         type: 'damage',
         salience: 'world',
@@ -289,34 +289,34 @@ export function digestTeamfightNoise(lines: CombatLine[], threshold = 4): Combat
 }
 
 /**
- * The feed's default ("story") view: farm noise folded to one line per tick,
- * then each tick's lines ordered by salience — YOUR results first, kills and
+ * The feed's default ("story") view: farm noise folded to one line per cycle,
+ * then each cycle's lines ordered by salience — YOUR results first, kills and
  * objectives loud, the farm digest last. Stable within a priority band.
  */
 export function buildTickStoryView(lines: CombatLine[]): CombatLine[] {
   const digested = digestFarmNoise(lines)
-  // Stable sort per tick: decorate with the original index, sort, strip.
+  // Stable sort per cycle: decorate with the original index, sort, strip.
   const sorted = digested
     .map((line, i) => ({ line, i }))
     .sort((a, b) => {
-      if (a.line.tick !== b.line.tick) return a.line.tick - b.line.tick
+      if (a.line.cycle !== b.line.cycle) return a.line.cycle - b.line.cycle
       const pa = storyPriority(a.line)
       const pb = storyPriority(b.line)
       return pa !== pb ? pa - pb : a.i - b.i
     })
     .map(({ line }) => line)
-  // Fold bystander teamfight damage now that it sits contiguous per tick.
+  // Fold bystander teamfight damage now that it sits contiguous per cycle.
   return digestTeamfightNoise(sorted)
 }
 
-// ── Per-tick personal recap ────────────────────────────────────
+// ── Per-cycle personal recap ────────────────────────────────────
 
 /** One tick's damage ledger for the local player. */
 export interface TickRecap {
-  tick: number
-  /** Damage that landed on the local player this tick. */
+  cycle: number
+  /** Damage that landed on the local player this cycle. */
   taken: number
-  /** Damage the local player dealt this tick. */
+  /** Damage the local player dealt this cycle. */
   dealt: number
   /** "You took 131 (Mutex 106, burn 25)", or null when nothing landed. */
   takenText: string | null
@@ -353,7 +353,7 @@ function bump(by: Map<string, number>, label: string, amount: number) {
 }
 
 /**
- * Reduce a line stream to one damage ledger per tick, so a 4-second turn can be
+ * Reduce a line stream to one damage ledger per cycle, so a 4-second turn can be
  * read as a single sentence instead of mentally summing six chip lines.
  *
  * Deliberately built from the RAW line list rather than the story view: the
@@ -369,26 +369,26 @@ export function buildTickRecaps(lines: CombatLine[]): Map<number, TickRecap> {
     const amount = line.dmgAmount ?? 0
     if (amount <= 0) continue
     if (line.salience === 'mine-in') {
-      const by = takenBy.get(line.tick) ?? new Map<string, number>()
+      const by = takenBy.get(line.cycle) ?? new Map<string, number>()
       bump(by, line.sourceLabel || 'unknown', amount)
-      takenBy.set(line.tick, by)
+      takenBy.set(line.cycle, by)
     } else if (line.salience === 'mine-out') {
-      const by = dealtTo.get(line.tick) ?? new Map<string, number>()
+      const by = dealtTo.get(line.cycle) ?? new Map<string, number>()
       bump(by, line.targetLabel || 'unknown', amount)
-      dealtTo.set(line.tick, by)
+      dealtTo.set(line.cycle, by)
     }
   }
 
   const out = new Map<number, TickRecap>()
-  for (const tick of new Set([...takenBy.keys(), ...dealtTo.keys()])) {
-    const inBy = takenBy.get(tick)
-    const outBy = dealtTo.get(tick)
+  for (const cycle of new Set([...takenBy.keys(), ...dealtTo.keys()])) {
+    const inBy = takenBy.get(cycle)
+    const outBy = dealtTo.get(cycle)
     const taken = inBy ? [...inBy.values()].reduce((s, n) => s + n, 0) : 0
     const dealt = outBy ? [...outBy.values()].reduce((s, n) => s + n, 0) : 0
     const takenText = inBy ? recapClause('You took', taken, inBy, 'from') : null
     const dealtText = outBy ? recapClause('You dealt', dealt, outBy, 'to') : null
-    out.set(tick, {
-      tick,
+    out.set(cycle, {
+      cycle,
       taken,
       dealt,
       takenText,

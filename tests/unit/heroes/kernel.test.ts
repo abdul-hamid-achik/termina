@@ -22,12 +22,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 250,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 8,
     ice: 25,
     kills: 0,
@@ -41,7 +41,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -69,11 +69,11 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     playerMap[p.id] = p
   }
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -103,7 +103,7 @@ describe('Kernel Hero', () => {
       expect(hasBuff(updatedEnemy, 'stun')).toBe(true)
       const stun = updatedEnemy.buffs.find((b) => b.id === 'stun')
       // raw 2 = one gated action: a cast-applied disable is reaped same-tick.
-      expect(stun!.ticksRemaining).toBe(2)
+      expect(stun!.cyclesRemaining).toBe(2)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -171,7 +171,7 @@ describe('Kernel Hero', () => {
       expect(hasBuff(updated, 'shield')).toBe(true)
       const shield = updated.buffs.find((b) => b.id === 'shield')
       expect(shield!.stacks).toBe(150) // Level 1 shield = 150
-      expect(shield!.ticksRemaining).toBe(3)
+      expect(shield!.cyclesRemaining).toBe(3)
     })
 
     it('scales shield amount with level', () => {
@@ -208,7 +208,7 @@ describe('Kernel Hero', () => {
       expect(hasBuff(result.state.players['e1']!, 'taunt')).toBe(true)
       expect(hasBuff(result.state.players['e2']!, 'taunt')).toBe(true)
       const taunt = result.state.players['e1']!.buffs.find((b) => b.id === 'taunt')
-      expect(taunt!.ticksRemaining).toBe(2)
+      expect(taunt!.cyclesRemaining).toBe(2)
     })
 
     it('does not affect allies', () => {
@@ -286,7 +286,7 @@ describe('Kernel Hero', () => {
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'tick_end',
         payload: {},
       })
@@ -299,13 +299,13 @@ describe('Kernel Hero', () => {
       player = applyBuff(player, {
         id: 'hardened',
         stacks: 1,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'p1',
       })
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'tick_end',
         payload: {},
       })

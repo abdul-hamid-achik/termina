@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ItemDef } from '~~/shared/types/items'
-import { TICK_DURATION_MS } from '~~/shared/constants/balance'
+import { CYCLE_DURATION_MS } from '~~/shared/constants/balance'
 import { formatStats, activeCooldownSeconds } from '~~/shared/itemFormat'
 
 const props = defineProps<{
@@ -18,7 +18,7 @@ const emit = defineEmits<{ toggle: [] }>()
 
 const stats = computed(() => formatStats(props.item.stats))
 const cdSeconds = computed(() =>
-  props.item.active ? activeCooldownSeconds(props.item.active, TICK_DURATION_MS) : 0,
+  props.item.active ? activeCooldownSeconds(props.item.active, CYCLE_DURATION_MS) : 0,
 )
 const inert = computed(() => !!props.interactive && !!props.disabled)
 

@@ -4,7 +4,7 @@ import type { GameState, PlayerState } from '~~/shared/types/game'
 import { resolveAbility, resolvePassive, getBuffStacks } from '~~/server/game/heroes/_base'
 import '../../../server/game/heroes/sentry'
 
-const tickEnd = { tick: 10, type: 'tick_end' as const, payload: {} }
+const tickEnd = { cycle: 10, type: 'tick_end' as const, payload: {} }
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   const player = {
@@ -19,12 +19,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 350,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 4,
     ice: 20,
     kills: 0,
@@ -38,7 +38,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -82,11 +82,11 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     playerMap[p.id] = p
   }
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -97,7 +97,7 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     neutrals: [],
     ice: [],
     caches: [],
-    tenant: { alive: false, integ: 0, maxInteg: 0, deathTick: null },
+    tenant: { alive: false, integ: 0, maxInteg: 0, deathCycle: null },
     backup: null,
     events: [],
     ...overrides,
@@ -209,7 +209,7 @@ describe('Sentry Hero', () => {
       const shield = result.state.players['a1']!.buffs.find((b) => b.id === 'shield')
       expect(shield).toBeDefined()
       expect(shield!.stacks).toBe(100)
-      expect(shield!.ticksRemaining).toBe(3)
+      expect(shield!.cyclesRemaining).toBe(3)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -295,7 +295,7 @@ describe('Sentry Hero', () => {
       const slow = result.state.players['e1']!.buffs.find((b) => b.id === 'slow')
       expect(slow).toBeDefined()
       expect(slow!.stacks).toBe(30)
-      expect(slow!.ticksRemaining).toBe(2)
+      expect(slow!.cyclesRemaining).toBe(2)
     })
 
     it('does not slow allies', () => {
@@ -390,8 +390,8 @@ describe('Sentry Hero', () => {
 
       const shield = result.state.players['p1']!.buffs.find((b) => b.id === 'shield')
       const defBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'defenseBuff')
-      expect(shield!.ticksRemaining).toBe(4)
-      expect(defBuff!.ticksRemaining).toBe(4)
+      expect(shield!.cyclesRemaining).toBe(4)
+      expect(defBuff!.cyclesRemaining).toBe(4)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -434,7 +434,7 @@ describe('Sentry Hero', () => {
   describe('Stun/Silence blocking', () => {
     it('prevents casting when stunned', () => {
       const player = makePlayer({
-        buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 1, source: 'enemy' }],
+        buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 1, source: 'enemy' }],
       })
       const ally = makeAlly()
       const state = makeState([player, ally])
@@ -448,7 +448,7 @@ describe('Sentry Hero', () => {
 
     it('prevents casting when silenced', () => {
       const player = makePlayer({
-        buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 2, source: 'enemy' }],
+        buffs: [{ id: 'silence', stacks: 1, cyclesRemaining: 2, source: 'enemy' }],
       })
       const ally = makeAlly()
       const state = makeState([player, ally])

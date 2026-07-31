@@ -6,7 +6,7 @@ import { formatTickClock } from '~/utils/gameClock'
 
 /**
  * The always-on one-liners that replaced the panel chrome (R3-08): hop +
- * threat, net lead, and the tick clock. Three lines, no borders, no panels —
+ * threat, net lead, and the cycle clock. Three lines, no borders, no panels —
  * the stream owns the full column.
  */
 const props = defineProps<{
@@ -18,7 +18,7 @@ const props = defineProps<{
   netLead: string
   /** Ticks until the next cycle commits. */
   nextTickIn: number
-  tick: number
+  cycle: number
   canAct: boolean
   enemyCount: number
   allyHeadcount: number
@@ -42,7 +42,7 @@ const hopLine = computed(() => {
 })
 
 const clockLine = computed(() => {
-  const t = formatTickClock(props.tick, true)
+  const t = formatTickClock(props.cycle, true)
   return props.canAct ? `${t} · AWAITING ORDERS` : `${t} · resolving in ${props.nextTickIn}s`
 })
 </script>

@@ -5,7 +5,7 @@ import {
   type PlayerSetup,
   type StateManagerApi,
 } from '~~/server/game/engine/StateManager'
-import { STARTING_GOLD } from '~~/shared/constants/balance'
+import { STARTING_SCRIP } from '~~/shared/constants/balance'
 
 function makePlayerSetup(overrides: Partial<PlayerSetup> = {}): PlayerSetup {
   return {
@@ -33,7 +33,7 @@ describe('StateManager', () => {
 
       const state = Effect.runSync(sm.createGame('game1', players))
 
-      expect(state.tick).toBe(0)
+      expect(state.cycle).toBe(0)
       expect(state.phase).toBe('picking')
       expect(state.players['p1']).toBeDefined()
       expect(state.players['p2']).toBeDefined()
@@ -43,7 +43,7 @@ describe('StateManager', () => {
       const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1', heroId: 'echo' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
-      expect(state.players['p1']!.gold).toBe(STARTING_GOLD)
+      expect(state.players['p1']!.scrip).toBe(STARTING_SCRIP)
     })
 
     it('should place chaff players in chaff fountain', () => {
@@ -92,7 +92,7 @@ describe('StateManager', () => {
 
       const state = Effect.runSync(sm.createGame('game1', players))
       expect(state.players['p1']!.alive).toBe(true)
-      expect(state.players['p1']!.respawnTick).toBeNull()
+      expect(state.players['p1']!.respawnCycle).toBeNull()
     })
 
     it('should initialize cooldowns at 0', () => {
@@ -119,15 +119,15 @@ describe('StateManager', () => {
         id: 'chaff',
         kills: 0,
         iceKills: 0,
-        gold: 0,
-        hardenUsedTick: null,
+        scrip: 0,
+        hardenUsedCycle: null,
       })
       expect(state.teams.audit).toEqual({
         id: 'audit',
         kills: 0,
         iceKills: 0,
-        gold: 0,
-        hardenUsedTick: null,
+        scrip: 0,
+        hardenUsedCycle: null,
       })
     })
 
@@ -179,7 +179,7 @@ describe('StateManager', () => {
       Effect.runSync(sm.createGame('game1', players))
 
       const state = Effect.runSync(sm.getState('game1'))
-      expect(state.tick).toBe(0)
+      expect(state.cycle).toBe(0)
       expect(state.players['p1']).toBeDefined()
     })
 
@@ -194,12 +194,12 @@ describe('StateManager', () => {
       const players: PlayerSetup[] = [makePlayerSetup()]
       Effect.runSync(sm.createGame('game1', players))
 
-      const updated = Effect.runSync(sm.updateState('game1', (s) => ({ ...s, tick: 42 })))
-      expect(updated.tick).toBe(42)
+      const updated = Effect.runSync(sm.updateState('game1', (s) => ({ ...s, cycle: 42 })))
+      expect(updated.cycle).toBe(42)
 
       // Verify the update persisted
       const state = Effect.runSync(sm.getState('game1'))
-      expect(state.tick).toBe(42)
+      expect(state.cycle).toBe(42)
     })
 
     it('should fail for non-existent game', () => {
@@ -216,13 +216,13 @@ describe('StateManager', () => {
           ...s,
           players: {
             ...s.players,
-            p1: { ...s.players['p1']!, gold: 999 },
+            p1: { ...s.players['p1']!, scrip: 999 },
           },
         })),
       )
 
       const state = Effect.runSync(sm.getState('game1'))
-      expect(state.players['p1']!.gold).toBe(999)
+      expect(state.players['p1']!.scrip).toBe(999)
     })
   })
 

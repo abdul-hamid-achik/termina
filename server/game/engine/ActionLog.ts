@@ -5,7 +5,7 @@
  * replays and post-mortem debugging.
  *
  * Design notes:
- * - One Redis list per game at `gamelog:{gameId}`. RPUSH on each tick.
+ * - One Redis list per game at `gamelog:{gameId}`. RPUSH on each cycle.
  * - Bounded length via LTRIM after each push so a runaway game can't fill
  *   memory; we keep the most recent ACTION_LOG_MAX entries.
  * - Best-effort: failures are logged and swallowed. The live game never
@@ -23,7 +23,7 @@ const TTL_SECONDS = 60 * 60 * 8
 
 /**
  * Cap on retained log entries per game. ~10000 covers a 60+ minute match
- * with heavy action density (10 players × ~1 action/tick × 900 ticks plus
+ * with heavy action density (10 players × ~1 action/cycle × 900 ticks plus
  * headroom for bots).
  */
 const ACTION_LOG_MAX = 10_000
@@ -33,13 +33,13 @@ function logKey(gameId: string): string {
 }
 
 export interface LoggedAction {
-  tick: number
+  cycle: number
   playerId: string
   command: Command
 }
 
 /**
- * Append a batch of actions for the given tick. Failures are swallowed so
+ * Append a batch of actions for the given cycle. Failures are swallowed so
  * a Redis hiccup never breaks the game loop.
  */
 export function appendActions(
@@ -64,7 +64,7 @@ export function appendActions(
   )
 }
 
-/** Read all logged actions for a game (in tick order). */
+/** Read all logged actions for a game (in cycle order). */
 export function readActions(redis: RedisServiceApi, gameId: string): Effect.Effect<LoggedAction[]> {
   return Effect.gen(function* () {
     const raw = yield* redis.lrange(logKey(gameId), 0, -1)

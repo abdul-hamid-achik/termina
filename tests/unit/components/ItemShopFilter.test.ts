@@ -31,7 +31,7 @@ function mountShop(overrides: Record<string, unknown> = {}) {
   return mount(ItemShop, {
     props: {
       items: catalog(),
-      gold: 10_000,
+      scrip: 10_000,
       ownedItems: [null, null, null, null, null, null],
       pinnedItems: [],
       ...overrides,

@@ -1,13 +1,13 @@
 /**
  * Buyback System
- * Allows dead players to instantly respawn by paying gold
+ * Allows dead players to instantly respawn by paying scrip
  */
 
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import {
   BUYBACK_BASE_COST,
   BUYBACK_COST_PER_LEVEL,
-  BUYBACK_COOLDOWN_TICKS,
+  BUYBACK_COOLDOWN_CYCLES,
 } from '~~/shared/constants/balance'
 
 /**
@@ -36,21 +36,21 @@ export function canBuyback(state: GameState, playerId: string): { can: boolean; 
     return { can: false, reason: 'Player is not dead' }
   }
 
-  if (player.buybackCooldown && state.tick < player.buybackCooldown) {
-    const remaining = player.buybackCooldown - state.tick
-    return { can: false, reason: `Buyback on cooldown (${remaining} ticks remaining)` }
+  if (player.buybackCooldown && state.cycle < player.buybackCooldown) {
+    const remaining = player.buybackCooldown - state.cycle
+    return { can: false, reason: `Buyback on cooldown (${remaining} cycles remaining)` }
   }
 
   const cost = calculateBuybackCost(player)
-  if (player.gold < cost) {
-    return { can: false, reason: `Not enough gold (need ${cost}, have ${player.gold})` }
+  if (player.scrip < cost) {
+    return { can: false, reason: `Not enough scrip (need ${cost}, have ${player.scrip})` }
   }
 
   return { can: true }
 }
 
 /**
- * Execute buyback - instant respawn with gold cost
+ * Execute buyback - instant respawn with scrip cost
  */
 export function buyback(
   state: GameState,
@@ -75,12 +75,12 @@ export function buyback(
   const updatedPlayers = { ...state.players }
   const updatedPlayer = {
     ...player,
-    gold: player.gold - cost,
+    scrip: player.scrip - cost,
     alive: true,
     integ: player.maxInteg,
     bw: player.maxBw,
-    respawnTick: null,
-    buybackCooldown: state.tick + BUYBACK_COOLDOWN_TICKS,
+    respawnCycle: null,
+    buybackCooldown: state.cycle + BUYBACK_COOLDOWN_CYCLES,
     zone: player.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain',
   }
 

@@ -29,16 +29,16 @@ describe('DamageFloat', () => {
     expect(el.classes()).not.toContain('text-chaff')
   })
 
-  it('renders gold income as an amber +Ng, never mistakable for damage', () => {
-    const w = mount(DamageFloat, { props: { floats: [{ id: 4, amount: 41, kind: 'gold' }] } })
-    const el = w.find('[data-testid="damage-float-gold"]')
+  it('renders scrip income as an amber +Ng, never mistakable for damage', () => {
+    const w = mount(DamageFloat, { props: { floats: [{ id: 4, amount: 41, kind: 'scrip' }] } })
+    const el = w.find('[data-testid="damage-float-scrip"]')
     expect(el.exists()).toBe(true)
-    expect(el.text()).toBe('+41g')
+    expect(el.text()).toBe('+41sc')
     expect(el.classes()).toContain('text-gold')
     expect(el.classes()).not.toContain('text-chaff')
   })
 
-  it('only the gold float carries the currency suffix', () => {
+  it('only the scrip float carries the currency suffix', () => {
     const w = mount(DamageFloat, {
       props: {
         floats: [

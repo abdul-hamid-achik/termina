@@ -8,7 +8,7 @@ import {
 import {
   BUYBACK_BASE_COST,
   BUYBACK_COST_PER_LEVEL,
-  BUYBACK_COOLDOWN_TICKS,
+  BUYBACK_COOLDOWN_CYCLES,
 } from '~~/shared/constants/balance'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 
@@ -25,12 +25,12 @@ function makePlayer(o: Partial<PlayerState> = {}): PlayerState {
     maxBw: 300,
     level: 6,
     xp: 0,
-    gold: 2000,
+    scrip: 2000,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: false,
-    respawnTick: 100,
+    respawnCycle: 100,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -43,8 +43,8 @@ function makePlayer(o: Partial<PlayerState> = {}): PlayerState {
   } as PlayerState
 }
 
-function makeState(player: PlayerState, tick = 50): GameState {
-  return { tick, players: { [player.id]: player } } as GameState
+function makeState(player: PlayerState, cycle = 50): GameState {
+  return { cycle, players: { [player.id]: player } } as GameState
 }
 
 describe('BuybackSystem', () => {
@@ -61,18 +61,18 @@ describe('BuybackSystem', () => {
     })
 
     it('rejects while the buyback cooldown is still running', () => {
-      const p = makePlayer({ alive: false, gold: 99999, buybackCooldown: 100 })
+      const p = makePlayer({ alive: false, scrip: 99999, buybackCooldown: 100 })
       expect(canBuyback(makeState(p, 50), 'p1').can).toBe(false)
     })
 
     it('rejects without enough gold', () => {
-      const res = canBuyback(makeState(makePlayer({ alive: false, gold: 0 })), 'p1')
+      const res = canBuyback(makeState(makePlayer({ alive: false, scrip: 0 })), 'p1')
       expect(res.can).toBe(false)
-      expect(res.reason).toMatch(/gold/i)
+      expect(res.reason).toMatch(/scrip/i)
     })
 
     it('allows a dead, funded, off-cooldown player', () => {
-      expect(canBuyback(makeState(makePlayer({ alive: false, gold: 99999 })), 'p1').can).toBe(true)
+      expect(canBuyback(makeState(makePlayer({ alive: false, scrip: 99999 })), 'p1').can).toBe(true)
     })
 
     it('rejects an unknown player', () => {
@@ -81,8 +81,8 @@ describe('BuybackSystem', () => {
   })
 
   describe('buyback (execution)', () => {
-    it('instantly respawns at full INTEG/BW, deducts gold, sets cooldown, and sends to the fountain', () => {
-      const p = makePlayer({ alive: false, gold: 99999, integ: 0, bw: 0, team: 'chaff' })
+    it('instantly respawns at full INTEG/BW, deducts scrip, sets cooldown, and sends to the fountain', () => {
+      const p = makePlayer({ alive: false, scrip: 99999, integ: 0, bw: 0, team: 'chaff' })
       const res = buyback(makeState(p, 50), 'p1')
 
       expect(res.success).toBe(true)
@@ -90,14 +90,14 @@ describe('BuybackSystem', () => {
       expect(np.alive).toBe(true)
       expect(np.integ).toBe(np.maxInteg)
       expect(np.bw).toBe(np.maxBw)
-      expect(np.respawnTick).toBeNull()
-      expect(np.gold).toBe(99999 - calculateBuybackCost(p))
-      expect(np.buybackCooldown).toBe(50 + BUYBACK_COOLDOWN_TICKS)
+      expect(np.respawnCycle).toBeNull()
+      expect(np.scrip).toBe(99999 - calculateBuybackCost(p))
+      expect(np.buybackCooldown).toBe(50 + BUYBACK_COOLDOWN_CYCLES)
       expect(np.zone).toBe('chaff-fountain')
     })
 
     it('sends a audit buyback to the audit fountain', () => {
-      const p = makePlayer({ alive: false, gold: 99999, team: 'audit' })
+      const p = makePlayer({ alive: false, scrip: 99999, team: 'audit' })
       expect(buyback(makeState(p), 'p1').newState!.players['p1']!.zone).toBe('audit-fountain')
     })
 

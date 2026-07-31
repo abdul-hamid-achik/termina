@@ -8,7 +8,7 @@ import {
   ENGINE_BRANCHED_BUFF_IDS,
 } from '~~/app/utils/buffs'
 
-const buff = (id: string, stacks = 1, ticksRemaining = 3) => ({ id, stacks, ticksRemaining })
+const buff = (id: string, stacks = 1, cyclesRemaining = 3) => ({ id, stacks, cyclesRemaining })
 
 describe('buffLabel', () => {
   it('maps known effect ids to readable names', () => {
@@ -143,7 +143,7 @@ describe('displayBuffs', () => {
   })
 
   it('nulls the countdown for permanent-flagged buffs even with a finite tick counter', () => {
-    // overwatch is re-applied every tick; resonance's 30t is a refresh-on-attack window.
+    // overwatch is re-applied every cycle; resonance's 30t is a refresh-on-attack window.
     const out = displayBuffs([buff('overwatch', 2, 2), buff('resonance', 30, 30)])
     expect(out.map((b) => b.ticks)).toEqual([null, null])
   })

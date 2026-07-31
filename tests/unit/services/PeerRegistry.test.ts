@@ -81,8 +81,8 @@ describe('PeerRegistry', () => {
 
       unregisterPeer('player1', oldPeer)
 
-      sendToPeer('player1', { type: 'tick_state', tick: 1 })
-      expect(newPeer.send).toHaveBeenCalledWith(JSON.stringify({ type: 'tick_state', tick: 1 }))
+      sendToPeer('player1', { type: 'cycle_state', cycle: 1 })
+      expect(newPeer.send).toHaveBeenCalledWith(JSON.stringify({ type: 'cycle_state', cycle: 1 }))
       expect(oldPeer.send).not.toHaveBeenCalled()
     })
 
@@ -122,9 +122,9 @@ describe('PeerRegistry', () => {
       registerPeer('p5', peer, rawWs)
       registered.push({ playerId: 'p5', peer })
 
-      sendToPeer('p5', { type: 'tick_state', tick: 42, state: { integ: 100 } })
+      sendToPeer('p5', { type: 'cycle_state', cycle: 42, state: { integ: 100 } })
       expect(peer.send).toHaveBeenCalledWith(
-        JSON.stringify({ type: 'tick_state', tick: 42, state: { integ: 100 } }),
+        JSON.stringify({ type: 'cycle_state', cycle: 42, state: { integ: 100 } }),
       )
     })
 

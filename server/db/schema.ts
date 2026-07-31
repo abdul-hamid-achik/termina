@@ -95,7 +95,7 @@ export const matches = pgTable(
     // it is recorded for history but never affects MMR (see game-server onGameOver).
     mode: text('mode', { enum: ['ranked_5v5', 'quick_3v3', '1v1', 'casual_5v5'] }).notNull(),
     winner: text('winner', { enum: ['chaff', 'audit'] }),
-    durationTicks: integer('duration_ticks'),
+    durationCycles: integer('duration_ticks'),
     // The season this match was played in (null for pre-seasons history).
     seasonNumber: integer('season_number'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

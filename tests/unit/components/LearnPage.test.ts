@@ -4,14 +4,14 @@ import LearnPage from '~~/app/pages/learn.vue'
 import { HEROES, HERO_IDS, isHeroId } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
 import {
-  PASSIVE_GOLD_PER_TICK,
-  ANCIENT_HP,
-  RESPAWN_BASE_TICKS,
-  RESPAWN_PER_LEVEL_TICKS,
+  PASSIVE_SCRIP_PER_CYCLE,
+  TERMINAL_HP,
+  RESPAWN_BASE_CYCLES,
+  RESPAWN_PER_LEVEL_CYCLES,
   RESPAWN_FREE_LEVELS,
-  CAMTAP_DURATION_TICKS,
+  CAMTAP_DURATION_CYCLES,
   WARD_LIMIT_PER_TEAM,
-  WAVE_GOLD,
+  WAVE_SCRIP,
   KILL_BOUNTY_BASE,
   ICE_HP_T1,
   ICE_HP_T2,
@@ -19,16 +19,16 @@ import {
   ICE_ATTACK,
   BASIC_ABILITY_RANKS,
   ULTIMATE_UNLOCK_LEVEL,
-  FOUNTAIN_HEAL_PER_TICK_PERCENT,
-  FOUNTAIN_BW_PER_TICK_PERCENT,
+  FOUNTAIN_HEAL_PER_CYCLE_PERCENT,
+  FOUNTAIN_BW_PER_CYCLE_PERCENT,
   CLOT_RING_REGEN_PERCENT,
   DRIP_MASK_REGEN_PERCENT,
   REGEN_CACHE_HEAL_PERCENT,
   BURN_HP_THRESHOLD,
-  BURN_GOLD_RATIO,
+  BURN_SCRIP_RATIO,
   BURN_XP_RATIO,
-  WAVE_GOLD_MIN,
-  WAVE_GOLD_MAX,
+  WAVE_SCRIP_MIN,
+  WAVE_SCRIP_MAX,
   WAVE_XP,
   WAVE_XP_SHARED,
   LINE_UNIT_HP,
@@ -62,7 +62,7 @@ describe('learn page', () => {
   it('describes the Terminal (win structure) win condition, not the old all-ice one', () => {
     const text = mountLearn().text()
     expect(text).toContain('Terminal')
-    expect(text).toContain(`${ANCIENT_HP} INTEG`)
+    expect(text).toContain(`${TERMINAL_HP} INTEG`)
     expect(text).toContain('T3')
     expect(text).not.toContain('destroy the enemy base')
     expect(text).not.toContain('Destroy all 3 ice tiers in any lane to expose the enemy base')
@@ -86,24 +86,24 @@ describe('learn page', () => {
     expect(getAbilityLevel(1, 'q')).toBe(1)
   })
 
-  it('quotes live gold values from balance constants', () => {
+  it('quotes live scrip values from balance constants', () => {
     const text = mountLearn().text()
-    expect(text).toContain(`${PASSIVE_GOLD_PER_TICK}sc/cycle`)
-    expect(text).not.toContain('2g/tick')
-    expect(text).toContain(`${WAVE_GOLD}sc`)
+    expect(text).toContain(`${PASSIVE_SCRIP_PER_CYCLE}sc/cycle`)
+    expect(text).not.toContain('2sc/tick')
+    expect(text).toContain(`${WAVE_SCRIP}sc`)
     expect(text).toContain(`${KILL_BOUNTY_BASE}sc base`)
   })
 
   it('states the real respawn formula (base + per-level after free levels)', () => {
     const text = mountLearn().text()
     expect(text).toContain(
-      `${RESPAWN_BASE_TICKS} cycles + ${RESPAWN_PER_LEVEL_TICKS} per level after level ${RESPAWN_FREE_LEVELS}`,
+      `${RESPAWN_BASE_CYCLES} cycles + ${RESPAWN_PER_LEVEL_CYCLES} per level after level ${RESPAWN_FREE_LEVELS}`,
     )
     // Old copy claimed "3 + (your level) ticks"
     expect(text).not.toContain('3 + (your level) ticks')
     // Level 1 = 3 ticks, level 10 = 12 ticks with current constants
     const lvl10 =
-      RESPAWN_BASE_TICKS + RESPAWN_PER_LEVEL_TICKS * Math.max(0, 10 - RESPAWN_FREE_LEVELS)
+      RESPAWN_BASE_CYCLES + RESPAWN_PER_LEVEL_CYCLES * Math.max(0, 10 - RESPAWN_FREE_LEVELS)
     expect(text).toContain(`${lvl10} at level 10`)
   })
 
@@ -147,7 +147,7 @@ describe('learn page', () => {
   it('quotes live ward and ice numbers', () => {
     const text = mountLearn().text()
     expect(text).toContain(`(${ITEMS.camtap!.cost}sc)`)
-    expect(text).toContain(`${CAMTAP_DURATION_TICKS} cycles`)
+    expect(text).toContain(`${CAMTAP_DURATION_CYCLES} cycles`)
     expect(text).toContain(`Max ${WARD_LIMIT_PER_TEAM} active per team`)
     expect(text).toContain(`T1 ${ICE_HP_T1} INTEG, T2 ${ICE_HP_T2} INTEG, T3 ${ICE_HP_T3} INTEG`)
     expect(text).toContain(`hit for ${ICE_ATTACK}`)
@@ -283,7 +283,7 @@ describe('learn page', () => {
       expect(text).toContain('NO innate regeneration')
       // The rate is already on the page; the card names every actual source.
       expect(text).toContain(
-        `${FOUNTAIN_HEAL_PER_TICK_PERCENT}% INTEG / ${FOUNTAIN_BW_PER_TICK_PERCENT}% BW per cycle`,
+        `${FOUNTAIN_HEAL_PER_CYCLE_PERCENT}% INTEG / ${FOUNTAIN_BW_PER_CYCLE_PERCENT}% BW per cycle`,
       )
       expect(text).toContain('out of combat')
       for (const source of [
@@ -311,7 +311,7 @@ describe('learn page', () => {
       expect(text).toContain(`${LINE_UNIT_HP} INTEG`)
       expect(text).toContain(`${Math.round(BURN_HP_THRESHOLD * 100)}% INTEG`)
       // Burn reward is derived, not asserted as prose.
-      const burnGold = Math.floor(((WAVE_GOLD_MIN + WAVE_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
+      const burnGold = Math.floor(((WAVE_SCRIP_MIN + WAVE_SCRIP_MAX) / 2) * BURN_SCRIP_RATIO)
       expect(text).toContain(`${burnGold}sc and ${Math.floor(WAVE_XP * BURN_XP_RATIO)} XP`)
     })
 

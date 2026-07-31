@@ -11,8 +11,8 @@ import { SILT_DWELLERS } from '~~/shared/constants/balance'
 import { HEROES } from '~~/shared/constants/heroes'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeTenant } from '~~/server/game/map/spawner'
-import { initializeAncients } from '~~/server/game/engine/AncientSystem'
-import { tickAllBuffs } from '~~/server/game/heroes/_base'
+import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
+import { cycleAllBuffs } from '~~/server/game/heroes/_base'
 // Register echo so its Q resolver runs (the spell-block tests cast a real spell).
 import '../../../server/game/heroes/echo'
 
@@ -29,12 +29,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 200,
     level: 1,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -56,25 +56,25 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
   return {
-    tick: 1,
+    cycle: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
     },
     players: {},
     zones: initializeZoneStates(),
     waves: [],
     neutrals: [],
     ice: initializeIce(),
-    ancients: initializeAncients(),
+    terminals: initializeAncients(),
     caches: [],
     tenant: initializeTenant(),
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
-    dayNightTick: 0,
+    dayNightCycle: 0,
     ...overrides,
   }
 }
@@ -92,7 +92,7 @@ describe('ActionResolver', () => {
       expect(error).toBeNull()
     })
 
-    it('should allow moving to a distant zone (auto-path walks one hop per tick)', () => {
+    it('should allow moving to a distant zone (auto-path walks one hop per cycle)', () => {
       const state = makeGameState({
         players: { p1: makePlayer({ zone: 'mid-t1-chaff' }) },
       })
@@ -141,7 +141,7 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             zone: 'mid-t1-chaff',
-            buffs: [{ id: 'cyclone', stacks: 1, ticksRemaining: 2, source: 'stasis_shunt' }],
+            buffs: [{ id: 'cyclone', stacks: 1, cyclesRemaining: 2, source: 'stasis_shunt' }],
           }),
         },
       })
@@ -166,9 +166,9 @@ describe('ActionResolver', () => {
         playerId: 'p1',
         command: { type: 'cast', ability: 'q' },
       })
-      // Concrete rejection (brief quick win #1): ability name + ticks left + ready tick.
+      // Concrete rejection (brief quick win #1): ability name + cycles left + ready cycle.
       expect(error).toContain('on cooldown')
-      expect(error).toMatch(/3 ticks left/)
+      expect(error).toMatch(/3 cycles left/)
       expect(error).toMatch(/ready T\d+/)
     })
 
@@ -244,7 +244,7 @@ describe('ActionResolver', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
-            buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 2, source: 'e1' }],
+            buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 2, source: 'e1' }],
           }),
         },
       })
@@ -365,7 +365,7 @@ describe('ActionResolver', () => {
       }
     })
 
-    it('awards the neutral bounty (gold + xp) and emits neutral_killed on a jungle kill', () => {
+    it('awards the neutral bounty (scrip + xp) and emits neutral_killed on a jungle kill', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
@@ -373,7 +373,7 @@ describe('ActionResolver', () => {
             zone: 'mid-river',
             team: 'chaff',
             heroId: 'echo',
-            gold: 600,
+            scrip: 600,
             xp: 0,
           }),
         },
@@ -389,7 +389,7 @@ describe('ActionResolver', () => {
       const result = Effect.runSync(resolveActions(state, actions))
 
       const killer = result.state.players['p1']!
-      expect(killer.gold).toBe(600 + SILT_DWELLERS.stub.gold) // 600 + 20
+      expect(killer.scrip).toBe(600 + SILT_DWELLERS.stub.scrip) // 600 + 20
       expect(killer.xp).toBe(SILT_DWELLERS.stub.xp) // 25
       // dead neutral is pruned from the array (or left flagged not-alive)
       const n1 = result.state.neutrals?.find((n) => n.id === 'n1')
@@ -399,7 +399,7 @@ describe('ActionResolver', () => {
       )
     })
 
-    it('should tick down cooldowns each tick', () => {
+    it('should cycle down cooldowns each cycle', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', cooldowns: { q: 3, w: 1, e: 0, r: 5 } }),
@@ -420,8 +420,8 @@ describe('ActionResolver', () => {
           p1: makePlayer({
             id: 'p1',
             buffs: [
-              { id: 'shield', stacks: 1, ticksRemaining: 1, source: 'p2' },
-              { id: 'buff', stacks: 1, ticksRemaining: 3, source: 'p2' },
+              { id: 'shield', stacks: 1, cyclesRemaining: 1, source: 'p2' },
+              { id: 'buff', stacks: 1, cyclesRemaining: 3, source: 'p2' },
             ],
           }),
         },
@@ -429,10 +429,10 @@ describe('ActionResolver', () => {
 
       const result = Effect.runSync(resolveActions(state, []))
       const buffs = result.state.players['p1']!.buffs
-      // Buffs are NOT ticked down in ActionResolver — that's handled by tickAllBuffs in GameLoop
+      // Buffs are NOT ticked down in ActionResolver — that's handled by cycleAllBuffs in GameLoop
       expect(buffs.length).toBe(2)
-      expect(buffs[0]!.ticksRemaining).toBe(1)
-      expect(buffs[1]!.ticksRemaining).toBe(3)
+      expect(buffs[0]!.cyclesRemaining).toBe(1)
+      expect(buffs[1]!.cyclesRemaining).toBe(3)
     })
 
     it('should place wards in valid zones', () => {
@@ -522,16 +522,16 @@ describe('ActionResolver', () => {
         },
       })
 
-      const tick = 10
+      const cycle = 10
 
       const observerResult = Effect.runSync(
-        resolveActions({ ...observerState, tick }, [
+        resolveActions({ ...observerState, cycle }, [
           { playerId: 'p1', command: { type: 'ward', zone: 'mid-river' } },
         ]),
       )
 
       const sentryResult = Effect.runSync(
-        resolveActions({ ...sentryState, tick }, [
+        resolveActions({ ...sentryState, cycle }, [
           { playerId: 'p1', command: { type: 'ward', zone: 'mid-river' } },
         ]),
       )
@@ -603,11 +603,11 @@ describe('ActionResolver', () => {
             id: 'p1',
             zone: 'mid-t1-chaff',
             buffs: [
-              { id: 'tp_channeling', stacks: 1, ticksRemaining: 2, source: 'recall_token' },
+              { id: 'tp_channeling', stacks: 1, cyclesRemaining: 2, source: 'recall_token' },
               {
                 id: 'tp_destination',
                 stacks: 1,
-                ticksRemaining: 3,
+                cyclesRemaining: 3,
                 source: 'recall_token',
                 destination: 'chaff-fountain',
               },
@@ -638,11 +638,11 @@ describe('ActionResolver', () => {
             zone: 'mid-river',
             team: 'chaff',
             buffs: [
-              { id: 'tp_channeling', stacks: 1, ticksRemaining: 2, source: 'recall_token' },
+              { id: 'tp_channeling', stacks: 1, cyclesRemaining: 2, source: 'recall_token' },
               {
                 id: 'tp_destination',
                 stacks: 1,
-                ticksRemaining: 3,
+                cyclesRemaining: 3,
                 source: 'recall_token',
                 destination: 'chaff-fountain',
               },
@@ -676,7 +676,7 @@ describe('ActionResolver', () => {
           p1: makePlayer({
             id: 'p1',
             zone: 'mid-t1-chaff',
-            buffs: [{ id: 'some_other_buff', stacks: 1, ticksRemaining: 2, source: 'test' }],
+            buffs: [{ id: 'some_other_buff', stacks: 1, cyclesRemaining: 2, source: 'test' }],
           }),
         },
       })
@@ -717,8 +717,8 @@ describe('ActionResolver', () => {
         expect(ice.invulnerable).toBe(false)
       }
 
-      expect(result.state.teams.chaff.hardenUsedTick).toBe(state.tick)
-      expect(result.state.teams.audit.hardenUsedTick).toBeNull()
+      expect(result.state.teams.chaff.hardenUsedCycle).toBe(state.cycle)
+      expect(result.state.teams.audit.hardenUsedCycle).toBeNull()
 
       const glyphEvents = result.events.filter((e) => e._tag === 'harden_used')
       expect(glyphEvents.length).toBe(1)
@@ -776,7 +776,7 @@ describe('ActionResolver', () => {
 
     it('destroys a low-INTEG enemy ice and awards the ice-kill bounty', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', zone: 'mid-t1-audit', team: 'chaff', gold: 600 }) },
+        players: { p1: makePlayer({ id: 'p1', zone: 'mid-t1-audit', team: 'chaff', scrip: 600 }) },
         ice: initializeIce().map((t) => (t.zone === 'mid-t1-audit' ? { ...t, integ: 1 } : t)),
       })
       const actions: PlayerAction[] = [
@@ -791,28 +791,28 @@ describe('ActionResolver', () => {
       const ice = result.state.ice.find((t) => t.zone === 'mid-t1-audit')!
       expect(ice.alive).toBe(false)
       // awardIceKill pays the in-zone attacker (ice_kill event itself is emitted by GameLoop)
-      expect(result.state.players['p1']!.gold).toBeGreaterThan(600)
+      expect(result.state.players['p1']!.scrip).toBeGreaterThan(600)
 
       // …and says so. The payout was silent, so razing a ice read as a pure
       // objective with no reward.
-      const gold = result.events.filter((e) => e._tag === 'gold_change')
-      expect(gold).toHaveLength(1)
-      expect(gold[0]).toMatchObject({
+      const scrip = result.events.filter((e) => e._tag === 'gold_change')
+      expect(scrip).toHaveLength(1)
+      expect(scrip[0]).toMatchObject({
         playerId: 'p1',
         reason: 'ice kill',
-        amount: result.state.players['p1']!.gold - 600,
+        amount: result.state.players['p1']!.scrip - 600,
       })
     })
 
     it('should reject harden when on cooldown', () => {
       const state = makeGameState({
-        tick: 100,
+        cycle: 100,
         players: {
           p1: makePlayer({ id: 'p1', team: 'chaff' }),
         },
         teams: {
-          chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: 50 },
-          audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+          chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: 50 },
+          audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
         },
       })
 
@@ -839,7 +839,7 @@ describe('ActionResolver', () => {
           p1: makePlayer({
             items: ['bulwark_plate', 'spite_plate', null, null, null, null],
             buffs: [
-              { id: 'item_cd_spite_plate', stacks: 1, ticksRemaining: 5, source: 'spite_plate' },
+              { id: 'item_cd_spite_plate', stacks: 1, cyclesRemaining: 5, source: 'spite_plate' },
             ],
           }),
         },
@@ -887,9 +887,9 @@ describe('ActionResolver', () => {
         ),
       ).toBe(true)
       // Item actives resolve in Phase 0 now (ahead of the ability they set up),
-      // so the passives phase later in the SAME tick already sees the regen
-      // buff — drinking a salve heals on the tick you drink it. It used to
-      // resolve after passives, in the shop phase, and do nothing until tick 2.
+      // so the passives phase later in the SAME cycle already sees the regen
+      // buff — drinking a salve heals on the cycle you drink it. It used to
+      // resolve after passives, in the shop phase, and do nothing until cycle 2.
       expect(p1.integ).toBe(350)
 
       const tick2 = Effect.runSync(resolveActions(tick1.state, []))
@@ -919,10 +919,10 @@ describe('ActionResolver', () => {
       const dest = p1.buffs.find((b) => b.id === 'tp_destination')
       expect(dest?.destination).toBe('chaff-fountain')
 
-      // GameLoop ticks buffs each tick; teleport completes when channel finishes
+      // GameLoop ticks buffs each cycle; teleport completes when channel finishes
       let channeled = result.state
       for (let i = 0; i < 3; i++) {
-        channeled = tickAllBuffs(channeled)
+        channeled = cycleAllBuffs(channeled)
       }
       expect(channeled.players['p1']!.zone).toBe('chaff-fountain')
     })
@@ -969,7 +969,7 @@ describe('ActionResolver', () => {
       const p1 = result.state.players['p1']!
       const immune = p1.buffs.find((b) => b.id === 'airgap')
       expect(immune).toBeDefined()
-      expect(immune!.ticksRemaining).toBe(4)
+      expect(immune!.cyclesRemaining).toBe(4)
       expect(p1.buffs.some((b) => b.id === 'item_cd_hardshell')).toBe(true)
     })
 
@@ -1085,10 +1085,10 @@ describe('ActionResolver', () => {
 
   describe('ancient attacks', () => {
     function stateWithVulnerableAuditAncient(playerZone: string, vulnerable = true): GameState {
-      const ancients = initializeAncients()
+      const terminals = initializeAncients()
       return makeGameState({
         players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: playerZone }) },
-        ancients: { ...ancients, audit: { ...ancients.audit, vulnerable } },
+        terminals: { ...terminals, audit: { ...terminals.audit, vulnerable } },
       })
     }
 
@@ -1096,13 +1096,13 @@ describe('ActionResolver', () => {
       const state = stateWithVulnerableAuditAncient('audit-base')
       const result = Effect.runSync(
         resolveActions(state, [
-          { playerId: 'p1', command: { type: 'attack', target: { kind: 'ancient' } } },
+          { playerId: 'p1', command: { type: 'attack', target: { kind: 'terminal' } } },
         ]),
       )
 
-      expect(result.state.ancients.audit.integ).toBeLessThan(state.ancients.audit.integ)
+      expect(result.state.terminals.audit.integ).toBeLessThan(state.terminals.audit.integ)
       const dmg = result.events.find(
-        (e) => e._tag === 'damage' && e.targetId === 'ancient_audit' && e.sourceId === 'p1',
+        (e) => e._tag === 'damage' && e.targetId === 'terminal_audit' && e.sourceId === 'p1',
       )
       expect(dmg).toBeDefined()
       // Counts as structure damage on the scoreboard
@@ -1113,11 +1113,11 @@ describe('ActionResolver', () => {
       const state = stateWithVulnerableAuditAncient('audit-base', false)
       const result = Effect.runSync(
         resolveActions(state, [
-          { playerId: 'p1', command: { type: 'attack', target: { kind: 'ancient' } } },
+          { playerId: 'p1', command: { type: 'attack', target: { kind: 'terminal' } } },
         ]),
       )
 
-      expect(result.state.ancients.audit.integ).toBe(state.ancients.audit.integ)
+      expect(result.state.terminals.audit.integ).toBe(state.terminals.audit.integ)
       expect(result.events.filter((e) => e._tag === 'damage')).toHaveLength(0)
     })
 
@@ -1125,11 +1125,11 @@ describe('ActionResolver', () => {
       const state = stateWithVulnerableAuditAncient('mid-river')
       const result = Effect.runSync(
         resolveActions(state, [
-          { playerId: 'p1', command: { type: 'attack', target: { kind: 'ancient' } } },
+          { playerId: 'p1', command: { type: 'attack', target: { kind: 'terminal' } } },
         ]),
       )
 
-      expect(result.state.ancients.audit.integ).toBe(state.ancients.audit.integ)
+      expect(result.state.terminals.audit.integ).toBe(state.terminals.audit.integ)
       expect(result.events.filter((e) => e._tag === 'damage')).toHaveLength(0)
     })
   })
@@ -1162,7 +1162,7 @@ describe('ActionResolver', () => {
         players: {
           p1: caster(),
           p2: enemy([
-            { id: 'spellblock', stacks: 1, ticksRemaining: 12, source: 'intercept_shell' },
+            { id: 'spellblock', stacks: 1, cyclesRemaining: 12, source: 'intercept_shell' },
           ]),
         },
       })
@@ -1179,7 +1179,7 @@ describe('ActionResolver', () => {
         players: {
           p1: caster(),
           p2: enemy([
-            { id: 'firewall_block', stacks: 1, ticksRemaining: 30, source: 'ablative_shell' },
+            { id: 'firewall_block', stacks: 1, cyclesRemaining: 30, source: 'ablative_shell' },
           ]),
         },
       })
@@ -1193,7 +1193,7 @@ describe('ActionResolver', () => {
         players: {
           p1: caster(),
           p2: enemy([
-            { id: 'spellblock', stacks: 0, ticksRemaining: 8, source: 'intercept_shell' },
+            { id: 'spellblock', stacks: 0, cyclesRemaining: 8, source: 'intercept_shell' },
           ]),
         },
       })
@@ -1206,7 +1206,9 @@ describe('ActionResolver', () => {
       const state = makeGameState({
         players: {
           p1: caster(),
-          p2: enemy([{ id: 'mirror_shell', stacks: 1, ticksRemaining: 5, source: 'mirror_shell' }]),
+          p2: enemy([
+            { id: 'mirror_shell', stacks: 1, cyclesRemaining: 5, source: 'mirror_shell' },
+          ]),
         },
       })
       const result = castQ(state)
@@ -1255,7 +1257,7 @@ describe('ActionResolver', () => {
 
       const r = castQ(
         build([
-          { id: 'stack_overflow_buff', stacks: 1, ticksRemaining: 10, source: 'stack_overflow' },
+          { id: 'stack_overflow_buff', stacks: 1, cyclesRemaining: 10, source: 'stack_overflow' },
         ]),
       )
       const ocDmg = 550 - r.state.players['p2']!.integ
@@ -1272,8 +1274,8 @@ describe('ActionResolver', () => {
       state: GameState
       attack: () => { rolledCrit: boolean; damage: number }
     } {
-      // Use the hero's REAL stats so the per-tick maxInteg recalculation doesn't
-      // collapse an inflated INTEG pool mid-tick and mask the actual attack damage.
+      // Use the hero's REAL stats so the per-cycle maxInteg recalculation doesn't
+      // collapse an inflated INTEG pool mid-cycle and mask the actual attack damage.
       const echo = HEROES.echo!
       const maxInteg = echo.baseStats.integ
       const maxBw = echo.baseStats.bw
@@ -1417,11 +1419,11 @@ describe('ActionResolver', () => {
         expect(result.events.filter((e) => e._tag === 'status_applied')).toEqual([
           {
             _tag: 'status_applied',
-            tick: 1,
+            cycle: 1,
             sourceId: 'p1',
             targetId: 'p2',
             status: 'stun',
-            ticksRemaining: 2,
+            cyclesRemaining: 2,
           },
         ])
       } finally {
@@ -1450,7 +1452,7 @@ describe('ActionResolver', () => {
         id: 'p1',
         team: 'chaff',
         zone: 'mid-river',
-        buffs: [{ id: 'stun_immune', stacks: 1, ticksRemaining: 2, source: 'x' }],
+        buffs: [{ id: 'stun_immune', stacks: 1, cyclesRemaining: 2, source: 'x' }],
       })
       const enemy = makePlayer({
         id: 'p2',
@@ -1474,7 +1476,7 @@ describe('ActionResolver', () => {
   })
 
   /**
-   * A player gets ONE action per 4-second tick. Every attack that resolves to
+   * A player gets ONE action per 4-second cycle. Every attack that resolves to
    * nothing used to `continue` in silence — no damage, no message, and `canAct`
    * false for the next four seconds. These pin the feedback for each mis-target
    * class; `rejected` is also the channel GameLoop uses to keep a whiffed swing
@@ -1567,14 +1569,14 @@ describe('ActionResolver', () => {
       // The bug this pins: with no team guard the swing killed the ally wave
       // and banked the FULL last-hit bounty — the opposite of last-hitting.
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river', gold: 600 }) },
+        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river', scrip: 600 }) },
         waves: [{ id: 'ally0', team: 'chaff', zone: 'mid-river', integ: 5, type: 'line' }],
       })
       const result = attack(state, { kind: 'wave', index: 0 })
       expect(result.rejected).toHaveLength(1)
       expect(result.rejected[0]!.reason).toMatch(/own wave/i)
       expect(result.state.waves[0]!.integ).toBe(5)
-      expect(result.state.players['p1']!.gold).toBe(600)
+      expect(result.state.players['p1']!.scrip).toBe(600)
       expect(result.state.players['p1']!.xp).toBe(0)
     })
 
@@ -1588,7 +1590,7 @@ describe('ActionResolver', () => {
     it('says Tenant is already dead', () => {
       const state = makeGameState({
         players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'hollow' }) },
-        tenant: { alive: false, integ: 0, maxInteg: 2000, deathTick: 1 },
+        tenant: { alive: false, integ: 0, maxInteg: 2000, deathCycle: 1 },
       })
       const result = attack(state, { kind: 'tenant' })
       expect(result.rejected).toHaveLength(1)

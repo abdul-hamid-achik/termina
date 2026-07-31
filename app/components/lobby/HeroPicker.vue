@@ -636,7 +636,7 @@ function initialOf(name: string | undefined | null): string {
               <span
                 >CD
                 <span class="text-text-primary"
-                  >{{ selectedHeroDef.abilities[slot].cooldownTicks }}t</span
+                  >{{ selectedHeroDef.abilities[slot].cooldownCycles }}t</span
                 ></span
               >
             </div>

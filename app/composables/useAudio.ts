@@ -1,12 +1,12 @@
 import { useSettingsStore } from '~/stores/settings'
 
 export type SoundName =
-  | 'tick'
+  | 'cycle'
   | 'submit'
   | 'damage'
   | 'kill'
   | 'death'
-  | 'gold'
+  | 'scrip'
   | 'ready'
   | 'cast'
   | 'ice_fall'
@@ -63,7 +63,7 @@ interface SoundDef {
  */
 const SOUNDS: Record<SoundName, SoundDef> = {
   // Subtle UI tick — single short blip
-  tick: {
+  cycle: {
     oscs: [{ type: 'sine', freqStart: 880, duration: 0.04, gain: 0.08, attack: 0.002 }],
   },
   // Crisp keypress / submit
@@ -107,7 +107,7 @@ const SOUNDS: Record<SoundName, SoundDef> = {
     noise: { duration: 0.4, gain: 0.14, cutoff: 600 },
   },
   // Gold: bright two-tone "ka-ching" (root + perfect fifth above)
-  gold: {
+  scrip: {
     oscs: [
       { type: 'triangle', freqStart: 1320, duration: 0.08, gain: 0.16, attack: 0.001 },
       { type: 'sine', freqStart: 1980, duration: 0.1, gain: 0.12, attack: 0.001, detune: 3 },
@@ -239,7 +239,7 @@ const SOUNDS: Record<SoundName, SoundDef> = {
 const MIN_GAP: Partial<Record<SoundName, number>> = {
   damage: 0.06,
   cast: 0.05,
-  gold: 0.04,
+  scrip: 0.04,
 }
 
 /** A repeat pushed further out than this would land under the NEXT tick's

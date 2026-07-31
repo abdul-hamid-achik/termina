@@ -25,12 +25,12 @@ function player(over: Partial<PlayerState> = {}): PlayerState {
     maxBw: 200,
     level: 11,
     xp: 0,
-    gold: 120,
+    scrip: 120,
     items: ['edge_kit', 'recall_token', null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 6,
@@ -49,14 +49,14 @@ const stateWith = (players: Record<string, PlayerState>) => ({ players }) as unk
 
 describe('buildEndStats', () => {
   it('reports net worth, not the unspent wallet balance', () => {
-    // REGRESSION: the payload only carried `gold`, so the post-game screen
+    // REGRESSION: the payload only carried `scrip`, so the post-game screen
     // ranked the player who converted every coin into items LAST.
     const owned = ITEMS.edge_kit!.cost + ITEMS.recall_token!.cost
-    const spender = player({ gold: 120 })
-    const hoarder = player({ gold: 120 + owned, items: [null, null, null, null, null, null] })
+    const spender = player({ scrip: 120 })
+    const hoarder = player({ scrip: 120 + owned, items: [null, null, null, null, null, null] })
     const stats = buildEndStats(['p1', 'p2'], stateWith({ p1: spender, p2: hoarder }), {})
 
-    expect(stats.p1!.gold).toBe(120)
+    expect(stats.p1!.scrip).toBe(120)
     expect(stats.p1!.netWorth).toBe(120 + owned)
     // Two players who farmed the same amount rank equal, whatever they spent.
     expect(stats.p2!.netWorth).toBe(stats.p1!.netWorth)

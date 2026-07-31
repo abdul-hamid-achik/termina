@@ -1,16 +1,16 @@
 import { describe, it, expect } from 'vitest'
 import { seedGame, ENEMY, HUMAN } from './harness'
 import { calculateBuybackCost } from '~~/server/game/engine/BuybackSystem'
-import { HARDEN_DURATION_TICKS } from '~~/shared/constants/balance'
+import { HARDEN_DURATION_CYCLES } from '~~/shared/constants/balance'
 
 /**
  * Replaces tests/e2e/flows/game_attack_lands.yml — a human basic attack on a
  * co-located enemy registers hero damage. damageDealt is the regen-independent
  * "the hit landed" signal the original flow used (raw enemy INTEG is confounded by
- * per-tick regen + the level-6 maxInteg recompute).
+ * per-cycle regen + the level-6 maxInteg recompute).
  */
 describe('combat', () => {
-  it('attacking a co-located enemy deals hero damage after one tick', async () => {
+  it('attacking a co-located enemy deals hero damage after one cycle', async () => {
     // laning_combat co-locates the human + the enemy mid-lane, both at level 6.
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
 
@@ -39,8 +39,8 @@ describe('combat', () => {
   it('stored buyback cost reflects the death just taken (matches what buyback charges)', async () => {
     // Regression: the death handler computed buybackCost from the PRE-increment
     // death count, but buyback() recharges from the post-death count — so the
-    // cost shown to the player was 10g (deaths*10) cheaper than what they'd be
-    // charged, and a player with exactly the displayed gold got rejected.
+    // cost shown to the player was 10sc (deaths*10) cheaper than what they'd be
+    // charged, and a player with exactly the displayed scrip got rejected.
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.patch((s) => ({
       ...s,
@@ -66,7 +66,7 @@ describe('combat', () => {
     // awardKill read it, so the streak-scaled shutdown bounty was always 0 — the
     // whole "ending a fed player's run pays out" mechanic was dead. Two identical
     // games differing only in the victim's streak isolate the bonus (same roster
-    // ⇒ same comeback multiplier ⇒ the only delta is the shutdown gold).
+    // ⇒ same comeback multiplier ⇒ the only delta is the shutdown scrip).
     async function killGain(victimStreak: number): Promise<number> {
       const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
       await game.patch((s) => ({
@@ -77,10 +77,10 @@ describe('combat', () => {
           [ENEMY]: { ...s.players[ENEMY]!, integ: 1, killStreak: victimStreak },
         },
       }))
-      const before = (await game.me()).gold
+      const before = (await game.me()).scrip
       game.attackHero(ENEMY)
       await game.tick()
-      return (await game.me()).gold - before
+      return (await game.me()).scrip - before
     }
 
     const cleanKill = await killGain(0)
@@ -133,7 +133,7 @@ describe('combat', () => {
     expect((await game.me()).cooldowns).toEqual({ q: 0, w: 0, e: 0, r: 0 })
   })
 
-  it('killing an enemy hero pays the killer its bounty — gold, XP, a kill credit, and a kill event', async () => {
+  it('killing an enemy hero pays the killer its bounty — scrip, XP, a kill credit, and a kill event', async () => {
     // The hero-kill bounty is the snowball engine of the whole match, but the
     // other kill tests only assert item side-effects (Segfault/Rapier). This
     // locks the reward itself: a clean kill (no kill-reward items) advances the
@@ -164,16 +164,16 @@ describe('combat', () => {
         (e) => e._tag === 'kill' && e.killerId === HUMAN && e.victimId === ENEMY,
       ),
     ).toBe(true)
-    // The bounty advances the killer's economy (kill gold + kill XP). Passive
+    // The bounty advances the killer's economy (kill scrip + kill XP). Passive
     // income only ever adds, so a strict increase isolates "rewarded, not idle".
-    expect(me.gold).toBeGreaterThan(before.gold)
+    expect(me.scrip).toBeGreaterThan(before.scrip)
     expect(me.xp).toBeGreaterThan(before.xp)
 
     // The victim takes the death on its own ledger.
     expect((await game.player(ENEMY)).deaths).toBe(victimBefore.deaths + 1)
   })
 
-  it('a teammate who chipped the victim earns an assist (credit + gold) on the kill', async () => {
+  it('a teammate who chipped the victim earns an assist (credit + scrip) on the kill', async () => {
     // The complement of the kill bounty: assists are how a support that never
     // lands the last hit still earns off a kill. A third ally chips the enemy,
     // then the human finishes it a tick later — within the 5-tick assist window —
@@ -225,8 +225,8 @@ describe('combat', () => {
     const ally = await game.player(ALLY)
     expect(ally.assists).toBe(allyBefore.assists + 1)
     expect(ally.kills).toBe(0)
-    // Assist gold is paid out (a flat split; passive income only adds on top).
-    expect(ally.gold).toBeGreaterThan(allyBefore.gold)
+    // Assist scrip is paid out (a flat split; passive income only adds on top).
+    expect(ally.scrip).toBeGreaterThan(allyBefore.scrip)
   })
 
   it('Divine Rapier drops from the victim and is claimed by the killer on a hero kill', async () => {
@@ -253,7 +253,7 @@ describe('combat', () => {
     expect((await game.me()).items).toContain('last_word')
   })
 
-  it('a damage-over-time debuff deals damage each tick and stops on expiry', async () => {
+  it('a damage-over-time debuff deals damage each cycle and stops on expiry', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     // A 2-tick DoT on the enemy, sourced to the human. processDoTs treats any
     // buff whose id contains 'dot' as a DoT dealing `stacks` damage/tick.
@@ -263,7 +263,7 @@ describe('combat', () => {
         ...s.players,
         [ENEMY]: {
           ...s.players[ENEMY]!,
-          buffs: [{ id: 'test_dot', stacks: 120, ticksRemaining: 2, source: HUMAN }],
+          buffs: [{ id: 'test_dot', stacks: 120, cyclesRemaining: 2, source: HUMAN }],
         },
       },
     }))
@@ -287,7 +287,7 @@ describe('combat', () => {
 
   it('a dead hero respawns at full INTEG in the fountain once the respawn tick passes', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
-    const startTick = (await game.state()).tick
+    const startTick = (await game.state()).cycle
     await game.patch((s) => ({
       ...s,
       players: {
@@ -297,7 +297,7 @@ describe('combat', () => {
           alive: false,
           integ: 0,
           bw: 0,
-          respawnTick: startTick + 5,
+          respawnCycle: startTick + 5,
         },
       },
     }))
@@ -309,7 +309,7 @@ describe('combat', () => {
     const me = await game.me()
     expect(me.alive).toBe(true)
     expect(me.integ).toBe(me.maxInteg)
-    expect(me.respawnTick).toBeNull()
+    expect(me.respawnCycle).toBeNull()
     expect(me.zone).toBe(me.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain')
   })
 
@@ -322,9 +322,9 @@ describe('combat', () => {
       ...s,
       players: {
         ...s.players,
-        // Both freshly dead this tick (respawnTick null → handleDeaths assigns it).
-        [HUMAN]: { ...s.players[HUMAN]!, level: 8, alive: false, integ: 0, respawnTick: null },
-        [ENEMY]: { ...s.players[ENEMY]!, level: 1, alive: false, integ: 0, respawnTick: null },
+        // Both freshly dead this cycle (respawnCycle null → handleDeaths assigns it).
+        [HUMAN]: { ...s.players[HUMAN]!, level: 8, alive: false, integ: 0, respawnCycle: null },
+        [ENEMY]: { ...s.players[ENEMY]!, level: 1, alive: false, integ: 0, respawnCycle: null },
       },
     }))
 
@@ -332,10 +332,10 @@ describe('combat', () => {
 
     const me = await game.me()
     const enemy = await game.player(ENEMY)
-    expect(me.respawnTick).not.toBeNull()
-    expect(enemy.respawnTick).not.toBeNull()
-    // Both died on the same tick, so a later respawnTick = a longer wait.
-    expect(me.respawnTick!).toBeGreaterThan(enemy.respawnTick!)
+    expect(me.respawnCycle).not.toBeNull()
+    expect(enemy.respawnCycle).not.toBeNull()
+    // Both died on the same tick, so a later respawnCycle = a longer wait.
+    expect(me.respawnCycle!).toBeGreaterThan(enemy.respawnCycle!)
   })
 
   it('a shield buff absorbs an incoming attack before INTEG', async () => {
@@ -347,7 +347,7 @@ describe('combat', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           integ: s.players[HUMAN]!.maxInteg,
-          buffs: [{ id: 'shield', stacks: 400, ticksRemaining: 5, source: HUMAN }],
+          buffs: [{ id: 'shield', stacks: 400, cyclesRemaining: 5, source: HUMAN }],
         },
       },
     }))
@@ -377,7 +377,7 @@ describe('combat', () => {
     const before = (await game.me()).integ
     await game.tick()
     const afterOne = await game.me()
-    // Fountain heals ~15% of maxInteg per tick — far more than base regen alone.
+    // Fountain heals ~15% of maxInteg per cycle — far more than base regen alone.
     expect(afterOne.integ).toBeGreaterThan(before + Math.floor(afterOne.maxInteg * 0.1))
 
     // A handful of ticks tops the hero back off to full.
@@ -401,7 +401,7 @@ describe('combat', () => {
             zone: fountain,
             integ: 50,
             // The soft combat flag the engine checks before fountain healing.
-            buffs: [{ id: 'inCombat', stacks: 1, ticksRemaining: 5, source: HUMAN }],
+            buffs: [{ id: 'inCombat', stacks: 1, cyclesRemaining: 5, source: HUMAN }],
           },
         },
       }
@@ -423,25 +423,25 @@ describe('combat', () => {
       return {
         ...s,
         players: { ...s.players, [HUMAN]: { ...me, zone: enemyBase } },
-        ancients: {
-          ...s.ancients,
+        terminals: {
+          ...s.terminals,
           // Vulnerable (a T3 has fallen) and at 1 INTEG — any hit finishes it.
-          [enemyTeam]: { ...s.ancients[enemyTeam], integ: 1, alive: true, vulnerable: true },
+          [enemyTeam]: { ...s.terminals[enemyTeam], integ: 1, alive: true, vulnerable: true },
         },
       }
     })
 
-    game.submit({ type: 'attack', target: { kind: 'ancient' } })
+    game.submit({ type: 'attack', target: { kind: 'terminal' } })
     await game.tick()
 
     const me = await game.me()
     const enemyTeam = me.team === 'chaff' ? 'audit' : 'chaff'
     const state = await game.state()
-    expect(state.ancients[enemyTeam].alive).toBe(false)
+    expect(state.terminals[enemyTeam].alive).toBe(false)
     expect(state.winner).toBe(me.team)
-    expect(game.lastEvents.some((e) => e._tag === 'ancient_destroyed')).toBe(true)
-    // The win used to also push a playerless gold sentinel, which the feed
-    // rendered as the literal line "? earned 0g (game_over:chaff)" at the
+    expect(game.lastEvents.some((e) => e._tag === 'terminal_destroyed')).toBe(true)
+    // The win used to also push a playerless scrip sentinel, which the feed
+    // rendered as the literal line "? earned 0sc (game_over:chaff)" at the
     // exact moment of victory. Nothing consumed it.
     expect(game.lastEvents.filter((e) => e._tag === 'gold_change')).toEqual([])
   })
@@ -455,19 +455,19 @@ describe('combat', () => {
       return {
         ...s,
         players: { ...s.players, [HUMAN]: { ...me, zone: enemyBase } },
-        ancients: {
-          ...s.ancients,
-          [enemyTeam]: { ...s.ancients[enemyTeam], integ: 500, alive: true, vulnerable: false },
+        terminals: {
+          ...s.terminals,
+          [enemyTeam]: { ...s.terminals[enemyTeam], integ: 500, alive: true, vulnerable: false },
         },
       }
     })
 
-    game.submit({ type: 'attack', target: { kind: 'ancient' } })
+    game.submit({ type: 'attack', target: { kind: 'terminal' } })
     await game.tick()
 
     const me = await game.me()
     const enemyTeam = me.team === 'chaff' ? 'audit' : 'chaff'
-    const ancient = (await game.state()).ancients[enemyTeam]
+    const ancient = (await game.state()).terminals[enemyTeam]
     // Firewalled: the attack is rejected, so the Ancient takes no damage and lives.
     expect(ancient.alive).toBe(true)
     expect(ancient.integ).toBe(500)
@@ -530,9 +530,9 @@ describe('combat', () => {
     const enemyTeam = me.team === 'chaff' ? 'audit' : 'chaff'
 
     // Precondition: with every T3 standing, the enemy Ancient is firewalled.
-    expect((await game.state()).ancients[enemyTeam].vulnerable).toBe(false)
+    expect((await game.state()).terminals[enemyTeam].vulnerable).toBe(false)
 
-    // Drop one of the enemy's T3 ice; the next tick recomputes vulnerability.
+    // Drop one of the enemy's T3 ice; the next cycle recomputes vulnerability.
     await game.patch((s) => ({
       ...s,
       ice: s.ice.map((t) =>
@@ -541,12 +541,12 @@ describe('combat', () => {
     }))
     await game.tick()
 
-    expect((await game.state()).ancients[enemyTeam].vulnerable).toBe(true)
+    expect((await game.state()).terminals[enemyTeam].vulnerable).toBe(true)
   })
 
-  it('a dead player with gold buys back — instantly alive at the fountain, gold spent', async () => {
+  it('a dead player with scrip buys back — instantly alive at the fountain, scrip spent', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
-    const startTick = (await game.state()).tick
+    const startTick = (await game.state()).cycle
     await game.patch((s) => ({
       ...s,
       players: {
@@ -555,26 +555,26 @@ describe('combat', () => {
           ...s.players[HUMAN]!,
           alive: false,
           integ: 0,
-          respawnTick: startTick + 30, // genuinely dead, far from a natural respawn
-          gold: 10_000, // plenty for the buyback cost
+          respawnCycle: startTick + 30, // genuinely dead, far from a natural respawn
+          scrip: 10_000, // plenty for the buyback cost
         },
       },
     }))
 
-    const goldBefore = (await game.me()).gold
+    const scripBefore = (await game.me()).scrip
     game.submit({ type: 'buyback' })
     await game.tick()
 
     const me = await game.me()
     expect(me.alive).toBe(true)
-    expect(me.respawnTick).toBeNull()
-    expect(me.gold).toBeLessThan(goldBefore) // paid the buyback cost
+    expect(me.respawnCycle).toBeNull()
+    expect(me.scrip).toBeLessThan(scripBefore) // paid the buyback cost
     expect(me.zone).toBe(me.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain')
   })
 
-  it('buyback is refused with insufficient gold — the hero stays dead and keeps its gold', async () => {
+  it('buyback is refused with insufficient scrip — the hero stays dead and keeps its gold', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
-    const startTick = (await game.state()).tick
+    const startTick = (await game.state()).cycle
     await game.patch((s) => ({
       ...s,
       players: {
@@ -583,8 +583,8 @@ describe('combat', () => {
           ...s.players[HUMAN]!,
           alive: false,
           integ: 0,
-          respawnTick: startTick + 30,
-          gold: 0,
+          respawnCycle: startTick + 30,
+          scrip: 0,
         },
       },
     }))
@@ -594,7 +594,7 @@ describe('combat', () => {
 
     const me = await game.me()
     expect(me.alive).toBe(false)
-    expect(me.gold).toBe(0)
+    expect(me.scrip).toBe(0)
   })
 
   it('buyback goes on cooldown — a second buyback right after is refused with feedback', async () => {
@@ -608,8 +608,8 @@ describe('combat', () => {
           ...s.players[HUMAN]!,
           alive: false,
           integ: 0,
-          respawnTick: s.tick + 50,
-          gold: 10_000,
+          respawnCycle: s.cycle + 50,
+          scrip: 10_000,
           buybackCooldown: null, // no prior buyback
         },
       },
@@ -619,14 +619,14 @@ describe('combat', () => {
     game.submit({ type: 'buyback' })
     await game.tick()
     expect((await game.me()).alive).toBe(true)
-    expect((await game.me()).buybackCooldown ?? 0).toBeGreaterThan((await game.state()).tick)
+    expect((await game.me()).buybackCooldown ?? 0).toBeGreaterThan((await game.state()).cycle)
 
     // Die again while that cooldown is still ticking (the patch keeps it set).
     await game.patch((s) => ({
       ...s,
       players: {
         ...s.players,
-        [HUMAN]: { ...s.players[HUMAN]!, alive: false, integ: 0, respawnTick: s.tick + 50 },
+        [HUMAN]: { ...s.players[HUMAN]!, alive: false, integ: 0, respawnCycle: s.cycle + 50 },
       },
     }))
 
@@ -656,7 +656,7 @@ describe('combat', () => {
 
     const before = (await game.me()).integ
     await game.tick()
-    // ICE_ATTACK (120, minus plate) far exceeds per-tick regen, so the
+    // ICE_ATTACK (120, minus plate) far exceeds per-cycle regen, so the
     // exposed hero visibly loses INTEG.
     expect((await game.me()).integ).toBeLessThan(before)
   })
@@ -706,24 +706,24 @@ describe('combat', () => {
     await game.tick()
     expect(game.lastEvents.some((e) => e._tag === 'harden_used')).toBe(true)
 
-    // Second harden one tick later: still on cooldown, so it's rejected.
+    // Second harden one cycle later: still on cooldown, so it's rejected.
     game.submit({ type: 'harden' })
     await game.tick()
     expect(game.lastEvents.some((e) => e._tag === 'harden_on_cooldown')).toBe(true)
   })
 
-  it('Harden wears off after HARDEN_DURATION_TICKS — ice become vulnerable again', async () => {
+  it('Harden wears off after HARDEN_DURATION_CYCLES — ice become vulnerable again', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me = await game.me()
     const team = me.team
 
     // Simulate a harden cast that's now exactly past its duration: invulnerable
-    // ice + a hardenUsedTick old enough that expireGlyph should lift it.
+    // ice + a hardenUsedCycle old enough that expireGlyph should lift it.
     await game.patch((s) => ({
       ...s,
       teams: {
         ...s.teams,
-        [team]: { ...s.teams[team]!, hardenUsedTick: s.tick - HARDEN_DURATION_TICKS },
+        [team]: { ...s.teams[team]!, hardenUsedCycle: s.cycle - HARDEN_DURATION_CYCLES },
       },
       ice: s.ice.map((t) => (t.team === team ? { ...t, invulnerable: true } : t)),
     }))
@@ -814,7 +814,7 @@ describe('combat', () => {
     // and report the HUMAN's INTEG afterwards. (The hardened reduction lands on HP
     // loss, not the damage event, so HP-retained is the clean signal.)
     const hpAfterSwing = async (
-      humanBuffs: { id: string; stacks: number; ticksRemaining: number; source: string }[],
+      humanBuffs: { id: string; stacks: number; cyclesRemaining: number; source: string }[],
     ) => {
       await game.patch((s) => ({
         ...s,
@@ -831,7 +831,7 @@ describe('combat', () => {
 
     const hpNoHardened = await hpAfterSwing([])
     const hpHardened = await hpAfterSwing([
-      { id: 'hardened', stacks: 1, ticksRemaining: 9999, source: HUMAN },
+      { id: 'hardened', stacks: 1, cyclesRemaining: 9999, source: HUMAN },
     ])
 
     // Both started at full INTEG and took the same regen; hardened absorbs 10% of
@@ -846,7 +846,7 @@ describe('combat', () => {
     // One HUMAN(daemon) swing at the ENEMY from full enemy INTEG, with the given
     // daemon buffs; report the enemy's INTEG afterwards (more damage → lower INTEG).
     const enemyHpAfterSwing = async (
-      daemonBuffs: { id: string; stacks: number; ticksRemaining: number; source: string }[],
+      daemonBuffs: { id: string; stacks: number; cyclesRemaining: number; source: string }[],
     ) => {
       await game.patch((s) => ({
         ...s,
@@ -867,7 +867,7 @@ describe('combat', () => {
 
     const normal = await enemyHpAfterSwing([])
     const fromStealth = await enemyHpAfterSwing([
-      { id: 'stealth', stacks: 1, ticksRemaining: 99, source: HUMAN },
+      { id: 'stealth', stacks: 1, cyclesRemaining: 99, source: HUMAN },
     ])
 
     // The opening strike out of stealth hits 50% harder, so the enemy ends lower.
@@ -903,7 +903,7 @@ describe('combat', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          buffs: [{ id: 'ghost_form', stacks: 1, ticksRemaining: 5, source: HUMAN }],
+          buffs: [{ id: 'ghost_form', stacks: 1, cyclesRemaining: 5, source: HUMAN }],
         },
       },
     }))
@@ -920,7 +920,7 @@ describe('combat', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          buffs: [{ id: 'ghost_form', stacks: 1, ticksRemaining: 5, source: HUMAN }],
+          buffs: [{ id: 'ghost_form', stacks: 1, cyclesRemaining: 5, source: HUMAN }],
         },
       },
     }))
@@ -976,7 +976,7 @@ describe('combat', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          buffs: [{ id: 'spite_plate', stacks: 100, ticksRemaining: 3, source: HUMAN }],
+          buffs: [{ id: 'spite_plate', stacks: 100, cyclesRemaining: 3, source: HUMAN }],
         },
       },
     }))
@@ -999,7 +999,7 @@ describe('combat', () => {
         [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
         [ENEMY]: {
           ...s.players[ENEMY]!,
-          buffs: [{ id: 'spite_plate', stacks: 100, ticksRemaining: 3, source: ENEMY }],
+          buffs: [{ id: 'spite_plate', stacks: 100, cyclesRemaining: 3, source: ENEMY }],
         },
       },
     }))
@@ -1039,7 +1039,7 @@ describe('BREACH access state', () => {
     const enemy = await game.player(ENEMY)
     const breached = enemy.buffs.find((b) => b.id === 'breached')
     expect(breached).toBeDefined()
-    expect(breached!.ticksRemaining).toBeGreaterThan(0)
+    expect(breached!.cyclesRemaining).toBeGreaterThan(0)
   })
 })
 

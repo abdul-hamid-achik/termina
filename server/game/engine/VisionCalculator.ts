@@ -279,7 +279,7 @@ function isRevealedToTeam(player: PlayerState, state: GameState, team: TeamId): 
  */
 export function filterStateForSpectator(state: GameState): PlayerVisibleState {
   return {
-    tick: state.tick,
+    cycle: state.cycle,
     phase: state.phase,
     teams: state.teams,
     players: { ...state.players },
@@ -287,14 +287,14 @@ export function filterStateForSpectator(state: GameState): PlayerVisibleState {
     waves: state.waves,
     neutrals: state.neutrals ?? [],
     ice: state.ice,
-    ancients: state.ancients,
+    terminals: state.terminals,
     caches: state.caches ?? [],
     tenant: state.tenant,
     backup: state.backup,
     events: state.events,
     visibleZones: Object.keys(state.zones),
     timeOfDay: state.timeOfDay,
-    dayNightTick: state.dayNightTick,
+    dayNightCycle: state.dayNightCycle,
     mapId: state.mapId,
     mode: state.mode,
     tutorialStep: state.tutorialStep,
@@ -314,7 +314,7 @@ export function filterStateForPlayer(
   const player = state.players[playerId]
   if (!player) {
     return {
-      tick: state.tick,
+      cycle: state.cycle,
       phase: state.phase,
       teams: state.teams,
       players: {},
@@ -322,14 +322,14 @@ export function filterStateForPlayer(
       waves: [],
       neutrals: [],
       ice: state.ice,
-      ancients: state.ancients,
+      terminals: state.terminals,
       caches: state.caches ?? [],
       tenant: state.tenant,
       backup: state.backup,
       events: [],
       visibleZones: [],
       timeOfDay: state.timeOfDay,
-      dayNightTick: state.dayNightTick,
+      dayNightCycle: state.dayNightCycle,
       mapId: state.mapId,
       mode: state.mode,
       tutorialStep: state.tutorialStep,
@@ -431,7 +431,7 @@ export function filterStateForPlayer(
   })
 
   return {
-    tick: state.tick,
+    cycle: state.cycle,
     phase: state.phase,
     teams: state.teams,
     players: filteredPlayers,
@@ -439,14 +439,14 @@ export function filterStateForPlayer(
     waves: filteredWaves,
     neutrals: state.neutrals ?? [], // Neutrals are visible in their zones (public info)
     ice: state.ice, // ICE are always visible (global info)
-    ancients: state.ancients, // Ancients are always visible (global info)
+    terminals: state.terminals, // Ancients are always visible (global info)
     caches: state.caches ?? [],
     tenant: state.tenant,
     backup: state.backup,
     events: filteredEvents,
     visibleZones: [...visible],
     timeOfDay: state.timeOfDay,
-    dayNightTick: state.dayNightTick,
+    dayNightCycle: state.dayNightCycle,
     mapId: state.mapId,
     mode: state.mode,
     tutorialStep: state.tutorialStep,

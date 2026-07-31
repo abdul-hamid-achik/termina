@@ -13,13 +13,13 @@ import { isShopZoneFor, ZONE_IDS, ZONE_MAP } from '~~/shared/constants/zones'
 import { zonesForMap } from '~~/shared/constants/maps'
 import { findPath } from '~~/shared/pathfinding'
 import { HEROES, isHeroId } from '~~/shared/constants/heroes'
-import { goldLead, formatGoldShort, sparkline } from '~/utils/strategy'
+import { scripLead, formatScripShort, sparkline } from '~/utils/strategy'
 import { getTalentTree, talentUnlockLevel } from '~~/shared/constants/talents'
 import { getAbilityBwCost } from '~~/shared/utils/ability'
 import {
   BUYBACK_BASE_COST,
   BUYBACK_COST_PER_LEVEL,
-  SURRENDER_MIN_TICK,
+  SURRENDER_MIN_CYCLE,
   BURN_HP_THRESHOLD,
   waveUnitMaxHp,
 } from '~~/shared/constants/balance'
@@ -44,9 +44,9 @@ export interface GameContext {
    *  `wave:<i>` is ZONE-local, but the index is derived by counting within
    *  server order — so this must arrive unsorted and unfiltered. */
   waves?: WaveUnitState[]
-  /** Current game tick — enables cooldown/timing validation when provided. */
-  tick?: number
-  /** Game mode — the tutorial is exempt from the surrender tick gate. */
+  /** Current game cycle — enables cooldown/timing validation when provided. */
+  cycle?: number
+  /** Game mode — the tutorial is exempt from the surrender cycle gate. */
   mode?: GameMode
 }
 
@@ -102,7 +102,7 @@ function hpPct(p: PlayerState): number {
  *
  * Returns `{ target: null }` to cast with no target, `{ target: 'hero:…' }`
  * with a resolved target string, or `{ error }` when there's no valid target
- * so the caller can surface a hint instead of burning the tick.
+ * so the caller can surface a hint instead of burning the cycle.
  */
 export function pickAbilityTargetString(
   ability: AbilityDef,
@@ -240,8 +240,8 @@ export function pickDenyTargetString(
 
 // ── Informational command readouts ────────────────────────────────
 // status/map/scan are client-side: they print a readout to the local log and
-// DON'T consume the tick (the server "accepts but ignores" them, so sending one
-// would silently waste the player's one action that tick).
+// DON'T consume the cycle (the server "accepts but ignores" them, so sending one
+// would silently waste the player's one action that cycle).
 
 const zoneName = (id: string): string => ZONE_MAP[id]?.name ?? id
 
@@ -252,7 +252,7 @@ export function formatStatusReadout(player: PlayerState): string {
   return (
     `STATUS · ${hero} Lv${player.level} · ` +
     `INTEG ${Math.floor(player.integ)}/${player.maxInteg} BW ${Math.floor(player.bw)}/${player.maxBw} · ` +
-    `${player.gold}g · KDA ${kda} · @ ${zoneName(player.zone)}`
+    `${player.scrip}sc · KDA ${kda} · @ ${zoneName(player.zone)}`
   )
 }
 
@@ -292,8 +292,8 @@ export function formatScanReadout(
 export function formatContactsReadout(
   player: PlayerState,
   allPlayers: Record<string, PlayerState>,
-  lastSeen: Record<string, { zone: string; tick: number }>,
-  tick: number,
+  lastSeen: Record<string, { zone: string; cycle: number }>,
+  cycle: number,
 ): string[] {
   const lines: string[] = []
   const visible = Object.values(allPlayers).filter((p) => p.id !== player.id && p.alive)
@@ -313,7 +313,7 @@ export function formatContactsReadout(
   }
   for (const [id, ls] of fogged) {
     if (visible.some((p) => p.id === id)) continue
-    lines.push(`WHO · ✕ fogged @ ${zoneName(ls.zone)} · ${Math.max(0, tick - ls.tick)}c ago`)
+    lines.push(`WHO · ✕ fogged @ ${zoneName(ls.zone)} · ${Math.max(0, cycle - ls.cycle)}c ago`)
   }
   return lines
 }
@@ -327,7 +327,7 @@ export function formatNetReadout(input: {
   dayNight: string
   objectives: string
 }): string {
-  const lead = goldLead(input.chaffNetWorth, input.auditNetWorth)
+  const lead = scripLead(input.chaffNetWorth, input.auditNetWorth)
   const trend = input.netWorthHistory
     ? sparkline(
         input.netWorthHistory.chaff.map((v, i) => v - (input.netWorthHistory!.audit[i] ?? 0)),
@@ -336,7 +336,7 @@ export function formatNetReadout(input: {
   const leadText =
     lead.leader === null
       ? 'even'
-      : `${lead.leader === 'chaff' ? 'CHF' : 'AUD'} +${formatGoldShort(lead.amount)}`
+      : `${lead.leader === 'chaff' ? 'CHF' : 'AUD'} +${formatScripShort(lead.amount)}`
   return `NET · ${leadText}${trend ? ` ${trend}` : ''} · ${input.visionText} · ${input.dayNight} · ${input.objectives}`
 }
 
@@ -423,7 +423,7 @@ function parseTarget(raw: string): TargetRef | null {
   if (raw === 'self') return { kind: 'self' }
   // The enemy team's core structure ("the Terminal"; typed as terminal/mainframe/ancient/core)
   if (raw === 'ancient' || raw === 'mainframe' || raw === 'terminal' || raw === 'core')
-    return { kind: 'ancient' }
+    return { kind: 'terminal' }
   if (raw.startsWith('hero:')) return { kind: 'hero', name: raw.slice(5) }
   if (raw.startsWith('wave:')) {
     const idx = Number.parseInt(raw.slice(5), 10)
@@ -471,7 +471,7 @@ function hasDebuff(player: PlayerState, type: DebuffType): boolean {
 /**
  * Pre-flight validation mirroring the server's validateAction rules
  * (ActionResolver.ts) so illegal actions are caught before submission
- * instead of wasting the player's one action this tick.
+ * instead of wasting the player's one action this cycle.
  * Returns an error string, or null if the command would be accepted.
  */
 export function validateCommand(command: Command, context: GameContext): string | null {
@@ -505,28 +505,28 @@ export function validateCommand(command: Command, context: GameContext): string 
     case 'buyback': {
       if (player.alive) return 'Buyback is only available while dead'
       if (
-        context.tick !== undefined &&
+        context.cycle !== undefined &&
         player.buybackCooldown &&
-        context.tick < player.buybackCooldown
+        context.cycle < player.buybackCooldown
       ) {
-        return `Buyback on cooldown (${player.buybackCooldown - context.tick} cycles remaining)`
+        return `Buyback on cooldown (${player.buybackCooldown - context.cycle} cycles remaining)`
       }
       const cost = buybackCostFor(player)
-      if (player.gold < cost) {
-        return `Not enough gold for buyback (need ${cost - player.gold}g more)`
+      if (player.scrip < cost) {
+        return `Not enough scrip for buyback (need ${cost - player.scrip}sc more)`
       }
       return null
     }
     case 'surrender': {
-      // Mirrors SurrenderSystem.canSurrender: the tick gate stops rage-quits in
+      // Mirrors SurrenderSystem.canSurrender: the cycle gate stops rage-quits in
       // a real match, but the tutorial is single-player and ends long before
-      // tick 225 — gating it there just traps a learner with no way out.
+      // cycle 225 — gating it there just traps a learner with no way out.
       if (
         context.mode !== 'tutorial' &&
-        context.tick !== undefined &&
-        context.tick < SURRENDER_MIN_TICK
+        context.cycle !== undefined &&
+        context.cycle < SURRENDER_MIN_CYCLE
       ) {
-        return `Too early to surrender (available at cycle ${SURRENDER_MIN_TICK})`
+        return `Too early to surrender (available at cycle ${SURRENDER_MIN_CYCLE})`
       }
       return null
     }
@@ -534,7 +534,7 @@ export function validateCommand(command: Command, context: GameContext): string 
       const zone = ZONE_MAP[player.zone]
       if (!zone) return null
       // Auto-path (mirrors the server): ANY zone on this game's map with a path
-      // from here is a valid order — the hero walks one zone per tick toward it.
+      // from here is a valid order — the hero walks one zone per cycle toward it.
       // `visibleZones` is the full game zone set (not vision-filtered); skip the
       // subset check until it's populated.
       const gameZones = context.visibleZones
@@ -588,7 +588,7 @@ export function validateCommand(command: Command, context: GameContext): string 
         if (!neutral || !neutral.alive) return `No neutral wave at index ${t.index}`
         if (neutral.zone !== player.zone) return 'That neutral camp is not in your zone'
       }
-      if (t.kind === 'ancient') {
+      if (t.kind === 'terminal') {
         const enemyBase = player.team === 'chaff' ? 'audit-base' : 'chaff-base'
         if (player.zone !== enemyBase) {
           return `Must be in the enemy base (${enemyBase}) to attack their Terminal`
@@ -626,7 +626,7 @@ export function validateCommand(command: Command, context: GameContext): string 
       if (!ability) return 'Unknown ability'
       // Auto-leveling gate (mirrors the server's getAbilityLevel): Q/W/E unlock
       // at level 1, the ultimate (R) at level 6 — reject early so the player
-      // doesn't waste their one action this tick on a server-rejected cast.
+      // doesn't waste their one action this cycle on a server-rejected cast.
       if (command.ability === 'r' && player.level < 6) return 'Ultimate unlocks at level 6'
       const cd = player.cooldowns[command.ability]
       if (cd > 0) return `${ability.name} on cooldown (${cd} cycle${cd === 1 ? '' : 's'})`
@@ -645,8 +645,8 @@ export function validateCommand(command: Command, context: GameContext): string 
         return 'Not in a shop zone — return to YOUR base or fountain'
       const item = context.items?.[command.item]
       if (item) {
-        if (player.gold < item.cost) {
-          return `Not enough gold (need ${item.cost - player.gold}g more)`
+        if (player.scrip < item.cost) {
+          return `Not enough scrip (need ${item.cost - player.scrip}sc more)`
         }
         const stackCap = item.consumable ? (item.maxStacks ?? Infinity) : (item.maxStacks ?? 1)
         const ownedCount = player.items.filter((i) => i === command.item).length
@@ -670,8 +670,8 @@ export function validateCommand(command: Command, context: GameContext): string 
       const item = context.items?.[command.item]
       if (item && !item.active) return `${item.name} has no active ability`
       const cdBuff = player.buffs.find((b) => b.id === `item_cd_${command.item}`)
-      if (cdBuff && cdBuff.ticksRemaining > 0) {
-        return `Item on cooldown (${cdBuff.ticksRemaining} cycles)`
+      if (cdBuff && cdBuff.cyclesRemaining > 0) {
+        return `Item on cooldown (${cdBuff.cyclesRemaining} cycles)`
       }
       return null
     }
@@ -725,7 +725,7 @@ function resolveZoneAlias(zoneInput: string, team: TeamId = 'chaff'): string {
 /**
  * Zone words that match several zones and so resolve to nothing. Left
  * unreported these reach the server as a raw prefix and are rejected there,
- * costing the player their one action for the tick with no explanation.
+ * costing the player their one action for the cycle with no explanation.
  */
 function ambiguousZoneError(zoneInput: string): string | null {
   if (ZONE_IDS.includes(zoneInput) || zoneInput === 'base' || zoneInput === 'fountain') return null
@@ -778,13 +778,13 @@ export function useCommands() {
           return {
             command: null,
             error:
-              'Usage: attack <target>  (e.g. attack hero:daemon, attack wave:0, attack neutral:0, attack tenant, attack ice:mid-t1-chaff, attack ancient)',
+              'Usage: attack <target>  (e.g. attack hero:daemon, attack wave:0, attack neutral:0, attack tenant, attack ice:mid-t1-chaff, attack terminal)',
           }
         const target = parseTarget(targetStr)
         if (!target)
           return {
             command: null,
-            error: `Invalid target "${targetStr}". Use hero:<name>, wave:<index>, neutral:<index>, ice:<zone>, tenant, ancient, or self`,
+            error: `Invalid target "${targetStr}". Use hero:<name>, wave:<index>, neutral:<index>, ice:<zone>, tenant, terminal, or self`,
           }
         return { command: { type: 'attack', target }, error: null }
       }
@@ -815,7 +815,7 @@ export function useCommands() {
           return {
             command: null,
             error:
-              'Usage: burn <wave:index>  (burn an allied wave below 50% INTEG to starve the enemy of gold/XP)',
+              'Usage: burn <wave:index>  (burn an allied wave below 50% INTEG to starve the enemy of scrip/XP)',
           }
         const target = parseTarget(targetStr)
         if (!target || target.kind !== 'wave')
@@ -1006,7 +1006,7 @@ export function useCommands() {
         help: 'List every command (and the goal of the game)',
         missing: 'Alert your team an enemy is missing (alias: ss)',
         breach: 'Open access on an enemy (or flush your own with breach self)',
-        buyback: 'Pay gold to respawn instantly (while dead)',
+        buyback: 'Pay scrip to respawn instantly (while dead)',
         surrender: "Vote to forfeit — requires 'surrender confirm'",
         talent: 'Choose a talent (tiers 10/15/20/25)',
         burn: 'Last-hit your own wave below 50% INTEG to burn the enemy',
@@ -1268,8 +1268,8 @@ export function useCommands() {
       for (const { wave, index } of wavesInZoneWithIndex(context.waves, context.player.zone)) {
         if (wave.integ <= 0) continue
         // Your OWN waves are the `burn` command's business, never an attack
-        // target — the server refuses them, and in a one-action-per-tick game
-        // an offered target that always fails costs the player the whole tick.
+        // target — the server refuses them, and in a one-action-per-cycle game
+        // an offered target that always fails costs the player the whole cycle.
         // Indices are unaffected: wavesInZoneWithIndex numbers the zone's
         // waves, so skipping one here does not renumber the rest.
         if (wave.team === context.player.team) continue
@@ -1331,13 +1331,13 @@ export function useCommands() {
 
   function _suggestBuyItems(partial: string, context: GameContext): Suggestion[] {
     if (!context.items) return []
-    const gold = context.player?.gold ?? 0
+    const scrip = context.player?.scrip ?? 0
     return Object.values(context.items)
       .filter((item) => item.id.includes(partial) || item.name.toLowerCase().includes(partial))
       .slice(0, 10)
       .map((item) => ({
         text: item.id,
-        description: `${item.name} (${item.cost}sc)${gold >= item.cost ? ' [affordable]' : ' [need ' + (item.cost - gold) + 'sc]'}`,
+        description: `${item.name} (${item.cost}sc)${scrip >= item.cost ? ' [affordable]' : ' [need ' + (item.cost - scrip) + 'sc]'}`,
       }))
   }
 

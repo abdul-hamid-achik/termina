@@ -38,7 +38,7 @@ const healingSalve: ItemDef = {
     id: 'trauma_patch_active',
     name: 'Heal',
     description: 'Restore 200 INTEG over 4 cycles.',
-    cooldownTicks: 0,
+    cooldownCycles: 0,
   },
 }
 
@@ -53,7 +53,7 @@ const manaVial: ItemDef = {
     id: 'charge_tab_active',
     name: 'Restore BW',
     description: 'Instantly restore 150 BW.',
-    cooldownTicks: 0,
+    cooldownCycles: 0,
   },
 }
 
@@ -81,7 +81,7 @@ const powerTreads: ItemDef = {
     id: 'gait_rig_active',
     name: 'Toggle',
     description: 'Switch between +15 attack, +150 INTEG, or +100 BW.',
-    cooldownTicks: 0,
+    cooldownCycles: 0,
   },
 }
 
@@ -225,7 +225,7 @@ const silverEdge: ItemDef = {
     id: 'ghostwire_edge_active',
     name: 'Shadow Walk',
     description: 'Become invisible for 3 cycles. Next attack from invis deals 150 bonus damage.',
-    cooldownTicks: 18,
+    cooldownCycles: 18,
   },
 }
 
@@ -267,7 +267,7 @@ const veilOfDiscord: ItemDef = {
     id: 'discord_routine_active',
     name: 'Discord',
     description: 'Enemies in zone take 25% more code damage for 4 cycles.',
-    cooldownTicks: 15,
+    cooldownCycles: 15,
   },
 }
 
@@ -281,7 +281,7 @@ const shivasGuard: ItemDef = {
     id: 'cryo_routine_active',
     name: 'Arctic Blast',
     description: 'Deal 100 code damage to enemies in zone and slow them for 2 cycles.',
-    cooldownTicks: 20,
+    cooldownCycles: 20,
   },
 }
 
@@ -308,7 +308,7 @@ const burnout: ItemDef = {
     id: 'dagon_active',
     name: 'Energy Burst',
     description: 'Deal 300 code damage to target hero in same or adjacent zone.',
-    cooldownTicks: 18,
+    cooldownCycles: 18,
     targetType: 'enemy',
   },
 }
@@ -324,7 +324,7 @@ const etherealBlade: ItemDef = {
     name: 'Ether Blast',
     description:
       'Target becomes ethereal for 2 cycles (immune to kinetic, vulnerable to code +40%).',
-    cooldownTicks: 15,
+    cooldownCycles: 15,
   },
 }
 
@@ -366,7 +366,7 @@ const blackKingBar: ItemDef = {
     id: 'hardshell_active',
     name: 'Avatar',
     description: 'Gain AIRGAP for 4 cycles — immune to code damage and debuffs.',
-    cooldownTicks: 25,
+    cooldownCycles: 25,
   },
 }
 
@@ -406,7 +406,7 @@ const lotusOrb: ItemDef = {
     id: 'mirror_shell_active',
     name: 'Echo Shell',
     description: 'Target reflects the next ability cast on them back to the caster.',
-    cooldownTicks: 15,
+    cooldownCycles: 15,
   },
 }
 
@@ -420,7 +420,7 @@ const bladeMail: ItemDef = {
     id: 'spite_plate_active',
     name: 'Spite Plate',
     description: 'Return 100% of damage taken to attackers for 3 cycles.',
-    cooldownTicks: 18,
+    cooldownCycles: 18,
   },
 }
 
@@ -436,7 +436,7 @@ const forceStaff: ItemDef = {
     id: 'shove_splice_active',
     name: 'Force',
     description: 'Push yourself or an ally one zone toward your fountain — a quick disengage.',
-    cooldownTicks: 12,
+    cooldownCycles: 12,
   },
 }
 
@@ -451,7 +451,7 @@ const hurricanePike: ItemDef = {
     name: 'Hurricane Thrust',
     description:
       'Push self to an adjacent zone away from a target enemy, gaining +30 attack for 2 cycles.',
-    cooldownTicks: 14,
+    cooldownCycles: 14,
     targetType: 'enemy',
   },
 }
@@ -466,7 +466,7 @@ const scytheOfVyse: ItemDef = {
     id: 'lockout_shunt_active',
     name: 'Hex',
     description: 'Transform target hero into a critter for 2 cycles (cannot attack or cast).',
-    cooldownTicks: 20,
+    cooldownCycles: 20,
     targetType: 'enemy',
   },
 }
@@ -481,7 +481,7 @@ const eulsScepter: ItemDef = {
     id: 'stasis_shunt_active',
     name: 'Cyclone',
     description: 'Target is invulnerable and disabled for 2 cycles.',
-    cooldownTicks: 15,
+    cooldownCycles: 15,
   },
 }
 
@@ -495,7 +495,7 @@ const refresherOrb: ItemDef = {
     id: 'redline_splice_active',
     name: 'Reset Cooldowns',
     description: 'Reset all ability cooldowns.',
-    cooldownTicks: 40,
+    cooldownCycles: 40,
   },
 }
 
@@ -509,7 +509,7 @@ const ghostScepter: ItemDef = {
     id: 'phase_shunt_active',
     name: 'Ghost Form',
     description: 'Become immune to kinetic damage for 2 cycles. Cannot attack.',
-    cooldownTicks: 20,
+    cooldownCycles: 20,
   },
 }
 
@@ -525,7 +525,7 @@ const blinkModule: ItemDef = {
     id: 'jump_shunt_active',
     name: 'Blink',
     description: 'Teleport to an adjacent zone instantly.',
-    cooldownTicks: 12,
+    cooldownCycles: 12,
   },
 }
 
@@ -565,7 +565,7 @@ const stackOverflow: ItemDef = {
     id: 'stack_overflow_active',
     name: 'Overclock',
     description: 'Next ability deals 2x damage.',
-    cooldownTicks: 20,
+    cooldownCycles: 20,
   },
 }
 
@@ -592,7 +592,7 @@ const firewallItem: ItemDef = {
     id: 'ablative_shell_active',
     name: 'Block',
     description: 'Block the next incoming ability.',
-    cooldownTicks: 30,
+    cooldownCycles: 30,
   },
 }
 
@@ -610,7 +610,7 @@ const camtapWard: ItemDef = {
     name: 'Place Ward',
     description:
       'Place in a zone for vision lasting 45 cycles. Max 3 active per team (shared with sniffers).',
-    cooldownTicks: 0,
+    cooldownCycles: 0,
     targetType: 'zone',
   },
 }
@@ -627,7 +627,7 @@ const snifferWard: ItemDef = {
     name: 'Place SNIFFER',
     description:
       'Reveals invisible units in the area. Lasts 30 cycles. Max 3 active per team (shared with camtaps).',
-    cooldownTicks: 0,
+    cooldownCycles: 0,
     targetType: 'zone',
   },
 }
@@ -644,7 +644,7 @@ const smokeOfDeceit: ItemDef = {
     name: 'Smoke',
     description:
       'Team becomes invisible to enemy vision for 3 cycles. Breaks on entering enemy zone with heroes.',
-    cooldownTicks: 0,
+    cooldownCycles: 0,
   },
 }
 
@@ -659,7 +659,7 @@ const dustOfAppearance: ItemDef = {
     id: 'tracer_dust_active',
     name: 'Reveal',
     description: 'Reveal all invisible enemies in current and adjacent zones for 2 cycles.',
-    cooldownTicks: 0,
+    cooldownCycles: 0,
   },
 }
 
@@ -674,7 +674,7 @@ const townPortalScroll: ItemDef = {
     id: 'recall_token_active',
     name: 'Teleport',
     description: 'Teleport to friendly fountain after 2 cycle channel.',
-    cooldownTicks: 0,
+    cooldownCycles: 0,
   },
 }
 

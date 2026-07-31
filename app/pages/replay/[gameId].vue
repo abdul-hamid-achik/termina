@@ -2,7 +2,7 @@
 import { computed, ref, onUnmounted } from 'vue'
 import { HEROES } from '~~/shared/constants/heroes'
 import { formatReplayCommand, clampFrameIndex, nextScrubTick, keyMoments } from '~/utils/replayView'
-import { playerNetWorth, goldLead, formatGoldShort, type NetWorthInput } from '~/utils/strategy'
+import { playerNetWorth, scripLead, formatScripShort, type NetWorthInput } from '~/utils/strategy'
 import type { PlayerScoreRow } from '~/components/game/PlayerScoreTable.vue'
 
 definePageMeta({ ssr: false })
@@ -14,11 +14,11 @@ interface ReplayPayload {
   gameId: string
   savedAt: number
   state: {
-    tick: number
+    cycle: number
     phase: string
     teams: {
-      chaff: { kills: number; iceKills: number; gold: number }
-      audit: { kills: number; iceKills: number; gold: number }
+      chaff: { kills: number; iceKills: number; scrip: number }
+      audit: { kills: number; iceKills: number; scrip: number }
     }
     players: Record<
       string,
@@ -28,7 +28,7 @@ interface ReplayPayload {
         team: 'chaff' | 'audit'
         heroId: string | null
         level: number
-        gold: number
+        scrip: number
         kills: number
         deaths: number
         assists: number
@@ -39,7 +39,7 @@ interface ReplayPayload {
     timeOfDay: 'day' | 'night'
   }
   meta?: { players: { playerId: string; team: 'chaff' | 'audit'; heroId: string; mmr: number }[] }
-  actions: { tick: number; playerId: string; command: { type: string; [k: string]: unknown } }[]
+  actions: { cycle: number; playerId: string; command: { type: string; [k: string]: unknown } }[]
 }
 
 interface FramePlayer {
@@ -49,7 +49,7 @@ interface FramePlayer {
   bw: number
   maxBw: number
   level: number
-  gold: number
+  scrip: number
   kills: number
   deaths: number
   assists: number
@@ -59,7 +59,7 @@ interface FramePlayer {
 }
 
 interface Frame {
-  tick: number
+  cycle: number
   teams: {
     chaff: { kills: number; iceKills: number }
     audit: { kills: number; iceKills: number }
@@ -81,11 +81,11 @@ const { data: framesData } = await useFetch<FramesPayload>(`/api/replay/${gameId
 const scrubTick = ref(0)
 const maxTick = computed(() => {
   if (framesData.value?.totalTicks) return framesData.value.totalTicks
-  return data.value?.state.tick ?? 0
+  return data.value?.state.cycle ?? 0
 })
 
 // Playback: auto-advance the scrubber so a replay can be watched, not just
-// dragged. ~0.6s per tick is a readable pace for the 4s-tick game.
+// dragged. ~0.6s per cycle is a readable pace for the 4s-cycle game.
 const playing = ref(false)
 let playTimer: ReturnType<typeof setInterval> | null = null
 function stopPlayback() {
@@ -116,18 +116,18 @@ onUnmounted(stopPlayback)
 // instead of scrubbing blindly. Derived from the frame stream's score deltas.
 const moments = computed(() => keyMoments(framesData.value?.frames ?? []))
 
-function jumpTo(tick: number) {
+function jumpTo(cycle: number) {
   stopPlayback()
-  scrubTick.value = tick
+  scrubTick.value = cycle
 }
 
 // Filter actions visible up to scrubTick
 const visibleActions = computed(() => {
   if (!data.value) return []
-  return data.value.actions.filter((a) => a.tick <= scrubTick.value)
+  return data.value.actions.filter((a) => a.cycle <= scrubTick.value)
 })
 
-// Frame at the scrub position — frames are indexed by tick (0..N).
+// Frame at the scrub position — frames are indexed by cycle (0..N).
 const currentFrame = computed<Frame | null>(() => {
   const frames = framesData.value?.frames
   if (!frames) return null
@@ -174,7 +174,7 @@ function toScoreRow(p: {
   kills: number
   deaths: number
   assists: number
-  gold: number
+  scrip: number
   zone: string
   alive: boolean
 }): PlayerScoreRow {
@@ -188,7 +188,7 @@ function toScoreRow(p: {
     kills: p.kills,
     deaths: p.deaths,
     assists: p.assists,
-    gold: p.gold,
+    scrip: p.scrip,
     zone: p.zone,
     alive: p.alive,
   }
@@ -196,17 +196,17 @@ function toScoreRow(p: {
 const chaffRows = computed(() => chaffPlayers.value.map(toScoreRow))
 const auditRows = computed(() => auditPlayers.value.map(toScoreRow))
 
-// Net-worth gold lead at the scrub position — scrubs with the frame so a learner
-// can watch the lead swing. Net worth = liquid gold + carried item value (per
+// Net-worth scrip lead at the scrub position — scrubs with the frame so a learner
+// can watch the lead swing. Net worth = liquid scrip + carried item value (per
 // the tested strategy helpers); the snapshot fallback carries no items, so it's
-// gold-only until frames load.
+// scrip-only until frames load.
 const chaffNetWorth = computed(() =>
   chaffPlayers.value.reduce((sum, p) => sum + playerNetWorth(p as NetWorthInput), 0),
 )
 const auditNetWorth = computed(() =>
   auditPlayers.value.reduce((sum, p) => sum + playerNetWorth(p as NetWorthInput), 0),
 )
-const lead = computed(() => goldLead(chaffNetWorth.value, auditNetWorth.value))
+const lead = computed(() => scripLead(chaffNetWorth.value, auditNetWorth.value))
 
 const teamScores = computed(() => {
   if (currentFrame.value) {
@@ -253,7 +253,7 @@ function heroName(id: string | null): string {
   return HEROES[id]?.name ?? id
 }
 
-// Initialise the scrubber to the last tick ONCE data arrives. Guarded so it
+// Initialise the scrubber to the last cycle ONCE data arrives. Guarded so it
 // fires only on first load — without `inited` it would re-trigger whenever
 // scrubTick returns to 0 (e.g. play-from-the-top), yanking the scrub back to
 // the end. Prefer the frame count so the slider lines up with rendered frames.
@@ -264,7 +264,7 @@ watchEffect(() => {
     scrubTick.value = framesData.value.totalTicks
     inited = true
   } else if (data.value) {
-    scrubTick.value = data.value.state.tick
+    scrubTick.value = data.value.state.cycle
     inited = true
   }
 })
@@ -326,7 +326,7 @@ watchEffect(() => {
               :class="lead.leader === 'chaff' ? 'text-chaff' : 'text-audit'"
               data-testid="replay-gold-lead"
             >
-              {{ lead.leader === 'chaff' ? 'CHAFF' : 'AUDIT' }} +{{ formatGoldShort(lead.amount) }}
+              {{ lead.leader === 'chaff' ? 'CHAFF' : 'AUDIT' }} +{{ formatScripShort(lead.amount) }}
               net worth
             </div>
             <div v-else class="t-caption mt-1 text-text-dim" data-testid="replay-gold-lead">
@@ -390,10 +390,10 @@ watchEffect(() => {
                   : 'border-audit/50 text-audit hover:text-audit'
               "
               :data-testid="`key-moment-${m.kind}`"
-              :aria-label="`Jump to ${m.label} at cycle ${m.tick}`"
-              @click="jumpTo(m.tick)"
+              :aria-label="`Jump to ${m.label} at cycle ${m.cycle}`"
+              @click="jumpTo(m.cycle)"
             >
-              {{ m.label }} · T{{ m.tick }}
+              {{ m.label }} · T{{ m.cycle }}
             </button>
           </div>
 
@@ -432,7 +432,7 @@ watchEffect(() => {
               :key="i"
               class="anim-fade-in-up flex items-baseline gap-2 border-l-2 border-l-transparent px-2 py-0.5 hover:bg-white/[0.03] hover:border-l-ability"
             >
-              <span class="w-12 shrink-0 text-text-muted">[T{{ a.tick }}]</span>
+              <span class="w-12 shrink-0 text-text-muted">[T{{ a.cycle }}]</span>
               <span class="w-32 shrink-0 truncate text-self">{{ a.playerId }}</span>
               <span class="text-text-primary">{{ formatReplayCommand(a.command) }}</span>
             </div>

@@ -111,7 +111,7 @@ describe('useAudio', () => {
     } as ReturnType<typeof useSettingsStore>)
 
     const { playSound } = useAudio()
-    playSound('tick')
+    playSound('cycle')
 
     expect(mockAudioCtx.createOscillator).not.toHaveBeenCalled()
   })
@@ -123,7 +123,7 @@ describe('useAudio', () => {
     } as ReturnType<typeof useSettingsStore>)
 
     const { playSound } = useAudio()
-    playSound('tick')
+    playSound('cycle')
 
     expect(mockAudioCtx.createOscillator).toHaveBeenCalled()
     expect(mockAudioCtx.createGain).toHaveBeenCalled()
@@ -137,12 +137,12 @@ describe('useAudio', () => {
 
     const { playSound } = useAudio()
     const sounds: SoundName[] = [
-      'tick',
+      'cycle',
       'submit',
       'damage',
       'kill',
       'death',
-      'gold',
+      'scrip',
       'ready',
       'cast',
       'ice_fall',
@@ -172,7 +172,7 @@ describe('useAudio', () => {
     } as ReturnType<typeof useSettingsStore>)
 
     const { playSound } = useAudio()
-    playSound('tick')
+    playSound('cycle')
 
     // tick has no masterGain override (default 1), so master.gain.value should equal volume
     expect(masterGain.gain.value).toBe(0.8)
@@ -187,7 +187,7 @@ describe('useAudio', () => {
     } as ReturnType<typeof useSettingsStore>)
 
     const { playSound } = useAudio()
-    playSound('tick')
+    playSound('cycle')
 
     expect(mockAudioCtx.resume).toHaveBeenCalled()
   })
@@ -252,7 +252,7 @@ describe('useAudio', () => {
       for (let i = 0; i < 12; i++) playSound('damage')
 
       // 0.06s apart inside a 0.25s window admits 5; the rest would land under
-      // the next tick's events, so they are dropped rather than smeared.
+      // the next cycle's events, so they are dropped rather than smeared.
       const starts = uniqueStarts()
       expect(starts).toHaveLength(5)
       expect(starts[starts.length - 1]!).toBeLessThanOrEqual(300.25)
@@ -263,11 +263,11 @@ describe('useAudio', () => {
       mockAudioCtx.currentTime = 400
       const { playSound } = useAudio()
 
-      playSound('tick')
-      playSound('tick')
-      playSound('tick')
+      playSound('cycle')
+      playSound('cycle')
+      playSound('cycle')
 
-      // The UI tick is one-per-tick by construction; delaying it would smear
+      // The UI tick is one-per-cycle by construction; delaying it would smear
       // the beat the whole HUD is timed against.
       expect(uniqueStarts()).toEqual([400])
     })
@@ -276,13 +276,13 @@ describe('useAudio', () => {
       enableAudio()
       mockAudioCtx.currentTime = 500
       const { playSound } = useAudio()
-      playSound('gold')
+      playSound('scrip')
 
       // A fresh AudioContext restarts currentTime near 0; without a staleness
       // guard the stored future start would silence the sound permanently.
       mockAudioCtx.currentTime = 0
       mockAudioCtx.createOscillator.mockClear()
-      playSound('gold')
+      playSound('scrip')
 
       expect(uniqueStarts()).toEqual([0])
     })

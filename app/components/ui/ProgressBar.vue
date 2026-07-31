@@ -7,7 +7,7 @@ type ProgressBarColor =
   | 'audit'
   | 'audit-deep'
   | 'self'
-  | 'gold'
+  | 'scrip'
   | 'BW'
   | 'damage'
   | 'healing'
@@ -22,7 +22,7 @@ const colorVars: Record<ProgressBarColor, string> = {
   audit: '--color-audit',
   'audit-deep': '--color-audit-deep',
   self: '--color-self',
-  gold: '--color-gold',
+  scrip: '--color-gold',
   BW: '--color-BW',
   damage: '--color-damage',
   healing: '--color-healing',

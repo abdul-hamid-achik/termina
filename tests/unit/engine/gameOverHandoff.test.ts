@@ -1,5 +1,5 @@
 /**
- * What the game loop hands over at the final tick: the replay snapshot and the
+ * What the game loop hands over at the final cycle: the replay snapshot and the
  * farm tally. Both are one-shot — the fiber interrupts immediately afterwards
  * and its finalizer drops the per-game maps — so both are exercised against a
  * real running loop rather than a hand-called phase function.
@@ -53,7 +53,7 @@ afterEach(async () => {
 })
 
 /**
- * A game one tick away from ending, seeded at a tick where the periodic
+ * A game one cycle away from ending, seeded at a cycle where the periodic
  * snapshot writer does NOT fire — which is 14 games out of 15.
  */
 async function seedGameEndingOffSnapshotBeat(gameId: string) {
@@ -64,15 +64,15 @@ async function seedGameEndingOffSnapshotBeat(gameId: string) {
       { id: 'p2', name: 'p2', team: 'audit', heroId: 'daemon' },
     ]),
   )
-  // tick 41 → the loop's tick is 42, and 42 % 15 !== 0.
+  // cycle 41 → the loop's cycle is 42, and 42 % 15 !== 0.
   const startTick = 41
   expect((startTick + 1) % SNAPSHOT_EVERY_N_TICKS).not.toBe(0)
   await Effect.runPromise(
     sm.updateState(gameId, (s) => ({
       ...s,
-      tick: startTick,
+      cycle: startTick,
       phase: 'playing' as const,
-      ancients: { ...s.ancients!, audit: { ...s.ancients!.audit, integ: 0, alive: false } },
+      terminals: { ...s.terminals!, audit: { ...s.terminals!.audit, integ: 0, alive: false } },
     })),
   )
   return sm
@@ -101,7 +101,7 @@ describe('game loop: final handoff', () => {
       gameId,
       sm,
       {
-        onTickState: () => {},
+        onCycleState: () => {},
         onEvents: () => {},
         onGameOver: (_id, winner, farm) => resolve({ winner, farm }),
       },
@@ -114,14 +114,14 @@ describe('game loop: final handoff', () => {
 
     const snapshot = store.get(`gamesnap2:${gameId}`)
     expect(snapshot).toBeDefined()
-    const parsed = JSON.parse(snapshot!) as { state: { phase: string; tick: number } }
+    const parsed = JSON.parse(snapshot!) as { state: { phase: string; cycle: number } }
     expect(parsed.state.phase).toBe('ended')
-    expect(parsed.state.tick % SNAPSHOT_EVERY_N_TICKS).not.toBe(0)
+    expect(parsed.state.cycle % SNAPSHOT_EVERY_N_TICKS).not.toBe(0)
   })
 
   it('has the closing snapshot stored before onGameOver fires, not racing behind it', async () => {
     // The write has to be awaited rather than forked: onGameOver is what puts
-    // the [WATCH REPLAY] link on screen, and the tick fiber interrupts itself
+    // the [WATCH REPLAY] link on screen, and the cycle fiber interrupts itself
     // immediately afterwards. Against a slow Redis a forked write is still in
     // flight at that point, which is the same 403 by a narrower margin.
     const gameId = 'gsnap_3'
@@ -135,7 +135,7 @@ describe('game loop: final handoff', () => {
       gameId,
       sm,
       {
-        onTickState: () => {},
+        onCycleState: () => {},
         onEvents: () => {},
         onGameOver: (_id, winner, farm) => {
           snapshotAtGameOver = store.get(`gamesnap2:${gameId}`)
@@ -154,7 +154,7 @@ describe('game loop: final handoff', () => {
   it('still hands the game over when the closing snapshot write fails', async () => {
     // Replays are a nice-to-have; the post-game screen is not. An unreachable
     // Redis must not swallow onGameOver — writeSnapshot absorbs its own cause
-    // so the awaited call cannot fail the final tick.
+    // so the awaited call cannot fail the final cycle.
     const gameId = 'gsnap_4'
     const sm = await seedGameEndingOffSnapshotBeat(gameId)
     const { redis } = mockRedis({ failSet: true })
@@ -165,7 +165,7 @@ describe('game loop: final handoff', () => {
       gameId,
       sm,
       {
-        onTickState: () => {},
+        onCycleState: () => {},
         onEvents: () => {},
         onGameOver: (_id, winner, farm) => resolve({ winner, farm }),
       },
@@ -186,7 +186,7 @@ describe('game loop: final handoff', () => {
     const { redis } = mockRedis()
     const { done, resolve } = gameOverPromise()
 
-    // A last hit banked on the final tick: the wave is already at a sliver and
+    // A last hit banked on the final cycle: the wave is already at a sliver and
     // co-located with the hero.
     await Effect.runPromise(
       sm.updateState(gameId, (s) => ({
@@ -202,7 +202,7 @@ describe('game loop: final handoff', () => {
       gameId,
       sm,
       {
-        onTickState: () => {},
+        onCycleState: () => {},
         onEvents: () => {},
         onGameOver: (_id, winner, farm) => resolve({ winner, farm }),
       },

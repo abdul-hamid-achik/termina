@@ -22,12 +22,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 380,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 4,
     ice: 20,
     kills: 0,
@@ -41,7 +41,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -81,11 +81,11 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     playerMap[p.id] = p
   }
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -116,7 +116,7 @@ describe('Proxy Hero', () => {
       expect(hasBuff(updatedEnemy, 'slow')).toBe(true)
       const slow = updatedEnemy.buffs.find((b) => b.id === 'slow')
       expect(slow!.stacks).toBe(25)
-      expect(slow!.ticksRemaining).toBe(2)
+      expect(slow!.cyclesRemaining).toBe(2)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -195,7 +195,7 @@ describe('Proxy Hero', () => {
       expect(hasBuff(updatedAlly, 'shield')).toBe(true)
       const shield = updatedAlly.buffs.find((b) => b.id === 'shield')
       expect(shield!.stacks).toBe(140) // Level 1 shield
-      expect(shield!.ticksRemaining).toBe(3)
+      expect(shield!.cyclesRemaining).toBe(3)
     })
 
     it('scales shield with level', () => {
@@ -339,7 +339,7 @@ describe('Proxy Hero', () => {
       expect(hasBuff(result.state.players['p1']!, 'invulnerable')).toBe(true)
       expect(hasBuff(result.state.players['a1']!, 'invulnerable')).toBe(true)
       const buff = result.state.players['p1']!.buffs.find((b) => b.id === 'invulnerable')
-      expect(buff!.ticksRemaining).toBe(1)
+      expect(buff!.cyclesRemaining).toBe(1)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -380,7 +380,7 @@ describe('Proxy Hero', () => {
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'tick_end',
         payload: {},
       })
@@ -395,13 +395,13 @@ describe('Proxy Hero', () => {
       player = applyBuff(player, {
         id: 'middleman',
         stacks: 12,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: 'p1',
       })
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'tick_end',
         payload: {},
       })
@@ -414,7 +414,7 @@ describe('Proxy Hero', () => {
   describe('Stun/Silence blocking', () => {
     it('prevents casting when stunned', () => {
       const player = makePlayer({
-        buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 1, source: 'enemy' }],
+        buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 1, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -427,7 +427,7 @@ describe('Proxy Hero', () => {
 
     it('prevents casting when silenced', () => {
       const player = makePlayer({
-        buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 2, source: 'enemy' }],
+        buffs: [{ id: 'silence', stacks: 1, cyclesRemaining: 2, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -495,7 +495,7 @@ describe('Proxy Hero', () => {
       const state = makeState([proxy, ally])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'damage_taken',
         payload: { targetId: 'a1', attackerId: 'e1', sourceId: 'e1', damage: 100, amount: 100 },
       })
@@ -515,7 +515,7 @@ describe('Proxy Hero', () => {
       const state = makeState([proxy])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'damage_taken',
         payload: { targetId: 'p1', attackerId: 'e1', sourceId: 'e1', damage: 100, amount: 100 },
       })
@@ -535,7 +535,7 @@ describe('Proxy Hero', () => {
       const state = makeState([proxy, ally])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'damage_taken',
         payload: { targetId: 'a1', attackerId: 'e1', sourceId: 'e1', damage: 100, amount: 100 },
       })

@@ -11,9 +11,9 @@ import {
 } from '~~/app/utils/combatLog'
 
 interface LogEvent {
-  tick: number
+  cycle: number
   text: string
-  type: 'damage' | 'healing' | 'kill' | 'gold' | 'system' | 'ability' | 'victory' | 'objective'
+  type: 'damage' | 'healing' | 'kill' | 'scrip' | 'system' | 'ability' | 'victory' | 'objective'
   salience?: 'mine-in' | 'mine-out' | 'ally' | 'world'
   killerHeroId?: string
   victimHeroId?: string
@@ -21,7 +21,7 @@ interface LogEvent {
 
 function makeEvent(overrides: Partial<LogEvent> = {}): LogEvent {
   return {
-    tick: 1,
+    cycle: 1,
     text: 'Test event',
     type: 'system',
     ...overrides,
@@ -35,7 +35,7 @@ describe('Stream', () => {
         makeEvent({ type: 'damage', text: 'Player1 dealt 50 damage' }),
         makeEvent({ type: 'healing', text: 'Player1 healed for 30' }),
         makeEvent({ type: 'kill', text: 'Player1 killed Player2' }),
-        makeEvent({ type: 'gold', text: 'Player1 earned 100g' }),
+        makeEvent({ type: 'scrip', text: 'Player1 earned 100sc' }),
       ]
       const wrapper = mount(Stream, { props: { events } })
 
@@ -66,22 +66,22 @@ describe('Stream', () => {
   })
 
   describe('event display', () => {
-    it('should display the tick as a beat header', () => {
-      const events = [makeEvent({ tick: 42 })]
+    it('should display the cycle as a beat header', () => {
+      const events = [makeEvent({ cycle: 42 })]
       const wrapper = mount(Stream, { props: { events } })
 
       expect(wrapper.text()).toContain('CYCLE 42')
     })
 
-    it('groups consecutive same-tick events under one beat header', () => {
+    it('groups consecutive same-cycle events under one beat header', () => {
       const events = [
-        makeEvent({ tick: 10, type: 'damage', text: 'a' }),
-        makeEvent({ tick: 10, type: 'damage', text: 'b' }),
-        makeEvent({ tick: 11, type: 'kill', text: 'c' }),
+        makeEvent({ cycle: 10, type: 'damage', text: 'a' }),
+        makeEvent({ cycle: 10, type: 'damage', text: 'b' }),
+        makeEvent({ cycle: 11, type: 'kill', text: 'c' }),
       ]
       const wrapper = mount(Stream, { props: { events } })
       const text = wrapper.text()
-      // one header per distinct tick
+      // one header per distinct cycle
       expect(text.match(/CYCLE 10/g)).toHaveLength(1)
       expect(text.match(/CYCLE 11/g)).toHaveLength(1)
       // all three event lines still render
@@ -116,12 +116,12 @@ describe('Stream', () => {
 describe('combatLog helpers', () => {
   describe('ancientLabel', () => {
     it('resolves ancient ids to readable Terminal names', () => {
-      expect(ancientLabel('ancient_chaff')).toBe('the CHAFF Terminal')
-      expect(ancientLabel('ancient_audit')).toBe('the AUDIT Terminal')
+      expect(ancientLabel('terminal_chaff')).toBe('the CHAFF Terminal')
+      expect(ancientLabel('terminal_audit')).toBe('the AUDIT Terminal')
     })
 
     it('falls back to a generic Terminal label for unknown teams', () => {
-      expect(ancientLabel('ancient_neutral')).toBe('the neutral Terminal')
+      expect(ancientLabel('terminal_neutral')).toBe('the neutral Terminal')
     })
 
     it('returns null for non-ancient ids', () => {
@@ -132,9 +132,9 @@ describe('combatLog helpers', () => {
   })
 
   describe('isStructureTarget', () => {
-    it('flags ice and ancients', () => {
+    it('flags ice and terminals', () => {
       expect(isStructureTarget('ice_mid-t3-audit')).toBe(true)
-      expect(isStructureTarget('ancient_chaff')).toBe(true)
+      expect(isStructureTarget('terminal_chaff')).toBe(true)
     })
 
     it('does not flag heroes, waves, or non-strings', () => {
@@ -156,9 +156,9 @@ describe('combatLog helpers', () => {
     const fmt = ({ baseText, count, total }: { baseText: string; count: number; total: number }) =>
       `${baseText} (${count} hits, ${total} total)`
 
-    function dmgLine(tick: number, source: string, target: string, amount: number): CombatLine {
+    function dmgLine(cycle: number, source: string, target: string, amount: number): CombatLine {
       return {
-        tick,
+        cycle,
         text: `${source} dealt ${amount} kinetic damage to ${target}`,
         type: 'damage',
         dedupKey: `dmg:${source}->${target}`,
@@ -176,7 +176,7 @@ describe('combatLog helpers', () => {
       const result = collapseStructureDamage(lines, fmt)
       expect(result).toHaveLength(1)
       expect(result[0]!.count).toBe(3)
-      expect(result[0]!.tick).toBe(178) // keeps the latest tick
+      expect(result[0]!.cycle).toBe(178) // keeps the latest cycle
       expect(result[0]!.text).toContain('(3 hits, 214 total)')
     })
 
@@ -195,7 +195,7 @@ describe('combatLog helpers', () => {
     })
 
     it('does not merge across an interrupting non-structure line', () => {
-      const kill: CombatLine = { tick: 177, text: '[KILL] Thread eliminated Echo!', type: 'kill' }
+      const kill: CombatLine = { cycle: 177, text: '[KILL] Thread eliminated Echo!', type: 'kill' }
       const lines: CombatLine[] = [
         dmgLine(176, 'Thread', 'the Audit Core', 72),
         kill,
@@ -209,8 +209,8 @@ describe('combatLog helpers', () => {
 
     it('passes through hero-vs-hero damage (no dedupKey) untouched', () => {
       const lines: CombatLine[] = [
-        { tick: 1, text: 'Thread dealt 50 damage to Echo', type: 'damage' },
-        { tick: 2, text: 'Thread dealt 50 damage to Echo', type: 'damage' },
+        { cycle: 1, text: 'Thread dealt 50 damage to Echo', type: 'damage' },
+        { cycle: 2, text: 'Thread dealt 50 damage to Echo', type: 'damage' },
       ]
 
       const result = collapseStructureDamage(lines, fmt)
@@ -227,8 +227,8 @@ describe('combatLog helpers', () => {
   })
 
   describe('digestTeamfightNoise', () => {
-    const worldDmg = (tick: number, amount: number): CombatLine => ({
-      tick,
+    const worldDmg = (cycle: number, amount: number): CombatLine => ({
+      cycle,
       text: 'some hero hits another',
       type: 'damage',
       salience: 'world',
@@ -258,15 +258,15 @@ describe('combatLog helpers', () => {
 
     it('never folds lines that involve me, an ally, kills, or structures', () => {
       const mine: CombatLine = {
-        tick: 5,
+        cycle: 5,
         text: 'I take damage',
         type: 'damage',
         salience: 'mine-in',
         dmgAmount: 99,
       }
-      const kill: CombatLine = { tick: 5, text: 'a kill', type: 'kill', salience: 'world' }
+      const kill: CombatLine = { cycle: 5, text: 'a kill', type: 'kill', salience: 'world' }
       const struct: CombatLine = {
-        tick: 5,
+        cycle: 5,
         text: 'ice hit',
         type: 'damage',
         salience: 'world',
@@ -283,7 +283,7 @@ describe('combatLog helpers', () => {
 describe('Stream victory line', () => {
   it('renders a single [VICTORY] tag for victory-type events (no doubled [KILL])', () => {
     const events = [
-      { tick: 200, text: 'Chaff destroyed the Audit Core!', type: 'victory' as const },
+      { cycle: 200, text: 'Chaff destroyed the Audit Core!', type: 'victory' as const },
     ]
     const wrapper = mount(Stream, { props: { events } })
 
@@ -299,11 +299,11 @@ describe('Stream victory line', () => {
 
 describe('Stream filters + density', () => {
   const events: LogEvent[] = [
-    { tick: 1, text: 'sys chat line', type: 'system' }, // salience-less → always shown
-    { tick: 1, text: 'I hit them', type: 'damage', salience: 'mine-out' },
-    { tick: 1, text: 'bystander chip', type: 'damage', salience: 'world' },
-    { tick: 1, text: 'a kill happened', type: 'kill', salience: 'world' },
-    { tick: 1, text: 'night falls', type: 'objective', salience: 'world' },
+    { cycle: 1, text: 'sys chat line', type: 'system' }, // salience-less → always shown
+    { cycle: 1, text: 'I hit them', type: 'damage', salience: 'mine-out' },
+    { cycle: 1, text: 'bystander chip', type: 'damage', salience: 'world' },
+    { cycle: 1, text: 'a kill happened', type: 'kill', salience: 'world' },
+    { cycle: 1, text: 'night falls', type: 'objective', salience: 'world' },
   ]
 
   it('always keeps salience-less system/chat lines under non-ALL filters', async () => {
@@ -321,48 +321,48 @@ describe('Stream filters + density', () => {
     expect(wrapper.text()).not.toContain('bystander chip')
   })
 
-  it('story mode (default) folds farm-tagged lines into one digest per tick', () => {
+  it('story mode (default) folds farm-tagged lines into one digest per cycle', () => {
     const wrapper = mount(Stream, {
       props: {
         events: [
           {
-            tick: 1,
+            cycle: 1,
             text: 'Kernel hit a wave for 60',
             type: 'damage',
             salience: 'ally',
             farmKind: 'hit',
           },
           {
-            tick: 1,
+            cycle: 1,
             text: 'Ping hit a wave for 55',
             type: 'damage',
             salience: 'ally',
             farmKind: 'hit',
           },
           {
-            tick: 1,
-            text: 'Kernel last-hit a line wave (+40g)',
-            type: 'gold',
+            cycle: 1,
+            text: 'Kernel last-hit a line wave (+40sc)',
+            type: 'scrip',
             salience: 'ally',
             farmKind: 'lasthit',
           },
           {
-            tick: 1,
-            text: 'You last-hit a line wave (+38g)',
-            type: 'gold',
+            cycle: 1,
+            text: 'You last-hit a line wave (+38sc)',
+            type: 'scrip',
             salience: 'mine-out',
             farmKind: 'lasthit',
-            goldAmount: 38,
+            scripAmount: 38,
           },
-          { tick: 1, text: 'a kill happened', type: 'kill', salience: 'world' },
+          { cycle: 1, text: 'a kill happened', type: 'kill', salience: 'world' },
         ] as CombatLine[],
       },
     })
     // Raw farm lines are folded away…
     expect(wrapper.text()).not.toContain('Kernel hit a wave')
     expect(wrapper.text()).not.toContain('Ping hit a wave')
-    // …into one dim summary carrying my gold + the team tally…
-    expect(wrapper.text()).toContain('farm: you +38g (1 last-hit) · team 1 wave')
+    // …into one dim summary carrying my scrip + the team tally…
+    expect(wrapper.text()).toContain('farm: you +38sc (1 last-hit) · team 1 wave')
     // …while the kill stays loud.
     expect(wrapper.text()).toContain('a kill happened')
   })
@@ -372,13 +372,13 @@ describe('Stream filters + density', () => {
       props: {
         events: [
           {
-            tick: 1,
+            cycle: 1,
             text: 'Kernel hit a wave for 60',
             type: 'damage',
             salience: 'ally',
             farmKind: 'hit',
           },
-          { tick: 1, text: 'a kill happened', type: 'kill', salience: 'world' },
+          { cycle: 1, text: 'a kill happened', type: 'kill', salience: 'world' },
         ] as CombatLine[],
       },
     })
@@ -401,18 +401,18 @@ describe('Stream filters + density', () => {
   it('shows the "no events match" notice when a filter excludes everything', async () => {
     // A lone world-salience damage line: dropped by ME, and no system line survives.
     const wrapper = mount(Stream, {
-      props: { events: [{ tick: 1, text: 'far-away fight', type: 'damage', salience: 'world' }] },
+      props: { events: [{ cycle: 1, text: 'far-away fight', type: 'damage', salience: 'world' }] },
     })
     await wrapper.get('[data-testid="log-filter-me"]').trigger('click')
     expect(wrapper.text()).toContain('no events match')
   })
 
-  it('story mode keeps untagged lines (hero fights, gold) — only farm noise folds', () => {
+  it('story mode keeps untagged lines (hero fights, scrip) — only farm noise folds', () => {
     const wrapper = mount(Stream, {
       props: {
         events: [
-          { tick: 1, text: 'someone banked gold', type: 'gold', salience: 'world' },
-          { tick: 1, text: 'a kill happened', type: 'kill', salience: 'world' },
+          { cycle: 1, text: 'someone banked gold', type: 'scrip', salience: 'world' },
+          { cycle: 1, text: 'a kill happened', type: 'kill', salience: 'world' },
         ] as CombatLine[],
       },
     })
@@ -421,10 +421,10 @@ describe('Stream filters + density', () => {
   })
 })
 
-describe('Stream per-tick recap', () => {
+describe('Stream per-cycle recap', () => {
   const fight: CombatLine[] = [
     {
-      tick: 12,
+      cycle: 12,
       text: 'Mutex hit You for 84',
       type: 'damage',
       salience: 'mine-in',
@@ -433,7 +433,7 @@ describe('Stream per-tick recap', () => {
       targetLabel: 'You',
     },
     {
-      tick: 12,
+      cycle: 12,
       text: 'burn hit You for 25',
       type: 'damage',
       salience: 'mine-in',
@@ -442,7 +442,7 @@ describe('Stream per-tick recap', () => {
       targetLabel: 'You',
     },
     {
-      tick: 12,
+      cycle: 12,
       text: 'You hit Thread for 62',
       type: 'damage',
       salience: 'mine-out',
@@ -452,7 +452,7 @@ describe('Stream per-tick recap', () => {
     },
   ]
 
-  it('sums the tick for the player, on by default', () => {
+  it('sums the cycle for the player, on by default', () => {
     const wrapper = mount(Stream, { props: { events: fight } })
     const recap = wrapper.find('[data-testid="tick-recap"]')
     expect(recap.exists()).toBe(true)
@@ -468,25 +468,25 @@ describe('Stream per-tick recap', () => {
     expect(wrapper.find('[data-testid="tick-recap"]').exists()).toBe(true)
   })
 
-  it('reports the whole tick even when a filter hides the lines it summed', async () => {
+  it('reports the whole cycle even when a filter hides the lines it summed', async () => {
     const events: CombatLine[] = [
       ...fight,
-      { tick: 12, text: 'Mutex terminated Kernel', type: 'kill', salience: 'ally' },
+      { cycle: 12, text: 'Mutex terminated Kernel', type: 'kill', salience: 'ally' },
     ]
     const wrapper = mount(Stream, { props: { events } })
     await wrapper.get('[data-testid="log-filter-obj"]').trigger('click')
-    // OBJ drops every damage line, but what the tick did to you is not a
+    // OBJ drops every damage line, but what the cycle did to you is not a
     // function of which chip you are currently looking at.
     expect(wrapper.text()).not.toContain('Mutex hit You for 84')
     expect(wrapper.find('[data-testid="tick-recap"]').text()).toContain('You took 109')
   })
 
-  it('says nothing for a tick that did not touch the player', () => {
+  it('says nothing for a cycle that did not touch the player', () => {
     const wrapper = mount(Stream, {
       props: {
         events: [
           {
-            tick: 3,
+            cycle: 3,
             text: 'Kernel hit Thread for 90',
             type: 'damage',
             salience: 'ally',
@@ -509,11 +509,11 @@ describe('Stream semantic hierarchy', () => {
   it('ranks a headline above a notable event above ordinary chip', () => {
     // Nine line types used to render at two weights, so a hero death, a
     // level-up and a wave's chip damage all read at the same emphasis.
-    expect(lineClasses({ tick: 1, text: 'a death', type: 'kill' })).toContain('font-bold')
-    const objective = lineClasses({ tick: 1, text: 'reached level 7', type: 'objective' })
+    expect(lineClasses({ cycle: 1, text: 'a death', type: 'kill' })).toContain('font-bold')
+    const objective = lineClasses({ cycle: 1, text: 'reached level 7', type: 'objective' })
     expect(objective).toContain('font-semibold')
     expect(objective).not.toContain('font-bold')
-    const chip = lineClasses({ tick: 1, text: 'chip', type: 'damage' })
+    const chip = lineClasses({ cycle: 1, text: 'chip', type: 'damage' })
     expect(chip).not.toContain('font-bold')
     expect(chip).not.toContain('font-semibold')
   })
@@ -523,8 +523,8 @@ describe('Stream semantic hierarchy', () => {
       mount(Stream, { props: { events: [event] } })
         .find('[data-testid="log-event"] span:last-child')
         .classes()
-    expect(html({ tick: 1, text: 'the Core fell', type: 'victory' })).toContain('text-glow-sm')
-    expect(html({ tick: 1, text: 'reached level 7', type: 'objective' })).not.toContain(
+    expect(html({ cycle: 1, text: 'the Core fell', type: 'victory' })).toContain('text-glow-sm')
+    expect(html({ cycle: 1, text: 'reached level 7', type: 'objective' })).not.toContain(
       'text-glow-sm',
     )
   })

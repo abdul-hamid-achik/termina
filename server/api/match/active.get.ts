@@ -18,7 +18,7 @@ export default defineEventHandler(async () => {
 
   const games: Array<{
     gameId: string
-    tick: number
+    cycle: number
     chaffKills: number
     auditKills: number
     chaffHeroes: string[]
@@ -40,7 +40,7 @@ export default defineEventHandler(async () => {
 
     games.push({
       gameId,
-      tick: snap.state.tick,
+      cycle: snap.state.cycle,
       chaffKills: snap.state.teams.chaff.kills,
       auditKills: snap.state.teams.audit.kills,
       chaffHeroes,
@@ -49,7 +49,7 @@ export default defineEventHandler(async () => {
   }
 
   // Newest first (longer-running games last)
-  games.sort((a, b) => a.tick - b.tick)
+  games.sort((a, b) => a.cycle - b.cycle)
 
   return { games }
 })

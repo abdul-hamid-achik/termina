@@ -7,7 +7,7 @@ export type GamePhase = 'waiting' | 'picking' | 'playing' | 'ended'
 export interface BuffState {
   id: string
   stacks: number
-  ticksRemaining: number
+  cyclesRemaining: number
   source: string
   destination?: string
 }
@@ -26,12 +26,12 @@ export interface PlayerState {
   maxBw: number
   level: number
   xp: number
-  gold: number
+  scrip: number
   items: (string | null)[]
   cooldowns: { q: number; w: number; e: number; r: number }
   buffs: BuffState[]
   alive: boolean
-  respawnTick: number | null
+  respawnCycle: number | null
   plate: number
   ice: number
   kills: number
@@ -41,14 +41,14 @@ export interface PlayerState {
   iceDamageDealt: number
   killStreak: number
   buybackCost: number
-  buybackCooldown?: number // tick when buyback becomes available again
-  lastActionTick?: number // last tick this player submitted any action (AFK detection)
+  buybackCooldown?: number // cycle when buyback becomes available again
+  lastActionCycle?: number // last cycle this player submitted any action (AFK detection)
   aiControlled?: boolean // true once an AFK human is replaced by a bot (no-reclaim takeover)
-  // Auto-path destination: the hero walks one zone per tick toward it until
+  // Auto-path destination: the hero walks one zone per cycle toward it until
   // arrival or any new deliberate action. Stripped from enemy views in the
   // vision filter (it would leak intent).
   moveTarget?: string | null
-  // Standing attack order: the hero keeps swinging at it every tick until it
+  // Standing attack order: the hero keeps swinging at it every cycle until it
   // dies, leaves the zone, or any new deliberate order lands. NEVER set for
   // `kind: 'wave'` — last-hitting is a timing skill and stays a manual input.
   // Stripped from enemy views alongside moveTarget (it leaks the same intent).
@@ -68,16 +68,16 @@ export interface WaveUnitState {
   integ: number
   /**
    * The integrity this wave spawned with. Waves escalate with match time, so their
-   * max is a property of WHEN THEY SPAWNED, not of the current tick — anything
+   * max is a property of WHEN THEY SPAWNED, not of the current cycle — anything
    * that reasons about a fraction of full health (the burn window, INTEG bars) has
    * to read it from here. Optional so fixtures can omit it; callers fall back to
-   * the tick-0 base rather than the current tier.
+   * the cycle-0 base rather than the current tier.
    */
   maxInteg?: number
   type: 'line' | 'sweep' | 'breach'
   /**
    * Ticks spent idle in a base zone (no target, invulnerable Ancient).
-   * Once it reaches WAVE_BASE_IDLE_DESPAWN_TICKS the wave is garbage
+   * Once it reaches WAVE_BASE_IDLE_DESPAWN_CYCLES the wave is garbage
    * collected. Optional so spawners/tests don't have to set it.
    */
   baseIdleCycles?: number
@@ -88,7 +88,7 @@ export interface WaveUnitState {
  * Lives in the team's base zone. Invulnerable until at least one of the
  * team's own T3 ice has fallen; destroying it wins the game.
  */
-export interface AncientState {
+export interface TerminalState {
   team: TeamId
   integ: number
   maxInteg: number
@@ -115,7 +115,7 @@ export interface IceState {
 }
 
 export interface GameEvent {
-  tick: number
+  cycle: number
   type: string
   payload: Record<string, unknown>
 }
@@ -124,25 +124,25 @@ export interface TeamState {
   id: TeamId
   kills: number
   iceKills: number
-  gold: number
-  hardenUsedTick: number | null
+  scrip: number
+  hardenUsedCycle: number | null
 }
 
 export interface CacheState {
   zone: string
   type: 'haste' | 'dd' | 'regen' | 'arcane' | 'invis'
-  tick: number
+  cycle: number
 }
 
 export interface TenantState {
   alive: boolean
   integ: number
   maxInteg: number
-  deathTick: number | null
+  deathCycle: number | null
 }
 
 export interface GameState {
-  tick: number
+  cycle: number
   phase: GamePhase
   teams: { chaff: TeamState; audit: TeamState }
   players: Record<string, PlayerState>
@@ -150,15 +150,15 @@ export interface GameState {
   waves: WaveUnitState[]
   neutrals: SiltDwellerState[]
   ice: IceState[]
-  ancients: { chaff: AncientState; audit: AncientState }
+  terminals: { chaff: TerminalState; audit: TerminalState }
   caches: CacheState[]
   tenant: TenantState
-  backup: { zone: string; tick: number; holderId: string | null } | null
+  backup: { zone: string; cycle: number; holderId: string | null } | null
   events: GameEvent[]
   winner?: TeamId | null // set when the game ends (Ancient destroyed or surrender)
   surrenderVotes: { chaff: Set<string>; audit: Set<string> }
   timeOfDay: 'day' | 'night'
-  dayNightTick: number
+  dayNightCycle: number
   /** Which map this game runs on (see shared/constants/maps). Absent = full 5v5.
    *  The actual playable graph is reflected in `zones`/`ice`; this is the
    *  label the client uses to pick a layout and the tutorial uses to gate. */
@@ -172,7 +172,7 @@ export interface GameState {
   /** Tick the current tutorial step became active. Server-only (not broadcast):
    *  it exists so a step that the live match makes unsatisfiable — no wave wave
    *  yet, no enemy hero in range — eventually times out instead of dead-ending
-   *  the player. See TUTORIAL_STEP_DEADLINE_TICKS. */
+   *  the player. See TUTORIAL_STEP_DEADLINE_CYCLES. */
   tutorialStepSince?: number
 }
 
@@ -220,7 +220,7 @@ export interface FoggedPlayer {
   heroId: string | null
   level: number
   // KDA is public information (the scoreboard shows it for every player even in
-  // fog) — only gold/items/position are hidden. Without these the scoreboard
+  // fog) — only scrip/items/position are hidden. Without these the scoreboard
   // renders a fogged enemy as 0/0/0.
   kills: number
   deaths: number
@@ -238,20 +238,20 @@ export interface FoggedPlayer {
  */
 export type VisibleStateBase = Pick<
   GameState,
-  | 'tick'
+  | 'cycle'
   | 'phase'
   | 'teams'
   | 'zones'
   | 'waves'
   | 'neutrals'
   | 'ice'
-  | 'ancients'
+  | 'terminals'
   | 'caches'
   | 'tenant'
   | 'backup'
   | 'events'
   | 'timeOfDay'
-  | 'dayNightTick'
+  | 'dayNightCycle'
   | 'mapId'
   | 'mode'
   | 'tutorialStep'

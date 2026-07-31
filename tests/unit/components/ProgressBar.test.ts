@@ -96,7 +96,7 @@ describe('ProgressBar', () => {
 
     it('renders identically regardless of the color prop', () => {
       const a = barText(mountBar({ value: 30, max: 100, width: 10, color: 'chaff' }))
-      const b = barText(mountBar({ value: 30, max: 100, width: 10, color: 'gold' }))
+      const b = barText(mountBar({ value: 30, max: 100, width: 10, color: 'scrip' }))
 
       expect(a).toBe(b)
     })

@@ -7,7 +7,7 @@ import TargetDummy from './TargetDummy.vue'
     <Variant title="Full INTEG">
       <TargetDummy name="Target Dummy" :integ="1000" :max-integ="1000" />
     </Variant>
-    <Variant title="Half (gold)">
+    <Variant title="Half (scrip)">
       <TargetDummy name="Target Dummy" :integ="480" :max-integ="1000" />
     </Variant>
     <Variant title="Low (audit) + DoT">

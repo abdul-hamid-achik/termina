@@ -3,13 +3,13 @@ import type { PlayerVisibleState } from '~~/shared/types/game'
 /** A parsed spectator websocket message, ready to apply to the view state. */
 export type SpectatorMessage =
   | { type: 'ack'; gameId: string }
-  | { type: 'tick'; tick: number; state: PlayerVisibleState }
+  | { type: 'cycle'; cycle: number; state: PlayerVisibleState }
   | { type: 'error'; message: string }
   | { type: 'ignore' }
 
 /**
  * Parse + classify a raw spectator websocket frame. Pure — extracted from the
- * spectate page's onmessage so the input pipeline (JSON safety + the ack/tick/
+ * spectate page's onmessage so the input pipeline (JSON safety + the ack/cycle/
  * error dispatch + error-message formatting) is unit-tested without a live
  * socket. Unparseable frames and unknown types resolve to `ignore` (dropped).
  */
@@ -27,8 +27,8 @@ export function parseSpectatorMessage(raw: unknown): SpectatorMessage {
       return { type: 'ack', gameId: String(msg.gameId ?? '') }
     case 'spectator_tick':
       return {
-        type: 'tick',
-        tick: Number(msg.tick ?? 0),
+        type: 'cycle',
+        cycle: Number(msg.cycle ?? 0),
         state: msg.state as PlayerVisibleState,
       }
     case 'error':

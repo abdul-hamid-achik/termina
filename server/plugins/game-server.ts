@@ -24,7 +24,7 @@ import {
   type GameCallbacks,
   type PlayerFarm,
 } from '~~/server/game/engine/GameLoop'
-import { playerNetWorth } from '~~/server/game/engine/GoldDistributor'
+import { playerNetWorth } from '~~/server/game/engine/ScripDistributor'
 import {
   deleteSnapshot,
   readSnapshot,
@@ -155,7 +155,7 @@ export function isEventVisibleToPlayer(
 /**
  * Is this a throwaway practice game whose result must NOT be persisted?
  *
- * Tutorial games now END on graduation and are surrenderable from tick 0, so
+ * Tutorial games now END on graduation and are surrenderable from cycle 0, so
  * they reach onGameOver routinely — including for a player who issued no
  * commands at all, since the tutorial step deadlines carry the flow on their
  * own. Persisting those would write a bogus match row and credit a free win to
@@ -174,7 +174,7 @@ export function isPracticeGame(gameId: string, mode?: GameMode): boolean {
  * THAT game.
  *
  * Every game callback below routes purely by playerId, and nothing in the
- * client-facing protocol carries a gameId — `tick_state`, `announcement` and
+ * client-facing protocol carries a gameId — `cycle_state`, `announcement` and
  * `game_over` are all indistinguishable between matches once they arrive. An
  * abandoned game is not a hypothetical: a practice match keeps ticking with zero
  * input and reaches its own game-over minutes later (the tutorial step deadlines
@@ -207,13 +207,13 @@ export function buildEndStats(
       kills: ps?.kills ?? 0,
       deaths: ps?.deaths ?? 0,
       assists: ps?.assists ?? 0,
-      gold: ps?.gold ?? 0,
+      scrip: ps?.scrip ?? 0,
       items: ps?.items ?? [],
       heroDamage: ps?.damageDealt ?? 0,
       iceDamage: ps?.iceDamageDealt ?? 0,
       lastHits: farm[playerId]?.lastHits ?? 0,
       burns: farm[playerId]?.burns ?? 0,
-      // Gold spent on items is still gold farmed. Ranking the board by the
+      // Gold spent on items is still scrip farmed. Ranking the board by the
       // wallet balance puts the best farmer last, which is the opposite of the
       // lesson the screen is supposed to teach.
       netWorth: ps ? playerNetWorth(ps) : 0,
@@ -243,9 +243,9 @@ const RECENT_EVENTS_CAP = 300
 interface LiveGameEntry {
   stateManager: ReturnType<typeof createInMemoryStateManager>
   recentEvents: GameEngineEvent[]
-  /** Wall-clock ms of the last tick broadcast — used by the reaper to detect
+  /** Wall-clock ms of the last cycle broadcast — used by the reaper to detect
    *  zombie games whose loop died without firing onGameOver. */
-  lastTickAt: number
+  lastCycleAt: number
   /** Snapshot meta captured at game start — lets the shutdown hook flush a
    *  faithful final snapshot (the resume path requires meta.players). */
   meta?: SnapshotMeta
@@ -257,7 +257,7 @@ function registerLiveGame(
   gameId: string,
   stateManager: ReturnType<typeof createInMemoryStateManager>,
 ): void {
-  liveGames.set(gameId, { stateManager, recentEvents: [], lastTickAt: Date.now() })
+  liveGames.set(gameId, { stateManager, recentEvents: [], lastCycleAt: Date.now() })
 }
 
 /** Stash the snapshot meta on the live-game entry so the shutdown hook can
@@ -274,16 +274,16 @@ function recordRecentEvents(gameId: string, events: GameEngineEvent[]): void {
   if (entry.recentEvents.length > RECENT_EVENTS_CAP) {
     entry.recentEvents.splice(0, entry.recentEvents.length - RECENT_EVENTS_CAP)
   }
-  entry.lastTickAt = Date.now()
+  entry.lastCycleAt = Date.now()
 }
 
-/** Update the lastTickAt timestamp for a live game. Called from onTickState
+/** Update the lastCycleAt timestamp for a live game. Called from onCycleState
  *  so the reaper doesn't incorrectly kill a game whose ticks produce no events
  *  (both teams AFK in fountain — the loop is alive but onEvents is a no-op). */
 function touchLiveGame(gameId: string): void {
   const entry = liveGames.get(gameId)
   if (!entry) return
-  entry.lastTickAt = Date.now()
+  entry.lastCycleAt = Date.now()
 }
 
 /**
@@ -296,7 +296,7 @@ export function getReconnectPayload(
   playerId: string,
   sinceTick?: number,
 ): {
-  tick: number
+  cycle: number
   state: ReturnType<typeof filterStateForPlayer>
   events: ReturnType<typeof toGameEvent>[]
 } | null {
@@ -311,18 +311,18 @@ export function getReconnectPayload(
   }
 
   const filteredState = filterStateForPlayer(state, playerId, gameId)
-  // Reconnect sends full state — record it so the next tick's delta is relative
+  // Reconnect sends full state — record it so the next cycle's delta is relative
   // to this snapshot (not stale from before the disconnect).
   recordSentState(gameId, playerId, filteredState)
   const playerTeam = state.players[playerId]?.team
   const visibleZones = calculateVision(state, playerId, gameId)
   const missed = entry.recentEvents.filter(
     (e) =>
-      (sinceTick === undefined || e.tick > sinceTick) &&
+      (sinceTick === undefined || e.cycle > sinceTick) &&
       isEventVisibleToPlayer(e, playerId, playerTeam, visibleZones, state),
   )
 
-  return { tick: state.tick, state: filteredState, events: missed.map(toGameEvent) }
+  return { cycle: state.cycle, state: filteredState, events: missed.map(toGameEvent) }
 }
 
 export function getGameRuntime(): GameRuntime | null {
@@ -334,7 +334,7 @@ export function getGameRuntime(): GameRuntime | null {
  *
  * Sets the game's phase to 'ended' + winner via its state manager (mirroring
  * how this plugin already drives `updateState`). The running GameLoop fiber
- * picks this up on its next tick — its win-condition block (GameLoop.ts ~282)
+ * picks this up on its next cycle — its win-condition block (GameLoop.ts ~282)
  * sees `phase === 'ended'` with a winner and fires `callbacks.onGameOver`,
  * which persists the match and broadcasts `game_over` to clients. So forcing
  * the state ends the game cleanly, exactly as an Ancient kill would.
@@ -440,7 +440,7 @@ export function stopDevGame(gameId: string): void {
   // Dropping the liveGames entry without this leaves the player mapped to a game
   // that no longer exists anywhere: `reconnect` passes the ownership check,
   // getReconnectPayload finds nothing to send, and the HUD sits frozen on a board
-  // that will never tick again — with no way out, since queue/join and
+  // that will never cycle again — with no way out, since queue/join and
   // tutorial.post both read the same assignment. gamePlayers is the reverse index
   // of exactly "still assigned to this game", so a player who has already moved
   // to another match is not touched.
@@ -460,8 +460,8 @@ export function stopDevGame(gameId: string): void {
 // A game whose loop dies without firing onGameOver (fiber crash, ancient
 // never dies, bug) leaks forever in liveGames + recentEvents + bot combo
 // states. The dev reaper only touches dev_* games. This sweep runs every 60s
-// and force-cleans entries whose lastTickAt is stale beyond a grace window.
-const LIVE_GAME_STALE_MS = 120_000 // 2 min with no tick → presumed dead
+// and force-cleans entries whose lastCycleAt is stale beyond a grace window.
+const LIVE_GAME_STALE_MS = 120_000 // 2 min with no cycle → presumed dead
 let _liveGameReaperTimer: ReturnType<typeof setInterval> | null = null
 
 function reapStaleLiveGames(): void {
@@ -469,10 +469,10 @@ function reapStaleLiveGames(): void {
   for (const [gameId, entry] of liveGames) {
     // Dev games are handled by the dev reaper above.
     if (gameId.startsWith('dev_')) continue
-    if (now - entry.lastTickAt < LIVE_GAME_STALE_MS) continue
-    gameLog.warn('Reaping stale live game (no tick for >2min)', {
+    if (now - entry.lastCycleAt < LIVE_GAME_STALE_MS) continue
+    gameLog.warn('Reaping stale live game (no cycle for >2min)', {
       gameId,
-      staleMs: now - entry.lastTickAt,
+      staleMs: now - entry.lastCycleAt,
     })
     // Best-effort: read the state, mark it ended, clean up. The loop fiber is
     // already presumed dead so there's nothing to interrupt.
@@ -522,7 +522,7 @@ export default defineNitroPlugin(async (nitroApp) => {
   // the explicit TERMINA_TEST_HOOKS=1 opt-in alone (the prod e2e runs against a
   // production build, so NODE_ENV can't gate it). It enables no endpoints — the
   // /api/test/* seed routes were removed — but it DOES relax the auth rate limit
-  // (with TERMINA_DISABLE_RATE_LIMIT) and the tick accelerator, so it must NEVER
+  // (with TERMINA_DISABLE_RATE_LIMIT) and the cycle accelerator, so it must NEVER
   // be set in a real deployment.
   if (testHooksEnabled()) {
     gameLog.warn(
@@ -581,14 +581,14 @@ export default defineNitroPlugin(async (nitroApp) => {
     stateManager: ReturnType<typeof createInMemoryStateManager>,
   ): GameCallbacks {
     return {
-      onTickState: (gId, playerId, filteredState) => {
-        // Update lastTickAt on every tick (not just on events) so the reaper
+      onCycleState: (gId, playerId, filteredState) => {
+        // Update lastCycleAt on every cycle (not just on events) so the reaper
         // doesn't kill a live game that happens to produce no events for a while.
         touchLiveGame(gId)
         if (isBot(playerId)) return
         sendToGamePeer(gId, playerId, {
-          type: 'tick_state',
-          tick: filteredState.tick,
+          type: 'cycle_state',
+          cycle: filteredState.cycle,
           state: filteredState,
         })
       },
@@ -599,7 +599,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         const fogless = filterStateForSpectator(fullState)
         const payload = JSON.stringify({
           type: 'spectator_tick',
-          tick: fogless.tick,
+          cycle: fogless.cycle,
           state: fogless,
         })
         for (const watcher of watchers) {
@@ -662,14 +662,14 @@ export default defineNitroPlugin(async (nitroApp) => {
             if (visibleEvents.length > 0) {
               sendToGamePeer(gId, p.playerId, {
                 type: 'events' as const,
-                tick: visibleEvents[0]?.tick ?? 0,
+                cycle: visibleEvents[0]?.cycle ?? 0,
                 events: visibleEvents.map(toGameEvent),
               })
             }
           } else {
             sendToGamePeer(gId, p.playerId, {
               type: 'events' as const,
-              tick: events[0]?.tick ?? 0,
+              cycle: events[0]?.cycle ?? 0,
               events: events.map(toGameEvent),
             })
           }
@@ -727,7 +727,7 @@ export default defineNitroPlugin(async (nitroApp) => {
             stats: endStats,
             mmrChange: mmrChanges.get(p.playerId) ?? 0,
             ranked: isRanked,
-            durationTicks: finalState.tick,
+            durationCycles: finalState.cycle,
           })
         }
 
@@ -754,7 +754,7 @@ export default defineNitroPlugin(async (nitroApp) => {
               id: gId,
               mode: matchMode,
               winner,
-              durationTicks: finalState.tick,
+              durationCycles: finalState.cycle,
               seasonNumber: season.seasonNumber,
               endedAt: new Date(),
             }
@@ -769,7 +769,7 @@ export default defineNitroPlugin(async (nitroApp) => {
                 kills: ps?.kills ?? 0,
                 deaths: ps?.deaths ?? 0,
                 assists: ps?.assists ?? 0,
-                goldEarned: ps?.gold ?? 0,
+                goldEarned: ps?.scrip ?? 0,
                 damageDealt: ps?.damageDealt ?? 0,
                 healingDone: 0,
                 finalItems: (ps?.items ?? []).filter((i): i is string => i !== null),
@@ -932,7 +932,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         })
 
         // Brief delay to let clients navigate to /play and open game WS
-        // before the first tick tries to send data
+        // before the first cycle tries to send data
         await managedRuntime.runPromise(Effect.sleep('2 seconds'))
 
         // Start the game loop as a fiber within the managed runtime.
@@ -1090,7 +1090,7 @@ export default defineNitroPlugin(async (nitroApp) => {
 
       gameLog.info('Resumed game from snapshot', {
         gameId,
-        tick: snap.state.tick,
+        cycle: snap.state.cycle,
         ageMs: Date.now() - snap.savedAt,
       })
     }
@@ -1114,7 +1114,7 @@ export default defineNitroPlugin(async (nitroApp) => {
 
     // Graceful shutdown: flush a final snapshot for each live game + release its
     // Redis ownership so a rolling deploy (App Platform sends SIGTERM) resumes
-    // games on the replacement instance with minimal tick loss. Time-bounded +
+    // games on the replacement instance with minimal cycle loss. Time-bounded +
     // best-effort so it can NEVER delay the SIGKILL grace window; on timeout or
     // any failure the periodic snapshot (≤60s old) remains the fallback — i.e. no
     // worse than before. Games without captured meta are skipped (resume requires

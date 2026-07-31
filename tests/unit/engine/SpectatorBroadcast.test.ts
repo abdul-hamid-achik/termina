@@ -1,34 +1,34 @@
 /**
- * Verify that the game loop's onSpectatorTick callback fires once per tick
+ * Verify that the game loop's onSpectatorTick callback fires once per cycle
  * with the unfiltered state. This is the seam the plugin uses to fan out
  * to the SpectatorRegistry, so we need to know it's wired correctly.
  */
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
 import type { GameState } from '~~/shared/types/game'
-import { processTick } from '~~/server/game/engine/GameLoop'
+import { processCycle } from '~~/server/game/engine/GameLoop'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { filterStateForSpectator } from '~~/server/game/engine/VisionCalculator'
 
 function makeState(overrides: Partial<GameState> = {}): GameState {
   return {
-    tick: 0,
+    cycle: 0,
     phase: 'playing',
     teams: {
       chaff: {
         id: 'chaff',
         kills: 0,
         iceKills: 0,
-        gold: 0,
-        hardenUsedTick: null,
+        scrip: 0,
+        hardenUsedCycle: null,
         glyphCooldown: 0,
       },
       audit: {
         id: 'audit',
         kills: 0,
         iceKills: 0,
-        gold: 0,
-        hardenUsedTick: null,
+        scrip: 0,
+        hardenUsedCycle: null,
         glyphCooldown: 0,
       },
     },
@@ -38,23 +38,23 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     neutrals: [],
     ice: initializeIce(),
     caches: [],
-    tenant: { alive: false, integ: 0, maxInteg: 5000, deathTick: null },
+    tenant: { alive: false, integ: 0, maxInteg: 5000, deathCycle: null },
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
-    dayNightTick: 0,
+    dayNightCycle: 0,
     ...overrides,
   }
 }
 
 describe('Spectator broadcast wiring', () => {
-  it('processTick still produces a state we can filter for spectators', () => {
+  it('processCycle still produces a state we can filter for spectators', () => {
     const initial = makeState()
-    const result = Effect.runSync(processTick('g1', initial))
+    const result = Effect.runSync(processCycle('g1', initial))
     const fogless = filterStateForSpectator(result.state)
 
-    expect(fogless.tick).toBe(initial.tick + 1)
+    expect(fogless.cycle).toBe(initial.cycle + 1)
     // visibleZones in spectator view is the full zone list
     expect(fogless.visibleZones.length).toBe(Object.keys(result.state.zones).length)
     // events array is preserved (no filtering)
@@ -78,14 +78,14 @@ describe('filterStateForSpectator', () => {
           maxBw: 100,
           level: 1,
           xp: 0,
-          gold: 600,
+          scrip: 600,
           items: [null, null, null, null, null, null],
           plate: 0,
           ice: 0,
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
           buffs: [],
           alive: true,
-          respawnTick: null,
+          respawnCycle: null,
           kills: 0,
           deaths: 0,
           assists: 0,
@@ -100,9 +100,9 @@ describe('filterStateForSpectator', () => {
 
     const fogless = filterStateForSpectator(state)
     const p = fogless.players['p1']!
-    // Real player shape (has gold), not the FoggedPlayer subset
-    expect('gold' in p).toBe(true)
-    expect((p as { gold: number }).gold).toBe(600)
+    // Real player shape (has scrip), not the FoggedPlayer subset
+    expect('scrip' in p).toBe(true)
+    expect((p as { scrip: number }).scrip).toBe(600)
   })
 
   it('exposes every zone in visibleZones', () => {

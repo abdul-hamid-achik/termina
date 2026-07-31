@@ -3,26 +3,26 @@ import type { HeroRole } from '~~/shared/types/hero'
 import { HEROES, HERO_IDS } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
 import {
-  TICK_DURATION_MS,
+  CYCLE_DURATION_MS,
   ACTION_WINDOW_MS,
-  PASSIVE_GOLD_PER_TICK,
-  WAVE_GOLD,
+  PASSIVE_SCRIP_PER_CYCLE,
+  WAVE_SCRIP,
   KILL_BOUNTY_BASE,
-  ASSIST_GOLD,
-  ICE_GOLD,
-  STARTING_GOLD,
+  ASSIST_SCRIP,
+  ICE_SCRIP,
+  STARTING_SCRIP,
   MAX_ITEMS,
   MAX_LEVEL,
   BASIC_ABILITY_RANKS,
   ULTIMATE_RANKS,
   ULTIMATE_UNLOCK_LEVEL,
-  RESPAWN_BASE_TICKS,
-  RESPAWN_PER_LEVEL_TICKS,
+  RESPAWN_BASE_CYCLES,
+  RESPAWN_PER_LEVEL_CYCLES,
   RESPAWN_FREE_LEVELS,
-  BUYBACK_COOLDOWN_TICKS,
-  CAMTAP_DURATION_TICKS,
+  BUYBACK_COOLDOWN_CYCLES,
+  CAMTAP_DURATION_CYCLES,
   WARD_LIMIT_PER_TEAM,
-  WAVE_INTERVAL_TICKS,
+  WAVE_INTERVAL_CYCLES,
   LINE_UNIT_HP,
   LINE_UNITS_PER_WAVE,
   SWEEP_UNITS_PER_WAVE,
@@ -31,24 +31,24 @@ import {
   ICE_HP_T2,
   ICE_HP_T3,
   ICE_ATTACK,
-  ANCIENT_HP,
+  TERMINAL_HP,
   TENANT_BASE_HP,
-  FOUNTAIN_HEAL_PER_TICK_PERCENT,
-  FOUNTAIN_BW_PER_TICK_PERCENT,
-  SURRENDER_MIN_TICK,
+  FOUNTAIN_HEAL_PER_CYCLE_PERCENT,
+  FOUNTAIN_BW_PER_CYCLE_PERCENT,
+  SURRENDER_MIN_CYCLE,
   SURRENDER_VOTE_THRESHOLD,
-  CACHE_INTERVAL_TICKS,
-  CACHE_DURATION_TICKS,
-  HARDEN_DURATION_TICKS,
-  HARDEN_COOLDOWN_TICKS,
+  CACHE_INTERVAL_CYCLES,
+  CACHE_DURATION_CYCLES,
+  HARDEN_DURATION_CYCLES,
+  HARDEN_COOLDOWN_CYCLES,
   CLOT_RING_REGEN_PERCENT,
   DRIP_MASK_REGEN_PERCENT,
   REGEN_CACHE_HEAL_PERCENT,
   BURN_HP_THRESHOLD,
-  BURN_GOLD_RATIO,
+  BURN_SCRIP_RATIO,
   BURN_XP_RATIO,
-  WAVE_GOLD_MIN,
-  WAVE_GOLD_MAX,
+  WAVE_SCRIP_MIN,
+  WAVE_SCRIP_MAX,
   WAVE_XP,
   WAVE_XP_SHARED,
 } from '~~/shared/constants/balance'
@@ -65,18 +65,18 @@ const {
 // Everything below is computed from the live engine constants so the
 // guide can never drift from the actual game again.
 
-const tickSeconds = TICK_DURATION_MS / 1000
+const tickSeconds = CYCLE_DURATION_MS / 1000
 const actionWindowSeconds = ACTION_WINDOW_MS / 1000
 const heroCount = HERO_IDS.length
 const wardCost = ITEMS.camtap!.cost
-const surrenderMinutes = (SURRENDER_MIN_TICK * tickSeconds) / 60
+const surrenderMinutes = (SURRENDER_MIN_CYCLE * tickSeconds) / 60
 const surrenderPercent = Math.round(SURRENDER_VOTE_THRESHOLD * 100)
-const buybackCooldownMinutes = (BUYBACK_COOLDOWN_TICKS * tickSeconds) / 60
-const glyphCooldownMinutes = (HARDEN_COOLDOWN_TICKS * tickSeconds) / 60
+const buybackCooldownMinutes = (BUYBACK_COOLDOWN_CYCLES * tickSeconds) / 60
+const glyphCooldownMinutes = (HARDEN_COOLDOWN_CYCLES * tickSeconds) / 60
 
-/** Respawn time in ticks for a given level — mirrors GameLoop's formula. */
-function respawnTicks(level: number): number {
-  return RESPAWN_BASE_TICKS + RESPAWN_PER_LEVEL_TICKS * Math.max(0, level - RESPAWN_FREE_LEVELS)
+/** Respawn time in cycles for a given level — mirrors GameLoop's formula. */
+function respawnCycles(level: number): number {
+  return RESPAWN_BASE_CYCLES + RESPAWN_PER_LEVEL_CYCLES * Math.max(0, level - RESPAWN_FREE_LEVELS)
 }
 
 // Talent TIER ids (10/15/20/25) are not the levels they unlock at — the two
@@ -95,7 +95,7 @@ const ringRegenPercent = Math.round(CLOT_RING_REGEN_PERCENT * 100)
 const sobiRegenPercent = Math.round(DRIP_MASK_REGEN_PERCENT * 100)
 const cacheRegenPercent = Math.round(REGEN_CACHE_HEAL_PERCENT * 100)
 const burnHpPercent = Math.round(BURN_HP_THRESHOLD * 100)
-const burnGold = Math.floor(((WAVE_GOLD_MIN + WAVE_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
+const burnGold = Math.floor(((WAVE_SCRIP_MIN + WAVE_SCRIP_MAX) / 2) * BURN_SCRIP_RATIO)
 const burnXp = Math.floor(WAVE_XP * BURN_XP_RATIO)
 
 const quickStart = [
@@ -117,12 +117,12 @@ const quickStart = [
   {
     step: '4',
     title: 'Farm Waves',
-    desc: `Wave waves spawn every ${WAVE_INTERVAL_TICKS} cycles. Last-hit them with attack wave:0 to earn ${WAVE_GOLD}sc and XP.`,
+    desc: `Wave waves spawn every ${WAVE_INTERVAL_CYCLES} cycles. Last-hit them with attack wave:0 to earn ${WAVE_SCRIP}sc and XP.`,
   },
   {
     step: '5',
     title: 'Buy Items',
-    desc: `You start with ${STARTING_GOLD}sc. Return to base and open the SHOP (click it, or press Esc then S). You have ${MAX_ITEMS} inventory slots.`,
+    desc: `You start with ${STARTING_SCRIP}sc. Return to base and open the SHOP (click it, or press Esc then S). You have ${MAX_ITEMS} inventory slots.`,
   },
   {
     step: '6',
@@ -155,9 +155,9 @@ const movementGuide = [
   {
     title: 'Movement Tips',
     items: [
-      `Fountain heals ${FOUNTAIN_HEAL_PER_TICK_PERCENT}% INTEG / ${FOUNTAIN_BW_PER_TICK_PERCENT}% BW per cycle — retreat there to recover`,
+      `Fountain heals ${FOUNTAIN_HEAL_PER_CYCLE_PERCENT}% INTEG / ${FOUNTAIN_BW_PER_CYCLE_PERCENT}% BW per cycle — retreat there to recover`,
       'Fountain is only adjacent to your base (must go through base first)',
-      `You can't move while dead — respawn takes ${RESPAWN_BASE_TICKS} cycles plus ${RESPAWN_PER_LEVEL_TICKS} per level after level ${RESPAWN_FREE_LEVELS}`,
+      `You can't move while dead — respawn takes ${RESPAWN_BASE_CYCLES} cycles plus ${RESPAWN_PER_LEVEL_CYCLES} per level after level ${RESPAWN_FREE_LEVELS}`,
       'Team-relative shortcuts: move base / move fountain always go to YOUR side, whichever team you are',
       'More aliases save typing: move mid → mid-river, move rosh → hollow; unambiguous prefixes work too',
     ],
@@ -222,7 +222,7 @@ const commands = [
   },
   {
     cmd: 'harden',
-    desc: `Make your ice invulnerable for ${HARDEN_DURATION_TICKS} cycles (one per team every ${glyphCooldownMinutes} min)`,
+    desc: `Make your ice invulnerable for ${HARDEN_DURATION_CYCLES} cycles (one per team every ${glyphCooldownMinutes} min)`,
     example: 'harden',
     shortcuts: '—',
   },
@@ -317,7 +317,7 @@ const concepts = [
   {
     term: 'Scrip & Items',
     icon: '$',
-    desc: `Earn scrip from wave last-hits (${WAVE_GOLD}sc), hero kills (${KILL_BOUNTY_BASE}sc base + streak and comeback bonuses), assists (${ASSIST_GOLD}sc split), and passive income (${PASSIVE_GOLD_PER_TICK}sc/cycle). Spend scrip at the shop in your base. Max ${MAX_ITEMS} items.`,
+    desc: `Earn scrip from wave last-hits (${WAVE_SCRIP}sc), hero kills (${KILL_BOUNTY_BASE}sc base + streak and comeback bonuses), assists (${ASSIST_SCRIP}sc split), and passive income (${PASSIVE_SCRIP_PER_CYCLE}sc/cycle). Spend scrip at the shop in your base. Max ${MAX_ITEMS} items.`,
   },
   {
     term: 'No Feed',
@@ -327,17 +327,17 @@ const concepts = [
   {
     term: 'Wave Waves',
     icon: '#',
-    desc: `AI waves spawn every ${WAVE_INTERVAL_TICKS} cycles in each lane. ${LINE_UNITS_PER_WAVE} line + ${SWEEP_UNITS_PER_WAVE} sweep per wave (breach every ${BREACH_WAVE_INTERVAL}th wave). Last-hit them for scrip. They push lanes automatically.`,
+    desc: `AI waves spawn every ${WAVE_INTERVAL_CYCLES} cycles in each lane. ${LINE_UNITS_PER_WAVE} line + ${SWEEP_UNITS_PER_WAVE} sweep per wave (breach every ${BREACH_WAVE_INTERVAL}th wave). Last-hit them for scrip. They push lanes automatically.`,
   },
   {
     term: 'ICE',
     icon: '!',
-    desc: `Each lane has 3 ice tiers per side: T1 ${ICE_HP_T1} INTEG, T2 ${ICE_HP_T2} INTEG, T3 ${ICE_HP_T3} INTEG. ICE hit for ${ICE_ATTACK} and prioritize heroes who attack under them, then waves. A ice kill splits ${ICE_GOLD}sc among allies in the zone.`,
+    desc: `Each lane has 3 ice tiers per side: T1 ${ICE_HP_T1} INTEG, T2 ${ICE_HP_T2} INTEG, T3 ${ICE_HP_T3} INTEG. ICE hit for ${ICE_ATTACK} and prioritize heroes who attack under them, then waves. A ice kill splits ${ICE_SCRIP}sc among allies in the zone.`,
   },
   {
     term: 'The Terminal',
     icon: '@',
-    desc: `Each base houses its team's core — the Terminal (${ANCIENT_HP} INTEG). It is invulnerable until at least one of that team's T3 ice falls; once exposed, heroes and waves in the base can attack it.`,
+    desc: `Each base houses its team's core — the Terminal (${TERMINAL_HP} INTEG). It is invulnerable until at least one of that team's T3 ice falls; once exposed, heroes and waves in the base can attack it.`,
   },
   {
     term: 'Levels & XP',
@@ -352,32 +352,32 @@ const concepts = [
   {
     term: 'Sustain',
     icon: '+',
-    desc: `There is NO innate regeneration — an INTEG or BW bar you spend stays spent. The only recoveries are: your fountain (${FOUNTAIN_HEAL_PER_TICK_PERCENT}% INTEG / ${FOUNTAIN_BW_PER_TICK_PERCENT}% BW per cycle, and only while out of combat), Trauma Patch and Charge Tab (consumables you carry), Clot Ring (${ringRegenPercent}% max INTEG per cycle) and Drip Mask (${sobiRegenPercent}% max BW per cycle), and the regeneration cache (${cacheRegenPercent}% of both per cycle). Buy one of those before you plan to hold a lane — otherwise every trade is one-way and the walk home costs you the wave.`,
+    desc: `There is NO innate regeneration — an INTEG or BW bar you spend stays spent. The only recoveries are: your fountain (${FOUNTAIN_HEAL_PER_CYCLE_PERCENT}% INTEG / ${FOUNTAIN_BW_PER_CYCLE_PERCENT}% BW per cycle, and only while out of combat), Trauma Patch and Charge Tab (consumables you carry), Clot Ring (${ringRegenPercent}% max INTEG per cycle) and Drip Mask (${sobiRegenPercent}% max BW per cycle), and the regeneration cache (${cacheRegenPercent}% of both per cycle). Buy one of those before you plan to hold a lane — otherwise every trade is one-way and the walk home costs you the wave.`,
   },
   {
     term: 'Last-Hitting & Burning',
     icon: '/',
-    desc: `Only the killing blow pays scrip: chip a wave to 1 INTEG and a lane-mate takes it, you get nothing. A line wave has ${LINE_UNIT_HP} INTEG and your hero hits for 30–70, so wait until its remaining INTEG is under one of your attacks, then take it with attack wave:0 for ${WAVE_GOLD}sc and ${WAVE_XP} XP (allies in the zone share ${WAVE_XP_SHARED} XP, so standing in lane is never worth zero). Burning is the mirror: once one of YOUR waves drops below ${burnHpPercent}% INTEG, burn wave:0 kills it so the enemy gets nothing — you keep ${burnGold}sc and ${burnXp} XP. Prefer STRIP / BURN on the ActionRow (or look then attack wave:N) over guessing an index: wave:N counts the living waves in your zone, so N shifts every cycle as waves die and waves spawn.`,
+    desc: `Only the killing blow pays scrip: chip a wave to 1 INTEG and a lane-mate takes it, you get nothing. A line wave has ${LINE_UNIT_HP} INTEG and your hero hits for 30–70, so wait until its remaining INTEG is under one of your attacks, then take it with attack wave:0 for ${WAVE_SCRIP}sc and ${WAVE_XP} XP (allies in the zone share ${WAVE_XP_SHARED} XP, so standing in lane is never worth zero). Burning is the mirror: once one of YOUR waves drops below ${burnHpPercent}% INTEG, burn wave:0 kills it so the enemy gets nothing — you keep ${burnGold}sc and ${burnXp} XP. Prefer STRIP / BURN on the ActionRow (or look then attack wave:N) over guessing an index: wave:N counts the living waves in your zone, so N shifts every cycle as waves die and waves spawn.`,
   },
   {
     term: 'Death & Respawn',
     icon: 'X',
-    desc: `When you die, you respawn at your fountain after ${RESPAWN_BASE_TICKS} cycles + ${RESPAWN_PER_LEVEL_TICKS} per level after level ${RESPAWN_FREE_LEVELS} (${respawnTicks(1)} cycles at level 1, ${respawnTicks(10)} at level 10). Buyback with scrip to return instantly (${buybackCooldownMinutes} min cooldown).`,
+    desc: `When you die, you respawn at your fountain after ${RESPAWN_BASE_CYCLES} cycles + ${RESPAWN_PER_LEVEL_CYCLES} per level after level ${RESPAWN_FREE_LEVELS} (${respawnCycles(1)} cycles at level 1, ${respawnCycles(10)} at level 10). Buyback with scrip to return instantly (${buybackCooldownMinutes} min cooldown).`,
   },
   {
     term: 'Wards',
     icon: 'o',
-    desc: `CAMTAPs (${wardCost}sc) grant vision of a zone for ${CAMTAP_DURATION_TICKS} cycles. Max ${WARD_LIMIT_PER_TEAM} active per team. Place with: ward <zone>. Essential for map control.`,
+    desc: `CAMTAPs (${wardCost}sc) grant vision of a zone for ${CAMTAP_DURATION_CYCLES} cycles. Max ${WARD_LIMIT_PER_TEAM} active per team. Place with: ward <zone>. Essential for map control.`,
   },
   {
     term: 'Tenant & Caches',
     icon: '%',
-    desc: `Tenant (${TENANT_BASE_HP}+ INTEG) lurks in hollow and drops the Backup when killed — grab it with backup. Power-up caches spawn at cache-top/cache-bot every ${CACHE_INTERVAL_TICKS} cycles and expire after ${CACHE_DURATION_TICKS}; grab them with cache.`,
+    desc: `Tenant (${TENANT_BASE_HP}+ INTEG) lurks in hollow and drops the Backup when killed — grab it with backup. Power-up caches spawn at cache-top/cache-bot every ${CACHE_INTERVAL_CYCLES} cycles and expire after ${CACHE_DURATION_CYCLES}; grab them with cache.`,
   },
   {
     term: 'Win Condition',
     icon: 'W',
-    desc: `Destroying any of a team's T3 ice exposes their Terminal (${ANCIENT_HP} INTEG) in their base. Destroy the enemy Terminal to win. Teams may also surrender after ${surrenderMinutes} minutes with a ${surrenderPercent}% vote.`,
+    desc: `Destroying any of a team's T3 ice exposes their Terminal (${TERMINAL_HP} INTEG) in their base. Destroy the enemy Terminal to win. Teams may also surrender after ${surrenderMinutes} minutes with a ${surrenderPercent}% vote.`,
   },
   {
     term: 'Draft & Bans',

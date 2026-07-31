@@ -5,7 +5,7 @@ import type { ItemDef } from '~~/shared/types/items'
 
 const props = defineProps<{
   pinnedItems: string[]
-  gold: number
+  scrip: number
   canBuy: boolean
   /** Role recommendations, shown as a fallback when nothing is pinned. */
   recommendedItems?: string[]
@@ -38,8 +38,8 @@ const entries = computed<PinnedEntry[]>(() => {
     .map((id) => {
       const def = ITEMS[id]
       if (!def) return null
-      const goldNeeded = Math.max(0, def.cost - props.gold)
-      return { id, def, affordable: props.gold >= def.cost, goldNeeded }
+      const goldNeeded = Math.max(0, def.cost - props.scrip)
+      return { id, def, affordable: props.scrip >= def.cost, goldNeeded }
     })
     .filter((e): e is PinnedEntry => e !== null)
 })

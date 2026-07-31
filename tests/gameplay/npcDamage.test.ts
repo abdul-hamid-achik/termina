@@ -6,7 +6,7 @@ import type { GameEngineEvent } from '~~/server/game/protocol/events'
  * NPC damage used to mutate hero INTEG with zero events: a ice could kill you in
  * total silence — no combat-log line, no damage float, no shake, no sound, and
  * no killer to name on the death overlay. These specs pin the whole-tick
- * contract (processTick's event stream), not just the per-AI unit return, since
+ * contract (processCycle's event stream), not just the per-AI unit return, since
  * the events have to survive runNPCAI → allEvents to reach a player at all.
  */
 

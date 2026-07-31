@@ -28,12 +28,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 300,
     level: 1,
     xp: 0,
-    gold: 1000,
+    scrip: 1000,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 5,
     ice: 5,
     kills: 0,
@@ -47,7 +47,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -65,11 +65,11 @@ function makeZone(id: string, overrides: Partial<ZoneRuntimeState> = {}): ZoneRu
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
   const player = makePlayer()
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: { player_1: player },
     zones: {
@@ -102,7 +102,7 @@ describe('Shop', () => {
       if (Exit.isSuccess(exit)) {
         const newState = exit.value
         const player = newState.players['player_1']!
-        expect(player.gold).toBe(1000 - 50) // scrap_lot costs 50
+        expect(player.scrip).toBe(1000 - 50) // scrap_lot costs 50
         expect(player.items).toContain('scrap_lot')
       }
     })
@@ -136,7 +136,7 @@ describe('Shop', () => {
     })
 
     it('fails when player has insufficient gold', async () => {
-      const player = makePlayer({ gold: 10 })
+      const player = makePlayer({ scrip: 10 })
       const state = makeGameState({ players: { player_1: player } })
 
       const exit = await cacheEffect(buyItem(state, 'player_1', 'jump_shunt'))
@@ -152,7 +152,7 @@ describe('Shop', () => {
       // 6 distinct items so we hit InventoryFullError, not MaxStacksError
       const player = makePlayer({
         items: ['jump_shunt', 'clock_lens', 'burnout', 'cryo_routine', 'rust_driver', 'arc_coil'],
-        gold: 5000,
+        scrip: 5000,
       })
       const state = makeGameState({ players: { player_1: player } })
 
@@ -169,7 +169,7 @@ describe('Shop', () => {
       // scrap_lot has maxStacks: 3
       const player = makePlayer({
         items: ['scrap_lot', 'scrap_lot', 'scrap_lot', null, null, null],
-        gold: 5000,
+        scrip: 5000,
       })
       const state = makeGameState({ players: { player_1: player } })
 
@@ -186,7 +186,7 @@ describe('Shop', () => {
       // clock_lens has no maxStacks set -> defaults to 1 for non-consumables
       const player = makePlayer({
         items: ['clock_lens', null, null, null, null, null],
-        gold: 5000,
+        scrip: 5000,
       })
       const state = makeGameState({ players: { player_1: player } })
 
@@ -219,7 +219,7 @@ describe('Shop', () => {
 
     it('can buy multiple items sequentially', async () => {
       let state = makeGameState({
-        players: { player_1: makePlayer({ gold: 5000 }) },
+        players: { player_1: makePlayer({ scrip: 5000 }) },
       })
 
       // Buy first item
@@ -235,18 +235,18 @@ describe('Shop', () => {
       const player = state.players['player_1']!
       expect(player.items[0]).toBe('scrap_lot')
       expect(player.items[1]).toBe('trauma_patch')
-      expect(player.gold).toBe(5000 - 50 - 150)
+      expect(player.scrip).toBe(5000 - 50 - 150)
     })
 
     it('deducts exact cost for expensive items', async () => {
-      const player = makePlayer({ gold: 6000 })
+      const player = makePlayer({ scrip: 6000 })
       const state = makeGameState({ players: { player_1: player } })
 
       const exit = await cacheEffect(buyItem(state, 'player_1', 'segfault_blade'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.players['player_1']!.gold).toBe(6000 - 5500)
+        expect(exit.value.players['player_1']!.scrip).toBe(6000 - 5500)
       }
     })
   })
@@ -255,7 +255,7 @@ describe('Shop', () => {
     it('sells an item and refunds 50% gold', async () => {
       const player = makePlayer({
         items: ['scrap_lot', null, null, null, null, null],
-        gold: 500,
+        scrip: 500,
       })
       const state = makeGameState({ players: { player_1: player } })
 
@@ -264,20 +264,20 @@ describe('Shop', () => {
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         const newPlayer = exit.value.players['player_1']!
-        expect(newPlayer.gold).toBe(500 + Math.floor(50 * 0.5)) // 525
+        expect(newPlayer.scrip).toBe(500 + Math.floor(50 * 0.5)) // 525
         expect(newPlayer.items[0]).toBeNull()
       }
     })
 
     it('selling an item drops its lingering buffs but keeps unrelated ones', async () => {
-      // Gait Rig' mode buff is near-permanent (ticksRemaining 999); without
+      // Gait Rig' mode buff is near-permanent (cyclesRemaining 999); without
       // cleanup you could toggle +15 attack, sell the boots, and keep the stat.
       const player = makePlayer({
         items: ['gait_rig', null, null, null, null, null],
-        gold: 500,
+        scrip: 500,
         buffs: [
-          { id: 'gait_rig_attack', stacks: 15, ticksRemaining: 999, source: 'gait_rig' },
-          { id: 'haste', stacks: 1, ticksRemaining: 10, source: 'cache_haste' },
+          { id: 'gait_rig_attack', stacks: 15, cyclesRemaining: 999, source: 'gait_rig' },
+          { id: 'haste', stacks: 1, cyclesRemaining: 10, source: 'cache_haste' },
         ],
       })
       const state = makeGameState({ players: { player_1: player } })
@@ -298,7 +298,7 @@ describe('Shop', () => {
     it('cannot sell Divine Rapier (its defining drawback)', async () => {
       const player = makePlayer({
         items: ['last_word', null, null, null, null, null],
-        gold: 500,
+        scrip: 500,
       })
       const state = makeGameState({ players: { player_1: player } })
 
@@ -308,7 +308,7 @@ describe('Shop', () => {
       if (Exit.isFailure(exit)) {
         expect(exit.cause.toString()).toContain('ItemNotSellableError')
       }
-      // unchanged: still holds the Rapier, no gold gained
+      // unchanged: still holds the Rapier, no scrip gained
       expect(state.players['player_1']!.items[0]).toBe('last_word')
     })
 
@@ -341,7 +341,7 @@ describe('Shop', () => {
     it('sells expensive items for correct refund', async () => {
       const player = makePlayer({
         items: ['segfault_blade', null, null, null, null, null],
-        gold: 0,
+        scrip: 0,
       })
       const state = makeGameState({ players: { player_1: player } })
 
@@ -349,7 +349,7 @@ describe('Shop', () => {
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.players['player_1']!.gold).toBe(Math.floor(5500 * 0.5))
+        expect(exit.value.players['player_1']!.scrip).toBe(Math.floor(5500 * 0.5))
       }
     })
 
@@ -484,7 +484,7 @@ describe('Shop', () => {
       const player = makePlayer({
         items: ['stack_overflow', null, null, null, null, null],
         buffs: [
-          { id: 'item_cd_stack_overflow', stacks: 1, ticksRemaining: 5, source: 'stack_overflow' },
+          { id: 'item_cd_stack_overflow', stacks: 1, cyclesRemaining: 5, source: 'stack_overflow' },
         ],
       })
       const state = makeGameState({ players: { player_1: player } })
@@ -544,7 +544,7 @@ describe('Shop', () => {
         team: 'audit',
         zone: 'mid-river',
         integ: 800,
-        buffs: [{ id: 'airgap', stacks: 1, ticksRemaining: 4, source: 'bkb' }],
+        buffs: [{ id: 'airgap', stacks: 1, cyclesRemaining: 4, source: 'bkb' }],
       })
       const state = makeGameState({ players: { player_1: caster, enemy_1: target } })
 
@@ -588,11 +588,11 @@ describe('Shop', () => {
       expect(error.itemId).toBe('unknown')
     })
 
-    it('ItemOnCooldownError has itemId and ticksRemaining', () => {
-      const error = new ItemOnCooldownError({ itemId: 'jump_shunt', ticksRemaining: 5 })
+    it('ItemOnCooldownError has itemId and cyclesRemaining', () => {
+      const error = new ItemOnCooldownError({ itemId: 'jump_shunt', cyclesRemaining: 5 })
       expect(error._tag).toBe('ItemOnCooldownError')
       expect(error.itemId).toBe('jump_shunt')
-      expect(error.ticksRemaining).toBe(5)
+      expect(error.cyclesRemaining).toBe(5)
     })
   })
 
@@ -629,7 +629,7 @@ describe('Shop', () => {
         id: 'enemy_1',
         team: 'audit',
         zone: 'mid-river',
-        buffs: [{ id: 'invisible', stacks: 1, ticksRemaining: 5, source: 'enemy_1' }],
+        buffs: [{ id: 'invisible', stacks: 1, cyclesRemaining: 5, source: 'enemy_1' }],
       })
       const state = makeGameState({
         players: { player_1: player, enemy_1: invisEnemy },

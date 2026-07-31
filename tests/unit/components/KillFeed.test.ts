@@ -5,7 +5,7 @@ import type { KillFeedEntry } from '~~/app/utils/combatNarrative'
 
 function entry(overrides: Partial<KillFeedEntry> = {}): KillFeedEntry {
   return {
-    tick: 10,
+    cycle: 10,
     category: 'hero',
     killerId: 'me',
     victimId: 'enemy1',
@@ -17,28 +17,28 @@ function entry(overrides: Partial<KillFeedEntry> = {}): KillFeedEntry {
 
 describe('KillFeed', () => {
   it('shows recent headline plays', () => {
-    const w = mount(KillFeed, { props: { entries: [entry()], currentTick: 10 } })
+    const w = mount(KillFeed, { props: { entries: [entry()], currentCycle: 10 } })
     const banner = w.get('[data-testid="kill-feed"]')
     expect(banner.text()).toContain('FIRST BLOOD')
   })
 
   it('ages out plays older than the window', () => {
     const w = mount(KillFeed, {
-      props: { entries: [entry({ tick: 1 })], currentTick: 20, window: 2 },
+      props: { entries: [entry({ cycle: 1 })], currentCycle: 20, window: 2 },
     })
     expect(w.find('[data-testid="kill-feed"]').exists()).toBe(false)
   })
 
   it('caps the number of simultaneous banners', () => {
     const entries = Array.from({ length: 5 }, (_, i) =>
-      entry({ tick: 10, victimId: `v${i}`, text: `kill ${i}` }),
+      entry({ cycle: 10, victimId: `v${i}`, text: `kill ${i}` }),
     )
-    const w = mount(KillFeed, { props: { entries, currentTick: 10, max: 3 } })
+    const w = mount(KillFeed, { props: { entries, currentCycle: 10, max: 3 } })
     expect(w.findAll('[data-testid="kill-feed-entry"]')).toHaveLength(3)
   })
 
   it('renders nothing when there are no recent plays', () => {
-    const w = mount(KillFeed, { props: { entries: [], currentTick: 10 } })
+    const w = mount(KillFeed, { props: { entries: [], currentCycle: 10 } })
     expect(w.find('[data-testid="kill-feed"]').exists()).toBe(false)
   })
 })

@@ -5,7 +5,7 @@ import type { GameState, PlayerState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { getDistance } from '~~/server/game/map/topology'
 import { initializeTenant } from '~~/server/game/map/spawner'
-import { initializeAncients } from '~~/server/game/engine/AncientSystem'
+import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
 import {
   getEffectiveAttack,
   getEffectivePlate,
@@ -60,12 +60,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw,
     level: 1,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null] as PlayerState['items'],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [] as PlayerState['buffs'],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: base?.plate ?? 2,
     ice: base?.ice ?? 12,
     kills: 0,
@@ -81,7 +81,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -89,25 +89,25 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
   return {
-    tick: 1,
+    cycle: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
     },
     players: {},
     zones: initializeZoneStates(),
     waves: [],
     neutrals: [],
     ice: initializeIce(),
-    ancients: initializeAncients(),
+    terminals: initializeAncients(),
     caches: [],
     tenant: initializeTenant(),
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
-    dayNightTick: 0,
+    dayNightCycle: 0,
     ...overrides,
   }
 }
@@ -459,7 +459,7 @@ describe('Item actives — direct effects', () => {
     expect(target1.buffs.find((b) => b.id === 'magic_vuln_40')?.stacks).toBe(40)
 
     // Tick 2a: a basic (kinetic) attack into the ethereal target deals 0.
-    const s2 = makeGameState({ players: { p1: r1.state.players['p1']!, p2: target1 }, tick: 2 })
+    const s2 = makeGameState({ players: { p1: r1.state.players['p1']!, p2: target1 }, cycle: 2 })
     const physResult = run(s2, [attack('p1', 'Enemy')])
     expect(physResult.state.players['p2']!.integ).toBe(target1.integ) // no kinetic damage
 
@@ -545,7 +545,7 @@ describe('Gait Rig toggle (was cosmetic — the mode buffs were read nowhere)', 
   const ptBuff = (id: string, stacks: number) => ({
     id,
     stacks,
-    ticksRemaining: 9999,
+    cyclesRemaining: 9999,
     source: 'item',
   })
 
@@ -573,11 +573,11 @@ describe('Gait Rig toggle (was cosmetic — the mode buffs were read nowhere)', 
 })
 
 describe('Backup pickup through resolveActions (was dropping ground-removal + event)', () => {
-  const backupGround = { zone: 'hollow', tick: 100, holderId: null }
+  const backupGround = { zone: 'hollow', cycle: 100, holderId: null }
 
   it('picking up backup in hollow nulls state.backup, emits backup_picked, applies the buff', () => {
     const state = makeGameState({
-      tick: 120,
+      cycle: 120,
       backup: backupGround,
       players: { p1: makePlayer({ id: 'p1', zone: 'hollow' }) },
     })
@@ -587,9 +587,9 @@ describe('Backup pickup through resolveActions (was dropping ground-removal + ev
     expect(r.state.players['p1']!.buffs.some((b) => b.id === 'backup')).toBe(true)
   })
 
-  it('two pickups the same tick cannot double-dip — only one player gets backup', () => {
+  it('two pickups the same cycle cannot double-dip — only one player gets backup', () => {
     const state = makeGameState({
-      tick: 120,
+      cycle: 120,
       backup: backupGround,
       players: {
         p1: makePlayer({ id: 'p1', zone: 'hollow' }),
@@ -658,7 +658,7 @@ describe('Cryo Routine active (was a dead effect — buffs consumed nowhere)', (
           team: 'audit',
           name: 'Immune',
           zone: 'mid-river',
-          buffs: [{ id: 'airgap', stacks: 1, ticksRemaining: 4, source: 'hardshell' }],
+          buffs: [{ id: 'airgap', stacks: 1, cyclesRemaining: 4, source: 'hardshell' }],
         }),
       },
     })
@@ -681,7 +681,7 @@ describe('Cryo Routine active (was a dead effect — buffs consumed nowhere)', (
       })
     const plain = mk([])
     const veiled = mk([
-      { id: 'veil_discord', stacks: 25, ticksRemaining: 4, source: 'discord_routine' },
+      { id: 'veil_discord', stacks: 25, cyclesRemaining: 4, source: 'discord_routine' },
     ])
     const dmgPlain = plain.players['e']!.integ - run(plain, [useShiva]).state.players['e']!.integ
     const dmgVeiled = veiled.players['e']!.integ - run(veiled, [useShiva]).state.players['e']!.integ
@@ -698,7 +698,7 @@ describe('Cache effects (dd / haste were applied but consumed nowhere)', () => {
         p1: makePlayer({
           id: 'p1',
           team: 'chaff',
-          buffs: [{ id: 'dd', stacks: 1, ticksRemaining: 9999, source: 'cache_dd' }],
+          buffs: [{ id: 'dd', stacks: 1, cyclesRemaining: 9999, source: 'cache_dd' }],
         }),
         p2: makePlayer({ id: 'p2', team: 'audit', name: 'E' }),
       },
@@ -718,8 +718,8 @@ describe('Cache effects (dd / haste were applied but consumed nowhere)', () => {
           team: 'chaff',
           zone: 'mid-river',
           buffs: [
-            { id: 'slow', stacks: 80, ticksRemaining: 9999, source: 'x' },
-            { id: 'haste', stacks: 1, ticksRemaining: 9999, source: 'cache_haste' },
+            { id: 'slow', stacks: 80, cyclesRemaining: 9999, source: 'x' },
+            { id: 'haste', stacks: 1, cyclesRemaining: 9999, source: 'cache_haste' },
           ],
         }),
       },
@@ -730,20 +730,20 @@ describe('Cache effects (dd / haste were applied but consumed nowhere)', () => {
   })
 
   it('control: WITHOUT haste, an 80% slow blocks the move on some ticks (deterministic pattern)', () => {
-    // Slow blocks when (tick * stacks) % 100 < stacks. Sweep distinct ticks so
+    // Slow blocks when (cycle * stacks) % 100 < stacks. Sweep distinct ticks so
     // the deterministic pattern produces both blocks and passes; an 80% slow
     // blocks the large majority of ticks.
     let failedAtLeastOnce = false
     let passedAtLeastOnce = false
-    for (let tick = 1; tick <= 20; tick++) {
+    for (let cycle = 1; cycle <= 20; cycle++) {
       const state = makeGameState({
-        tick,
+        cycle,
         players: {
           p1: makePlayer({
             id: 'p1',
             team: 'chaff',
             zone: 'mid-river',
-            buffs: [{ id: 'slow', stacks: 80, ticksRemaining: 9999, source: 'x' }],
+            buffs: [{ id: 'slow', stacks: 80, cyclesRemaining: 9999, source: 'x' }],
           }),
         },
       })

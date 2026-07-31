@@ -2,7 +2,7 @@ import type { GameState, CacheState } from '~~/shared/types/game'
 import type { GameEngineEvent, CachePickedEvent } from '~~/server/game/protocol/events'
 import {
   CACHE_BUFF_TICKS,
-  CACHE_DURATION_TICKS,
+  CACHE_DURATION_CYCLES,
   REGEN_CACHE_HEAL_PERCENT,
 } from '~~/shared/constants/balance'
 
@@ -12,22 +12,22 @@ import {
 export function getCacheBuff(type: CacheState['type']): {
   id: string
   stacks: number
-  ticksRemaining: number
+  cyclesRemaining: number
   source: string
 } {
   const duration = CACHE_BUFF_TICKS[type]
 
   switch (type) {
     case 'haste':
-      return { id: 'haste', stacks: 1, ticksRemaining: duration, source: 'cache_haste' }
+      return { id: 'haste', stacks: 1, cyclesRemaining: duration, source: 'cache_haste' }
     case 'dd':
-      return { id: 'dd', stacks: 1, ticksRemaining: duration, source: 'cache_dd' }
+      return { id: 'dd', stacks: 1, cyclesRemaining: duration, source: 'cache_dd' }
     case 'regen':
-      return { id: 'regen', stacks: 1, ticksRemaining: duration, source: 'cache_regen' }
+      return { id: 'regen', stacks: 1, cyclesRemaining: duration, source: 'cache_regen' }
     case 'arcane':
-      return { id: 'arcane', stacks: 1, ticksRemaining: duration, source: 'cache_arcane' }
+      return { id: 'arcane', stacks: 1, cyclesRemaining: duration, source: 'cache_arcane' }
     case 'invis':
-      return { id: 'invis', stacks: 1, ticksRemaining: duration, source: 'cache_invis' }
+      return { id: 'invis', stacks: 1, cyclesRemaining: duration, source: 'cache_invis' }
   }
 }
 
@@ -84,7 +84,7 @@ export function pickupCache(
     state: { ...state, players, caches: newCaches },
     event: {
       _tag: 'cache_picked',
-      tick: state.tick,
+      cycle: state.cycle,
       playerId,
       zone,
       cacheType: cache.type,
@@ -98,10 +98,10 @@ export function pickupCache(
 export function removeExpiredCaches(state: GameState): GameState {
   // Handle case where caches might be undefined (for old test states)
   const caches = state.caches ?? []
-  const currentTick = state.tick
+  const currentCycle = state.cycle
   const activeCaches = caches.filter((cache) => {
-    // Cache expires after CACHE_DURATION_TICKS
-    return currentTick - cache.tick < CACHE_DURATION_TICKS
+    // Cache expires after CACHE_DURATION_CYCLES
+    return currentCycle - cache.cycle < CACHE_DURATION_CYCLES
   })
 
   // Also normalize when caches was undefined, so the result always has a caches array.
@@ -113,8 +113,8 @@ export function removeExpiredCaches(state: GameState): GameState {
 }
 
 /**
- * Process per-tick heal-over-time buffs: the regeneration cache and Cron's
- * Crontab (R). Runs every tick in the game loop.
+ * Process per-cycle heal-over-time buffs: the regeneration cache and Cron's
+ * Crontab (R). Runs every cycle in the game loop.
  */
 export function processCacheBuffs(state: GameState): GameState {
   const players = { ...state.players }
@@ -128,7 +128,7 @@ export function processCacheBuffs(state: GameState): GameState {
     // Check for active cache buffs
     const hasRegen = player.buffs.some((b) => b.id === 'regen')
 
-    // Regeneration cache: REGEN_CACHE_HEAL_PERCENT of max INTEG/MP per tick
+    // Regeneration cache: REGEN_CACHE_HEAL_PERCENT of max INTEG/MP per cycle
     if (hasRegen) {
       integ = Math.min(
         player.maxInteg,
@@ -138,7 +138,7 @@ export function processCacheBuffs(state: GameState): GameState {
     }
 
     // Cron's Crontab (R): heal + BW regen over time on self + allies; the
-    // per-tick amounts ride in the buff stacks. (Heal was applied but never
+    // per-cycle amounts ride in the buff stacks. (Heal was applied but never
     // processed; the mana half was advertised by the ability but unimplemented.)
     const crontab = player.buffs.find((b) => b.id === 'crontabHeal')
     if (crontab) {

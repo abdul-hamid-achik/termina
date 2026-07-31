@@ -1,13 +1,13 @@
 import type { WaveUnitState, GameState, TeamId, IceState, PlayerState } from '~~/shared/types/game'
 import {
   waveUnitAttack,
-  WAVE_BASE_IDLE_DESPAWN_TICKS,
+  WAVE_BASE_IDLE_DESPAWN_CYCLES,
   WAVE_XP_SHARED,
   MAX_WAVE_UNITS_PER_ZONE_PER_TEAM,
 } from '~~/shared/constants/balance'
 import { resolveKineticHit } from './CombatResolver'
 import { awardZoneXp } from './XpDistributor'
-import { resolveAncientAttack } from './AncientSystem'
+import { resolveAncientAttack } from './TerminalSystem'
 import { LANE_ROUTES_CORE } from '~~/shared/constants/lanes'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
@@ -91,10 +91,10 @@ export interface WaveAction {
  *   base waves from grinding down every respawning hero)
  * - If enemy heroes in same zone: attack
  * - If enemy ice in zone: attack ice
- * - Otherwise: move toward enemy base along lane (1 zone per tick)
+ * - Otherwise: move toward enemy base along lane (1 zone per cycle)
  * - Stuck in the enemy base with an invulnerable Ancient and nothing to
  *   attack: idle, then get garbage collected after
- *   WAVE_BASE_IDLE_DESPAWN_TICKS idle ticks
+ *   WAVE_BASE_IDLE_DESPAWN_CYCLES idle ticks
  */
 export function runWaveAI(state: GameState): WaveAction[] {
   const actions: WaveAction[] = []
@@ -105,9 +105,9 @@ export function runWaveAI(state: GameState): WaveAction[] {
     // Damage escalates with the CURRENT tick, not the wave's spawn wave:
     // WaveUnitState carries no per-wave stats, and a whole board that gets
     // stronger together is also the readable rule for the player.
-    const damage = waveUnitAttack(wave.type, state.tick)
+    const damage = waveUnitAttack(wave.type, state.cycle)
     const inEnemyBase = wave.zone === ENEMY_BASE[wave.team]
-    const enemyAncient = wave.team === 'chaff' ? state.ancients?.audit : state.ancients?.chaff
+    const enemyTerminal = wave.team === 'chaff' ? state.terminals?.audit : state.terminals?.chaff
 
     // Priority 1: attack enemy waves in same zone
     const enemyWaves = getEnemyWavesInZone(state.waves, wave)
@@ -122,7 +122,7 @@ export function runWaveAI(state: GameState): WaveAction[] {
     }
 
     // Priority 2 (enemy base only): breach the Ancient when it's vulnerable
-    if (inEnemyBase && enemyAncient && enemyAncient.alive && enemyAncient.vulnerable) {
+    if (inEnemyBase && enemyTerminal && enemyTerminal.alive && enemyTerminal.vulnerable) {
       actions.push({
         waveId: wave.id,
         action: 'attack_ancient',
@@ -170,7 +170,7 @@ export function runWaveAI(state: GameState): WaveAction[] {
     // Idle for a few ticks, then despawn ("garbage collected") so waves
     // never pile up unboundedly in base.
     if (wave.zone === ENEMY_BASE[wave.team] || wave.zone === ENEMY_BASE[enemyTeam(wave.team)]) {
-      if ((wave.baseIdleCycles ?? 0) + 1 >= WAVE_BASE_IDLE_DESPAWN_TICKS) {
+      if ((wave.baseIdleCycles ?? 0) + 1 >= WAVE_BASE_IDLE_DESPAWN_CYCLES) {
         actions.push({ waveId: wave.id, action: 'despawn' })
       } else {
         actions.push({ waveId: wave.id, action: 'wait_in_base' })
@@ -196,7 +196,7 @@ export function applyWaveActions(
   let waves = state.waves.map((c) => ({ ...c }))
   let ice = state.ice.map((t) => ({ ...t }))
   let players = { ...state.players }
-  let ancients = state.ancients
+  let terminals = state.terminals
   const events: GameEngineEvent[] = []
 
   for (const action of actions) {
@@ -243,7 +243,7 @@ export function applyWaveActions(
           }
           events.push({
             _tag: 'damage',
-            tick: state.tick,
+            cycle: state.cycle,
             sourceId: wave.id,
             targetId: action.targetId,
             amount: hit.damageDealt,
@@ -272,11 +272,11 @@ export function applyWaveActions(
         // Route through the shared helper so wave and hero attacks follow
         // identical vulnerability/destruction rules.
         const result = resolveAncientAttack(
-          { ...state, waves, ancients },
+          { ...state, waves, terminals },
           action.waveId,
           action.damage ?? 0,
         )
-        ancients = result.state.ancients
+        terminals = result.state.terminals
         events.push(...result.events)
         break
       }
@@ -296,7 +296,7 @@ export function applyWaveActions(
   // Remove dead waves
   waves = waves.filter((c) => c.integ > 0)
 
-  return { state: { ...state, waves, ice, players, ancients }, events }
+  return { state: { ...state, waves, ice, players, terminals }, events }
 }
 
 /**

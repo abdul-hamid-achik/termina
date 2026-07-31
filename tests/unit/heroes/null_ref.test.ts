@@ -20,12 +20,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 420,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 1,
     ice: 16,
     kills: 0,
@@ -39,7 +39,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -67,11 +67,11 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     playerMap[p.id] = p
   }
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -113,7 +113,7 @@ describe('Null (null_ref) Hero', () => {
       expect(hasBuff(updatedEnemy, 'mrShred')).toBe(true)
       const shred = updatedEnemy.buffs.find((b) => b.id === 'mrShred')
       expect(shred!.stacks).toBe(5) // 5 MR reduction
-      expect(shred!.ticksRemaining).toBe(3)
+      expect(shred!.cyclesRemaining).toBe(3)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -202,7 +202,7 @@ describe('Null (null_ref) Hero', () => {
       const updatedEnemy = result.state.players['e1']!
       expect(hasBuff(updatedEnemy, 'silence')).toBe(true)
       const silence = updatedEnemy.buffs.find((b) => b.id === 'silence')
-      expect(silence!.ticksRemaining).toBe(2)
+      expect(silence!.cyclesRemaining).toBe(2)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -274,8 +274,8 @@ describe('Null (null_ref) Hero', () => {
       const dot2 = updatedE2.buffs.find((b) => b.id === 'voidZone_dot')
       expect(dot1).toBeDefined()
       expect(dot2).toBeDefined()
-      expect(dot1!.stacks).toBe(40) // 40 damage per tick at level 1
-      expect(dot1!.ticksRemaining).toBe(3)
+      expect(dot1!.stacks).toBe(40) // 40 damage per cycle at level 1
+      expect(dot1!.cyclesRemaining).toBe(3)
     })
 
     it('applies revealed debuff to all enemies in zone', () => {
@@ -309,7 +309,7 @@ describe('Null (null_ref) Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
       const dot = result.state.players['e1']!.buffs.find((b) => b.id === 'voidZone_dot')
-      expect(dot!.stacks).toBe(85) // 85 damage per tick at level 4
+      expect(dot!.stacks).toBe(85) // 85 damage per cycle at level 4
     })
 
     it('does not affect allies', () => {
@@ -484,7 +484,7 @@ describe('Null (null_ref) Hero', () => {
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'kill',
         payload: { killerId: 'p1', victimId: 'e1' },
       })
@@ -497,7 +497,7 @@ describe('Null (null_ref) Hero', () => {
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'kill',
         payload: { killerId: 'p1', victimId: 'e1' },
       })
@@ -510,7 +510,7 @@ describe('Null (null_ref) Hero', () => {
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'kill',
         payload: { killerId: 'p1', victimId: 'e1' },
       })
@@ -527,7 +527,7 @@ describe('Null (null_ref) Hero', () => {
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'kill',
         payload: { killerId: 'p1', victimId: 'e1' },
       })
@@ -540,7 +540,7 @@ describe('Null (null_ref) Hero', () => {
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'kill',
         payload: { killerId: 'e1', victimId: 'p1' },
       })
@@ -553,7 +553,7 @@ describe('Null (null_ref) Hero', () => {
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
-        tick: 10,
+        cycle: 10,
         type: 'attack',
         payload: { attackerId: 'p1', targetId: 'e1' },
       })
@@ -565,7 +565,7 @@ describe('Null (null_ref) Hero', () => {
   describe('Stun/Silence blocking', () => {
     it('prevents casting when stunned', () => {
       const player = makePlayer({
-        buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 1, source: 'enemy' }],
+        buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 1, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -578,7 +578,7 @@ describe('Null (null_ref) Hero', () => {
 
     it('prevents casting when silenced', () => {
       const player = makePlayer({
-        buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 2, source: 'enemy' }],
+        buffs: [{ id: 'silence', stacks: 1, cyclesRemaining: 2, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

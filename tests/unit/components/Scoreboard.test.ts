@@ -17,18 +17,18 @@ function makePlayer(id: string, team: 'chaff' | 'audit', overrides: EntryOverrid
     kills: 2,
     deaths: 1,
     assists: 3,
-    gold: 1200,
+    scrip: 1200,
     level: 7,
     items: ['trauma_patch', 'scrap_lot', null, null, null, null] as (string | null)[],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     fogged: false,
     ...overrides,
   }
 }
 
 function makeTeam(id: 'chaff' | 'audit'): TeamState {
-  return { id, kills: 5, iceKills: 2, gold: 6000, hardenUsedTick: null }
+  return { id, kills: 5, iceKills: 2, scrip: 6000, hardenUsedCycle: null }
 }
 
 function mountScoreboard(players = defaultPlayers()) {
@@ -36,7 +36,7 @@ function mountScoreboard(players = defaultPlayers()) {
     props: {
       players,
       teams: { chaff: makeTeam('chaff'), audit: makeTeam('audit') },
-      currentTick: 30,
+      currentCycle: 30,
       currentPlayerId: 'r1',
     },
     global: { stubs: { HeroPortrait: true } },
@@ -181,10 +181,10 @@ describe('Scoreboard', () => {
     })
   })
 
-  describe('dead players + gold formatting', () => {
+  describe('dead players + scrip formatting', () => {
     it('shows a respawn countdown and the dead row style for a dead player', () => {
       const wrapper = mountScoreboard([
-        makePlayer('r1', 'chaff', { alive: false, respawnTick: 45 }), // tick 30 → 15t
+        makePlayer('r1', 'chaff', { alive: false, respawnCycle: 45 }), // tick 30 → 15t
         makePlayer('d1', 'audit'),
       ])
       const row = wrapper.get('[data-testid="scoreboard-row-r1"]')
@@ -194,15 +194,15 @@ describe('Scoreboard', () => {
 
     it('shows DEAD with no countdown when the respawn tick is unknown', () => {
       const wrapper = mountScoreboard([
-        makePlayer('r1', 'chaff', { alive: false, respawnTick: null }),
+        makePlayer('r1', 'chaff', { alive: false, respawnCycle: null }),
         makePlayer('d1', 'audit'),
       ])
       expect(wrapper.get('[data-testid="scoreboard-row-r1"]').text()).toContain('DEAD')
     })
 
-    it('abbreviates gold of 10k+ as k', () => {
+    it('abbreviates scrip of 10k+ as k', () => {
       const wrapper = mountScoreboard([
-        makePlayer('r1', 'chaff', { gold: 15_000 }),
+        makePlayer('r1', 'chaff', { scrip: 15_000 }),
         makePlayer('d1', 'audit'),
       ])
       expect(wrapper.get('[data-testid="scoreboard-row-r1"]').text()).toContain('15.0k')

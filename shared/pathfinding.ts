@@ -1,7 +1,7 @@
 /**
  * Map pathfinding shared by the server engine and the client.
  *
- * The server resolves auto-path movement (one hop per tick toward a queued
+ * The server resolves auto-path movement (one hop per cycle toward a queued
  * destination) and the client mirrors the same reachability rule for command
  * pre-flight validation and "N ticks away" previews — both must agree, so the
  * BFS lives here. Traversal walks the global 32-zone graph; pass `hasZone` to
@@ -48,7 +48,7 @@ export function findPath(from: string, to: string, hasZone?: (id: string) => boo
   return []
 }
 
-/** Shortest path length in ticks/edges, or -1 when unreachable. */
+/** Shortest path length in cycles/edges, or -1 when unreachable. */
 export function pathDistance(from: string, to: string, hasZone?: (id: string) => boolean): number {
   const path = findPath(from, to, hasZone)
   return path.length > 0 ? path.length - 1 : -1

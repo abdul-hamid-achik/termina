@@ -105,7 +105,7 @@ function resolveQ(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -143,7 +143,7 @@ function resolveW(
       caster = applyBuff(caster, {
         id: 'shield',
         stacks: cached,
-        ticksRemaining: 3,
+        cyclesRemaining: 3,
         source: player.id,
       })
     }
@@ -152,7 +152,7 @@ function resolveW(
       state: updatePlayer(state, caster),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -200,7 +200,7 @@ function resolveE(
     updatedTarget = applyBuff(updatedTarget, {
       id: 'antiHeal',
       stacks: 50, // 50% reduced healing
-      ticksRemaining: E_ANTIHEAL_DURATION,
+      cyclesRemaining: E_ANTIHEAL_DURATION,
       source: player.id,
     })
 
@@ -208,7 +208,7 @@ function resolveE(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -249,7 +249,7 @@ function resolveR(
       updated = applyBuff(updated, {
         id: 'slow',
         stacks: 35, // 35% slow
-        ticksRemaining: R_SLOW_DURATION,
+        cyclesRemaining: R_SLOW_DURATION,
         source: player.id,
       })
       return updated
@@ -266,7 +266,7 @@ function resolveR(
       ),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -303,7 +303,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   const updated = applyBuff(player, {
     id: 'cachedEnergy',
     stacks: newEnergy,
-    ticksRemaining: 9999,
+    cyclesRemaining: 9999,
     source: playerId,
   })
 

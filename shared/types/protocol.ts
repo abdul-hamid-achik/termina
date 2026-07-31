@@ -8,7 +8,7 @@ export type ClientMessage =
   | { type: 'chat'; channel: 'team' | 'all'; message: string }
   | { type: 'ping_map'; zone: string }
   | { type: 'heartbeat' }
-  | { type: 'reconnect'; gameId: string; playerId: string; lastTick?: number }
+  | { type: 'reconnect'; gameId: string; playerId: string; lastCycle?: number }
   | { type: 'join_game'; gameId: string }
   | { type: 'hero_pick'; lobbyId: string; heroId: string }
   | { type: 'hero_ban'; lobbyId: string; heroId: string }
@@ -18,15 +18,15 @@ export type ClientMessage =
 
 // ── Server → Client ──────────────────────────────────────────────
 
-export interface TickStateMessage {
-  type: 'tick_state'
-  tick: number
+export interface CycleStateMessage {
+  type: 'cycle_state'
+  cycle: number
   state: PlayerVisibleState
 }
 
 export interface EventsMessage {
   type: 'events'
-  tick: number
+  cycle: number
   events: GameEvent[]
 }
 
@@ -45,20 +45,20 @@ export interface GameOverMessage {
   /** False when the match contained bots (practice / bot-filled) and therefore
    * did not affect MMR — the post-game screen shows "unranked" instead of a number. */
   ranked?: boolean
-  /** Length of the match in ticks. Without it the post-game screen can only show
+  /** Length of the match in cycles. Without it the post-game screen can only show
    * totals, and a total is unreadable as progress: 40 last hits is a good 10
    * minutes and a poor 30. Everything rate-based on that screen derives from it. */
-  durationTicks?: number
+  durationCycles?: number
 }
 
 export interface PlayerEndStats {
   kills: number
   deaths: number
   assists: number
-  /** Gold still UNSPENT at the final tick — a wallet balance, not earnings.
+  /** Gold still UNSPENT at the final cycle — a wallet balance, not earnings.
    * Read `netWorth` for "how well did this player farm"; a player who converted
-   * every coin into items ends the match with the smallest `gold` on the board. */
-  gold: number
+   * every coin into items ends the match with the smallest `scrip` on the board. */
+  scrip: number
   items: (string | null)[]
   heroDamage: number
   iceDamage: number
@@ -71,7 +71,7 @@ export interface PlayerEndStats {
    * most needs to watch improve, and the only ones the old payload omitted. */
   lastHits?: number
   burns?: number
-  /** Unspent gold plus the full cost of every item owned. */
+  /** Unspent scrip plus the full cost of every item owned. */
   netWorth?: number
   level?: number
 }
@@ -169,7 +169,7 @@ export interface PingMapBroadcastMessage {
 
 export interface FullStateMessage {
   type: 'full_state'
-  tick: number
+  cycle: number
   state: PlayerVisibleState
 }
 
@@ -180,10 +180,10 @@ export interface GameNotFoundMessage {
 
 export interface SpectatorTickMessage {
   type: 'spectator_tick'
-  tick: number
+  cycle: number
   /**
    * Spectators receive a `PlayerVisibleState` with all players/zones revealed
-   * — same shape as the in-game tick_state so the renderer can be reused.
+   * — same shape as the in-game cycle_state so the renderer can be reused.
    */
   state: PlayerVisibleState
 }
@@ -214,7 +214,7 @@ export interface LobbyCancelledMessage {
 }
 
 export type ServerMessage =
-  | TickStateMessage
+  | CycleStateMessage
   | EventsMessage
   | AnnouncementMessage
   | GameOverMessage

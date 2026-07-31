@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import TraceRail from '~~/app/components/game/TraceRail.vue'
 import { buildTrace } from '~~/app/components/game/traceModel'
-import type { AncientState, TeamId } from '~~/shared/types/game'
+import type { TerminalState, TeamId } from '~~/shared/types/game'
 
-const ANCIENTS: Record<TeamId, AncientState> = {
+const ANCIENTS: Record<TeamId, TerminalState> = {
   chaff: { team: 'chaff', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
   audit: { team: 'audit', integ: 4200, maxInteg: 6000, alive: true, vulnerable: true },
 }
@@ -17,7 +17,7 @@ function mountRail(
     playerZone,
     playerTeam: 'chaff',
     contacts,
-    ancients: ANCIENTS,
+    terminals: ANCIENTS,
   })
   return mount(TraceRail, { props: { trace } })
 }

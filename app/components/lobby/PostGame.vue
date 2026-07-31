@@ -30,9 +30,9 @@ const props = withDefaults(
     mode?: GameMode
     /** Did the player actually finish the tutorial drills (vs quitting early)? */
     tutorialComplete?: boolean
-    /** Match length in ticks — turns the raw totals into per-minute rates, which
+    /** Match length in cycles — turns the raw totals into per-minute rates, which
      *  is the only form in which a farm number means anything. */
-    durationTicks?: number
+    durationCycles?: number
   }>(),
   { ranked: true, stats: () => ({}) },
 )
@@ -68,7 +68,7 @@ interface ScoreRow {
   kills: number
   deaths: number
   assists: number
-  gold: number
+  scrip: number
   netWorth: number
   lastHits: number
   burns: number
@@ -107,10 +107,10 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
     kills: s?.kills ?? 0,
     deaths: s?.deaths ?? 0,
     assists: s?.assists ?? 0,
-    gold: s?.gold ?? 0,
+    scrip: s?.scrip ?? 0,
     // Pre-net-worth servers only sent the wallet balance; showing that under a
     // "Net Worth" heading would be a second wrong lesson, but 0 is worse.
-    netWorth: s?.netWorth ?? s?.gold ?? 0,
+    netWorth: s?.netWorth ?? s?.scrip ?? 0,
     lastHits: s?.lastHits ?? 0,
     burns: s?.burns ?? 0,
     heroDamage: s?.heroDamage ?? 0,
@@ -121,10 +121,10 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
 }
 
 /** Net worth, falling back to the wallet balance on a pre-net-worth payload. */
-const myNetWorth = computed(() => myStats.value?.netWorth ?? myStats.value?.gold ?? 0)
+const myNetWorth = computed(() => myStats.value?.netWorth ?? myStats.value?.scrip ?? 0)
 
 const durationMinutes = computed(() =>
-  props.durationTicks ? (props.durationTicks * TICK_SECONDS) / 60 : null,
+  props.durationCycles ? (props.durationCycles * TICK_SECONDS) / 60 : null,
 )
 
 /** Last hits per minute — the form in which a farm total is legible. */
@@ -166,7 +166,7 @@ const advice = computed((): Advice[] => {
       observation: `You died ${s.deaths} times`,
       command: 'move base',
       detail:
-        'Watch the focus banner: the moment it flips to DANGER you are outnumbered. Retreating costs one tick — dying costs the respawn plus everything the enemy earns for it.',
+        'Watch the focus banner: the moment it flips to DANGER you are outnumbered. Retreating costs one cycle — dying costs the respawn plus everything the enemy earns for it.',
     })
   }
 
@@ -176,7 +176,7 @@ const advice = computed((): Advice[] => {
       observation: `You last-hit ${cs} waves (${rate.toFixed(1)}/min)`,
       command: 'attack wave:0',
       detail:
-        'Only the killing blow pays scrip, so swing when a wave is nearly dead rather than every tick. Use STRIP on the ActionRow or attack wave:N — the numbers shift each cycle.',
+        'Only the killing blow pays scrip, so swing when a wave is nearly dead rather than every cycle. Use STRIP on the ActionRow or attack wave:N — the numbers shift each cycle.',
     })
   } else if (rate === null && cs < 20) {
     out.push({
@@ -184,7 +184,7 @@ const advice = computed((): Advice[] => {
       observation: `You last-hit ${cs} waves`,
       command: 'attack wave:0',
       detail:
-        'Only the killing blow pays scrip, so swing when a wave is nearly dead rather than every tick. Use STRIP on the ActionRow or attack wave:N — the numbers shift each cycle.',
+        'Only the killing blow pays scrip, so swing when a wave is nearly dead rather than every cycle. Use STRIP on the ActionRow or attack wave:N — the numbers shift each cycle.',
     })
   }
 
@@ -198,10 +198,10 @@ const advice = computed((): Advice[] => {
     })
   }
 
-  if (s.gold >= 1500) {
+  if (s.scrip >= 1500) {
     out.push({
       id: 'unspent',
-      observation: `You finished holding ${s.gold.toLocaleString()} unspent gold`,
+      observation: `You finished holding ${s.scrip.toLocaleString()} unspent scrip`,
       command: 'buy edge_kit',
       detail:
         'Scrip in your pocket does nothing and half of it is lost when you die. Spend it the moment you can afford the next item in your build.',

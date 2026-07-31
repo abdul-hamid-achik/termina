@@ -272,12 +272,12 @@ describe('useGameSocket', () => {
       return store
     }
 
-    it('routes tick_state to updateFromTick', async () => {
+    it('routes cycle_state to updateFromCycle', async () => {
       const store = await connectWithStore()
       // Stub the body — this test only asserts the message is ROUTED there
-      // (updateFromTick's own behaviour is covered in the store tests).
-      const spy = vi.spyOn(store, 'updateFromTick').mockImplementation(() => {})
-      MockWebSocket.last!._receive({ type: 'tick_state', tick: 5, state: {} })
+      // (updateFromCycle's own behaviour is covered in the store tests).
+      const spy = vi.spyOn(store, 'updateFromCycle').mockImplementation(() => {})
+      MockWebSocket.last!._receive({ type: 'cycle_state', cycle: 5, state: {} })
       expect(spy).toHaveBeenCalled()
     })
 
@@ -379,27 +379,27 @@ describe('useGameSocket', () => {
         stats: { foo: 1 },
         mmrChange: 25,
       })
-      // durationTicks rides along so PostGame can report match length; it is
+      // durationCycles rides along so PostGame can report match length; it is
       // undefined on a payload that predates the field.
       expect(spy).toHaveBeenCalledWith('chaff', { foo: 1 }, 25, true, undefined)
     })
 
-    it('forwards durationTicks when the server sends it', async () => {
+    it('forwards durationCycles when the server sends it', async () => {
       const store = await connectWithStore()
       const spy = vi.spyOn(store, 'setGameOver')
       MockWebSocket.last!._receive({
         type: 'game_over',
         winner: 'audit',
         stats: {},
-        durationTicks: 360,
+        durationCycles: 360,
       })
       expect(spy).toHaveBeenCalledWith('audit', {}, undefined, true, 360)
     })
 
-    it('routes full_state through updateFromTick', async () => {
+    it('routes full_state through updateFromCycle', async () => {
       const store = await connectWithStore()
-      const spy = vi.spyOn(store, 'updateFromTick').mockImplementation(() => {})
-      MockWebSocket.last!._receive({ type: 'full_state', tick: 3, state: {} })
+      const spy = vi.spyOn(store, 'updateFromCycle').mockImplementation(() => {})
+      MockWebSocket.last!._receive({ type: 'full_state', cycle: 3, state: {} })
       expect(spy).toHaveBeenCalled()
     })
 

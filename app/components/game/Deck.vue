@@ -6,7 +6,7 @@ import { HEROES } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
 import { displayBuffs } from '~/utils/buffs'
 import { ticksToClock } from '~/utils/strategy'
-import { TICK_DURATION_MS } from '~~/shared/constants/balance'
+import { CYCLE_DURATION_MS } from '~~/shared/constants/balance'
 import { getAbilityBwCost } from '~~/shared/utils/ability'
 import { useTapInspect } from '~/composables/useTapInspect'
 
@@ -20,8 +20,8 @@ interface HeroData {
   maxBw: number
   cooldowns: { q: number; w: number; e: number; r: number }
   items: (string | null)[]
-  buffs: { id: string; stacks: number; ticksRemaining: number }[]
-  gold: number
+  buffs: { id: string; stacks: number; cyclesRemaining: number }[]
+  scrip: number
   alive: boolean
 }
 
@@ -75,7 +75,7 @@ function cdLabel(cd: number): string {
 // room to say it. Under a minute the bare seconds read better than a clock
 // ("12s", not "0:12"), and the tick count is still what you plan casts in.
 function cooldownText(ticks: number): string {
-  const seconds = (Math.max(0, ticks) * TICK_DURATION_MS) / 1000
+  const seconds = (Math.max(0, ticks) * CYCLE_DURATION_MS) / 1000
   return seconds < 60 ? `${ticks}c (${seconds}s)` : ticksToClock(ticks)
 }
 
@@ -174,7 +174,7 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
               <span
                 >CD:
                 <span class="text-text-primary">{{
-                  cooldownText(getAbilityDef(key)!.cooldownTicks)
+                  cooldownText(getAbilityDef(key)!.cooldownCycles)
                 }}</span></span
               >
             </div>
@@ -248,7 +248,9 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
 
     <div class="mt-1 flex items-center gap-1">
       <span class="font-bold text-gold text-glow-gold">$</span>
-      <span class="t-h2 text-gold text-glow-gold t-mono-num">{{ hero.gold.toLocaleString() }}</span>
+      <span class="t-h2 text-gold text-glow-gold t-mono-num">{{
+        hero.scrip.toLocaleString()
+      }}</span>
     </div>
   </div>
 </template>

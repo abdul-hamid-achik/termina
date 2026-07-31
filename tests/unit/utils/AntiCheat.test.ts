@@ -27,12 +27,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 200,
     level: 1,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -47,11 +47,11 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
   return {
-    tick: 1,
+    cycle: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -158,7 +158,7 @@ describe('AntiCheat', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 2, source: 'enemy' }],
+            buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 2, source: 'enemy' }],
           }),
         },
       })
@@ -174,7 +174,7 @@ describe('AntiCheat', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 2, source: 'enemy' }],
+            buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 2, source: 'enemy' }],
           }),
         },
       })
@@ -190,7 +190,7 @@ describe('AntiCheat', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 2, source: 'enemy' }],
+            buffs: [{ id: 'silence', stacks: 1, cyclesRemaining: 2, source: 'enemy' }],
           }),
         },
       })
@@ -254,7 +254,7 @@ describe('AntiCheat', () => {
     it('should detect negative gold', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', gold: -100 }),
+          p1: makePlayer({ id: 'p1', scrip: -100 }),
         },
       })
 

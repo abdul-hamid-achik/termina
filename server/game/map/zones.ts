@@ -5,8 +5,8 @@ import {
   ICE_HP_T1,
   ICE_HP_T2,
   ICE_HP_T3,
-  CAMTAP_DURATION_TICKS,
-  SNIFFER_DURATION_TICKS,
+  CAMTAP_DURATION_CYCLES,
+  SNIFFER_DURATION_CYCLES,
   WARD_LIMIT_PER_TEAM,
 } from '~~/shared/constants/balance'
 import { scaledIceHp } from '~~/server/game/engine/fastGame'
@@ -73,7 +73,7 @@ export function placeWard(
   zones: Record<string, ZoneRuntimeState>,
   zoneId: string,
   team: TeamId,
-  currentTick: number,
+  currentCycle: number,
   wardType: 'camtap' | 'sniffer' = 'camtap',
 ): boolean {
   let teamWardCount = 0
@@ -85,12 +85,12 @@ export function placeWard(
   const zoneState = zones[zoneId]
   if (!zoneState) return false
 
-  const duration = wardType === 'camtap' ? CAMTAP_DURATION_TICKS : SNIFFER_DURATION_TICKS
+  const duration = wardType === 'camtap' ? CAMTAP_DURATION_CYCLES : SNIFFER_DURATION_CYCLES
 
   const ward: WardState = {
     team,
-    placedTick: currentTick,
-    expiryTick: currentTick + duration,
+    placedTick: currentCycle,
+    expiryTick: currentCycle + duration,
     type: wardType,
   }
   zones[zoneId] = { ...zoneState, wards: [...zoneState.wards, ward] }
@@ -100,12 +100,12 @@ export function placeWard(
 /** Remove expired wards from all zones. Returns a new zones record. */
 export function removeExpiredWards(
   zones: Record<string, ZoneRuntimeState>,
-  currentTick: number,
+  currentCycle: number,
 ): Record<string, ZoneRuntimeState> {
   let changed = false
   const updated: Record<string, ZoneRuntimeState> = {}
   for (const [id, zrs] of Object.entries(zones)) {
-    const filtered = zrs.wards.filter((w) => w.expiryTick > currentTick)
+    const filtered = zrs.wards.filter((w) => w.expiryTick > currentCycle)
     if (filtered.length !== zrs.wards.length) {
       updated[id] = { ...zrs, wards: filtered }
       changed = true

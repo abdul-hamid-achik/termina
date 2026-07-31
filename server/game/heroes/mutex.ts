@@ -103,8 +103,8 @@ function resolveQ(
     updatedTarget = applyBuff(updatedTarget, {
       id: 'root',
       stacks: 1,
-      // 2 = one gated action: reaped same-tick by tickAllBuffs (see applyBuff note)
-      ticksRemaining: 2,
+      // 2 = one gated action: reaped same-tick by cycleAllBuffs (see applyBuff note)
+      cyclesRemaining: 2,
       source: player.id,
     })
 
@@ -112,7 +112,7 @@ function resolveQ(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -148,19 +148,19 @@ function resolveW(
     caster = applyBuff(caster, {
       id: 'shield',
       stacks: shieldAmount,
-      ticksRemaining: 2,
+      cyclesRemaining: 2,
       source: player.id,
     })
     caster = applyBuff(caster, {
       id: 'criticalSectionDefense',
       stacks: W_DEFENSE_BONUS,
-      ticksRemaining: 2,
+      cyclesRemaining: 2,
       source: player.id,
     })
     caster = applyBuff(caster, {
       id: 'root',
       stacks: 1,
-      ticksRemaining: 2,
+      cyclesRemaining: 2,
       source: player.id,
     })
 
@@ -168,7 +168,7 @@ function resolveW(
       state: updatePlayer(state, caster),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -210,7 +210,7 @@ function resolveE(
         target = applyBuff(target, {
           id: 'slow',
           stacks: E_SLOW_PERCENT * i,
-          ticksRemaining: 2,
+          cyclesRemaining: 2,
           source: player.id,
         })
       }
@@ -228,7 +228,7 @@ function resolveE(
       ),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -270,7 +270,7 @@ function resolveR(
       target = applyBuff(target, {
         id: 'feared',
         stacks: 1,
-        ticksRemaining: 2,
+        cyclesRemaining: 2,
         source: player.id,
       })
       return target
@@ -285,7 +285,7 @@ function resolveR(
       ),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -304,7 +304,7 @@ function resolveR(
 }
 
 // ── Passive: Deadlock ─────────────────────────────────────────────
-// +1 plate +3 attack per tick in same zone, max 5 stacks.
+// +1 plate +3 attack per cycle in same zone, max 5 stacks.
 // On 'move' event for this player, reset stacks to 0.
 // On 'tick_end' event, increment if player didn't move (check deadlockZone).
 
@@ -331,13 +331,13 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
       let updated = applyBuff(player, {
         id: 'deadlock',
         stacks: newStacks,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: playerId,
       })
       updated = applyBuff(updated, {
         id: 'deadlockZone',
         stacks: 1,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: currentZone,
       })
       return updatePlayer(state, updated)
@@ -346,7 +346,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
       const updated = applyBuff(player, {
         id: 'deadlockZone',
         stacks: 1,
-        ticksRemaining: 9999,
+        cyclesRemaining: 9999,
         source: currentZone,
       })
       return updatePlayer(state, updated)

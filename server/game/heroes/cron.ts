@@ -109,13 +109,13 @@ function resolveQ(
     let updatedTarget = applyBuff(targetPlayer, {
       id: 'uptimeAtk',
       stacks: Q_ATK_BONUS,
-      ticksRemaining: Q_DURATION,
+      cyclesRemaining: Q_DURATION,
       source: player.id,
     })
     updatedTarget = applyBuff(updatedTarget, {
       id: 'uptimeDef',
       stacks: Q_DEF_BONUS,
-      ticksRemaining: Q_DURATION,
+      cyclesRemaining: Q_DURATION,
       source: player.id,
     })
 
@@ -123,7 +123,7 @@ function resolveQ(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -185,7 +185,7 @@ function resolveW(
     updatedTarget = applyBuff(updatedTarget, {
       id: 'shield',
       stacks: shieldAmount,
-      ticksRemaining: W_SHIELD_DURATION,
+      cyclesRemaining: W_SHIELD_DURATION,
       source: player.id,
     })
 
@@ -195,7 +195,7 @@ function resolveW(
       state: updatePlayers(state, players),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -244,8 +244,8 @@ function resolveE(
     updatedTarget = applyBuff(updatedTarget, {
       id: 'taunt',
       stacks: 1,
-      // 2 = one gated action: reaped same-tick by tickAllBuffs (see applyBuff note)
-      ticksRemaining: 2,
+      // 2 = one gated action: reaped same-tick by cycleAllBuffs (see applyBuff note)
+      cyclesRemaining: 2,
       source: player.id,
     })
 
@@ -253,7 +253,7 @@ function resolveE(
       state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -288,7 +288,7 @@ function resolveR(
     const healPerTick = scaleValue(R_HEAL_PER_TICK, level)
 
     // Apply crontabHeal + crontabMana buffs to self and all allies in zone. Both
-    // are over-time regen buffs whose per-tick amount rides in `stacks`; the heal
+    // are over-time regen buffs whose per-cycle amount rides in `stacks`; the heal
     // is processed in processCacheBuffs (CacheAI). The mana half was advertised
     // (R_MP_PER_TICK, the mpPerTick event payload, the ability description) but
     // never actually applied until the matching crontabMana buff + consumer.
@@ -297,13 +297,13 @@ function resolveR(
       const healed = applyBuff(p, {
         id: 'crontabHeal',
         stacks: healPerTick,
-        ticksRemaining: R_DURATION,
+        cyclesRemaining: R_DURATION,
         source: player.id,
       })
       return applyBuff(healed, {
         id: 'crontabMana',
         stacks: R_MP_PER_TICK,
-        ticksRemaining: R_DURATION,
+        cyclesRemaining: R_DURATION,
         source: player.id,
       })
     })
@@ -312,7 +312,7 @@ function resolveR(
       state: updatePlayers(state, allAffected),
       events: [
         {
-          tick: state.tick,
+          cycle: state.cycle,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
@@ -337,7 +337,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   const player = state.players[playerId]
   if (!player || !player.alive) return state
 
-  if (state.tick % PASSIVE_TICK_INTERVAL !== 0) return state
+  if (state.cycle % PASSIVE_TICK_INTERVAL !== 0) return state
 
   const allies = getAlliesInZone(state, player)
   if (allies.length === 0) return state

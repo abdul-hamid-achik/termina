@@ -17,7 +17,7 @@ const MAX_VISIBLE_EVENTS = 120
 
 // ── Filtering ──────────────────────────────────────────────────
 // A compact set of chips + a story/verbose toggle. STORY is the default view:
-// everyone's farm noise folds into one dim line per tick and each tick's lines
+// everyone's farm noise folds into one dim line per cycle and each cycle's lines
 // are ordered by salience (your results first, kills/objectives loud). Verbose
 // shows the raw line-per-event stream. Lines without a salience (system/chat/
 // announcements) are always shown regardless of density.
@@ -30,7 +30,7 @@ const FILTERS: { id: Filter; label: string }[] = [
 ]
 const filter = ref<Filter>('all')
 const verbose = ref(false)
-// Per-tick personal recap, ON by default: the whole point of a 4-second turn is
+// Per-cycle personal recap, ON by default: the whole point of a 4-second turn is
 // that it is comprehensible in one read, and summing "84 + 25 + 22" by eye every
 // four seconds is what makes players stop reading the feed altogether.
 const recap = ref(true)
@@ -64,16 +64,16 @@ const visibleEvents = computed(() => {
   return e.length <= MAX_VISIBLE_EVENTS ? e : e.slice(-MAX_VISIBLE_EVENTS)
 })
 
-// Built from the UNFILTERED stream: what a tick did to you must not change
+// Built from the UNFILTERED stream: what a cycle did to you must not change
 // because a filter chip is active or the render cap dropped an early line.
 const recapByTick = computed(() => buildTickRecaps(props.events))
 
-// ── Per-tick beats ─────────────────────────────────────────────
-// Group consecutive same-tick lines into a "beat" with a single header, so the
+// ── Per-cycle beats ─────────────────────────────────────────────
+// Group consecutive same-cycle lines into a "beat" with a single header, so the
 // 4-second resolution reads as a discrete turn instead of a flat scroll that
-// repeats the tick number on every line.
+// repeats the cycle number on every line.
 interface Beat {
-  tick: number
+  cycle: number
   lines: CombatLine[]
 }
 
@@ -81,14 +81,14 @@ const beats = computed<Beat[]>(() => {
   const out: Beat[] = []
   for (const line of visibleEvents.value) {
     const last = out[out.length - 1]
-    if (last && last.tick === line.tick) last.lines.push(line)
-    else out.push({ tick: line.tick, lines: [line] })
+    if (last && last.cycle === line.cycle) last.lines.push(line)
+    else out.push({ cycle: line.cycle, lines: [line] })
   }
   return out
 })
 
-function clock(tick: number): string {
-  return formatTickClock(tick)
+function clock(cycle: number): string {
+  return formatTickClock(cycle)
 }
 
 // ── Scroll handling ────────────────────────────────────────────
@@ -100,7 +100,7 @@ function scrollToBottom() {
 
 // Watch the ARRAY, not its length: the store caps events at 200, so length
 // saturates mid-game and a length-based watch silently stops firing — the
-// "auto-scroll died" bug. The parent recomputes the array every tick, so the
+// "auto-scroll died" bug. The parent recomputes the array every cycle, so the
 // reference changes whenever content can have changed.
 watch(
   () => props.events,
@@ -132,7 +132,7 @@ const borderColors: Record<CombatLineType, string> = {
   damage: 'border-l-damage',
   healing: 'border-l-healing',
   kill: 'border-l-audit',
-  gold: 'border-l-gold',
+  scrip: 'border-l-gold',
   system: 'border-l-system',
   ability: 'border-l-ability',
   victory: 'border-l-gold',
@@ -146,7 +146,7 @@ function typeColor(type: CombatLineType): string {
     damage: 'rgb(var(--color-damage))',
     healing: 'rgb(var(--color-healing))',
     kill: 'rgb(var(--color-audit))',
-    gold: 'rgb(var(--color-gold))',
+    scrip: 'rgb(var(--color-gold))',
     system: 'rgb(var(--color-system))',
     ability: 'rgb(var(--color-ability))',
     victory: 'rgb(var(--color-gold))',
@@ -162,7 +162,7 @@ function typePrefix(type: CombatLineType): string {
     damage: '[DAMAGE]',
     healing: '[HEAL]',
     kill: '[KILL]',
-    gold: '[GOLD]',
+    scrip: '[GOLD]',
     system: '[SYS]',
     ability: '[ABILITY]',
     victory: '[VICTORY]',
@@ -188,7 +188,7 @@ const emphasisByType: Record<CombatLineType, string> = {
   ability: '',
   damage: '',
   healing: '',
-  gold: '',
+  scrip: '',
   system: '',
   farm: '',
 }
@@ -217,7 +217,7 @@ function salienceClasses(s: Salience | undefined, type: CombatLineType): string[
 }
 
 function eventAriaLabel(line: CombatLine): string {
-  return `${typePrefix(line.type)} Cycle ${line.tick}: ${line.text}`
+  return `${typePrefix(line.type)} Cycle ${line.cycle}: ${line.text}`
 }
 </script>
 
@@ -252,8 +252,10 @@ function eventAriaLabel(line: CombatLine): string {
         class="ml-1 border px-1 py-px font-mono tracking-wider transition-colors"
         :class="recap ? 'border-ability text-ability' : 'border-border text-text-dim'"
         data-testid="log-recap-toggle"
-        :title="recap ? 'Per-tick recap on — click to hide' : 'Per-tick recap off — click to show'"
-        :aria-label="recap ? 'Hide the per-tick damage recap' : 'Show the per-tick damage recap'"
+        :title="
+          recap ? 'Per-cycle recap on — click to hide' : 'Per-cycle recap off — click to show'
+        "
+        :aria-label="recap ? 'Hide the per-cycle damage recap' : 'Show the per-cycle damage recap'"
         :aria-pressed="recap"
         @click="recap = !recap"
       >
@@ -288,34 +290,34 @@ function eventAriaLabel(line: CombatLine): string {
       class="flex-1 overflow-y-auto py-1 text-[0.8rem] leading-normal"
       @scroll="handleScroll"
     >
-      <div v-for="beat in beats" :key="beat.tick" class="mb-0.5">
+      <div v-for="beat in beats" :key="beat.cycle" class="mb-0.5">
         <!-- Cycle beat header. The recap rides INSIDE the sticky block so the
              turn's bottom line stays on screen while its detail scrolls away. -->
         <div class="sticky top-0 z-[1] bg-bg-panel/95 select-none">
           <div class="flex items-center gap-1 px-2 py-px t-hud-xs tracking-wider text-text-muted">
             <span class="text-border">──</span>
-            <span class="font-bold">CYCLE {{ beat.tick }}</span>
-            <span class="text-text-dim">· {{ clock(beat.tick) }}</span>
+            <span class="font-bold">CYCLE {{ beat.cycle }}</span>
+            <span class="text-text-dim">· {{ clock(beat.cycle) }}</span>
             <span class="flex-1 truncate text-right text-border">{{ '─'.repeat(40) }}</span>
           </div>
           <div
-            v-if="recap && recapByTick.get(beat.tick)"
+            v-if="recap && recapByTick.get(beat.cycle)"
             class="flex flex-wrap items-baseline gap-x-2 px-2 pb-px t-hud-sm t-mono-num"
             data-testid="tick-recap"
-            :aria-label="`Cycle ${beat.tick} recap: ${recapByTick.get(beat.tick)!.text}`"
+            :aria-label="`Cycle ${beat.cycle} recap: ${recapByTick.get(beat.cycle)!.text}`"
           >
-            <span v-if="recapByTick.get(beat.tick)!.takenText" class="font-semibold text-audit">
-              {{ recapByTick.get(beat.tick)!.takenText }}
+            <span v-if="recapByTick.get(beat.cycle)!.takenText" class="font-semibold text-audit">
+              {{ recapByTick.get(beat.cycle)!.takenText }}
             </span>
-            <span v-if="recapByTick.get(beat.tick)!.dealtText" class="text-self">
-              {{ recapByTick.get(beat.tick)!.dealtText }}
+            <span v-if="recapByTick.get(beat.cycle)!.dealtText" class="text-self">
+              {{ recapByTick.get(beat.cycle)!.dealtText }}
             </span>
           </div>
         </div>
 
         <div
           v-for="(event, i) in beat.lines"
-          :key="`${beat.tick}-${i}`"
+          :key="`${beat.cycle}-${i}`"
           data-testid="log-event"
           :aria-label="eventAriaLabel(event)"
           class="anim-fade-in-up border-l-2 border-l-transparent px-2 py-px t-mono-num hover:bg-white/[0.03]"
@@ -335,7 +337,7 @@ function eventAriaLabel(line: CombatLine): string {
             :class="
               event.type === 'kill'
                 ? 'text-glow-audit'
-                : event.type === 'gold'
+                : event.type === 'scrip'
                   ? 'text-glow-gold'
                   : ''
             "

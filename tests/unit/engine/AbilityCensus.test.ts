@@ -41,12 +41,12 @@ function mkPlayer(
     maxBw: 5000,
     level: 18,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 0,
     ice: 0,
     kills: 0,
@@ -65,11 +65,11 @@ function baseState(heroId: string): GameState {
   const caster = mkPlayer('caster', 'chaff', {
     heroId,
     buffs: [
-      { id: 'feedbackLoop', stacks: 50, ticksRemaining: 999, source: 'caster' },
-      { id: 'cachedEnergy', stacks: 100, ticksRemaining: 999, source: 'caster' },
+      { id: 'feedbackLoop', stacks: 50, cyclesRemaining: 999, source: 'caster' },
+      { id: 'cachedEnergy', stacks: 100, cyclesRemaining: 999, source: 'caster' },
     ],
   })
-  const breached = [{ id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }]
+  const breached = [{ id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }]
   const efull = mkPlayer('efull', 'audit', { heroId: 'kernel', buffs: breached })
   const elow = mkPlayer('elow', 'audit', { heroId: 'kernel', integ: 50, buffs: breached })
   const eadj = mkPlayer('eadj', 'audit', { heroId: 'kernel', zone: ADJ, buffs: breached })
@@ -81,28 +81,28 @@ function baseState(heroId: string): GameState {
     zones[z] = { id: z, wards: [], waves: [] }
   }
   return {
-    tick: 100,
+    cycle: 100,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
     },
     players,
     zones,
     waves: [],
     neutrals: [],
     ice: [],
-    ancients: {
+    terminals: {
       chaff: { team: 'chaff', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
       audit: { team: 'audit', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
     },
     caches: [],
-    tenant: { alive: false, integ: 0, maxInteg: 0, deathTick: null },
+    tenant: { alive: false, integ: 0, maxInteg: 0, deathCycle: null },
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
-    dayNightTick: 0,
+    dayNightCycle: 0,
   }
 }
 

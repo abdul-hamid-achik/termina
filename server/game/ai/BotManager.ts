@@ -84,10 +84,10 @@ export interface BotDifficultyConfig {
    * Chance the bot aims at the true lowest-INTEG wave in the wave. On a failed roll
    * it takes the SECOND-lowest instead — never nothing. Returning null here was
    * the original bot-standstill bug (bots idled in lane and never reached a
-   * ice), so the miss costs last-hit gold without costing an action.
+   * ice), so the miss costs last-hit scrip without costing an action.
    */
   lastHitAccuracy: number
-  /** Bot burns its own low waves to starve the enemy laner of gold + XP. */
+  /** Bot burns its own low waves to starve the enemy laner of scrip + XP. */
   denyAwareness: boolean
   cacheAwareness: boolean
   jungleFarming: boolean

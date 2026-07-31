@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
   fastGameFactor,
   scaledTickIntervalMs,
-  scaledAncientHp,
+  scaledTerminalHp,
   scaledIceHp,
   scaledRespawnTicks,
 } from '~~/server/game/engine/fastGame'
@@ -70,8 +70,8 @@ describe('scaled helpers at factor 8', () => {
     expect(scaledTickIntervalMs(400)).toBe(100) // 400/8=50 → floored to 100
   })
 
-  it('scaledAncientHp divides by the full (uncapped) factor', () => {
-    expect(scaledAncientHp(6400)).toBe(800) // 6400/8
+  it('scaledTerminalHp divides by the full (uncapped) factor', () => {
+    expect(scaledTerminalHp(6400)).toBe(800) // 6400/8
   })
 
   it('scaledIceHp caps the divisor at 4 (ice gate the game)', () => {
@@ -83,7 +83,7 @@ describe('scaled helpers at factor 8', () => {
   })
 
   it('every scaled value floors at 1', () => {
-    expect(scaledAncientHp(1)).toBe(1)
+    expect(scaledTerminalHp(1)).toBe(1)
     expect(scaledIceHp(1)).toBe(1)
   })
 })
@@ -91,7 +91,7 @@ describe('scaled helpers at factor 8', () => {
 describe('scaled helpers at factor 1 (no acceleration)', () => {
   it('are identity transforms', () => {
     expect(scaledTickIntervalMs(4000)).toBe(4000)
-    expect(scaledAncientHp(6400)).toBe(6400)
+    expect(scaledTerminalHp(6400)).toBe(6400)
     expect(scaledIceHp(800)).toBe(800)
     expect(scaledRespawnTicks(10)).toBe(10)
   })

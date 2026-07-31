@@ -5,15 +5,15 @@ import {
   enforceWaveZoneCap,
   type WaveAction,
 } from '~~/server/game/engine/WaveAI'
-import { initializeAncients } from '~~/server/game/engine/AncientSystem'
+import { initializeAncients } from '~~/server/game/engine/TerminalSystem'
 import type { GameState, PlayerState, WaveUnitState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import {
   LINE_UNIT_ATTACK,
   SWEEP_UNIT_ATTACK,
   BREACH_UNIT_ATTACK,
-  WAVE_BASE_IDLE_DESPAWN_TICKS,
-  WAVE_ESCALATION_INTERVAL_TICKS,
+  WAVE_BASE_IDLE_DESPAWN_CYCLES,
+  WAVE_ESCALATION_INTERVAL_CYCLES,
   WAVE_XP_SHARED,
   MAX_WAVE_UNITS_PER_ZONE_PER_TEAM,
   waveUnitAttack,
@@ -34,12 +34,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 200,
     level: 1,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -65,17 +65,17 @@ function makeWave(overrides: Partial<WaveUnitState> = {}): WaveUnitState {
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
   return {
-    tick: 1,
+    cycle: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
     waves: [],
     ice: initializeIce(),
-    ancients: initializeAncients(),
+    terminals: initializeAncients(),
     events: [],
     ...overrides,
   }
@@ -83,8 +83,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
 
 /** Ancients with the audit one vulnerable (a audit T3 is presumed down). */
 function vulnerableAuditAncients() {
-  const ancients = initializeAncients()
-  return { chaff: ancients.chaff, audit: { ...ancients.audit, vulnerable: true } }
+  const terminals = initializeAncients()
+  return { chaff: terminals.chaff, audit: { ...terminals.audit, vulnerable: true } }
 }
 
 describe('WaveAI', () => {
@@ -171,9 +171,9 @@ describe('WaveAI', () => {
     })
 
     it('escalates wave damage with the game tick', () => {
-      const lateTick = WAVE_ESCALATION_INTERVAL_TICKS * 2
+      const lateTick = WAVE_ESCALATION_INTERVAL_CYCLES * 2
       const state = makeGameState({
-        tick: lateTick,
+        cycle: lateTick,
         waves: [
           makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river', type: 'line' }),
           makeWave({ id: 'c2', team: 'audit', zone: 'mid-river' }),
@@ -473,7 +473,7 @@ describe('WaveAI', () => {
     it('emits a damage event naming the wave that hit', () => {
       const player = makePlayer({ id: 'p1', team: 'audit', zone: 'mid-river', integ: 500 })
       const state = makeGameState({
-        tick: 12,
+        cycle: 12,
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river' })],
         players: { p1: player },
       })
@@ -487,7 +487,7 @@ describe('WaveAI', () => {
       expect(events).toEqual([
         {
           _tag: 'damage',
-          tick: 12,
+          cycle: 12,
           sourceId: 'c1',
           targetId: 'p1',
           amount: expectedDamage,
@@ -506,7 +506,7 @@ describe('WaveAI', () => {
             team: 'audit',
             zone: 'mid-river',
             integ: 500,
-            buffs: [{ id: 'shield', stacks: 999, ticksRemaining: 5, source: 'x' }],
+            buffs: [{ id: 'shield', stacks: 999, cyclesRemaining: 5, source: 'x' }],
           }),
         },
       })
@@ -629,7 +629,7 @@ describe('WaveAI', () => {
   describe('Ancient breach behavior', () => {
     it('attacks a vulnerable enemy Ancient from the enemy base', () => {
       const state = makeGameState({
-        ancients: vulnerableAuditAncients(),
+        terminals: vulnerableAuditAncients(),
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'audit-base' })],
       })
 
@@ -641,7 +641,7 @@ describe('WaveAI', () => {
 
     it('prefers the vulnerable Ancient over enemy heroes in base', () => {
       const state = makeGameState({
-        ancients: vulnerableAuditAncients(),
+        terminals: vulnerableAuditAncients(),
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'audit-base' })],
         players: {
           p1: makePlayer({ id: 'p1', team: 'audit', zone: 'audit-base' }),
@@ -654,7 +654,7 @@ describe('WaveAI', () => {
 
     it('still fights enemy waves before the Ancient', () => {
       const state = makeGameState({
-        ancients: vulnerableAuditAncients(),
+        terminals: vulnerableAuditAncients(),
         waves: [
           makeWave({ id: 'c1', team: 'chaff', zone: 'audit-base' }),
           makeWave({ id: 'c2', team: 'audit', zone: 'audit-base' }),
@@ -680,11 +680,11 @@ describe('WaveAI', () => {
     })
 
     it('does not attack a dead Ancient', () => {
-      const ancients = initializeAncients()
+      const terminals = initializeAncients()
       const state = makeGameState({
-        ancients: {
-          chaff: ancients.chaff,
-          audit: { ...ancients.audit, integ: 0, alive: false, vulnerable: true },
+        terminals: {
+          chaff: terminals.chaff,
+          audit: { ...terminals.audit, integ: 0, alive: false, vulnerable: true },
         },
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'audit-base' })],
       })
@@ -695,7 +695,7 @@ describe('WaveAI', () => {
 
     it('applies Ancient damage and emits events via applyWaveActions', () => {
       const state = makeGameState({
-        ancients: vulnerableAuditAncients(),
+        terminals: vulnerableAuditAncients(),
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'audit-base' })],
       })
 
@@ -704,19 +704,19 @@ describe('WaveAI', () => {
       ]
 
       const result = applyWaveActions(state, actions)
-      expect(result.state.ancients.audit.integ).toBe(
-        result.state.ancients.audit.maxInteg - LINE_UNIT_ATTACK,
+      expect(result.state.terminals.audit.integ).toBe(
+        result.state.terminals.audit.maxInteg - LINE_UNIT_ATTACK,
       )
       expect(result.events).toHaveLength(1)
       expect(result.events[0]!._tag).toBe('damage')
     })
 
-    it('destroys the Ancient and emits a dedicated ancient_destroyed event', () => {
-      const ancients = initializeAncients()
+    it('destroys the Ancient and emits a dedicated terminal_destroyed event', () => {
+      const terminals = initializeAncients()
       const state = makeGameState({
-        ancients: {
-          chaff: ancients.chaff,
-          audit: { ...ancients.audit, integ: 5, vulnerable: true },
+        terminals: {
+          chaff: terminals.chaff,
+          audit: { ...terminals.audit, integ: 5, vulnerable: true },
         },
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'audit-base' })],
       })
@@ -726,10 +726,10 @@ describe('WaveAI', () => {
       ]
 
       const result = applyWaveActions(state, actions)
-      expect(result.state.ancients.audit.alive).toBe(false)
-      expect(result.state.ancients.audit.integ).toBe(0)
+      expect(result.state.terminals.audit.alive).toBe(false)
+      expect(result.state.terminals.audit.integ).toBe(0)
       expect(result.events.some((e) => e._tag === 'ice_kill')).toBe(false)
-      const killEvent = result.events.find((e) => e._tag === 'ancient_destroyed')
+      const killEvent = result.events.find((e) => e._tag === 'terminal_destroyed')
       expect(killEvent).toBeDefined()
       expect(killEvent).toMatchObject({ team: 'audit', killerTeam: 'chaff' })
     })
@@ -744,7 +744,7 @@ describe('WaveAI', () => {
       ]
 
       const result = applyWaveActions(state, actions)
-      expect(result.state.ancients.audit.integ).toBe(result.state.ancients.audit.maxInteg)
+      expect(result.state.terminals.audit.integ).toBe(result.state.terminals.audit.maxInteg)
       expect(result.events).toHaveLength(0)
     })
   })
@@ -766,7 +766,7 @@ describe('WaveAI', () => {
             id: 'c1',
             team: 'chaff',
             zone: 'audit-base',
-            baseIdleCycles: WAVE_BASE_IDLE_DESPAWN_TICKS - 1,
+            baseIdleCycles: WAVE_BASE_IDLE_DESPAWN_CYCLES - 1,
           }),
         ],
       })
@@ -799,13 +799,13 @@ describe('WaveAI', () => {
 
     it('does not idle-despawn while the vulnerable Ancient is attackable', () => {
       const state = makeGameState({
-        ancients: vulnerableAuditAncients(),
+        terminals: vulnerableAuditAncients(),
         waves: [
           makeWave({
             id: 'c1',
             team: 'chaff',
             zone: 'audit-base',
-            baseIdleCycles: WAVE_BASE_IDLE_DESPAWN_TICKS,
+            baseIdleCycles: WAVE_BASE_IDLE_DESPAWN_CYCLES,
           }),
         ],
       })

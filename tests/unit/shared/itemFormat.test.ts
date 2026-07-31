@@ -62,8 +62,8 @@ describe('totalCost', () => {
 })
 
 describe('lastHitsToAfford', () => {
-  // avg wave bounty = (30 + 50) / 2 = 40 gold
-  it('converts gold to wave last-hits at the average bounty, rounding up', () => {
+  // avg wave bounty = (30 + 50) / 2 = 40 scrip
+  it('converts scrip to wave last-hits at the average bounty, rounding up', () => {
     expect(lastHitsToAfford(40)).toBe(1)
     expect(lastHitsToAfford(80)).toBe(2)
     expect(lastHitsToAfford(100)).toBe(3) // 2.5 → 3
@@ -78,10 +78,10 @@ describe('lastHitsToAfford', () => {
 describe('activeCooldownSeconds', () => {
   it('converts cooldown ticks to seconds at the 4s tick', () => {
     expect(
-      activeCooldownSeconds({ id: 'a', name: 'A', description: '', cooldownTicks: 18 }, 4000),
+      activeCooldownSeconds({ id: 'a', name: 'A', description: '', cooldownCycles: 18 }, 4000),
     ).toBe(72)
     expect(
-      activeCooldownSeconds({ id: 'a', name: 'A', description: '', cooldownTicks: 0 }, 4000),
+      activeCooldownSeconds({ id: 'a', name: 'A', description: '', cooldownCycles: 0 }, 4000),
     ).toBe(0)
   })
 })

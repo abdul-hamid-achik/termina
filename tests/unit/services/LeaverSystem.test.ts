@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { Effect } from 'effect'
-import { processTick, submitAction } from '~~/server/game/engine/GameLoop'
+import { processCycle, submitAction } from '~~/server/game/engine/GameLoop'
 import {
   detectAFKPlayers,
   shouldConvertAFK,
@@ -25,12 +25,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 280,
     level: 1,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 3,
     ice: 15,
     kills: 0,
@@ -47,11 +47,11 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
   return {
-    tick: 0,
+    cycle: 0,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
     },
     players: {
       p1: makePlayer({ id: 'p1' }),
@@ -67,30 +67,30 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
-    dayNightTick: 0,
+    dayNightCycle: 0,
     ...overrides,
   }
 }
 
 describe('LeaverSystem AFK detection', () => {
   it('flags players who have never acted once past the threshold', () => {
-    const state = makeGameState({ tick: 40 })
+    const state = makeGameState({ cycle: 40 })
     const afk = detectAFKPlayers(state)
     expect(afk.map((a) => a.playerId).sort()).toEqual(['p1', 'p2'])
     expect(afk[0]!.ticksAFK).toBe(40)
   })
 
   it('does not flag players below the threshold', () => {
-    const state = makeGameState({ tick: 10 })
+    const state = makeGameState({ cycle: 10 })
     expect(detectAFKPlayers(state)).toEqual([])
   })
 
   it('does not flag players who acted recently', () => {
     const state = makeGameState({
-      tick: 100,
+      cycle: 100,
       players: {
-        p1: makePlayer({ id: 'p1', lastActionTick: 95 }),
-        p2: makePlayer({ id: 'p2', team: 'audit', lastActionTick: 50 }),
+        p1: makePlayer({ id: 'p1', lastActionCycle: 95 }),
+        p2: makePlayer({ id: 'p2', team: 'audit', lastActionCycle: 50 }),
       },
     })
     const afk = detectAFKPlayers(state)
@@ -99,10 +99,10 @@ describe('LeaverSystem AFK detection', () => {
 
   it('skips bots', () => {
     const state = makeGameState({
-      tick: 100,
+      cycle: 100,
       players: {
         bot_1: makePlayer({ id: 'bot_1' }),
-        p2: makePlayer({ id: 'p2', team: 'audit', lastActionTick: 99 }),
+        p2: makePlayer({ id: 'p2', team: 'audit', lastActionCycle: 99 }),
       },
     })
     expect(detectAFKPlayers(state)).toEqual([])
@@ -110,9 +110,9 @@ describe('LeaverSystem AFK detection', () => {
 
   it('skips dead players', () => {
     const state = makeGameState({
-      tick: 100,
+      cycle: 100,
       players: {
-        p1: makePlayer({ id: 'p1', alive: false, respawnTick: 110 }),
+        p1: makePlayer({ id: 'p1', alive: false, respawnCycle: 110 }),
       },
     })
     expect(detectAFKPlayers(state)).toEqual([])
@@ -122,16 +122,16 @@ describe('LeaverSystem AFK detection', () => {
     // Once an AFK human is taken over, a bot plays the slot — it must not be
     // re-flagged, so the takeover + leaver record fire exactly once.
     const state = makeGameState({
-      tick: 200,
+      cycle: 200,
       players: {
         p1: makePlayer({ id: 'p1', aiControlled: true }),
-        p2: makePlayer({ id: 'p2', team: 'audit', lastActionTick: 199 }),
+        p2: makePlayer({ id: 'p2', team: 'audit', lastActionCycle: 199 }),
       },
     })
     expect(detectAFKPlayers(state)).toEqual([])
   })
 
-  it('processTick stamps lastActionTick when a player acts', () => {
+  it('processCycle stamps lastActionCycle when a player acts', () => {
     const state = makeGameState({
       players: {
         p1: makePlayer({ id: 'p1', zone: 'mid-t1-chaff' }),
@@ -139,21 +139,21 @@ describe('LeaverSystem AFK detection', () => {
       },
     })
     submitAction('afk-stamp-1', 'p1', { type: 'move', zone: 'mid-river' })
-    const result = Effect.runSync(processTick('afk-stamp-1', state))
-    expect(result.state.players['p1']!.lastActionTick).toBe(1)
-    expect(result.state.players['p2']!.lastActionTick).toBeUndefined()
+    const result = Effect.runSync(processCycle('afk-stamp-1', state))
+    expect(result.state.players['p1']!.lastActionCycle).toBe(1)
+    expect(result.state.players['p2']!.lastActionCycle).toBeUndefined()
   })
 })
 
 describe('shouldConvertAFK (presence gate)', () => {
   // Two humans on chaff so the "human teammate benefits" clause can pass.
-  function twoHumanState(tick: number, p1: Partial<PlayerState> = {}): GameState {
+  function twoHumanState(cycle: number, p1: Partial<PlayerState> = {}): GameState {
     return makeGameState({
-      tick,
+      cycle,
       players: {
         p1: makePlayer({ id: 'p1', ...p1 }),
-        p3: makePlayer({ id: 'p3', name: 'Player3', lastActionTick: tick }),
-        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain', lastActionTick: tick }),
+        p3: makePlayer({ id: 'p3', name: 'Player3', lastActionCycle: cycle }),
+        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain', lastActionCycle: cycle }),
       },
     })
   }
@@ -164,18 +164,18 @@ describe('shouldConvertAFK (presence gate)', () => {
   })
 
   it('never converts a connected player with recent client input', () => {
-    const state = twoHumanState(600, { lastActionTick: 0 })
+    const state = twoHumanState(600, { lastActionCycle: 0 })
     expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: 5_000 })).toBe(false)
   })
 
   it('never converts a connected player whose team has no other human', () => {
     // Solo-vs-bots: converting the only human serves nobody.
     const state = makeGameState({
-      tick: 600,
+      cycle: 600,
       players: {
-        p1: makePlayer({ id: 'p1', lastActionTick: 0 }),
+        p1: makePlayer({ id: 'p1', lastActionCycle: 0 }),
         bot_ally: makePlayer({ id: 'bot_ally', name: 'Bot' }),
-        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain', lastActionTick: 600 }),
+        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain', lastActionCycle: 600 }),
       },
     })
     expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: null })).toBe(false)
@@ -183,11 +183,11 @@ describe('shouldConvertAFK (presence gate)', () => {
 
   it('a teammate already replaced by a bot does not count as a human teammate', () => {
     const state = makeGameState({
-      tick: 600,
+      cycle: 600,
       players: {
-        p1: makePlayer({ id: 'p1', lastActionTick: 0 }),
+        p1: makePlayer({ id: 'p1', lastActionCycle: 0 }),
         p3: makePlayer({ id: 'p3', name: 'Player3', aiControlled: true }),
-        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain', lastActionTick: 600 }),
+        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain', lastActionCycle: 600 }),
       },
     })
     expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: null })).toBe(false)
@@ -196,12 +196,12 @@ describe('shouldConvertAFK (presence gate)', () => {
   it('does not convert a connected player under the longer connected threshold', () => {
     // 40 ticks without an action clears the base threshold (30) but not the
     // connected one (60) — present players get the longer window.
-    const state = twoHumanState(40, { lastActionTick: 0 })
+    const state = twoHumanState(40, { lastActionCycle: 0 })
     expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: null })).toBe(false)
   })
 
   it('converts a connected but fully silent player when a human teammate benefits', () => {
-    const state = twoHumanState(120, { lastActionTick: 0 })
+    const state = twoHumanState(120, { lastActionCycle: 0 })
     expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: null })).toBe(true)
     // …but any input inside the window keeps them safe.
     expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: 60_000 })).toBe(false)

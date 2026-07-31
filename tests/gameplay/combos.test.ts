@@ -2,18 +2,18 @@ import { describe, it, expect } from 'vitest'
 import { seedGame, HUMAN, ENEMY } from './harness'
 
 /**
- * W3-3 — combo depth. One action per tick meant an item active and an ability
- * could never happen in the same 4s tick, so every 2000g+ active competed with
+ * W3-3 — combo depth. One action per cycle meant an item active and an ability
+ * could never happen in the same 4s tick, so every 2000sc+ active competed with
  * the ultimate for the same slot and blink→stun→nuke was structurally
  * unreachable. Item actives now hold their own per-player queue slot and
  * resolve in their own phase AHEAD of the ability they set up.
  */
 describe('same-tick combos', () => {
-  it('an item active and an ability both land in one tick', async () => {
+  it('an item active and an ability both land in one cycle', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.patch((s) => ({
       ...s,
-      tick: 40,
+      cycle: 40,
       players: {
         ...s.players,
         [HUMAN]: {
@@ -44,7 +44,7 @@ describe('same-tick combos', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.patch((s) => ({
       ...s,
-      tick: 40,
+      cycle: 40,
       players: {
         ...s.players,
         [HUMAN]: {
@@ -72,7 +72,7 @@ describe('same-tick combos', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.patch((s) => ({
       ...s,
-      tick: 40,
+      cycle: 40,
       players: {
         ...s.players,
         [HUMAN]: {
@@ -101,7 +101,7 @@ describe('same-tick combos', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.patch((s) => ({
       ...s,
-      tick: 40,
+      cycle: 40,
       players: {
         ...s.players,
         [HUMAN]: {
@@ -115,7 +115,7 @@ describe('same-tick combos', () => {
     await game.tick()
     expect((await game.me()).attackTarget).toEqual({ kind: 'hero', name: ENEMY })
 
-    // Only an item this tick: the hero keeps swinging AND gains the buff.
+    // Only an item this cycle: the hero keeps swinging AND gains the buff.
     game.submit({ type: 'use', item: 'hardshell' })
     await game.tick()
 

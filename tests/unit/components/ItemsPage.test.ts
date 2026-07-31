@@ -46,7 +46,7 @@ describe('items page — build guidance', () => {
     })
   })
 
-  it('shows a running gold total that accumulates down the build', () => {
+  it('shows a running scrip total that accumulates down the build', () => {
     const wrapper = mountItems()
     const ids = recommendedItemsForRole(ROLE_ORDER[0]!)
     const steps = wrapper.findAll('[data-testid="build-order"] li')

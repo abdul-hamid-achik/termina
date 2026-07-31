@@ -19,12 +19,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxBw: 400,
     level: 7,
     xp: 0,
-    gold: 600,
+    scrip: 600,
     items: [null, null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     plate: 1,
     ice: 18,
     kills: 0,
@@ -38,7 +38,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
     return {
       ...player,
-      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, cyclesRemaining: 99, source: 'test' }],
     }
   }
   return player
@@ -66,11 +66,11 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     playerMap[p.id] = p
   }
   return {
-    tick: 10,
+    cycle: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
     zones: {
@@ -81,7 +81,7 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     neutrals: [],
     ice: [],
     caches: [],
-    tenant: { alive: false, integ: 0, maxInteg: 0, deathTick: null },
+    tenant: { alive: false, integ: 0, maxInteg: 0, deathCycle: null },
     backup: null,
     events: [],
     ...overrides,
@@ -111,7 +111,7 @@ describe('Regex Hero', () => {
       const debuff = result.state.players['e1']!.buffs.find((b) => b.id === 'magicVulnerability')
       expect(debuff).toBeDefined()
       expect(debuff!.stacks).toBe(15)
-      expect(debuff!.ticksRemaining).toBe(3)
+      expect(debuff!.cyclesRemaining).toBe(3)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -197,7 +197,7 @@ describe('Regex Hero', () => {
 
       const root = result.state.players['e1']!.buffs.find((b) => b.id === 'root')
       expect(root).toBeDefined()
-      expect(root!.ticksRemaining).toBe(2)
+      expect(root!.cyclesRemaining).toBe(2)
     })
 
     it('applies DoT to target', () => {
@@ -210,7 +210,7 @@ describe('Regex Hero', () => {
       const dot = result.state.players['e1']!.buffs.find((b) => b.id === 'dot_magical')
       expect(dot).toBeDefined()
       expect(dot!.stacks).toBe(30)
-      expect(dot!.ticksRemaining).toBe(3)
+      expect(dot!.cyclesRemaining).toBe(3)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -279,8 +279,8 @@ describe('Regex Hero', () => {
       expect(casterStun).toBeDefined()
       expect(targetStun).toBeDefined()
       // raw 2 = one gated action: a cast-applied disable is reaped same-tick.
-      expect(casterStun!.ticksRemaining).toBe(2)
-      expect(targetStun!.ticksRemaining).toBe(2)
+      expect(casterStun!.cyclesRemaining).toBe(2)
+      expect(targetStun!.cyclesRemaining).toBe(2)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -368,7 +368,7 @@ describe('Regex Hero', () => {
 
       const silence = result.state.players['e1']!.buffs.find((b) => b.id === 'silence')
       expect(silence).toBeDefined()
-      expect(silence!.ticksRemaining).toBe(2)
+      expect(silence!.cyclesRemaining).toBe(2)
     })
 
     it('deducts BW and sets cooldown', () => {
@@ -443,7 +443,7 @@ describe('Regex Hero', () => {
   describe('Stun/Silence blocking', () => {
     it('prevents casting when stunned', () => {
       const player = makePlayer({
-        buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 1, source: 'enemy' }],
+        buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 1, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -457,7 +457,7 @@ describe('Regex Hero', () => {
 
     it('prevents casting when silenced', () => {
       const player = makePlayer({
-        buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 2, source: 'enemy' }],
+        buffs: [{ id: 'silence', stacks: 1, cyclesRemaining: 2, source: 'enemy' }],
       })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

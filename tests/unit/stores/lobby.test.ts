@@ -557,7 +557,7 @@ describe('Lobby Store', () => {
     it('can set roster array', () => {
       const store = useLobbyStore()
       store.queueRoster = [
-        { username: 'player1', mmrBracket: 'gold' },
+        { username: 'player1', mmrBracket: 'scrip' },
         { username: 'player2', mmrBracket: 'silver' },
       ]
 
@@ -603,7 +603,7 @@ describe('Lobby Store', () => {
       const store = useLobbyStore()
 
       await store.joinQueue()
-      store.queueRoster = [{ username: 'p1', mmrBracket: 'gold' }]
+      store.queueRoster = [{ username: 'p1', mmrBracket: 'scrip' }]
       store.botsFilling = true
       store.botsCount = 3
       store.matchSize = 6

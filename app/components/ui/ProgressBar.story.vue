@@ -37,8 +37,8 @@ import ProgressBar from './ProgressBar.vue'
     <Variant title="BW — ability">
       <ProgressBar :value="180" :max="300" color="ability" show-label />
     </Variant>
-    <Variant title="gold">
-      <ProgressBar :value="1400" :max="2000" color="gold" show-label />
+    <Variant title="scrip">
+      <ProgressBar :value="1400" :max="2000" color="scrip" show-label />
     </Variant>
 
     <Variant title="zone token">

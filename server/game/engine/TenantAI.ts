@@ -6,7 +6,7 @@ import type {
   TenantKilledInternalEvent,
   BackupPickedEvent,
 } from '~~/server/game/protocol/events'
-import { TENANT_ATTACK, TENANT_BACKUP_TICKS, TENANT_GOLD } from '~~/shared/constants/balance'
+import { TENANT_ATTACK, TENANT_BACKUP_CYCLES, TENANT_SCRIP } from '~~/shared/constants/balance'
 import { shouldTenantRespawn, respawnTenant } from '~~/server/game/map/spawner'
 
 export interface TenantAction {
@@ -58,11 +58,11 @@ export function processTenantDamage(
   // Only alive Tenant can take damage
   if (!tenant.alive) {
     // Check for respawn
-    if (shouldTenantRespawn(tenant, state.tick)) {
-      tenant = respawnTenant(tenant, state.tick)
+    if (shouldTenantRespawn(tenant, state.cycle)) {
+      tenant = respawnTenant(tenant, state.cycle)
       events.push({
         _tag: 'tenant_respawn',
-        tick: state.tick,
+        cycle: state.cycle,
         integ: tenant.integ,
         maxInteg: tenant.maxInteg,
       } satisfies TenantRespawnEvent)
@@ -75,7 +75,7 @@ export function processTenantDamage(
     }
   }
 
-  // Calculate total damage to Tenant this tick
+  // Calculate total damage to Tenant this cycle
   let totalDamage = 0
   for (const [, damage] of damageDealt) {
     totalDamage += damage
@@ -87,7 +87,7 @@ export function processTenantDamage(
 
     events.push({
       _tag: 'tenant_damage',
-      tick: state.tick,
+      cycle: state.cycle,
       damage: totalDamage,
       integ: newInteg,
       maxInteg: tenant.maxInteg,
@@ -103,31 +103,31 @@ export function processTenantDamage(
         alive: false,
         integ: 0,
         maxInteg: tenant.maxInteg,
-        deathTick: state.tick,
+        deathCycle: state.cycle,
       }
 
       // Drop backup in hollow
       const backup = {
         zone: 'hollow',
-        tick: state.tick,
+        cycle: state.cycle,
         holderId: null as string | null,
       }
 
-      // Award gold to damaging players (distributed by damage dealt)
+      // Award scrip to damaging players (distributed by damage dealt)
       const totalDmg = Array.from(damageDealt.values()).reduce((a, b) => a + b, 0)
       const players = { ...state.players }
-      let remainingGold = TENANT_GOLD
+      let remainingGold = TENANT_SCRIP
 
       for (const [playerId, damage] of damageDealt) {
         const share = Math.floor((damage / totalDmg) * remainingGold)
         const player = players[playerId]
         if (player) {
-          players[playerId] = { ...player, gold: player.gold + share }
+          players[playerId] = { ...player, scrip: player.scrip + share }
           remainingGold -= share
         }
       }
 
-      // Give remaining gold to lowest INTEG damage dealer
+      // Give remaining scrip to lowest INTEG damage dealer
       if (remainingGold > 0) {
         let lowestDmgDealer = ''
         let lowestHp = Infinity
@@ -142,13 +142,13 @@ export function processTenantDamage(
         }
         if (lowestDmgDealer) {
           const player = players[lowestDmgDealer]!
-          players[lowestDmgDealer] = { ...player, gold: player.gold + remainingGold }
+          players[lowestDmgDealer] = { ...player, scrip: player.scrip + remainingGold }
         }
       }
 
       events.push({
         _tag: 'tenant_killed',
-        tick: state.tick,
+        cycle: state.cycle,
       } satisfies TenantKilledInternalEvent)
 
       return {
@@ -189,8 +189,8 @@ export function pickupBackup(
   // Add backup buff to player (respawn speed)
   const backupBuff = {
     id: 'backup',
-    stacks: TENANT_BACKUP_TICKS,
-    ticksRemaining: TENANT_BACKUP_TICKS,
+    stacks: TENANT_BACKUP_CYCLES,
+    cyclesRemaining: TENANT_BACKUP_CYCLES,
     source: 'tenant',
   }
 
@@ -204,6 +204,6 @@ export function pickupBackup(
 
   return {
     state: { ...state, players, backup: null },
-    event: { _tag: 'backup_picked', tick: state.tick, playerId } satisfies BackupPickedEvent,
+    event: { _tag: 'backup_picked', cycle: state.cycle, playerId } satisfies BackupPickedEvent,
   }
 }

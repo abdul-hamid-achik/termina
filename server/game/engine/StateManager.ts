@@ -1,10 +1,10 @@
 import { Effect } from 'effect'
 import type { GameState, GameMode, PlayerState, TeamId } from '~~/shared/types/game'
-import { STARTING_GOLD } from '~~/shared/constants/balance'
+import { STARTING_SCRIP } from '~~/shared/constants/balance'
 import { HEROES } from '~~/shared/constants/heroes'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeTenant } from '~~/server/game/map/spawner'
-import { initializeAncients } from './AncientSystem'
+import { initializeAncients } from './TerminalSystem'
 import { zonesForMap, DEFAULT_MAP_ID } from '~~/shared/constants/maps'
 
 // ── Error types ────────────────────────────────────────────────
@@ -82,14 +82,14 @@ function createPlayerState(setup: PlayerSetup): PlayerState {
     maxBw: baseMp,
     level: 1,
     xp: 0,
-    gold: STARTING_GOLD,
+    scrip: STARTING_SCRIP,
     items: [null, null, null, null, null, null],
     plate: hero?.baseStats.plate ?? 0,
     ice: hero?.baseStats.ice ?? 0,
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
-    respawnTick: null,
+    respawnCycle: null,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -124,25 +124,25 @@ function createInitialGameState(
   const zones = zonesForMap(mapId)
 
   return {
-    tick: 0,
+    cycle: 0,
     phase: 'picking',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
     },
     players: playerStates,
     zones: initializeZoneStates(zones),
     waves: [],
     neutrals: [],
     ice: initializeIce(zones),
-    ancients: initializeAncients(),
+    terminals: initializeAncients(),
     caches: [],
     tenant: initializeTenant(),
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
-    dayNightTick: 0,
+    dayNightCycle: 0,
     mapId,
     mode,
     // The tutorial starts at step 0 (gating + first hint); normal games omit it.

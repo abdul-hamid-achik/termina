@@ -12,7 +12,7 @@ const props = defineProps<{
 const emit = defineEmits<{ clear: [] }>()
 
 const cost = computed(() => totalCost(props.items))
-// Make the gold number tangible — how much last-hitting funds this build.
+// Make the scrip number tangible — how much last-hitting funds this build.
 const lastHits = computed(() => lastHitsToAfford(cost.value))
 const statLines = computed(() => formatStats(aggregateStats(props.items)))
 // Items that bring an activated ability — what this build can *do* in a fight.
