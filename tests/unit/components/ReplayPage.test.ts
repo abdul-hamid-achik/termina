@@ -281,4 +281,55 @@ describe('replay page', () => {
     expect(leadEl.text()).toContain('CHAFF')
     expect(leadEl.text()).toContain('2.0k') // 3000 − 1000 = 2000
   })
+
+  it('surfaces truncated integrity instead of presenting the dump as exact', async () => {
+    const snapshot = replayResult()
+    ;(snapshot.data.value as { integrity: Record<string, unknown> }).integrity = {
+      complete: false,
+      truncated: true,
+      readFailed: false,
+      entryCount: 10000,
+      firstLoggedCycle: 500,
+      lastLoggedCycle: 900,
+      initialSnapshotCycle: 0,
+    }
+    fetchResults = [
+      snapshot,
+      {
+        data: ref(null),
+        error: ref({
+          statusCode: 409,
+          data: {
+            message:
+              'Replay incomplete — action log was truncated; cannot reconstruct from cycle 1',
+          },
+        }),
+      },
+    ]
+    const wrapper = await mountReplay()
+    const notice = wrapper.find('[data-testid="replay-integrity-notice"]')
+    expect(notice.exists()).toBe(true)
+    expect(notice.text()).toContain('INCOMPLETE REPLAY')
+    expect(notice.text()).toContain('truncated')
+    expect(notice.text()).toContain('500')
+    expect(notice.text()).toContain('900')
+  })
+
+  it('notes when frames alone failed even if the end-state dump is complete', async () => {
+    fetchResults = [
+      replayResult(),
+      {
+        data: ref(null),
+        error: ref({
+          statusCode: 503,
+          data: { message: 'Replay action log unavailable' },
+        }),
+      },
+    ]
+    const wrapper = await mountReplay()
+    const notice = wrapper.find('[data-testid="replay-frames-unavailable"]')
+    expect(notice.exists()).toBe(true)
+    expect(notice.text()).toContain('Frame scrubber unavailable')
+    expect(notice.text()).toContain('Replay action log unavailable')
+  })
 })

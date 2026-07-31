@@ -10,6 +10,16 @@ definePageMeta({ ssr: false })
 const route = useRoute()
 const gameId = computed(() => String(route.params.gameId))
 
+interface ReplayIntegrity {
+  complete: boolean
+  truncated: boolean
+  readFailed: boolean
+  entryCount: number
+  firstLoggedCycle: number | null
+  lastLoggedCycle: number | null
+  initialSnapshotCycle: number
+}
+
 interface ReplayPayload {
   gameId: string
   savedAt: number
@@ -40,6 +50,7 @@ interface ReplayPayload {
   }
   meta?: { players: { playerId: string; team: 'chaff' | 'audit'; heroId: string; mmr: number }[] }
   actions: { cycle: number; playerId: string; command: { type: string; [k: string]: unknown } }[]
+  integrity?: ReplayIntegrity
 }
 
 interface FramePlayer {
@@ -73,10 +84,42 @@ interface FramesPayload {
   totalTicks: number
   frames: Frame[]
   meta?: { players: { playerId: string; team: 'chaff' | 'audit'; heroId: string; mmr: number }[] }
+  integrity?: ReplayIntegrity
 }
 
 const { data, error, pending } = await useFetch<ReplayPayload>(`/api/replay/${gameId.value}`)
-const { data: framesData } = await useFetch<FramesPayload>(`/api/replay/${gameId.value}/frames`)
+const framesFetch = await useFetch<FramesPayload>(`/api/replay/${gameId.value}/frames`)
+const framesData = framesFetch.data
+// Component tests stub useFetch with a partial shape; default error to null.
+const framesError = framesFetch.error ?? ref(null)
+
+const integrityNotice = computed(() => {
+  const integrity = data.value?.integrity
+  if (!integrity || integrity.complete) return null
+  if (integrity.truncated) {
+    const from = integrity.firstLoggedCycle
+    const to = integrity.lastLoggedCycle
+    const range =
+      from != null && to != null ? ` Retained log covers cycles ${from}–${to}.` : ''
+    return `INCOMPLETE REPLAY — action log was truncated.${range} End-state dump only; scrubber frames were not reconstructed.`
+  }
+  if (integrity.readFailed) {
+    return 'INCOMPLETE REPLAY — action log could not be read.'
+  }
+  return 'INCOMPLETE REPLAY — log integrity unknown.'
+})
+
+const framesUnavailableNotice = computed(() => {
+  if (framesData.value || !framesError.value) return null
+  const msg = messageFromError(framesError.value)
+  if (/truncated|incomplete/i.test(msg)) {
+    return 'Frame scrubber unavailable — action log was truncated and cannot reconstruct from cycle 1.'
+  }
+  if (/after the game ends/i.test(msg)) {
+    return 'Frame scrubber unavailable until the match ends.'
+  }
+  return msg ? `Frame scrubber unavailable — ${msg}` : 'Frame scrubber unavailable.'
+})
 
 const scrubTick = ref(0)
 const maxTick = computed(() => {
@@ -304,6 +347,23 @@ watchEffect(() => {
       </div>
 
       <template v-else-if="data">
+        <div
+          v-if="integrityNotice"
+          class="border border-audit/60 bg-bg-panel p-3 t-caption text-audit"
+          data-testid="replay-integrity-notice"
+          role="status"
+        >
+          {{ integrityNotice }}
+        </div>
+        <div
+          v-else-if="framesUnavailableNotice"
+          class="border border-border bg-bg-panel p-3 t-caption text-text-dim"
+          data-testid="replay-frames-unavailable"
+          role="status"
+        >
+          {{ framesUnavailableNotice }}
+        </div>
+
         <!-- Score banner — driven by the current frame so it scrubs with the slider -->
         <div class="grid grid-cols-3 items-stretch border border-border bg-bg-panel">
           <div class="border-r border-border p-3 text-center bloom-chaff">
