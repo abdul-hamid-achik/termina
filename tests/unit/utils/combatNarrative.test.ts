@@ -682,12 +682,12 @@ describe('combatLog label helpers', () => {
     expect(ancientLabel('ancient_audit')).toBe('the AUDIT Terminal')
     // Unknown team falls back to a readable label rather than null/crash.
     expect(ancientLabel('ancient_neutral')).toBe('the neutral Terminal')
-    expect(ancientLabel('ice_mid_t1_rad')).toBeNull()
+    expect(ancientLabel('ice_mid-t1-chaff')).toBeNull()
     expect(ancientLabel('hero_echo')).toBeNull()
   })
 
   it('isStructureTarget is true only for ice/ancient string ids', () => {
-    expect(isStructureTarget('ice_mid_t1_rad')).toBe(true)
+    expect(isStructureTarget('ice_mid-t1-chaff')).toBe(true)
     expect(isStructureTarget('ancient_audit')).toBe(true)
     expect(isStructureTarget('hero_echo')).toBe(false)
     expect(isStructureTarget('creep_3')).toBe(false)

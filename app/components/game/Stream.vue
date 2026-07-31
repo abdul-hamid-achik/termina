@@ -289,7 +289,7 @@ function eventAriaLabel(line: CombatLine): string {
       @scroll="handleScroll"
     >
       <div v-for="beat in beats" :key="beat.tick" class="mb-0.5">
-        <!-- Tick beat header. The recap rides INSIDE the sticky block so the
+        <!-- Cycle beat header. The recap rides INSIDE the sticky block so the
              turn's bottom line stays on screen while its detail scrolls away. -->
         <div class="sticky top-0 z-[1] bg-bg-panel/95 select-none">
           <div class="flex items-center gap-1 px-2 py-px t-hud-xs tracking-wider text-text-muted">
