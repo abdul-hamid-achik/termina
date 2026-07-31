@@ -14,7 +14,7 @@ import {
   type DatabaseServiceApi,
 } from '~~/server/services/DatabaseService'
 import { truncateAll, client, testDb } from '../helpers/test-db'
-import { players } from '~~/server/db/schema'
+import { playerProviders, players } from '~~/server/db/schema'
 
 // Run one DatabaseService method against the real test DB.
 function run<A>(f: (svc: DatabaseServiceApi) => Effect.Effect<A>): Promise<A> {
@@ -54,6 +54,20 @@ describe('DatabaseService (real Postgres)', () => {
       const p = await run((s) => s.getPlayerByProvider('github', 'gh_1'))
       expect(p?.id).toBe('p1')
     })
+    it('uses playerProviders and backfills legacy provider rows', async () => {
+      await seedPlayer({ provider: 'github', providerId: 'gh_legacy' })
+      const p = await run((s) => s.getPlayerByProvider('github', 'gh_legacy'))
+      expect(p?.id).toBe('p1')
+
+      const [linked] = await testDb.select().from(playerProviders)
+      expect(linked).toMatchObject({ playerId: 'p1', provider: 'github', providerId: 'gh_legacy' })
+    })
+    it('finds a normalized provider row even when legacy columns are empty', async () => {
+      await seedPlayer()
+      await run((s) => s.linkProvider('p1', 'github', 'gh_normalized', 'ghuser', null))
+      const p = await run((s) => s.getPlayerByProvider('github', 'gh_normalized'))
+      expect(p?.id).toBe('p1')
+    })
     it('returns null when no provider match', async () => {
       await seedPlayer({ provider: 'github', providerId: 'gh_1' })
       expect(await run((s) => s.getPlayerByProvider('discord', 'gh_1'))).toBeNull()
@@ -87,9 +101,9 @@ describe('DatabaseService (real Postgres)', () => {
       )
     }
 
-    it('records a match (+ players) and returns the match id', async () => {
-      const id = await seedMatch('m1')
-      expect(id).toBe('m1')
+    it('records a match (+ players) and reports persistence success', async () => {
+      const persisted = await seedMatch('m1')
+      expect(persisted).toBe(true)
     })
     it('getMatch returns the match with its players; null when missing', async () => {
       await seedMatch('m1')
@@ -247,6 +261,16 @@ describe('DatabaseService (real Postgres)', () => {
       await run((s) => s.unlinkProvider('p1', 'github'))
       const provs = await run((s) => s.getPlayerProviders('p1'))
       expect(provs.map((p) => p.provider)).toEqual(['discord'])
+    })
+    it('clears matching legacy provider columns so OAuth cannot relink it', async () => {
+      await seedPlayer({ provider: 'github', providerId: 'gh_legacy' })
+      await run((s) => s.linkProvider('p1', 'github', 'gh_legacy', null, null))
+      await run((s) => s.unlinkProvider('p1', 'github'))
+
+      const player = await run((s) => s.getPlayer('p1'))
+      expect(player?.provider).toBeNull()
+      expect(player?.providerId).toBeNull()
+      expect(await run((s) => s.getPlayerByProvider('github', 'gh_legacy'))).toBeNull()
     })
   })
 

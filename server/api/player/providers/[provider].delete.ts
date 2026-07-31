@@ -31,8 +31,10 @@ export default defineEventHandler(async (event) => {
 
   const hasPassword = !!player.passwordHash
   const remainingProviders = providers.filter((p) => p.provider !== provider)
+  const hasRemainingLegacyProvider =
+    !!player.provider && !!player.providerId && player.provider !== provider
 
-  if (remainingProviders.length === 0 && !hasPassword) {
+  if (remainingProviders.length === 0 && !hasRemainingLegacyProvider && !hasPassword) {
     throw createError({
       statusCode: 400,
       message: 'Cannot disconnect your only login method. Set a password first.',

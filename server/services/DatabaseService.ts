@@ -47,7 +47,8 @@ export interface DatabaseServiceApi {
   ) => Effect.Effect<Player | null>
   readonly createPlayer: (data: NewPlayer) => Effect.Effect<Player>
   readonly updatePlayerMMR: (id: string, mmr: number) => Effect.Effect<void>
-  readonly recordMatch: (match: NewMatch, players: NewMatchPlayer[]) => Effect.Effect<string>
+  /** Persist a match, returning false only after all retry attempts fail. */
+  readonly recordMatch: (match: NewMatch, players: NewMatchPlayer[]) => Effect.Effect<boolean>
   readonly getMatchHistory: (playerId: string, limit?: number) => Effect.Effect<MatchHistoryEntry[]>
   readonly getMatch: (id: string) => Effect.Effect<MatchWithPlayers | null>
   readonly getLeaderboard: (limit?: number) => Effect.Effect<Player[]>
@@ -124,7 +125,20 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
   getPlayerByProvider: (provider, providerId) =>
     Effect.promise(async () => {
       const db = useDb()
-      const result = await db
+      // playerProviders is the source of truth for OAuth identities. The
+      // legacy columns are checked only for rows that predate the normalized
+      // provider table, and are migrated as part of that fallback lookup.
+      const linked = await db
+        .select({ player: players })
+        .from(playerProviders)
+        .innerJoin(players, eq(playerProviders.playerId, players.id))
+        .where(
+          and(eq(playerProviders.provider, provider), eq(playerProviders.providerId, providerId)),
+        )
+        .limit(1)
+      if (linked[0]?.player) return linked[0].player
+
+      const legacy = await db
         .select()
         .from(players)
         .where(
@@ -134,7 +148,44 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
           ),
         )
         .limit(1)
-      return result[0] ?? null
+      const player = legacy[0] ?? null
+      if (player) {
+        // The unique provider identity index makes this safe under concurrent
+        // OAuth callbacks. If another callback backfilled first, keep its row.
+        const backfilled = await db
+          .insert(playerProviders)
+          .values({
+            playerId: player.id,
+            provider,
+            providerId,
+            providerUsername: player.username,
+            providerAvatarUrl: player.avatarUrl,
+          })
+          .onConflictDoNothing({
+            target: [playerProviders.provider, playerProviders.providerId],
+          })
+          .returning({ playerId: playerProviders.playerId })
+        if (backfilled.length === 0) {
+          // A concurrent callback may have claimed this provider identity for
+          // another player between the two lookups. Re-read the authoritative
+          // row rather than authenticating against the stale legacy match.
+          const authoritative = await db
+            .select({ player: players })
+            .from(playerProviders)
+            .innerJoin(players, eq(playerProviders.playerId, players.id))
+            .where(
+              and(
+                eq(playerProviders.provider, provider),
+                eq(playerProviders.providerId, providerId),
+              ),
+            )
+            .limit(1)
+          // If the legacy row lost the race for this provider identity, never
+          // authenticate against it: the normalized row is authoritative.
+          return authoritative[0]?.player ?? null
+        }
+      }
+      return player
     }),
 
   createPlayer: (data) =>
@@ -201,7 +252,7 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
               Effect.annotateLogs({ matchId: match.id }),
             )
           }
-          return match.id
+          return true
         }
         lastErr = result.err
         if (attempt < MAX_RETRIES) {
@@ -212,12 +263,12 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
           yield* Effect.sleep(`${delay} millis`)
         }
       }
-      // All retries exhausted — log the error but still return the matchId
-      // (the game is already over; losing the record is logged, not fatal).
+      // All retries exhausted — report failure without failing the game-over
+      // fiber. Callers must not apply derived stats to an unpersisted match.
       yield* Effect.logError('Match persist failed after all retries').pipe(
         Effect.annotateLogs({ matchId: match.id, error: String(lastErr) }),
       )
-      return match.id
+      return false
     }),
 
   getMatchHistory: (playerId, limit = 20) =>
@@ -548,9 +599,26 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
   unlinkProvider: (playerId, provider) =>
     Effect.promise(async () => {
       const db = useDb()
-      await db
-        .delete(playerProviders)
-        .where(and(eq(playerProviders.playerId, playerId), eq(playerProviders.provider, provider)))
+      await db.transaction(async (tx) => {
+        await tx
+          .delete(playerProviders)
+          .where(
+            and(eq(playerProviders.playerId, playerId), eq(playerProviders.provider, provider)),
+          )
+
+        // OAuth lookup falls back to these deprecated columns for legacy rows.
+        // Clear them when they identify the provider being unlinked, otherwise
+        // a later OAuth login would silently recreate the link.
+        await tx
+          .update(players)
+          .set({ provider: null, providerId: null })
+          .where(
+            and(
+              eq(players.id, playerId),
+              eq(players.provider, provider as 'github' | 'discord' | 'local'),
+            ),
+          )
+      })
     }),
 
   getPlayerProviders: (playerId) =>
