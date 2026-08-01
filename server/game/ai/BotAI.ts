@@ -11,7 +11,11 @@ import type { Command, TargetRef } from '~~/shared/types/commands'
 import type { AbilityDef } from '~~/shared/types/hero'
 import { HEROES } from '~~/shared/constants/heroes'
 import { getItem } from '~~/shared/constants/items'
-import { recommendedItemsForRole } from '~~/shared/constants/itemBuilds'
+import {
+  recommendedItemsForRole,
+  damageMixForHeroes,
+  counterItemsFor,
+} from '~~/shared/constants/itemBuilds'
 import { getTalentTree } from '~~/shared/constants/talents'
 import { findPath, getDistance, areAdjacent } from '~~/server/game/map/topology'
 import {
@@ -23,7 +27,7 @@ import {
   waveUnitMaxHp,
 } from '~~/shared/constants/balance'
 import { LANE_ROUTES } from '~~/shared/constants/lanes'
-import { ZONE_MAP } from '~~/shared/constants/zones'
+import { ZONE_MAP, isShopZoneFor } from '~~/shared/constants/zones'
 import { TERMINAL_ZONES } from '~~/server/game/engine/TerminalSystem'
 import { fastGameFactor } from '~~/server/game/engine/fastGame'
 import { getAbilityLevel } from '~~/server/game/heroes/_base'
@@ -38,6 +42,20 @@ export const buildOrderForRole = recommendedItemsForRole
 
 // Defensive consumables bots keep stocked (one of each)
 const BOT_CONSUMABLES = ['trauma_patch', 'recall_token']
+
+/**
+ * Deaths before a bot will itemise against the enemy draft.
+ *
+ * The draft skew alone is NOT the trigger. A bot winning its lane against a
+ * code-heavy team is not being hurt by code damage, and making it buy ice
+ * anyway would only slow its build — the greedy order is correct while it is
+ * ahead. Deaths are the cheapest honest evidence that what the enemy deals is
+ * actually landing.
+ */
+const COUNTER_BUY_DEATHS = 3
+
+/** At most one counter item — past that the bot has stopped building a hero. */
+const MAX_COUNTER_ITEMS = 1
 
 // Heroes with invisibility abilities — drives SNIFFER purchasing.
 // Only Cipher (W) and Daemon (passive) grant stealth; see VisionCalculator's
@@ -904,7 +922,37 @@ function tryCombo(
   return null
 }
 
-function tryBuyItem(bot: PlayerState): Command | null {
+/**
+ * The counter item this bot should buy next, if any.
+ *
+ * Exported for the tests: the interesting cases are the ones where it returns
+ * NOTHING (balanced draft, bot not dying, counter already owned), and those are
+ * invisible from the outside — a bot that skips the counter buy and a bot that
+ * never considered one produce the same `buy` command.
+ */
+export function counterBuyFor(bot: PlayerState, state: GameState): string | null {
+  if (bot.deaths < COUNTER_BUY_DEATHS) return null
+
+  const enemyHeroIds = Object.values(state.players)
+    .filter((p) => p.team !== bot.team)
+    .map((p) => p.heroId)
+  const counters = counterItemsFor(damageMixForHeroes(enemyHeroIds))
+  if (counters.length === 0) return null
+
+  const owned = counters.filter((id) => bot.items.includes(id)).length
+  if (owned >= MAX_COUNTER_ITEMS) return null
+
+  // Cheapest affordable one it does not already have. No `break` on the first
+  // unaffordable entry: unlike the core build there is nothing to save FOR
+  // here, so a bot that cannot afford the cheap counter simply keeps building.
+  for (const itemId of counters) {
+    if (bot.items.includes(itemId)) continue
+    if (bot.scrip >= itemCost(itemId)) return itemId
+  }
+  return null
+}
+
+function tryBuyItem(bot: PlayerState, state: GameState): Command | null {
   if (getItemCount(bot) >= 6) return null
   // Keep one of each defensive consumable stocked before core items
   for (const item of BOT_CONSUMABLES) {
@@ -918,6 +966,11 @@ function tryBuyItem(bot: PlayerState): Command | null {
   if (role === 'support' && !bot.items.includes('camtap') && bot.scrip >= itemCost('camtap')) {
     return { type: 'buy', item: 'camtap' }
   }
+  // A bot that keeps dying to a lopsided draft buys against it, AHEAD of its
+  // next core item — the whole point is that it arrives before the next death.
+  const counter = counterBuyFor(bot, state)
+  if (counter) return { type: 'buy', item: counter }
+
   const buildOrder = buildOrderForRole(role)
   for (const itemId of buildOrder) {
     if (bot.items.includes(itemId)) continue
@@ -927,6 +980,69 @@ function tryBuyItem(bot: PlayerState): Command | null {
     break
   }
   return null
+}
+
+/**
+ * How much an item has to be worth before it is worth WALKING HOME for.
+ *
+ * The trip is not free: base and lane are three or four zones apart, so a
+ * round trip is roughly ten cycles of no farm, no XP and no lane presence.
+ * The 400-odd scrip starter items are not worth that — a bot picks those up on
+ * its next natural visit (a respawn, a retreat, or simply passing through its
+ * base). What IS worth the walk is the 1400-2500 core the bot has been saving
+ * for, which is exactly the band that was going unspent.
+ */
+const SHOPPING_TRIP_MIN_COST = 1000
+
+/**
+ * The next core item this bot could buy right now, if it were standing in a
+ * shop. `null` when it cannot afford the next thing on its list.
+ */
+function affordableCoreItem(bot: PlayerState): string | null {
+  if (getItemCount(bot) >= 6) return null
+  const role = bot.heroId ? HEROES[bot.heroId]?.role : undefined
+  for (const itemId of buildOrderForRole(role)) {
+    if (bot.items.includes(itemId)) continue
+    return bot.scrip >= itemCost(itemId) ? itemId : null
+  }
+  return null
+}
+
+/**
+ * Go and spend it.
+ *
+ * Bots only ever reached a shop by DYING. Between deaths their income just
+ * accumulated, so a twenty-minute match ended with heroes standing on two
+ * thousand unspent scrip and two consumables — the bot had the item, it just
+ * never walked to the counter. Farm is worth ~4sc/cycle passive plus strips;
+ * a 2300sc core is worth far more than the ten cycles the round trip costs,
+ * which is exactly why human players go back.
+ *
+ * Deliberately ABOVE wave farming in the decision order: "there is still a
+ * wave here" is always true, so anything ranked below it never fires. Below
+ * combat and objectives, so a bot never walks out of a fight to shop.
+ */
+function tryShoppingTrip(
+  state: GameState,
+  bot: PlayerState,
+  hasZone: (id: string) => boolean,
+): Command | null {
+  if (isShopZoneFor(bot.zone, bot.team)) return null
+  if (getEnemyHeroesInZone(state, bot).length > 0) return null
+  const item = affordableCoreItem(bot)
+  if (!item || itemCost(item) < SHOPPING_TRIP_MIN_COST) return null
+
+  const home = getFountainZone(bot.team)
+  // A recall is faster than the walk and the bot is already carrying one for
+  // exactly this kind of trip.
+  if (
+    bot.items.includes('recall_token') &&
+    getDistance(bot.zone, home, hasZone) > TP_RETREAT_MIN_DISTANCE
+  ) {
+    return { type: 'use', item: 'recall_token' }
+  }
+  const path = findPath(bot.zone, home, hasZone)
+  return path.length > 1 ? { type: 'move', zone: path[1]! } : null
 }
 
 // Strategic ward spots — the cache/river control points worth team vision.
@@ -1590,8 +1706,11 @@ export function decideBotAction(
     }
     return null
   }
-  if (isInFountain(bot)) {
-    const buyCmd = tryBuyItem(bot)
+  // Any shop zone, not just the fountain. Bases sell too, and a bot walks
+  // through its own base on the way out of every respawn — gating purchases on
+  // the anchor alone threw away a free shopping stop each trip.
+  if (isShopZoneFor(bot.zone, bot.team)) {
+    const buyCmd = tryBuyItem(bot, state)
     if (buyCmd) return buyCmd
     // Buy sentry wards when enemy has invisibility heroes
     const sentryBuy = tryBuySentryWard(bot, state)
@@ -1611,11 +1730,16 @@ export function decideBotAction(
         return { type: 'sell', item: sellItem }
       }
     }
-    if (getHpPercent(bot) >= 95 && getMpPercent(bot) >= 95) {
-      const nextZone = getNextLaneZone(bot, assignedLane, hasZone)
-      if (nextZone) return { type: 'move', zone: nextZone }
+    // Only the fountain regenerates, so only there is standing still worth a
+    // cycle. Done shopping in the BASE, the bot falls through to the normal
+    // decision tree and walks itself back out.
+    if (isInFountain(bot)) {
+      if (getHpPercent(bot) >= 95 && getMpPercent(bot) >= 95) {
+        const nextZone = getNextLaneZone(bot, assignedLane, hasZone)
+        if (nextZone) return { type: 'move', zone: nextZone }
+      }
+      return null
     }
-    return null
   }
   // Stand still while channeling TP — moving would cancel it
   if (bot.buffs.some((b) => b.id === 'tp_channeling')) {
@@ -1751,6 +1875,11 @@ export function decideBotAction(
   // Clear the wave. A failed last-hit roll re-aims at the second-lowest
   // wave; it must never return null, which is what left production bots idling
   // in lane instead of pushing — one half of the "bots look stuck" report.
+  // Banked enough for the next core? Go and buy it. See tryShoppingTrip for
+  // why this outranks farming.
+  const shopCmd = tryShoppingTrip(state, bot, hasZone)
+  if (shopCmd) return shopCmd
+
   if (enemyWaves.length > 0) {
     const waveTarget = pickWaveTarget(enemyWaves, bot, state.cycle, config)
     // Wave targets use zone-local indices (Nth wave in the attacker's zone)

@@ -1,4 +1,5 @@
-import type { HeroRole } from '~~/shared/types/hero'
+import type { HeroId, HeroRole } from '~~/shared/types/hero'
+import { HEROES } from '~~/shared/constants/heroes'
 
 /**
  * Canonical "what to build per role" item lists — the SINGLE source shared by
@@ -65,4 +66,81 @@ const ROLE_BUILD_ORDERS: Record<HeroRole, string[]> = {
 /** The recommended item list for a hero's role (falls back to the core build). */
 export function recommendedItemsForRole(role: HeroRole | undefined): string[] {
   return (role && ROLE_BUILD_ORDERS[role]) || CORE_BUILD_ORDER
+}
+
+/**
+ * What a team's damage is made of.
+ *
+ * `codeShare` is the fraction of its mitigable damage that ice reduces rather
+ * than plate — 1 means everything it throws is code, 0 means everything is
+ * kinetic. Black damage is deliberately excluded: nothing you can buy reduces
+ * it, so counting it would dilute a signal whose only purpose is choosing
+ * between plate and ice.
+ */
+export interface DamageMix {
+  kinetic: number
+  code: number
+  /** 0..1, or `null` when the team deals no mitigable damage at all. */
+  codeShare: number | null
+}
+
+/**
+ * The damage mix of a set of heroes, from their kits.
+ *
+ * Each hero contributes one point for its basic attack — which it throws every
+ * cycle it is in range, so it is never a minor part of the profile — and one
+ * point per damaging ability. That is coarse on purpose: the alternative is
+ * weighting by ability damage numbers, which would swing the profile every
+ * balance patch and encode "what hurts right now" rather than "what kind of
+ * damage this draft is".
+ */
+export function damageMixForHeroes(heroIds: Array<string | null | undefined>): DamageMix {
+  let kinetic = 0
+  let code = 0
+  for (const id of heroIds) {
+    const hero = id ? HEROES[id as HeroId] : undefined
+    if (!hero) continue
+    if (hero.attackType === 'code') code++
+    else kinetic++
+    for (const ability of Object.values(hero.abilities)) {
+      for (const effect of ability.effects ?? []) {
+        if (effect.type !== 'damage') continue
+        // An ability with no explicit type deals the hero's attack type.
+        const dt = effect.damageType ?? hero.attackType
+        if (dt === 'code') code++
+        else if (dt === 'kinetic') kinetic++
+      }
+    }
+  }
+  const total = kinetic + code
+  return { kinetic, code, codeShare: total === 0 ? null : code / total }
+}
+
+/**
+ * How lopsided a draft must be before itemising against it.
+ *
+ * Below this the two mitigations are worth about the same and buying for the
+ * matchup is just buying worse core items.
+ */
+export const COUNTER_SKEW_THRESHOLD = 0.62
+
+/**
+ * Counter items, cheapest first, for a team whose damage looks like `mix`.
+ *
+ * Returns `[]` when the draft is balanced — the caller should then stick to the
+ * role build. Every entry grants the relevant mitigation stat; the lists stay
+ * short because a bot that buys three counter items has stopped building a
+ * hero.
+ */
+export function counterItemsFor(mix: DamageMix): string[] {
+  if (mix.codeShare === null) return []
+  // Ice, for a code-heavy enemy.
+  if (mix.codeShare >= COUNTER_SKEW_THRESHOLD) {
+    return ['discord_routine', 'intercept_shell', 'lockout_shunt']
+  }
+  // Plate, for a kinetic-heavy enemy.
+  if (1 - mix.codeShare >= COUNTER_SKEW_THRESHOLD) {
+    return ['bulwark_plate', 'ablative_shell', 'mirror_shell']
+  }
+  return []
 }
