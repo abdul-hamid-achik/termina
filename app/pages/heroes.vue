@@ -263,8 +263,13 @@ const {
           <span class="text-[0.65rem] uppercase tracking-widest text-chaff">{{
             hero.posture
           }}</span>
+          <!-- POSTURE is the axis a player reads. `role` (carry/tank/mage/…) is
+               borrowed vocabulary that survives only because BotManager's route
+               priority and itemBuilds' ROLE_BUILD_ORDERS consume it, so it is
+               not rendered anywhere. It stays searchable in the picker for
+               players arriving from other MOBAs. -->
           <span class="text-[0.62rem] uppercase tracking-widest text-text-dim">{{
-            hero.role
+            CAST[selectedId as HeroId].origin
           }}</span>
           <!-- Reverse funnel: jump to this hero's lore card on /lore. -->
           <NuxtLink

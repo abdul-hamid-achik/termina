@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { getRankTier } from '~~/shared/constants/ranks'
 import { Effect } from 'effect'
 import type { H3Event } from 'h3'
 
@@ -373,7 +374,10 @@ describe('API endpoints', () => {
         username: 'alice',
         mmr: 2000,
         winRate: 70,
-        rankName: 'Diamond',
+        // Derived, not spelled: the ladder's labels are content and were
+        // renamed once already; what this asserts is that the endpoint resolves
+        // the tier for the player's seasonal rating at all.
+        rankName: getRankTier(2000).name,
       })
       expect(result.leaderboard[1]).toMatchObject({ rank: 2, username: 'bob', winRate: 0 })
       expect(result.season).toMatchObject({ number: 1 })

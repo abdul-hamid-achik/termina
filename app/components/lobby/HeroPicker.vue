@@ -512,6 +512,10 @@ function initialOf(name: string | undefined | null): string {
           [Clear]
         </button>
       </div>
+      <!-- Each card's spoken label carries POSTURE, never `role`. carry/tank/mage
+           is borrowed vocabulary that survives only for BotManager's route
+           priority and itemBuilds' ROLE_BUILD_ORDERS; it stays in the text filter
+           above so "tank" still finds Kernel, but it is never read out. -->
       <div class="grid grid-cols-2 gap-1.5 sm:grid-cols-[repeat(auto-fill,minmax(140px,1fr))]">
         <div
           v-for="hero in filteredHeroes"
@@ -526,7 +530,7 @@ function initialOf(name: string | undefined | null): string {
               ? `${hero.name}, banned`
               : hero.picked
                 ? `${hero.name}, already picked`
-                : `${hero.name}, ${hero.posture} ${hero.role}${hero.beginner ? ', beginner friendly' : ''}`
+                : `${hero.name}, ${hero.posture}${hero.beginner ? ', beginner friendly' : ''}`
           "
           :data-posture="hero.posture"
           class="relative cursor-pointer border border-border bg-bg-panel p-2 transition-all duration-150"

@@ -242,7 +242,7 @@ describe('Item Registry', () => {
     it('fracture_edge has a passive crit ability', () => {
       const item = getItem('fracture_edge')!
       expect(item.passive).toBeDefined()
-      expect(item.passive!.name).toBe('Critical Strike')
+      expect(item.passive!.name).toBe('Fracture')
     })
 
     it('killshot_coil has a stronger passive crit', () => {
@@ -257,10 +257,10 @@ describe('Item Registry', () => {
       expect(item.passive!.name).toBe('Corruption')
     })
 
-    it('bulwark_plate has damage block passive', () => {
+    it('bulwark_plate has a hit-blocking passive', () => {
       const item = getItem('bulwark_plate')!
       expect(item.passive).toBeDefined()
-      expect(item.passive!.name).toBe('Damage Block')
+      expect(item.passive!.name).toBe('Bulwark')
     })
 
     it('stack_overflow has an active ability', () => {
@@ -273,7 +273,7 @@ describe('Item Registry', () => {
     it('segfault_blade has a passive ability', () => {
       const item = getItem('segfault_blade')!
       expect(item.passive).toBeDefined()
-      expect(item.passive!.name).toBe('Segmentation Fault')
+      expect(item.passive!.name).toBe('Segfault')
     })
 
     it('ablative_shell has an active ability', () => {
@@ -286,25 +286,25 @@ describe('Item Registry', () => {
     it('burnout has an active damage ability', () => {
       const item = getItem('burnout')!
       expect(item.active).toBeDefined()
-      expect(item.active!.name).toBe('Energy Burst')
+      expect(item.active!.name).toBe('Burnout')
     })
 
-    it('hardshell has magic immunity active', () => {
+    it('hardshell has an AIRGAP active', () => {
       const item = getItem('hardshell')!
       expect(item.active).toBeDefined()
-      expect(item.active!.name).toBe('Avatar')
+      expect(item.active!.name).toBe('Airgap')
     })
 
-    it('lockout_shunt has hex active', () => {
+    it('lockout_shunt has a lockout active', () => {
       const item = getItem('lockout_shunt')!
       expect(item.active).toBeDefined()
-      expect(item.active!.name).toBe('Hex')
+      expect(item.active!.name).toBe('Lockout')
     })
 
     it('redline_splice resets cooldowns', () => {
       const item = getItem('redline_splice')!
       expect(item.active).toBeDefined()
-      expect(item.active!.name).toBe('Reset Cooldowns')
+      expect(item.active!.name).toBe('Redline')
       expect(item.active!.cooldownCycles).toBe(40)
     })
 
@@ -469,6 +469,72 @@ describe('Item Registry', () => {
           .replace(/[^a-z0-9]+/g, '_')
           .replace(/^_+|_+$/g, '')
         expect(def.id, `${def.id} is not the snake_case of "${def.name}"`).toBe(expected)
+      }
+    })
+
+    /**
+     * Rule 1 of the law is "no Dota names", and it was enforced by review alone
+     * — on the ITEM name only. Every item's `active`/`passive` name, which the
+     * shop card and the inventory tooltip both render, kept the borrowed
+     * ability it was ported from: Hardshell's active was called "Avatar" while
+     * its own description said "Gain AIRGAP", Lockout Shunt's was "Hex", CAMTAP's
+     * was "Place Ward", and three separate items shared "Critical Strike".
+     */
+    it('no item, active or passive name is a borrowed ability name', () => {
+      const BORROWED = [
+        'critical strike',
+        'chain lightning',
+        'true strike',
+        'divine damage',
+        'shadow walk',
+        'bash',
+        'arcane power',
+        'discord',
+        'arctic blast',
+        'ethereal',
+        'ether blast',
+        'damage block',
+        'spellblock',
+        'avatar',
+        'assault aura',
+        'echo shell',
+        'force',
+        'hurricane thrust',
+        'hex',
+        'cyclone',
+        'ghost form',
+        'blink',
+        'smoke',
+        'place ward',
+        'energy burst',
+        'segmentation fault',
+        'reset cooldowns',
+      ]
+      for (const def of Object.values(ITEMS)) {
+        for (const [kind, ability] of [
+          ['item', { name: def.name }],
+          ['active', def.active],
+          ['passive', def.passive],
+        ] as const) {
+          if (!ability?.name) continue
+          expect(
+            BORROWED,
+            `${def.id} ${kind} name "${ability.name}" is a borrowed ability name (rule 1)`,
+          ).not.toContain(ability.name.toLowerCase())
+        }
+      }
+    })
+
+    /** A name that repeats across items teaches the player nothing about either. */
+    it('no two items share an active or passive name', () => {
+      const seen = new Map<string, string>()
+      for (const def of Object.values(ITEMS)) {
+        for (const ability of [def.active, def.passive]) {
+          if (!ability?.name) continue
+          const prior = seen.get(ability.name)
+          expect(prior, `"${ability.name}" is on both ${prior} and ${def.id}`).toBeUndefined()
+          seen.set(ability.name, def.id)
+        }
       }
     })
   })

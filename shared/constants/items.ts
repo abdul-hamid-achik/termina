@@ -36,7 +36,7 @@ const healingSalve: ItemDef = {
   maxStacks: 3,
   active: {
     id: 'trauma_patch_active',
-    name: 'Heal',
+    name: 'Patch',
     description: 'Restore 200 INTEG over 4 cycles.',
     cooldownCycles: 0,
   },
@@ -51,7 +51,7 @@ const manaVial: ItemDef = {
   maxStacks: 3,
   active: {
     id: 'charge_tab_active',
-    name: 'Restore BW',
+    name: 'Top Up',
     description: 'Instantly restore 150 BW.',
     cooldownCycles: 0,
   },
@@ -79,7 +79,7 @@ const powerTreads: ItemDef = {
   consumable: false,
   active: {
     id: 'gait_rig_active',
-    name: 'Toggle',
+    name: 'Switch Gait',
     description: 'Switch between +15 attack, +150 INTEG, or +100 BW.',
     cooldownCycles: 0,
   },
@@ -93,7 +93,7 @@ const ringOfHealth: ItemDef = {
   consumable: false,
   passive: {
     id: 'clot_ring_passive',
-    name: 'Regeneration',
+    name: 'Clotting',
     description: 'Restore 2% max INTEG per cycle.',
   },
 }
@@ -106,7 +106,7 @@ const sobiMask: ItemDef = {
   consumable: false,
   passive: {
     id: 'drip_mask_passive',
-    name: 'BW Regen',
+    name: 'Drip Feed',
     description: 'Restore 2% max BW per cycle.',
   },
 }
@@ -158,7 +158,7 @@ const fracture_edge: ItemDef = {
   consumable: false,
   passive: {
     id: 'fracture_edge_passive',
-    name: 'Critical Strike',
+    name: 'Fracture',
     description: '20% chance to deal 1.75x damage on attack.',
   },
 }
@@ -171,7 +171,7 @@ const killshot_coil: ItemDef = {
   consumable: false,
   passive: {
     id: 'killshot_coil_passive',
-    name: 'Critical Strike',
+    name: 'Killshot',
     description: '30% chance to deal 2.4x damage on attack.',
   },
 }
@@ -184,7 +184,7 @@ const arc_coil: ItemDef = {
   consumable: false,
   passive: {
     id: 'arc_coil_passive',
-    name: 'Chain Lightning',
+    name: 'Arc Jump',
     description: '25% chance on attack to deal 60 code damage to a nearby enemy.',
   },
 }
@@ -197,7 +197,7 @@ const monkeyKingBar: ItemDef = {
   consumable: false,
   passive: {
     id: 'truestrike_rig_passive',
-    name: 'True Strike',
+    name: 'Lock On',
     description: 'Attacks cannot miss and deal bonus 50 code damage.',
   },
 }
@@ -210,7 +210,7 @@ const divineRapier: ItemDef = {
   consumable: false,
   passive: {
     id: 'last_word_passive',
-    name: 'Divine Damage',
+    name: 'Last Word',
     description: 'Drops on death. Cannot be sold.',
   },
 }
@@ -223,7 +223,7 @@ const silverEdge: ItemDef = {
   consumable: false,
   active: {
     id: 'ghostwire_edge_active',
-    name: 'Shadow Walk',
+    name: 'Ghostwire',
     description: 'Become invisible for 3 cycles. Next attack from invis deals 150 bonus damage.',
     cooldownCycles: 18,
   },
@@ -237,7 +237,7 @@ const skullBasher: ItemDef = {
   consumable: false,
   passive: {
     id: 'concussion_hammer_passive',
-    name: 'Bash',
+    name: 'Concussion',
     description: '25% chance on attack to stun target for 1 cycle.',
   },
 }
@@ -252,7 +252,7 @@ const mysticalStaff: ItemDef = {
   consumable: false,
   passive: {
     id: 'amp_stack_passive',
-    name: 'Arcane Power',
+    name: 'Amp',
     description: 'Increase all code damage dealt by 15%.',
   },
 }
@@ -265,7 +265,7 @@ const veilOfDiscord: ItemDef = {
   consumable: false,
   active: {
     id: 'discord_routine_active',
-    name: 'Discord',
+    name: 'Desync',
     description: 'Enemies in zone take 25% more code damage for 4 cycles.',
     cooldownCycles: 15,
   },
@@ -279,7 +279,7 @@ const shivasGuard: ItemDef = {
   consumable: false,
   active: {
     id: 'cryo_routine_active',
-    name: 'Arctic Blast',
+    name: 'Cryo Dump',
     description: 'Deal 100 code damage to enemies in zone and slow them for 2 cycles.',
     cooldownCycles: 20,
   },
@@ -293,7 +293,7 @@ const aetherLens: ItemDef = {
   consumable: false,
   passive: {
     id: 'clock_lens_passive',
-    name: 'Ethereal',
+    name: 'Clock Skew',
     description: 'Reduce all ability cooldowns by 1 cycle.',
   },
 }
@@ -306,7 +306,7 @@ const burnout: ItemDef = {
   consumable: false,
   active: {
     id: 'dagon_active',
-    name: 'Energy Burst',
+    name: 'Burnout',
     description: 'Deal 300 code damage to target hero in same or adjacent zone.',
     cooldownCycles: 18,
     targetType: 'enemy',
@@ -321,7 +321,7 @@ const etherealBlade: ItemDef = {
   consumable: false,
   active: {
     id: 'phase_shim_active',
-    name: 'Ether Blast',
+    name: 'Dephase',
     description:
       'Target becomes ethereal for 2 cycles (immune to kinetic, vulnerable to code +40%).',
     cooldownCycles: 15,
@@ -338,7 +338,7 @@ const bulwark_plate: ItemDef = {
   consumable: false,
   passive: {
     id: 'bulwark_plate_passive',
-    name: 'Damage Block',
+    name: 'Bulwark',
     description: 'Block 50 damage from each attack (60% chance).',
   },
 }
@@ -351,7 +351,7 @@ const linkensSphere: ItemDef = {
   consumable: false,
   passive: {
     id: 'intercept_shell_passive',
-    name: 'Spellblock',
+    name: 'Intercept',
     description: 'Block one targeted ability every 12 cycles.',
   },
 }
@@ -364,7 +364,7 @@ const blackKingBar: ItemDef = {
   consumable: false,
   active: {
     id: 'hardshell_active',
-    name: 'Avatar',
+    name: 'Airgap',
     description: 'Gain AIRGAP for 4 cycles — immune to code damage and debuffs.',
     cooldownCycles: 25,
   },
@@ -378,7 +378,7 @@ const heartOfTarrasque: ItemDef = {
   consumable: false,
   passive: {
     id: 'bulk_lattice_passive',
-    name: 'Regeneration',
+    name: 'Bulk Repair',
     description: 'Restore 5% max INTEG per cycle when out of combat for 3 cycles.',
   },
 }
@@ -391,7 +391,7 @@ const assaultCuirass: ItemDef = {
   consumable: false,
   passive: {
     id: 'siege_lattice_passive',
-    name: 'Assault Aura',
+    name: 'Siege Uplink',
     description: 'Allies in zone gain +5 plate. Enemies in zone have -5 plate.',
   },
 }
@@ -404,7 +404,7 @@ const lotusOrb: ItemDef = {
   consumable: false,
   active: {
     id: 'mirror_shell_active',
-    name: 'Echo Shell',
+    name: 'Mirror',
     description: 'Target reflects the next ability cast on them back to the caster.',
     cooldownCycles: 15,
   },
@@ -434,7 +434,7 @@ const forceStaff: ItemDef = {
   consumable: false,
   active: {
     id: 'shove_splice_active',
-    name: 'Force',
+    name: 'Shove',
     description: 'Push yourself or an ally one zone toward your fountain — a quick disengage.',
     cooldownCycles: 12,
   },
@@ -448,7 +448,7 @@ const hurricanePike: ItemDef = {
   consumable: false,
   active: {
     id: 'kickback_splice_active',
-    name: 'Hurricane Thrust',
+    name: 'Kickback',
     description:
       'Push self to an adjacent zone away from a target enemy, gaining +30 attack for 2 cycles.',
     cooldownCycles: 14,
@@ -464,7 +464,7 @@ const scytheOfVyse: ItemDef = {
   consumable: false,
   active: {
     id: 'lockout_shunt_active',
-    name: 'Hex',
+    name: 'Lockout',
     description: 'Transform target hero into a critter for 2 cycles (cannot attack or cast).',
     cooldownCycles: 20,
     targetType: 'enemy',
@@ -479,7 +479,7 @@ const eulsScepter: ItemDef = {
   consumable: false,
   active: {
     id: 'stasis_shunt_active',
-    name: 'Cyclone',
+    name: 'Stasis',
     description: 'Target is invulnerable and disabled for 2 cycles.',
     cooldownCycles: 15,
   },
@@ -493,7 +493,7 @@ const refresherOrb: ItemDef = {
   consumable: false,
   active: {
     id: 'redline_splice_active',
-    name: 'Reset Cooldowns',
+    name: 'Redline',
     description: 'Reset all ability cooldowns.',
     cooldownCycles: 40,
   },
@@ -507,7 +507,7 @@ const ghostScepter: ItemDef = {
   consumable: false,
   active: {
     id: 'phase_shunt_active',
-    name: 'Ghost Form',
+    name: 'Phase Out',
     description: 'Become immune to kinetic damage for 2 cycles. Cannot attack.',
     cooldownCycles: 20,
   },
@@ -523,7 +523,7 @@ const blinkModule: ItemDef = {
   consumable: false,
   active: {
     id: 'jump_shunt_active',
-    name: 'Blink',
+    name: 'Jump',
     description: 'Teleport to an adjacent zone instantly.',
     cooldownCycles: 12,
   },
@@ -537,7 +537,7 @@ const nullPointer: ItemDef = {
   consumable: false,
   passive: {
     id: 'null_pointer_passive',
-    name: 'Critical Strike',
+    name: 'Null Deref',
     description: '15% chance to deal 1.5x damage on attack.',
   },
 }
@@ -550,7 +550,7 @@ const garbageCollector: ItemDef = {
   consumable: false,
   passive: {
     id: 'garbage_collector_passive',
-    name: 'Recovery',
+    name: 'Collect',
     description: 'Regenerate 5% max INTEG per cycle when out of combat (no damage for 3 cycles).',
   },
 }
@@ -563,7 +563,7 @@ const stackOverflow: ItemDef = {
   consumable: false,
   active: {
     id: 'stack_overflow_active',
-    name: 'Overclock',
+    name: 'Overflow',
     description: 'Next ability deals 2x damage.',
     cooldownCycles: 20,
   },
@@ -577,7 +577,7 @@ const segfaultBlade: ItemDef = {
   consumable: false,
   passive: {
     id: 'segfault_blade_passive',
-    name: 'Segmentation Fault',
+    name: 'Segfault',
     description: 'Hero kills reset all ability cooldowns.',
   },
 }
@@ -590,7 +590,7 @@ const firewallItem: ItemDef = {
   consumable: false,
   active: {
     id: 'ablative_shell_active',
-    name: 'Block',
+    name: 'Ablate',
     description: 'Block the next incoming ability.',
     cooldownCycles: 30,
   },
@@ -607,7 +607,7 @@ const camtapWard: ItemDef = {
   maxStacks: 4,
   active: {
     id: 'camtap_active',
-    name: 'Place Ward',
+    name: 'Place Camtap',
     description:
       'Place in a zone for vision lasting 45 cycles. Max 3 active per team (shared with sniffers).',
     cooldownCycles: 0,
@@ -641,7 +641,7 @@ const smokeOfDeceit: ItemDef = {
   maxStacks: 3,
   active: {
     id: 'blackout_can_active',
-    name: 'Smoke',
+    name: 'Blackout',
     description:
       'Team becomes invisible to enemy vision for 3 cycles. Breaks on entering enemy zone with heroes.',
     cooldownCycles: 0,
@@ -657,7 +657,7 @@ const dustOfAppearance: ItemDef = {
   maxStacks: 2,
   active: {
     id: 'tracer_dust_active',
-    name: 'Reveal',
+    name: 'Trace',
     description: 'Reveal all invisible enemies in current and adjacent zones for 2 cycles.',
     cooldownCycles: 0,
   },
@@ -672,7 +672,7 @@ const townPortalScroll: ItemDef = {
   maxStacks: 3,
   active: {
     id: 'recall_token_active',
-    name: 'Teleport',
+    name: 'Recall',
     description: 'Teleport to friendly fountain after 2 cycle channel.',
     cooldownCycles: 0,
   },

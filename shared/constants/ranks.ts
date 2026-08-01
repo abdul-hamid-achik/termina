@@ -14,15 +14,32 @@ export interface RankTier {
   minMmr: number
 }
 
-/** Ordered low → high. A player's tier is the last entry whose minMmr they meet. */
+/**
+ * Ordered low → high. A player's tier is the last entry whose minMmr they meet.
+ *
+ * The ladder is standing on the wire, not a shelf of metals. Iron → Diamond is
+ * the ladder every competitive game ships and it said nothing about a
+ * cable-landing city; it also carried a `scrip` id under the name "Gold", left
+ * behind when the currency sweep hit the id and missed the label.
+ *
+ * The register climbs from having no record at all to being the reason the
+ * cables come ashore here:
+ *   UNLISTED   — no file on you
+ *   STRINGER   — freelance, paid per job
+ *   RUNNER     — trusted to carry
+ *   FIXER      — trusted to arrange
+ *   SHOTCALLER — trusted to decide
+ *   DEEPWATER  — out past the shelf, where the trunks run
+ *   LANDFALL   — where the twelve trunks come ashore. There is no higher ground.
+ */
 export const RANK_TIERS: RankTier[] = [
-  { id: 'iron', name: 'Iron', minMmr: 0 },
-  { id: 'bronze', name: 'Bronze', minMmr: 700 },
-  { id: 'silver', name: 'Silver', minMmr: 1000 },
-  { id: 'scrip', name: 'Gold', minMmr: 1300 },
-  { id: 'platinum', name: 'Platinum', minMmr: 1600 },
-  { id: 'diamond', name: 'Diamond', minMmr: 1900 },
-  { id: 'terminal', name: 'Terminal', minMmr: 2200 },
+  { id: 'unlisted', name: 'Unlisted', minMmr: 0 },
+  { id: 'stringer', name: 'Stringer', minMmr: 700 },
+  { id: 'runner', name: 'Runner', minMmr: 1000 },
+  { id: 'fixer', name: 'Fixer', minMmr: 1300 },
+  { id: 'shotcaller', name: 'Shotcaller', minMmr: 1600 },
+  { id: 'deepwater', name: 'Deepwater', minMmr: 1900 },
+  { id: 'landfall', name: 'Landfall', minMmr: 2200 },
 ]
 
 /**
