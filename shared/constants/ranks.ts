@@ -25,6 +25,18 @@ export const RANK_TIERS: RankTier[] = [
   { id: 'terminal', name: 'Terminal', minMmr: 2200 },
 ]
 
+/**
+ * Season games a player must finish before they appear on the ladder.
+ *
+ * Without this the leaderboard is a registration list: every account that has
+ * ever signed up sits at the 1000 baseline with 0-0 and a SILVER tier, so the
+ * board opens on a wall of identical rows that say nothing about anybody. A
+ * placement requirement is also what makes the top of the board mean something
+ * on day one — an unplayed 1000 would otherwise outrank a real player who lost
+ * their first match.
+ */
+export const PLACEMENT_GAMES = 3
+
 /** Resolve the rank tier for a given (seasonal) MMR. */
 export function getRankTier(mmr: number): RankTier {
   let tier = RANK_TIERS[0]!

@@ -1,6 +1,7 @@
 import { Context, Effect, Layer } from 'effect'
 import { eq, desc, and, sql, inArray } from 'drizzle-orm'
 import { useDb, closeDb } from '~~/server/db'
+import { PLACEMENT_GAMES } from '~~/shared/constants/ranks'
 import {
   players,
   matches,
@@ -431,10 +432,18 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
         .where(eq(players.id, playerId))
     }),
 
+  // Ranked players only. Selecting every row made the ladder a list of everyone
+  // who had ever registered — all sitting at the 1000 baseline with 0-0 — which
+  // also let an account that has never played outrank someone who lost a match.
   getSeasonLeaderboard: (limit = 100) =>
     Effect.promise(async () => {
       const db = useDb()
-      return db.select().from(players).orderBy(desc(players.seasonMmr)).limit(limit)
+      return db
+        .select()
+        .from(players)
+        .where(sql`${players.seasonGamesPlayed} >= ${PLACEMENT_GAMES}`)
+        .orderBy(desc(players.seasonMmr))
+        .limit(limit)
     }),
 
   startNewSeason: () =>

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { ref, computed, defineComponent, Suspense, h, onMounted, onUnmounted } from 'vue'
+import { PLACEMENT_GAMES } from '~~/shared/constants/ranks'
 
 // ── Nuxt auto-import stubs ─────────────────────────────────────────
 //
@@ -223,12 +224,22 @@ describe('leaderboard page', () => {
   })
 
   describe('empty + loading states', () => {
-    it('shows the empty message when there are no players', async () => {
+    it('explains the placement requirement when the ladder is empty', async () => {
+      // An empty ladder is the DEFAULT state at launch, not an error: the board
+      // lists only players past PLACEMENT_GAMES. "No players found." read as a
+      // fault and left a new player with nothing to do about it.
       fetchResults = [leaderboardResult([]), activeResult([])]
       const wrapper = await mountLeaderboard()
 
-      expect(wrapper.text()).toContain('No players found.')
+      expect(wrapper.text()).toContain(`${PLACEMENT_GAMES} placement matches`)
+      expect(wrapper.find('a[href="/lobby"]').exists()).toBe(true)
       expect(wrapper.find('tbody').exists()).toBe(false)
+    })
+
+    it('states the qualification bar in the header', async () => {
+      fetchResults = [leaderboardResult([]), activeResult([])]
+      const wrapper = await mountLeaderboard()
+      expect(wrapper.text()).toContain(`${PLACEMENT_GAMES} ranked matches to qualify`)
     })
 
     it('shows a loading indicator while the fetch is pending', async () => {

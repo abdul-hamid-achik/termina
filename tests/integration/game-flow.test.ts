@@ -459,9 +459,13 @@ describe('Game Flow Integration', () => {
       expect('zone' in enemy).toBe(false)
       expect('scrip' in enemy).toBe(false)
 
-      // Waves in fogged zones are stripped from the payload
+      // Waves in fogged zones are stripped from the payload. This used to also
+      // assert `view.zones['audit-base'].waves` was empty — a field deleted from
+      // ZoneRuntimeState in 0e82d3c, so the assertion was reading `undefined`
+      // off a live object and comparing it to []. The top-level wave list is
+      // where waves actually live, and it is the real fog guarantee.
       expect(view.waves.some((c) => c.id === 'wave_fog_probe')).toBe(false)
-      expect(view.zones['audit-base']!.waves).toEqual([])
+      expect(view.zones['audit-base']).toBeDefined()
 
       // Once the enemy steps into chaff vision they are fully revealed
       const revealed = filterStateForPlayer(

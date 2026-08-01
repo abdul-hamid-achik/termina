@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { formatTickClock } from '~/utils/gameClock'
+import { PLACEMENT_GAMES } from '~~/shared/constants/ranks'
 
 interface LeaderboardEntry {
   rank: number
@@ -114,7 +115,9 @@ function gameTime(cycle: number): string {
 
     <TerminalPanel title="Leaderboard" title-as="h2">
       <div class="mb-3 border-b border-border pb-3">
-        <span class="text-[0.8rem] text-text-dim">&gt;_ top players by rating</span>
+        <span class="text-[0.8rem] text-text-dim"
+          >&gt;_ top players by rating — {{ PLACEMENT_GAMES }} ranked matches to qualify</span
+        >
       </div>
 
       <div v-if="status === 'pending'" class="py-6 text-center text-[0.85rem] text-text-dim">
@@ -129,7 +132,10 @@ function gameTime(cycle: number): string {
       </div>
 
       <div v-else-if="players.length === 0" class="py-6 text-center text-[0.85rem] text-text-dim">
-        No players found.
+        Nobody has finished their {{ PLACEMENT_GAMES }} placement matches yet.
+        <NuxtLink to="/lobby" class="text-ability no-underline hover:text-chaff"
+          >Be the first.</NuxtLink
+        >
       </div>
 
       <table v-else class="w-full border-collapse text-xs">

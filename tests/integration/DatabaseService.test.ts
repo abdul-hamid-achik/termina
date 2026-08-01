@@ -15,6 +15,8 @@ import {
 } from '~~/server/services/DatabaseService'
 import { truncateAll, client, testDb } from '../helpers/test-db'
 import { playerProviders, players } from '~~/server/db/schema'
+import { eq } from 'drizzle-orm'
+import { PLACEMENT_GAMES } from '~~/shared/constants/ranks'
 
 // Run one DatabaseService method against the real test DB.
 function run<A>(f: (svc: DatabaseServiceApi) => Effect.Effect<A>): Promise<A> {
@@ -166,6 +168,33 @@ describe('DatabaseService (real Postgres)', () => {
       const top = await run((s) => s.getLeaderboard())
       expect(top.map((p) => p.id)).toEqual(['b', 'a', 'c'])
       expect(await run((s) => s.getLeaderboard(2))).toHaveLength(2)
+    })
+  })
+
+  describe('getSeasonLeaderboard', () => {
+    // The ladder used to select every row, so it listed everyone who had ever
+    // registered — all at the 1000 baseline with 0-0 — and an account that had
+    // never played outranked a real player who had lost a match.
+    it('lists only players past the placement requirement, by season MMR', async () => {
+      await run((s) => s.createPlayer({ id: 'ranked_hi', username: 'hi', mmr: 1000 } as never))
+      await run((s) => s.createPlayer({ id: 'ranked_lo', username: 'lo', mmr: 1000 } as never))
+      await run((s) => s.createPlayer({ id: 'fresh', username: 'fresh', mmr: 1000 } as never))
+      await testDb
+        .update(players)
+        .set({ seasonMmr: 1400, seasonGamesPlayed: PLACEMENT_GAMES })
+        .where(eq(players.id, 'ranked_hi'))
+      await testDb
+        .update(players)
+        .set({ seasonMmr: 900, seasonGamesPlayed: PLACEMENT_GAMES + 5 })
+        .where(eq(players.id, 'ranked_lo'))
+      // One short of qualifying — the boundary that decides the whole feature.
+      await testDb
+        .update(players)
+        .set({ seasonMmr: 3000, seasonGamesPlayed: PLACEMENT_GAMES - 1 })
+        .where(eq(players.id, 'fresh'))
+
+      const board = await run((s) => s.getSeasonLeaderboard())
+      expect(board.map((p) => p.id)).toEqual(['ranked_hi', 'ranked_lo'])
     })
   })
 
