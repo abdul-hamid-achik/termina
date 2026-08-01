@@ -64,6 +64,15 @@ const mockAudioCtx = {
   createBuffer: vi.fn((_channels: number, length: number) => ({
     getChannelData: vi.fn(() => new Float32Array(length)),
   })),
+  // The palette drives and crushes: a missing factory here throws inside
+  // playSound's try/catch, so every assertion below would silently pass on a
+  // sound that never actually played.
+  createWaveShaper: vi.fn(() => ({
+    curve: null as Float32Array | null,
+    oversample: 'none' as OverSampleType,
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+  })),
   resume: vi.fn(),
 }
 
@@ -161,21 +170,26 @@ describe('useAudio', () => {
     expect(mockAudioCtx.createOscillator.mock.calls.length).toBeGreaterThanOrEqual(sounds.length)
   })
 
-  it('applies volume to master gain', () => {
-    const masterGain = makeGain()
-    // First createGain call is the master; subsequent ones are per-layer
-    mockAudioCtx.createGain.mockReturnValueOnce(masterGain)
+  it('scales the master gain by the volume setting', () => {
+    // Asserts the RELATIONSHIP, not a number. This used to hardcode
+    // `toBe(0.8)` on the assumption that `cycle` carried no masterGain
+    // override — so retuning one sound in the palette broke a test that was
+    // supposed to be about the volume control.
+    function masterFor(volume: number): number {
+      const masterGain = makeGain()
+      mockAudioCtx.createGain.mockReturnValueOnce(masterGain)
+      vi.mocked(useSettingsStore).mockReturnValue({
+        audioEnabled: true,
+        audioVolume: volume,
+      } as ReturnType<typeof useSettingsStore>)
+      useAudio().playSound('cycle')
+      return masterGain.gain.value
+    }
 
-    vi.mocked(useSettingsStore).mockReturnValue({
-      audioEnabled: true,
-      audioVolume: 0.8,
-    } as ReturnType<typeof useSettingsStore>)
-
-    const { playSound } = useAudio()
-    playSound('cycle')
-
-    // tick has no masterGain override (default 1), so master.gain.value should equal volume
-    expect(masterGain.gain.value).toBe(0.8)
+    const half = masterFor(0.4)
+    const full = masterFor(0.8)
+    expect(half).toBeGreaterThan(0)
+    expect(full).toBeCloseTo(half * 2, 5)
   })
 
   it('resumes AudioContext when suspended', () => {
@@ -284,7 +298,9 @@ describe('useAudio', () => {
       mockAudioCtx.createOscillator.mockClear()
       playSound('scrip')
 
-      expect(uniqueStarts()).toEqual([0])
+      // Sequenced sounds schedule several starts anchored at t0; what matters
+      // is that the EARLIEST is the fresh clock and not the stale future time.
+      expect(Math.min(...uniqueStarts())).toBe(0)
     })
   })
 })

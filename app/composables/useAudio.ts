@@ -40,19 +40,53 @@ interface OscLayer {
    * Lets a sound sequence notes (e.g. a victory fanfare arpeggio) instead of
    * stacking every layer simultaneously. */
   delay?: number
+  /**
+   * Ring-modulate this layer against a carrier at this frequency (Hz).
+   *
+   * Multiplying two tones produces their sum and difference and nothing else,
+   * so the result is INHARMONIC — bell-like, metallic, wrong in a way the ear
+   * reads as machinery rather than music. It is the cheapest route to a timbre
+   * that does not belong to any instrument.
+   */
+  ring?: number
 }
 
 interface NoiseLayer {
   duration: number
   gain: number
-  /** Lowpass cutoff (Hz). */
+  /** Filter cutoff (Hz). */
   cutoff?: number
+  /** Filter shape. `bandpass` is the modem/handshake texture — a narrow window
+   *  of noise reads as *data* where a lowpass thump reads as an impact. */
+  filter?: BiquadFilterType
+  /** Sweep the cutoff to this value across the layer. Defaults to 0.3x cutoff
+   *  (a closing lowpass); set it ABOVE cutoff for an opening hiss. */
+  cutoffEnd?: number
+  /** Resonance. High Q on a bandpass turns noise into a pitched whistle. */
+  q?: number
+  delay?: number
 }
 
 interface SoundDef {
   oscs?: OscLayer[]
-  noise?: NoiseLayer
+  /** Several noise layers — a burst plus a tail, or two bands at once. */
+  noise?: NoiseLayer | NoiseLayer[]
   masterGain?: number
+  /**
+   * Waveshaper drive on the whole sound. 0 = clean.
+   *
+   * This is the single biggest lever between "arcade blip" and "something a
+   * machine did to you": clipping folds harmonics in that no oscillator stack
+   * produces, and it is what makes a sub thump read as a contactor closing
+   * rather than as a kick drum.
+   */
+  drive?: number
+  /**
+   * Sample-rate crush, in steps. Quantising the waveform aliases it — the grain
+   * of a codec that cannot keep up. Small values (8-32) are audible as texture;
+   * below 8 it becomes noise.
+   */
+  crush?: number
 }
 
 /* Sound design notes:
@@ -62,171 +96,211 @@ interface SoundDef {
  * - Lowpass filter sweep on death gives a "shutdown" feel.
  */
 const SOUNDS: Record<SoundName, SoundDef> = {
-  // Subtle UI tick — single short blip
+  // THE CYCLE. Heard every four seconds for a whole match, so it has to survive
+  // a thousand repeats without becoming a woodpecker — that rules out a tone.
+  // It is a contactor closing: a hard click over a short sub thump, driven so
+  // it reads as a mechanism committing rather than a UI beep. The city commits
+  // every instruction at once; this is the sound of the batch landing.
   cycle: {
-    oscs: [{ type: 'sine', freqStart: 880, duration: 0.04, gain: 0.08, attack: 0.002 }],
+    oscs: [
+      { type: 'sine', freqStart: 128, freqEnd: 62, duration: 0.07, gain: 0.16, attack: 0.001 },
+    ],
+    noise: [{ duration: 0.018, gain: 0.14, cutoff: 3200, filter: 'bandpass', q: 1.4 }],
+    drive: 0.5,
+    masterGain: 0.75,
   },
-  // Crisp keypress / submit
+  // A keystroke into a deck: contact click, no pitch. A tone here would sing
+  // against the cycle every time you type.
   submit: {
-    oscs: [
-      { type: 'square', freqStart: 1400, duration: 0.04, gain: 0.12, attack: 0.001 },
-      { type: 'sine', freqStart: 700, duration: 0.04, gain: 0.06, attack: 0.001 },
-    ],
-  },
-  // Damage: thumpy low body + noise burst
-  damage: {
-    oscs: [
-      { type: 'sawtooth', freqStart: 240, freqEnd: 90, duration: 0.14, gain: 0.28, attack: 0.001 },
-      { type: 'sine', freqStart: 120, freqEnd: 60, duration: 0.16, gain: 0.18, attack: 0.001 },
-    ],
-    noise: { duration: 0.08, gain: 0.18, cutoff: 1800 },
-  },
-  // Kill: bright ascending stab with harmonic stack + noise transient
-  kill: {
-    oscs: [
-      { type: 'square', freqStart: 520, freqEnd: 980, duration: 0.18, gain: 0.22, attack: 0.002 },
-      {
-        type: 'sine',
-        freqStart: 1040,
-        freqEnd: 1960,
-        duration: 0.18,
-        gain: 0.16,
-        attack: 0.002,
-        detune: 4,
-      },
-      { type: 'triangle', freqStart: 260, freqEnd: 490, duration: 0.22, gain: 0.18, attack: 0.003 },
-    ],
-    noise: { duration: 0.05, gain: 0.16, cutoff: 5000 },
-  },
-  // Death: descending sweep + low rumble + noise tail (low-pass closing)
-  death: {
-    oscs: [
-      { type: 'sawtooth', freqStart: 720, freqEnd: 90, duration: 0.5, gain: 0.28, attack: 0.005 },
-      { type: 'sine', freqStart: 360, freqEnd: 45, duration: 0.55, gain: 0.22, attack: 0.005 },
-    ],
-    noise: { duration: 0.4, gain: 0.14, cutoff: 600 },
-  },
-  // Gold: bright two-tone "ka-ching" (root + perfect fifth above)
-  scrip: {
-    oscs: [
-      { type: 'triangle', freqStart: 1320, duration: 0.08, gain: 0.16, attack: 0.001 },
-      { type: 'sine', freqStart: 1980, duration: 0.1, gain: 0.12, attack: 0.001, detune: 3 },
-    ],
-  },
-  // Ready / level up: rising fifth with a sparkle on top
-  ready: {
-    oscs: [
-      { type: 'triangle', freqStart: 660, freqEnd: 990, duration: 0.18, gain: 0.2, attack: 0.005 },
-      { type: 'sine', freqStart: 1320, freqEnd: 1980, duration: 0.2, gain: 0.14, attack: 0.005 },
-    ],
-  },
-  // Ability cast: short whoosh + tonal accent
-  cast: {
-    oscs: [
-      { type: 'sine', freqStart: 380, freqEnd: 760, duration: 0.12, gain: 0.18, attack: 0.003 },
-      { type: 'triangle', freqStart: 760, freqEnd: 1140, duration: 0.12, gain: 0.1, attack: 0.003 },
-    ],
-    noise: { duration: 0.08, gain: 0.08, cutoff: 3500 },
-  },
-  // Ice fall: heavy thud + crash
-  ice_fall: {
-    oscs: [
-      { type: 'sawtooth', freqStart: 80, freqEnd: 40, duration: 0.45, gain: 0.32, attack: 0.005 },
-      { type: 'square', freqStart: 160, freqEnd: 60, duration: 0.4, gain: 0.18, attack: 0.005 },
-    ],
-    noise: { duration: 0.35, gain: 0.22, cutoff: 1400 },
-  },
-  // Ice lost: the same collapse pitched into the basement with the bright
-  // crash stripped out, so "ours fell" never reads as "we broke theirs".
-  ice_lost: {
-    oscs: [
-      { type: 'sawtooth', freqStart: 55, freqEnd: 26, duration: 0.6, gain: 0.28, attack: 0.008 },
-      { type: 'sine', freqStart: 110, freqEnd: 38, duration: 0.55, gain: 0.2, attack: 0.008 },
-    ],
-    noise: { duration: 0.45, gain: 0.14, cutoff: 500 },
+    noise: [{ duration: 0.022, gain: 0.13, cutoff: 5200, filter: 'bandpass', q: 2.2 }],
+    oscs: [{ type: 'square', freqStart: 210, duration: 0.02, gain: 0.06, attack: 0.001 }],
+    drive: 0.3,
     masterGain: 0.85,
   },
-  // Respawn: `death`'s sweep run backwards, capped by a bright confirmation
-  // tone — the mirror that makes coming back audible, not just visual.
-  respawn: {
+  // Damage: crushed impact. The quantisation is the point — this is something
+  // failing in a machine, not a drum.
+  damage: {
     oscs: [
-      { type: 'sawtooth', freqStart: 90, freqEnd: 720, duration: 0.4, gain: 0.2, attack: 0.01 },
-      { type: 'sine', freqStart: 180, freqEnd: 900, duration: 0.45, gain: 0.16, attack: 0.01 },
-      { type: 'triangle', freqStart: 1046, duration: 0.24, gain: 0.14, attack: 0.004, delay: 0.34 },
+      { type: 'sawtooth', freqStart: 210, freqEnd: 64, duration: 0.13, gain: 0.3, attack: 0.001 },
+      { type: 'square', freqStart: 84, freqEnd: 42, duration: 0.16, gain: 0.16, attack: 0.001 },
     ],
+    noise: [{ duration: 0.07, gain: 0.16, cutoff: 2400, filter: 'bandpass', q: 0.8 }],
+    drive: 0.9,
+    crush: 14,
     masterGain: 0.9,
   },
-  // Victory: triumphant rising major arpeggio (C5-E5-G5-C6) with an octave
-  // shimmer on the held top note — the climax stinger the win screen lacked.
-  victory: {
-    oscs: [
-      { type: 'square', freqStart: 523, duration: 0.5, gain: 0.16, attack: 0.004, delay: 0 },
-      { type: 'square', freqStart: 659, duration: 0.46, gain: 0.16, attack: 0.004, delay: 0.11 },
-      { type: 'square', freqStart: 784, duration: 0.42, gain: 0.16, attack: 0.004, delay: 0.22 },
-      { type: 'square', freqStart: 1046, duration: 0.55, gain: 0.2, attack: 0.004, delay: 0.33 },
-      {
-        type: 'sine',
-        freqStart: 2093,
-        duration: 0.55,
-        gain: 0.1,
-        attack: 0.01,
-        delay: 0.33,
-        detune: 4,
-      },
-    ],
-    noise: { duration: 0.3, gain: 0.1, cutoff: 6000 },
-    masterGain: 0.9,
-  },
-  // Defeat: somber descending minor fall (A4→E3→A2), slow low-pass closing —
-  // the mirror of the victory stinger for a lost game.
-  defeat: {
-    oscs: [
-      {
-        type: 'sawtooth',
-        freqStart: 440,
-        freqEnd: 220,
-        duration: 0.7,
-        gain: 0.2,
-        attack: 0.01,
-        delay: 0,
-      },
-      {
-        type: 'sawtooth',
-        freqStart: 330,
-        freqEnd: 165,
-        duration: 0.7,
-        gain: 0.18,
-        attack: 0.01,
-        delay: 0.18,
-      },
-      {
-        type: 'sine',
-        freqStart: 220,
-        freqEnd: 110,
-        duration: 0.9,
-        gain: 0.22,
-        attack: 0.02,
-        delay: 0.36,
-      },
-    ],
-    noise: { duration: 0.5, gain: 0.1, cutoff: 500 },
-    masterGain: 0.9,
-  },
-  // Double-cast proc: a quick bright ascending shimmer — the "it fired twice!"
-  // cue that pairs with the DOUBLE CAST feed line.
-  double_cast: {
+  // Kill: ring-modulated snap. Inharmonic on purpose — a bell that is wrong.
+  // Deliberately NOT the bright rising major stab it used to be: nothing in this
+  // world congratulates you.
+  kill: {
     oscs: [
       {
         type: 'square',
-        freqStart: 880,
-        freqEnd: 1320,
-        duration: 0.12,
-        gain: 0.16,
-        attack: 0.004,
+        freqStart: 440,
+        freqEnd: 220,
+        duration: 0.2,
+        gain: 0.2,
+        attack: 0.001,
+        ring: 317,
       },
-      { type: 'sine', freqStart: 1760, duration: 0.1, gain: 0.1, attack: 0.004, delay: 0.05 },
+      { type: 'sawtooth', freqStart: 96, freqEnd: 54, duration: 0.26, gain: 0.2, attack: 0.002 },
+    ],
+    noise: [{ duration: 0.05, gain: 0.14, cutoff: 6000, filter: 'highpass' }],
+    drive: 0.7,
+    masterGain: 0.95,
+  },
+  // Death: a carrier losing lock. Pitch collapses, the band narrows to nothing,
+  // and the sub keeps going after the signal is gone.
+  death: {
+    oscs: [
+      { type: 'sawtooth', freqStart: 620, freqEnd: 41, duration: 0.55, gain: 0.26, attack: 0.004 },
+      { type: 'sine', freqStart: 150, freqEnd: 32, duration: 0.75, gain: 0.24, attack: 0.01 },
+    ],
+    noise: [
+      { duration: 0.5, gain: 0.12, cutoff: 2600, cutoffEnd: 120, filter: 'bandpass', q: 1.1 },
+    ],
+    drive: 0.55,
+    crush: 10,
+    masterGain: 0.95,
+  },
+  // Scrip: a data burst, not a coin. Two fast FSK-ish chirps — payload taken.
+  scrip: {
+    oscs: [
+      { type: 'square', freqStart: 1580, duration: 0.022, gain: 0.09, attack: 0.001 },
+      { type: 'square', freqStart: 2260, duration: 0.026, gain: 0.08, attack: 0.001, delay: 0.03 },
+    ],
+    crush: 20,
+    masterGain: 0.7,
+  },
+  // Ready / level up: a comms handshake answering. Two tones a fourth apart,
+  // clean, with a hiss opening behind them — capability arriving.
+  ready: {
+    oscs: [
+      { type: 'triangle', freqStart: 590, duration: 0.09, gain: 0.16, attack: 0.003 },
+      { type: 'triangle', freqStart: 786, duration: 0.13, gain: 0.15, attack: 0.003, delay: 0.08 },
+    ],
+    noise: [
+      { duration: 0.2, gain: 0.05, cutoff: 900, cutoffEnd: 5200, filter: 'bandpass', q: 0.7 },
     ],
     masterGain: 0.8,
+  },
+  // Cast: a routine executing — filtered sweep opening, with drive so it has
+  // teeth. Short, because it fires constantly.
+  cast: {
+    oscs: [
+      { type: 'sawtooth', freqStart: 300, freqEnd: 720, duration: 0.11, gain: 0.15, attack: 0.002 },
+    ],
+    noise: [
+      { duration: 0.1, gain: 0.08, cutoff: 700, cutoffEnd: 4800, filter: 'bandpass', q: 1.2 },
+    ],
+    drive: 0.6,
+    masterGain: 0.8,
+  },
+  // ICE falling: structure giving way. Distorted sub with a long debris tail.
+  ice_fall: {
+    oscs: [
+      { type: 'sawtooth', freqStart: 74, freqEnd: 33, duration: 0.5, gain: 0.34, attack: 0.004 },
+      { type: 'square', freqStart: 148, freqEnd: 52, duration: 0.4, gain: 0.14, attack: 0.004 },
+    ],
+    noise: [
+      { duration: 0.12, gain: 0.2, cutoff: 4200, filter: 'bandpass', q: 0.6 },
+      { duration: 0.45, gain: 0.13, cutoff: 1100, cutoffEnd: 200, delay: 0.08 },
+    ],
+    drive: 0.8,
+    crush: 12,
+    masterGain: 0.95,
+  },
+  // OUR ice falling: the same collapse with the bright debris stripped and the
+  // pitch in the basement, so "ours fell" can never read as "we broke theirs".
+  ice_lost: {
+    oscs: [
+      { type: 'sawtooth', freqStart: 52, freqEnd: 24, duration: 0.7, gain: 0.3, attack: 0.008 },
+      { type: 'sine', freqStart: 104, freqEnd: 30, duration: 0.6, gain: 0.2, attack: 0.008 },
+    ],
+    noise: [{ duration: 0.5, gain: 0.12, cutoff: 420, cutoffEnd: 90 }],
+    drive: 0.7,
+    crush: 8,
+    masterGain: 0.9,
+  },
+  // Respawn: the death sweep run backwards — a carrier re-acquiring lock.
+  respawn: {
+    oscs: [
+      { type: 'sawtooth', freqStart: 48, freqEnd: 520, duration: 0.4, gain: 0.2, attack: 0.02 },
+      { type: 'triangle', freqStart: 660, duration: 0.14, gain: 0.14, attack: 0.004, delay: 0.38 },
+    ],
+    noise: [{ duration: 0.35, gain: 0.09, cutoff: 200, cutoffEnd: 4000, filter: 'bandpass', q: 1 }],
+    drive: 0.35,
+    masterGain: 0.85,
+  },
+  // Victory: not a fanfare. Three ring-modulated tones walking UP, cold and
+  // metallic — a system reporting a result it has no feelings about.
+  victory: {
+    oscs: [
+      { type: 'square', freqStart: 262, duration: 0.3, gain: 0.16, attack: 0.006, ring: 131 },
+      {
+        type: 'square',
+        freqStart: 349,
+        duration: 0.3,
+        gain: 0.16,
+        attack: 0.006,
+        delay: 0.16,
+        ring: 131,
+      },
+      {
+        type: 'square',
+        freqStart: 524,
+        duration: 0.6,
+        gain: 0.18,
+        attack: 0.008,
+        delay: 0.32,
+        ring: 131,
+      },
+      { type: 'sine', freqStart: 65, duration: 1.0, gain: 0.2, attack: 0.02 },
+    ],
+    noise: [
+      { duration: 0.8, gain: 0.06, cutoff: 600, cutoffEnd: 4000, filter: 'bandpass', q: 0.8 },
+    ],
+    drive: 0.4,
+    masterGain: 0.9,
+  },
+  // Defeat: the same three tones walking DOWN, and the sub outlives them.
+  defeat: {
+    oscs: [
+      { type: 'square', freqStart: 392, duration: 0.3, gain: 0.15, attack: 0.008, ring: 97 },
+      {
+        type: 'square',
+        freqStart: 294,
+        duration: 0.35,
+        gain: 0.15,
+        attack: 0.008,
+        delay: 0.18,
+        ring: 97,
+      },
+      {
+        type: 'square',
+        freqStart: 196,
+        duration: 0.7,
+        gain: 0.16,
+        attack: 0.01,
+        delay: 0.38,
+        ring: 97,
+      },
+      { type: 'sine', freqStart: 58, freqEnd: 29, duration: 1.4, gain: 0.22, attack: 0.03 },
+    ],
+    noise: [{ duration: 0.9, gain: 0.08, cutoff: 1400, cutoffEnd: 90 }],
+    drive: 0.5,
+    crush: 10,
+    masterGain: 0.9,
+  },
+  // Double cast: the routine firing twice — the same chirp, stuttered.
+  double_cast: {
+    oscs: [
+      { type: 'square', freqStart: 1180, duration: 0.03, gain: 0.11, attack: 0.001 },
+      { type: 'square', freqStart: 1180, duration: 0.05, gain: 0.12, attack: 0.001, delay: 0.045 },
+    ],
+    crush: 16,
+    drive: 0.3,
+    masterGain: 0.75,
   },
 }
 
@@ -247,6 +321,33 @@ const MIN_GAP: Partial<Record<SoundName, number>> = {
 const MAX_STAGGER = 0.25
 
 const lastStart = new Map<SoundName, number>()
+
+/**
+ * Waveshaper curve for `drive`. `tanh`-ish soft clip: harmonics fold in
+ * progressively rather than the sound simply squaring off, so a low value reads
+ * as weight and a high one as damage.
+ */
+function makeDriveCurve(amount: number): Float32Array<ArrayBuffer> {
+  const n = 1024
+  const curve = new Float32Array(new ArrayBuffer(n * 4))
+  const k = amount * 40
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / n - 1
+    curve[i] = ((1 + k) * x) / (1 + k * Math.abs(x))
+  }
+  return curve
+}
+
+/** Waveshaper curve for `crush`: quantise to N steps. Pure aliasing, no filter. */
+function makeCrushCurve(steps: number): Float32Array<ArrayBuffer> {
+  const n = 1024
+  const curve = new Float32Array(new ArrayBuffer(n * 4))
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / n - 1
+    curve[i] = Math.round(x * steps) / steps
+  }
+  return curve
+}
 
 function makeNoiseBuffer(ctx: AudioContext, duration: number): AudioBuffer {
   const sampleRate = ctx.sampleRate
@@ -285,7 +386,28 @@ export function useAudio() {
 
       const master = ctx.createGain()
       master.gain.value = (def.masterGain ?? 1) * settings.audioVolume
-      master.connect(ctx.destination)
+
+      // Shaping chain: master -> [crush] -> [drive] -> out. Both are optional
+      // and both are what separate this palette from an arcade blip.
+      let tail: AudioNode = master
+      if (def.crush) {
+        const crusher = ctx.createWaveShaper()
+        crusher.curve = makeCrushCurve(def.crush)
+        tail.connect(crusher)
+        tail = crusher
+      }
+      if (def.drive) {
+        const shaper = ctx.createWaveShaper()
+        shaper.curve = makeDriveCurve(def.drive)
+        shaper.oversample = '4x'
+        tail.connect(shaper)
+        // Clipping adds energy; trim so a driven sound is not simply louder.
+        const trim = ctx.createGain()
+        trim.gain.value = 1 / (1 + def.drive * 0.8)
+        shaper.connect(trim)
+        tail = trim
+      }
+      tail.connect(ctx.destination)
 
       // Oscillator layers
       for (const layer of def.oscs ?? []) {
@@ -310,29 +432,46 @@ export function useAudio() {
         gain.gain.linearRampToValueAtTime(peak, start + attack)
         gain.gain.exponentialRampToValueAtTime(0.0001, start + layer.duration)
 
-        osc.connect(gain)
+        if (layer.ring) {
+          // osc * carrier. A GainNode with its gain driven by an oscillator IS
+          // a multiplier, so the carrier feeds the gain param, not the input.
+          const carrier = ctx.createOscillator()
+          const ringGain = ctx.createGain()
+          carrier.type = 'sine'
+          carrier.frequency.setValueAtTime(layer.ring, start)
+          ringGain.gain.setValueAtTime(0, start)
+          carrier.connect(ringGain.gain)
+          osc.connect(ringGain)
+          ringGain.connect(gain)
+          carrier.start(start)
+          carrier.stop(start + layer.duration + 0.02)
+        } else {
+          osc.connect(gain)
+        }
         gain.connect(master)
         osc.start(start)
         osc.stop(start + layer.duration + 0.02)
       }
 
-      // Noise layer (percussive transient)
-      if (def.noise) {
+      // Noise layers — a burst plus a tail, or two bands at once.
+      for (const layer of def.noise ? (Array.isArray(def.noise) ? def.noise : [def.noise]) : []) {
+        const start = t0 + (layer.delay ?? 0)
         const src = ctx.createBufferSource()
-        src.buffer = makeNoiseBuffer(ctx, def.noise.duration)
+        src.buffer = makeNoiseBuffer(ctx, layer.duration)
 
         const gain = ctx.createGain()
-        gain.gain.setValueAtTime(0, t0)
-        gain.gain.linearRampToValueAtTime(def.noise.gain, t0 + 0.002)
-        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + def.noise.duration)
+        gain.gain.setValueAtTime(0, start)
+        gain.gain.linearRampToValueAtTime(layer.gain, start + 0.002)
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + layer.duration)
 
-        if (def.noise.cutoff) {
+        if (layer.cutoff) {
           const filter = ctx.createBiquadFilter()
-          filter.type = 'lowpass'
-          filter.frequency.setValueAtTime(def.noise.cutoff, t0)
+          filter.type = layer.filter ?? 'lowpass'
+          if (layer.q) filter.Q.setValueAtTime(layer.q, start)
+          filter.frequency.setValueAtTime(layer.cutoff, start)
           filter.frequency.exponentialRampToValueAtTime(
-            Math.max(def.noise.cutoff * 0.3, 80),
-            t0 + def.noise.duration,
+            Math.max(layer.cutoffEnd ?? layer.cutoff * 0.3, 80),
+            start + layer.duration,
           )
           src.connect(filter)
           filter.connect(gain)
@@ -341,8 +480,8 @@ export function useAudio() {
         }
         gain.connect(master)
 
-        src.start(t0)
-        src.stop(t0 + def.noise.duration + 0.02)
+        src.start(start)
+        src.stop(start + layer.duration + 0.02)
       }
     } catch {
       // Audio API not available
