@@ -125,7 +125,7 @@ describe('combatLog helpers', () => {
     })
 
     it('returns null for non-terminal ids', () => {
-      expect(terminalLabel('ice_mid-t1-chaff')).toBeNull()
+      expect(terminalLabel('ice_coldstore-t1-chaff')).toBeNull()
       expect(terminalLabel('github_7379966')).toBeNull()
       expect(terminalLabel('creep_3')).toBeNull()
     })
@@ -133,7 +133,7 @@ describe('combatLog helpers', () => {
 
   describe('isStructureTarget', () => {
     it('flags ice and terminals', () => {
-      expect(isStructureTarget('ice_mid-t3-audit')).toBe(true)
+      expect(isStructureTarget('ice_coldstore-t3-audit')).toBe(true)
       expect(isStructureTarget('terminal_chaff')).toBe(true)
     })
 

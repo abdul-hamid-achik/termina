@@ -49,7 +49,7 @@ steps:
     fill:
       by: selector
       selector: '[data-testid="command-input-field"]'
-      value: move audit-base
+      value: move landing-terminal
   - id: await_preview
     wait:
       selector: '[data-testid="command-preview"]'

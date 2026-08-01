@@ -196,7 +196,7 @@ onMounted(() => {
       localStorage.setItem('termina_intro_seen', '1')
       const intro = [
         'Welcome to TERMINA — the city commits every four seconds. You queue ONE instruction per cycle.',
-        'You start in the fountain. Move out onto a route: type or tap  move mid-river',
+        'You start in the fountain. Move out onto a route: type or tap  move coldstore-cross',
         // Desktop has no ActionRow (R3-09 hides it on fine pointers), so the
         // shop/scoreboard verbs and the ability keys are the real affordances;
         // the button copy below only exists on touch.
@@ -732,7 +732,7 @@ const heroData = computed(() => {
   }
 })
 
-// Resolve raw entity IDs (github_*, bot_*, creep_3, ice_mid-t1-chaff…) to
+// Resolve raw entity IDs (github_*, bot_*, creep_3, ice_coldstore-t1-chaff…) to
 // readable names: hero name for players ("You" for self), short labels for units.
 const abilityNameById: Record<string, string> = {}
 for (const hero of Object.values(HEROES)) {
@@ -764,7 +764,7 @@ function entityLabel(id: unknown): string {
   }
   if (id === 'tenant') return 'Tenant'
   if (id === 'buyback') return 'buyback'
-  if (id === 'fountain') return 'the fountain'
+  if (id === 'anchor') return 'the fountain'
   return id
 }
 
@@ -1479,7 +1479,7 @@ function handleQuickAction(cmd: string) {
   }
 
   if (cmd === 'MOVE') {
-    // Used to print the raw adjacency list ("mid-t1-chaff, cache-top, …") — slugs
+    // Used to print the raw adjacency list ("coldstore-t1-chaff, cache-seawall, …") — slugs
     // that appear nowhere else in the UI, off this game's map half the time,
     // and not clickable. It is a MOVE button; it now moves.
     if (!movePickerZones.value.length) {
@@ -1505,11 +1505,11 @@ function handleQuickAction(cmd: string) {
         // No hero target — guide instead of failing silently, mirroring the
         // old ATK fallthrough copy.
         const zoneType = ZONE_MAP[p.zone]?.type
-        const inBase = zoneType === 'fountain' || zoneType === 'base'
+        const inBase = zoneType === 'anchor' || zoneType === 'base'
         localEvents.value.push({
           cycle: gameStore.cycle,
           text: inBase
-            ? 'No targets here — move onto a route to fight (e.g.  move mid-river ).'
+            ? 'No targets here — move onto a route to fight (e.g.  move coldstore-cross ).'
             : 'No enemies in this zone — last-hit waves via STRIP / attack wave:N, or  attack <target> .',
           type: 'system',
         })

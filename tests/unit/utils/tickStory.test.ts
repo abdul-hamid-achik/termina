@@ -263,8 +263,8 @@ describe('buildTickRecaps', () => {
     // is collapsed before it ever reaches the recap; reading the surviving
     // line's original dmgAmount would report a fifth of the breach.
     const run = [1, 2, 3].map((cycle) => ({
-      ...outgoing(cycle, 'ice (mid-t1-audit)', 70),
-      dedupKey: 'dmg:me->ice_mid-t1-audit',
+      ...outgoing(cycle, 'ice (coldstore-t1-audit)', 70),
+      dedupKey: 'dmg:me->ice_coldstore-t1-audit',
     }))
     const collapsed = collapseStructureDamage(
       run,

@@ -309,7 +309,7 @@ describe('Balance Constants', () => {
     })
   })
 
-  describe('fountain', () => {
+  describe('anchor', () => {
     it('fountain heal rate is reasonable', () => {
       expect(FOUNTAIN_HEAL_PER_CYCLE_PERCENT).toBeGreaterThan(0)
       expect(FOUNTAIN_HEAL_PER_CYCLE_PERCENT).toBeLessThanOrEqual(100)

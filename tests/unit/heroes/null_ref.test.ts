@@ -13,7 +13,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestNullRef',
     team: 'chaff',
     heroId: 'null_ref',
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: 440,
     maxInteg: 440,
     bw: 420,
@@ -75,8 +75,8 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     },
     players: playerMap,
     zones: {
-      'mid-river': { id: 'mid-river', wards: [] },
-      'top-river': { id: 'top-river', wards: [] },
+      'coldstore-cross': { id: 'coldstore-cross', wards: [] },
+      'seawall-cross': { id: 'seawall-cross', wards: [] },
     },
     waves: [],
     ice: [],
@@ -173,7 +173,7 @@ describe('Null (null_ref) Hero', () => {
 
     it('fails when target is in different zone', () => {
       const player = makePlayer()
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(
@@ -249,7 +249,7 @@ describe('Null (null_ref) Hero', () => {
 
     it('fails when target is in different zone', () => {
       const player = makePlayer()
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(
@@ -363,11 +363,11 @@ describe('Null (null_ref) Hero', () => {
         talents: { tier10: null, tier15: null, tier20: null, tier25: 'null_ref_25_right' },
       })
       const enemyInZone = makeEnemy({ integ: 800, maxInteg: 800 })
-      // mid-t1-audit is adjacent to mid-river (the caster's zone).
+      // coldstore-t1-audit is adjacent to coldstore-cross (the caster's zone).
       const enemyAdjacent = makeEnemy({
         id: 'e2',
         name: 'Enemy2',
-        zone: 'mid-t1-audit',
+        zone: 'coldstore-t1-audit',
         integ: 800,
         maxInteg: 800,
       })
@@ -386,7 +386,7 @@ describe('Null (null_ref) Hero', () => {
       const enemyAdjacent = makeEnemy({
         id: 'e2',
         name: 'Enemy2',
-        zone: 'mid-t1-audit',
+        zone: 'coldstore-t1-audit',
         integ: 800,
         maxInteg: 800,
       })

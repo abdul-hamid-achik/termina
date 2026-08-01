@@ -132,7 +132,7 @@ export const useGameStore = defineStore('game', () => {
   const lastItemActionTick = ref<number>(-1)
 
   // Human-readable description of the action queued for the next cycle,
-  // e.g. "move mid-river". Cleared when the cycle resolves.
+  // e.g. "move coldstore-cross". Cleared when the cycle resolves.
   const pendingCommand = ref<string | null>(null)
 
   // Command typed while the player had already acted this cycle. It is

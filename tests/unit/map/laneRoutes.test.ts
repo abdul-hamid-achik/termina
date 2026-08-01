@@ -31,7 +31,7 @@ describe('lane routes integrity', () => {
 
       // Only the real wave lanes are walked one-adjacent-zone-per-step; the
       // "jungle" entry is a list of neutral-camp references, not a walked path.
-      const WAVE_LANES = new Set(['top', 'mid', 'bot'])
+      const WAVE_LANES = new Set(['seawall', 'coldstore', 'shallows'])
       it('forms walkable wave paths — each lane step is to an adjacent zone', () => {
         const breaks: string[] = []
         for (const { lane, team, path } of entries(routes)) {

@@ -21,7 +21,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestPlayer',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'chaff-fountain', // shop zone by default
+    zone: 'rookery-anchor', // shop zone by default
     integ: 500,
     maxInteg: 500,
     bw: 300,
@@ -72,11 +72,11 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     },
     players: { player_1: player },
     zones: {
-      'chaff-fountain': makeZone('chaff-fountain'),
-      'chaff-base': makeZone('chaff-base'),
-      'mid-t1-chaff': makeZone('mid-t1-chaff'),
-      'mid-river': makeZone('mid-river'),
-      'mid-t1-audit': makeZone('mid-t1-audit'),
+      'rookery-anchor': makeZone('rookery-anchor'),
+      'rookery-terminal': makeZone('rookery-terminal'),
+      'coldstore-t1-chaff': makeZone('coldstore-t1-chaff'),
+      'coldstore-cross': makeZone('coldstore-cross'),
+      'coldstore-t1-audit': makeZone('coldstore-t1-audit'),
     },
     waves: [],
     ice: [],
@@ -121,7 +121,7 @@ describe('Shop', () => {
     })
 
     it('fails when player is not in a shop zone', async () => {
-      const player = makePlayer({ zone: 'mid-t1-chaff' })
+      const player = makePlayer({ zone: 'coldstore-t1-chaff' })
       const state = makeGameState({ players: { player_1: player } })
 
       const exit = await cacheEffect(buyItem(state, 'player_1', 'scrap_lot'))
@@ -313,7 +313,7 @@ describe('Shop', () => {
 
     it('fails when not in shop zone', async () => {
       const player = makePlayer({
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         items: ['scrap_lot', null, null, null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
@@ -508,11 +508,15 @@ describe('Shop', () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         items: ['discord_routine', null, null, null, null, null],
       })
-      const enemyInZone = makePlayer({ id: 'enemy_1', team: 'audit', zone: 'mid-river' })
-      const enemyElsewhere = makePlayer({ id: 'enemy_2', team: 'audit', zone: 'mid-t1-audit' })
+      const enemyInZone = makePlayer({ id: 'enemy_1', team: 'audit', zone: 'coldstore-cross' })
+      const enemyElsewhere = makePlayer({
+        id: 'enemy_2',
+        team: 'audit',
+        zone: 'coldstore-t1-audit',
+      })
       const state = makeGameState({
         players: { player_1: caster, enemy_1: enemyInZone, enemy_2: enemyElsewhere },
       })
@@ -535,13 +539,13 @@ describe('Shop', () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         items: ['burnout', null, null, null, null, null],
       })
       const target = makePlayer({
         id: 'enemy_1',
         team: 'audit',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         integ: 800,
         buffs: [{ id: 'airgap', stacks: 1, cyclesRemaining: 4, source: 'bkb' }],
       })
@@ -563,9 +567,9 @@ describe('Shop', () => {
 
   describe('error types', () => {
     it('NotInShopError has zone info', () => {
-      const error = new NotInShopError({ zone: 'mid-river' })
+      const error = new NotInShopError({ zone: 'coldstore-cross' })
       expect(error._tag).toBe('NotInShopError')
-      expect(error.zone).toBe('mid-river')
+      expect(error.zone).toBe('coldstore-cross')
     })
 
     it('InsufficientGoldError has required and current', () => {
@@ -604,11 +608,11 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'sniffer', 'mid-river'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'sniffer', 'coldstore-cross'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
-        const wards = exit.value.zones['mid-river']!.wards
+        const wards = exit.value.zones['coldstore-cross']!.wards
         expect(wards).toHaveLength(1)
         expect(wards[0]!.type).toBe('sniffer')
         expect(wards[0]!.team).toBe('chaff')
@@ -621,13 +625,13 @@ describe('Shop', () => {
       const player = makePlayer({
         id: 'player_1',
         team: 'chaff',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         items: ['sniffer', null, null, null, null, null],
       })
       const invisEnemy = makePlayer({
         id: 'enemy_1',
         team: 'audit',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         buffs: [{ id: 'invisible', stacks: 1, cyclesRemaining: 5, source: 'enemy_1' }],
       })
       const state = makeGameState({
@@ -638,7 +642,7 @@ describe('Shop', () => {
       const before = filterStateForPlayer(state, 'player_1')
       expect('fogged' in before.players['enemy_1']!).toBe(true)
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'sniffer', 'mid-river'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'sniffer', 'coldstore-cross'))
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         // After the sentry: true-sight in the zone reveals the enemy.
@@ -698,10 +702,10 @@ describe('Shop', () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         items: ['stasis_shunt', null, null, null, null, null],
       })
-      const enemy = makePlayer({ id: 'enemy_1', team: 'audit', zone: 'mid-river' })
+      const enemy = makePlayer({ id: 'enemy_1', team: 'audit', zone: 'coldstore-cross' })
       const state = makeGameState({ players: { player_1: caster, enemy_1: enemy } })
 
       const exit = await cacheEffect(
@@ -719,10 +723,10 @@ describe('Shop', () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         items: ['lockout_shunt', null, null, null, null, null],
       })
-      const enemy = makePlayer({ id: 'enemy_1', team: 'audit', zone: 'mid-river' })
+      const enemy = makePlayer({ id: 'enemy_1', team: 'audit', zone: 'coldstore-cross' })
       const state = makeGameState({ players: { player_1: caster, enemy_1: enemy } })
 
       const exit = await cacheEffect(
@@ -820,10 +824,10 @@ describe('Shop', () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         items: ['blackout_can', null, null, null, null, null],
       })
-      const ally = makePlayer({ id: 'ally_1', team: 'chaff', zone: 'mid-river' })
+      const ally = makePlayer({ id: 'ally_1', team: 'chaff', zone: 'coldstore-cross' })
       const state = makeGameState({ players: { player_1: caster, ally_1: ally } })
 
       const exit = await cacheEffect(useItem(state, 'player_1', 'blackout_can'))
@@ -838,7 +842,7 @@ describe('Shop', () => {
     it('Force Staff pushes the caster to an adjacent zone (fountain → base)', async () => {
       const player = makePlayer({
         id: 'player_1',
-        zone: 'chaff-fountain', // only adjacent is chaff-base → deterministic push
+        zone: 'rookery-anchor', // only adjacent is rookery-terminal → deterministic push
         items: ['shove_splice', null, null, null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
@@ -846,31 +850,33 @@ describe('Shop', () => {
       const exit = await cacheEffect(useItem(state, 'player_1', 'shove_splice'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
-      if (Exit.isSuccess(exit)) expect(exit.value.players['player_1']!.zone).toBe('chaff-base')
+      if (Exit.isSuccess(exit))
+        expect(exit.value.players['player_1']!.zone).toBe('rookery-terminal')
     })
 
     it('Blink Module teleports the caster to an adjacent zone', async () => {
       const player = makePlayer({
         id: 'player_1',
-        zone: 'chaff-fountain', // adjacent: chaff-base
+        zone: 'rookery-anchor', // adjacent: rookery-terminal
         items: ['jump_shunt', null, null, null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'jump_shunt', 'chaff-base'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'jump_shunt', 'rookery-terminal'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
-      if (Exit.isSuccess(exit)) expect(exit.value.players['player_1']!.zone).toBe('chaff-base')
+      if (Exit.isSuccess(exit))
+        expect(exit.value.players['player_1']!.zone).toBe('rookery-terminal')
     })
 
     it('Phase Shim etherealizes a co-located enemy (kinetic-immune + magic vuln)', async () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         items: ['phase_shim', null, null, null, null, null],
       })
-      const enemy = makePlayer({ id: 'enemy_1', team: 'audit', zone: 'mid-river' })
+      const enemy = makePlayer({ id: 'enemy_1', team: 'audit', zone: 'coldstore-cross' })
       const state = makeGameState({ players: { player_1: caster, enemy_1: enemy } })
 
       const exit = await cacheEffect(
@@ -888,10 +894,10 @@ describe('Shop', () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
-        zone: 'chaff-fountain', // adjacent chaff-base; enemy elsewhere → push to base
+        zone: 'rookery-anchor', // adjacent rookery-terminal; enemy elsewhere → push to base
         items: ['kickback_splice', null, null, null, null, null],
       })
-      const enemy = makePlayer({ id: 'enemy_1', team: 'audit', zone: 'mid-river' })
+      const enemy = makePlayer({ id: 'enemy_1', team: 'audit', zone: 'coldstore-cross' })
       const state = makeGameState({ players: { player_1: caster, enemy_1: enemy } })
 
       const exit = await cacheEffect(
@@ -899,14 +905,15 @@ describe('Shop', () => {
       )
 
       expect(Exit.isSuccess(exit)).toBe(true)
-      if (Exit.isSuccess(exit)) expect(exit.value.players['player_1']!.zone).toBe('chaff-base')
+      if (Exit.isSuccess(exit))
+        expect(exit.value.players['player_1']!.zone).toBe('rookery-terminal')
     })
 
     it('Recall Token starts a channel toward the home fountain', async () => {
       const player = makePlayer({
         id: 'player_1',
         team: 'chaff',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         items: ['recall_token', null, null, null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
@@ -917,7 +924,7 @@ describe('Shop', () => {
       if (Exit.isSuccess(exit)) {
         expect(hasBuff(exit.value, 'player_1', 'tp_channeling')).toBe(true)
         const dest = exit.value.players['player_1']!.buffs.find((b) => b.id === 'tp_destination')
-        expect(dest?.destination).toBe('chaff-fountain')
+        expect(dest?.destination).toBe('rookery-anchor')
       }
     })
 
@@ -929,11 +936,11 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'camtap', 'mid-river'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'camtap', 'coldstore-cross'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
-        const wards = exit.value.zones['mid-river']!.wards
+        const wards = exit.value.zones['coldstore-cross']!.wards
         expect(wards).toHaveLength(1)
         expect(wards[0]!.type).toBe('camtap')
       }
@@ -950,12 +957,12 @@ describe('Shop', () => {
       const state = makeGameState({ players: { player_1: player } })
 
       const exit = await cacheEffect(
-        useItem(state, 'player_1', 'camtap', { kind: 'zone', zone: 'mid-river' }),
+        useItem(state, 'player_1', 'camtap', { kind: 'zone', zone: 'coldstore-cross' }),
       )
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.zones['mid-river']!.wards).toHaveLength(1)
+        expect(exit.value.zones['coldstore-cross']!.wards).toHaveLength(1)
       }
     })
   })
@@ -965,20 +972,20 @@ describe('Shop', () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         items: ['cryo_routine', null, null, null, null, null],
       })
       const enemyInZone = makePlayer({
         id: 'enemy_1',
         team: 'audit',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         integ: 600,
         maxInteg: 600,
       })
       const enemyElsewhere = makePlayer({
         id: 'enemy_2',
         team: 'audit',
-        zone: 'mid-t1-audit',
+        zone: 'coldstore-t1-audit',
         integ: 600,
         maxInteg: 600,
       })
@@ -1005,13 +1012,13 @@ describe('Shop', () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         items: ['burnout', null, null, null, null, null],
       })
       const target = makePlayer({
         id: 'enemy_1',
         team: 'audit',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         integ: 120,
         maxInteg: 800,
         ice: 0,
@@ -1033,10 +1040,10 @@ describe('Shop', () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         items: ['mirror_shell', null, null, null, null, null],
       })
-      const ally = makePlayer({ id: 'ally_1', team: 'chaff', zone: 'mid-river' })
+      const ally = makePlayer({ id: 'ally_1', team: 'chaff', zone: 'coldstore-cross' })
       const state = makeGameState({ players: { player_1: caster, ally_1: ally } })
 
       const exit = await cacheEffect(
@@ -1062,9 +1069,9 @@ describe('Shop', () => {
       const state = makeGameState({
         players: { player_1: player },
         zones: {
-          'chaff-fountain': makeZone('chaff-fountain'),
-          'mid-river': makeZone('mid-river'),
-          'mid-t1-chaff': makeZone('mid-t1-chaff', {
+          'rookery-anchor': makeZone('rookery-anchor'),
+          'coldstore-cross': makeZone('coldstore-cross'),
+          'coldstore-t1-chaff': makeZone('coldstore-t1-chaff', {
             wards: [
               { team: 'chaff', placedTick: 1, expiryTick: 46, type: 'camtap' },
               { team: 'chaff', placedTick: 2, expiryTick: 47, type: 'camtap' },
@@ -1075,11 +1082,11 @@ describe('Shop', () => {
       })
 
       const exit = await cacheEffect(
-        useItem(state, 'player_1', 'camtap', { kind: 'zone', zone: 'mid-river' }),
+        useItem(state, 'player_1', 'camtap', { kind: 'zone', zone: 'coldstore-cross' }),
       )
       // Over the cap → rejected, and no 4th ward is placed.
       expect(Exit.isFailure(exit)).toBe(true)
-      expect(state.zones['mid-river']!.wards).toHaveLength(0)
+      expect(state.zones['coldstore-cross']!.wards).toHaveLength(0)
     })
 
     it('Veil + Ethereal magic-vuln stack additively through the real resolvers (+65%)', async () => {
@@ -1091,13 +1098,13 @@ describe('Shop', () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         items: ['discord_routine', 'phase_shim', 'burnout', null, null, null],
       })
       const target = makePlayer({
         id: 'enemy_1',
         team: 'audit',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         integ: 800,
         maxInteg: 800,
         ice: 0,
@@ -1124,14 +1131,14 @@ describe('Shop', () => {
   })
 
   describe('Item actives — target rejection guards', () => {
-    // The caster sits in the fountain (adjacent ONLY to chaff-base), so a target
-    // in mid-river is both a DIFFERENT zone and OUT OF RANGE — which exercises the
+    // The caster sits in the fountain (adjacent ONLY to rookery-terminal), so a target
+    // in coldstore-cross is both a DIFFERENT zone and OUT OF RANGE — which exercises the
     // zone/range guards without depending on finer adjacency.
     const withItem = (item: string) =>
       makePlayer({
         id: 'player_1',
         team: 'chaff',
-        zone: 'chaff-fountain',
+        zone: 'rookery-anchor',
         items: [item, null, null, null, null, null],
       })
     const fail = async (item: string, target: Parameters<typeof useItem>[3]) =>
@@ -1142,15 +1149,15 @@ describe('Shop', () => {
 
     it('Burnout rejects a non-hero target, a dead target, and an out-of-range target', async () => {
       state = { player_1: withItem('burnout') }
-      expect(await fail('burnout', { kind: 'zone', zone: 'mid-river' })).toBe(true) // non-hero
+      expect(await fail('burnout', { kind: 'zone', zone: 'coldstore-cross' })).toBe(true) // non-hero
       state = {
         player_1: withItem('burnout'),
-        e1: makePlayer({ id: 'e1', team: 'audit', zone: 'chaff-fountain', alive: false, integ: 0 }),
+        e1: makePlayer({ id: 'e1', team: 'audit', zone: 'rookery-anchor', alive: false, integ: 0 }),
       }
       expect(await fail('burnout', { kind: 'hero', name: 'e1' })).toBe(true) // dead
       state = {
         player_1: withItem('burnout'),
-        e1: makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river' }),
+        e1: makePlayer({ id: 'e1', team: 'audit', zone: 'coldstore-cross' }),
       }
       expect(await fail('burnout', { kind: 'hero', name: 'e1' })).toBe(true) // out of range
     })
@@ -1158,7 +1165,7 @@ describe('Shop', () => {
     it('Phase Shim rejects a target in a different zone', async () => {
       state = {
         player_1: withItem('phase_shim'),
-        e1: makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river' }),
+        e1: makePlayer({ id: 'e1', team: 'audit', zone: 'coldstore-cross' }),
       }
       expect(await fail('phase_shim', { kind: 'hero', name: 'e1' })).toBe(true)
     })
@@ -1166,16 +1173,16 @@ describe('Shop', () => {
     it('Lockout Shunt rejects a non-hero target and an out-of-zone target', async () => {
       state = {
         player_1: withItem('lockout_shunt'),
-        e1: makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river' }),
+        e1: makePlayer({ id: 'e1', team: 'audit', zone: 'coldstore-cross' }),
       }
-      expect(await fail('lockout_shunt', { kind: 'zone', zone: 'mid-river' })).toBe(true) // non-hero
+      expect(await fail('lockout_shunt', { kind: 'zone', zone: 'coldstore-cross' })).toBe(true) // non-hero
       expect(await fail('lockout_shunt', { kind: 'hero', name: 'e1' })).toBe(true) // different zone
     })
 
     it("Stasis Shunt Scepter rejects an out-of-zone target that isn't the caster", async () => {
       state = {
         player_1: withItem('stasis_shunt'),
-        e1: makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river' }),
+        e1: makePlayer({ id: 'e1', team: 'audit', zone: 'coldstore-cross' }),
       }
       expect(await fail('stasis_shunt', { kind: 'hero', name: 'e1' })).toBe(true)
     })
@@ -1183,14 +1190,14 @@ describe('Shop', () => {
     it('Hurricane Pike rejects an ally target (must target an enemy)', async () => {
       state = {
         player_1: withItem('kickback_splice'),
-        a1: makePlayer({ id: 'a1', team: 'chaff', zone: 'chaff-fountain' }),
+        a1: makePlayer({ id: 'a1', team: 'chaff', zone: 'rookery-anchor' }),
       }
       expect(await fail('kickback_splice', { kind: 'hero', name: 'a1' })).toBe(true)
     })
 
     it('Blink Module rejects a non-adjacent destination', async () => {
       state = { player_1: withItem('jump_shunt') }
-      expect(await fail('jump_shunt', { kind: 'zone', zone: 'mid-river' })).toBe(true)
+      expect(await fail('jump_shunt', { kind: 'zone', zone: 'coldstore-cross' })).toBe(true)
     })
   })
 })

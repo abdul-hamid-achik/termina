@@ -14,7 +14,7 @@ const liveTeam: PlayerScoreRow[] = [
     deaths: 2,
     assists: 4,
     scrip: 12450,
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     alive: true,
   },
   {
@@ -40,7 +40,7 @@ const liveTeam: PlayerScoreRow[] = [
     deaths: 5,
     assists: 6,
     scrip: 7320,
-    zone: 'chaff-base',
+    zone: 'rookery-terminal',
     alive: false,
   },
   {
@@ -53,7 +53,7 @@ const liveTeam: PlayerScoreRow[] = [
     deaths: 4,
     assists: 3,
     scrip: 3110,
-    zone: 'top-t2-chaff',
+    zone: 'seawall-t2-chaff',
     alive: true,
     aiControlled: true,
   },

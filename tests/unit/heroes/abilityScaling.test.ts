@@ -19,8 +19,8 @@ import { resolveAbility, applyBuff } from '~~/server/game/heroes/_base'
 import '../../../server/game/heroes/index'
 import { HEROES } from '~~/shared/constants/heroes'
 
-const CASTER_ZONE = 'mid-river'
-const ADJACENT_ZONE = 'mid-t1-audit'
+const CASTER_ZONE = 'coldstore-cross'
+const ADJACENT_ZONE = 'coldstore-t1-audit'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   const player = {
@@ -74,7 +74,7 @@ function makeState(players: PlayerState[]): GameState {
     zones: {
       [CASTER_ZONE]: { id: CASTER_ZONE, wards: [] },
       [ADJACENT_ZONE]: { id: ADJACENT_ZONE, wards: [] },
-      'top-river': { id: 'top-river', wards: [] },
+      'seawall-cross': { id: 'seawall-cross', wards: [] },
     },
     waves: {},
     ice: {},

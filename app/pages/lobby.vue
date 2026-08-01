@@ -434,7 +434,7 @@ onUnmounted(() => {
                   </span>
                   <span class="text-[0.65rem] tabular-nums text-text-dim">
                     {{ m.players }} players · {{ m.laneCount }}
-                    {{ m.laneCount === 1 ? 'lane' : 'lanes' }} · {{ m.zoneCount }} zones
+                    {{ m.laneCount === 1 ? 'route' : 'lanes' }} · {{ m.zoneCount }} zones
                   </span>
                 </button>
               </div>

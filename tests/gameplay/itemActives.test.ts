@@ -20,10 +20,10 @@ describe('item-active combat credit', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           items: ['burnout', null, null, null, null, null],
         },
-        [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-river', integ: 40, alive: true },
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'coldstore-cross', integ: 40, alive: true },
       },
     }))
 
@@ -58,12 +58,12 @@ describe('item-active combat credit', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           items: ['lockout_shunt', null, null, null, null, null],
         },
         [ENEMY]: {
           ...s.players[ENEMY]!,
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           alive: true,
           // R4-09: hard control requires BREACHED.
           buffs: [{ id: 'breached', stacks: 1, cyclesRemaining: 5, source: 'test' }],

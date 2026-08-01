@@ -25,16 +25,16 @@ const tutorialDone = computed(() => authStore.user?.tutorialCompleted === true)
 // hero that was renamed or a command the parser no longer accepts.
 const heroTicker = HERO_IDS.map((id) => HEROES[id]?.name ?? id)
 const commandTicker = [
-  'move mid-river',
+  'move coldstore-cross',
   'attack wave:0',
   'cast q hero:daemon',
   'buy edge_kit',
-  'ward mid-river',
+  'ward coldstore-cross',
   'burn wave:1',
   'attack tenant',
   'cast r',
   'harden',
-  'attack ice:mid-t1-audit',
+  'attack ice:coldstore-t1-audit',
 ]
 
 const pillars = [
@@ -153,11 +153,14 @@ const pillars = [
         <p class="text-text-dim">
           &nbsp;&nbsp;⤷ cycle 42 · Resonance hits Daemon — 80 dmg (+bounce)
         </p>
-        <p><span class="text-chaff">&gt;</span> <span class="text-ability">move mid-river</span></p>
-        <p class="text-text-dim">&nbsp;&nbsp;⤷ cycle 43 · you advance to mid-river</p>
         <p>
           <span class="text-chaff">&gt;</span>
-          <span class="text-ability">attack ice:mid-t1-audit</span>
+          <span class="text-ability">move coldstore-cross</span>
+        </p>
+        <p class="text-text-dim">&nbsp;&nbsp;⤷ cycle 43 · you advance to coldstore-cross</p>
+        <p>
+          <span class="text-chaff">&gt;</span>
+          <span class="text-ability">attack ice:coldstore-t1-audit</span>
         </p>
         <p class="text-text-dim">&nbsp;&nbsp;⤷ cycle 44 · ice takes 55, your waves pile in</p>
       </div>

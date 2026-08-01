@@ -118,25 +118,25 @@ describe('BotManager', () => {
       registerBots('test-game', players)
 
       // Priority order: carry, mage, assassin, tank, support
-      // 1. carry (bot_alpha) -> preferred ['bot', 'top', 'mid'] -> bot=0 -> assign 'bot'
-      // 2. mage (bot_epsilon) -> preferred ['mid', 'top', 'bot'] -> mid=0 -> assign 'mid'
-      // 3. assassin (bot_gamma) -> preferred ['mid', 'top', 'bot'] -> mid=1 < 2 -> assign 'mid'
-      // 4. tank (bot_delta) -> preferred ['top', 'mid', 'bot'] -> top=0 -> assign 'top'
-      // 5. support (bot_beta) -> preferred ['mid', 'bot', 'top'] -> mid=2 full -> bot=1 -> assign 'bot'
-      expect(getBotLane('test-game', 'bot_alpha')).toBe('bot') // carry
-      expect(getBotLane('test-game', 'bot_epsilon')).toBe('mid') // mage
-      expect(getBotLane('test-game', 'bot_gamma')).toBe('mid') // assassin (mid has room)
-      expect(getBotLane('test-game', 'bot_delta')).toBe('top') // tank
-      expect(getBotLane('test-game', 'bot_beta')).toBe('bot') // support (mid full)
+      // 1. carry (bot_alpha) -> preferred ['shallows', 'seawall', 'coldstore'] -> bot=0 -> assign 'shallows'
+      // 2. mage (bot_epsilon) -> preferred ['coldstore', 'seawall', 'shallows'] -> mid=0 -> assign 'coldstore'
+      // 3. assassin (bot_gamma) -> preferred ['coldstore', 'seawall', 'shallows'] -> mid=1 < 2 -> assign 'coldstore'
+      // 4. tank (bot_delta) -> preferred ['seawall', 'coldstore', 'shallows'] -> top=0 -> assign 'seawall'
+      // 5. support (bot_beta) -> preferred ['coldstore', 'shallows', 'seawall'] -> mid=2 full -> bot=1 -> assign 'shallows'
+      expect(getBotLane('test-game', 'bot_alpha')).toBe('shallows') // carry
+      expect(getBotLane('test-game', 'bot_epsilon')).toBe('coldstore') // mage
+      expect(getBotLane('test-game', 'bot_gamma')).toBe('coldstore') // assassin (mid has room)
+      expect(getBotLane('test-game', 'bot_delta')).toBe('seawall') // tank
+      expect(getBotLane('test-game', 'bot_beta')).toBe('shallows') // support (mid full)
     })
 
     it('defaults to mid for unknown bot', () => {
       registerBots('test-game', [])
-      expect(getBotLane('test-game', 'unknown-bot')).toBe('mid')
+      expect(getBotLane('test-game', 'unknown-bot')).toBe('coldstore')
     })
 
     it('defaults to mid for unknown game', () => {
-      expect(getBotLane('unknown-game', 'bot_alpha')).toBe('mid')
+      expect(getBotLane('unknown-game', 'bot_alpha')).toBe('coldstore')
     })
   })
 
@@ -151,23 +151,23 @@ describe('BotManager', () => {
     ]
 
     it('forceLane pins every bot to one lane regardless of role', () => {
-      registerBots('test-game', tutorialBots, { forceLane: 'mid' })
-      expect(getBotLane('test-game', 'bot_ally')).toBe('mid')
-      expect(getBotLane('test-game', 'bot_enemy0')).toBe('mid')
+      registerBots('test-game', tutorialBots, { forceLane: 'coldstore' })
+      expect(getBotLane('test-game', 'bot_ally')).toBe('coldstore')
+      expect(getBotLane('test-game', 'bot_enemy0')).toBe('coldstore')
     })
 
     it('applies the chosen difficulty alongside forceLane', () => {
-      registerBots('test-game', tutorialBots, { forceLane: 'mid', difficulty: 'easy' })
+      registerBots('test-game', tutorialBots, { forceLane: 'coldstore', difficulty: 'easy' })
       expect(getBotDifficulty('test-game', 'bot_ally')).toBe('easy')
       expect(getBotDifficulty('test-game', 'bot_enemy0')).toBe('easy')
-      expect(getBotLane('test-game', 'bot_ally')).toBe('mid')
+      expect(getBotLane('test-game', 'bot_ally')).toBe('coldstore')
     })
 
     it('still accepts a bare difficulty string as the 3rd arg (back-compat)', () => {
       registerBots('test-game', tutorialBots, 'hard')
       expect(getBotDifficulty('test-game', 'bot_ally')).toBe('hard')
       // No forceLane → role-based assignment still runs.
-      expect(getBotLane('test-game', 'bot_ally')).toBe('bot') // carry
+      expect(getBotLane('test-game', 'bot_ally')).toBe('shallows') // carry
     })
   })
 
@@ -184,33 +184,33 @@ describe('BotManager', () => {
 
     it('restricts lane assignment to only the provided lanes', () => {
       // Two-lane map: top + mid only, no bot.
-      registerBots('test-game', twoLaneBots, { availableLanes: ['top', 'mid'] })
+      registerBots('test-game', twoLaneBots, { availableLanes: ['seawall', 'coldstore'] })
 
-      // carry would normally go 'bot' — remapped to its next preferred lane.
+      // carry would normally go 'shallows' — remapped to its next preferred lane.
       const carryLane = getBotLane('test-game', 'bot_carry')
-      expect(['top', 'mid']).toContain(carryLane)
+      expect(['seawall', 'coldstore']).toContain(carryLane)
       const tankLane = getBotLane('test-game', 'bot_tank')
-      expect(['top', 'mid']).toContain(tankLane)
+      expect(['seawall', 'coldstore']).toContain(tankLane)
       const supportLane = getBotLane('test-game', 'bot_support')
-      expect(['top', 'mid']).toContain(supportLane)
+      expect(['seawall', 'coldstore']).toContain(supportLane)
     })
 
     it('never assigns a lane outside availableLanes', () => {
-      registerBots('test-game', twoLaneBots, { availableLanes: ['top', 'mid'] })
+      registerBots('test-game', twoLaneBots, { availableLanes: ['seawall', 'coldstore'] })
       for (const bot of twoLaneBots) {
-        expect(getBotLane('test-game', bot.playerId)).not.toBe('bot')
+        expect(getBotLane('test-game', bot.playerId)).not.toBe('shallows')
         expect(getBotLane('test-game', bot.playerId)).not.toBe('jungle')
       }
     })
 
     it('forceLane wins over availableLanes when both are set', () => {
       registerBots('test-game', twoLaneBots, {
-        forceLane: 'mid',
-        availableLanes: ['top', 'mid'],
+        forceLane: 'coldstore',
+        availableLanes: ['seawall', 'coldstore'],
       })
-      expect(getBotLane('test-game', 'bot_carry')).toBe('mid')
-      expect(getBotLane('test-game', 'bot_tank')).toBe('mid')
-      expect(getBotLane('test-game', 'bot_support')).toBe('mid')
+      expect(getBotLane('test-game', 'bot_carry')).toBe('coldstore')
+      expect(getBotLane('test-game', 'bot_tank')).toBe('coldstore')
+      expect(getBotLane('test-game', 'bot_support')).toBe('coldstore')
     })
   })
 
@@ -227,13 +227,13 @@ describe('BotManager', () => {
       expect(isGameBot('afk-game', 'human1')).toBe(true)
       expect(getBotPlayerIds('afk-game')).toContain('human1')
       // Defaults so the GameLoop bot driver can act for the slot.
-      expect(getBotLane('afk-game', 'human1')).toBe('mid')
+      expect(getBotLane('afk-game', 'human1')).toBe('coldstore')
       expect(getBotDifficulty('afk-game', 'human1')).toBe('medium')
     })
 
     it('honours an explicit lane + difficulty', () => {
-      convertToBot('afk-game', 'human2', 'top', 'hard')
-      expect(getBotLane('afk-game', 'human2')).toBe('top')
+      convertToBot('afk-game', 'human2', 'seawall', 'hard')
+      expect(getBotLane('afk-game', 'human2')).toBe('seawall')
       expect(getBotDifficulty('afk-game', 'human2')).toBe('hard')
     })
 

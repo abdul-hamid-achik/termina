@@ -137,19 +137,19 @@ const movementGuide = [
     items: [
       'The map is divided into zones (fountain, base, routes, silt, crossings)',
       `You walk one zone per cycle (${tickSeconds} seconds) — but you can order a move to ANY zone and your hero auto-paths there, cycle by cycle`,
-      'Type move <zone-id> to move (e.g., move chaff-base, move mid-t3-chaff), or tap any zone on the map',
+      'Type move <zone-id> to move (e.g., move rookery-terminal, move coldstore-t3-chaff), or tap any zone on the map',
       'Issuing any new action cancels the walk; a new move order redirects it',
-      'Shortcut: mv is the same as move (e.g., mv mid-t2-chaff)',
+      'Shortcut: mv is the same as move (e.g., mv coldstore-t2-chaff)',
     ],
   },
   {
     title: 'Zone Naming Convention',
     items: [
-      'Routes: top-t1-chaff, mid-t2-audit, bot-t3-chaff (route-tier-team) — top is SEAWALL, mid is COLDSTORE, bot is SHALLOWS',
-      'Crossings: top-river, mid-river, bot-river (the neutral ground between the two sides)',
-      'Silt: silt-chaff-top, silt-audit-bot (silt-team-side)',
-      'Base & Fountain: chaff-base, chaff-fountain, audit-base, audit-fountain',
-      'Special: hollow, cache-top, cache-bot',
+      'Routes: seawall-t1-chaff, coldstore-t2-audit, shallows-t3-chaff (route-tier-team) — top is SEAWALL, mid is COLDSTORE, bot is SHALLOWS',
+      'Crossings: seawall-cross, coldstore-cross, shallows-cross (the neutral ground between the two sides)',
+      'Silt: silt-chaff-upper, silt-audit-lower (silt-team-side)',
+      'Base & Fountain: rookery-terminal, rookery-anchor, landing-terminal, landing-anchor',
+      'Special: hollow, cache-seawall, cache-shallows',
     ],
   },
   {
@@ -159,7 +159,7 @@ const movementGuide = [
       'Fountain is only adjacent to your base (must go through base first)',
       `You can't move while dead — respawn takes ${RESPAWN_BASE_CYCLES} cycles plus ${RESPAWN_PER_LEVEL_CYCLES} per level after level ${RESPAWN_FREE_LEVELS}`,
       'Team-relative shortcuts: move base / move fountain always go to YOUR side, whichever team you are',
-      'More aliases save typing: move mid → mid-river, move hollow → the Tenant pit; unambiguous prefixes work too',
+      'More aliases save typing: move mid → coldstore-cross, move hollow → the Tenant pit; unambiguous prefixes work too',
     ],
   },
 ]
@@ -168,7 +168,7 @@ const commands = [
   {
     cmd: 'move <zone>',
     desc: 'Walk to any zone — one zone per cycle, auto-pathing until you arrive',
-    example: 'move mid-t1-chaff',
+    example: 'move coldstore-t1-chaff',
     shortcuts: 'mv',
   },
   {
@@ -210,7 +210,7 @@ const commands = [
   {
     cmd: 'ward <zone>',
     desc: 'Place a vision ward (current or adjacent zone)',
-    example: 'ward mid-river',
+    example: 'ward coldstore-cross',
     shortcuts: '—',
   },
   { cmd: 'grab', desc: 'Pick up the cache in your zone', example: 'grab', shortcuts: '—' },
@@ -232,7 +232,7 @@ const commands = [
     example: 'chat team group mid',
     shortcuts: '—',
   },
-  { cmd: 'ping <zone>', desc: 'Ping a map zone', example: 'ping mid-river', shortcuts: '—' },
+  { cmd: 'ping <zone>', desc: 'Ping a map zone', example: 'ping coldstore-cross', shortcuts: '—' },
   {
     cmd: 'buyback',
     desc: 'Pay scrip to respawn instantly (while dead)',
@@ -280,7 +280,7 @@ const targeting = [
   {
     format: 'ice:<zone>',
     desc: 'Target the ice in a zone',
-    example: 'attack ice:mid-t1-audit',
+    example: 'attack ice:coldstore-t1-audit',
   },
   {
     format: 'tenant',
@@ -382,7 +382,7 @@ const concepts = [
   {
     term: 'Tenant & Caches',
     icon: '%',
-    desc: `Tenant (${TENANT_BASE_HP}+ INTEG) lurks in hollow and drops the Backup when killed — grab it with backup. Power-up caches spawn at cache-top/cache-bot every ${CACHE_INTERVAL_CYCLES} cycles and expire after ${CACHE_DURATION_CYCLES}; grab them with cache.`,
+    desc: `Tenant (${TENANT_BASE_HP}+ INTEG) lurks in hollow and drops the Backup when killed — grab it with backup. Power-up caches spawn at cache-seawall/cache-shallows every ${CACHE_INTERVAL_CYCLES} cycles and expire after ${CACHE_DURATION_CYCLES}; grab them with cache.`,
   },
   {
     term: 'Win Condition',
@@ -492,31 +492,31 @@ const postureGroups = POSTURE_ORDER.map((posture) => ({
         </div>
         <div class="flex flex-wrap items-center gap-1 text-[0.75rem]">
           <span class="border border-border bg-bg-secondary px-1.5 py-0.5 text-chaff"
-            >chaff-fountain</span
+            >rookery-anchor</span
           >
           <span class="text-text-dim">&rarr;</span>
           <span class="border border-border bg-bg-secondary px-1.5 py-0.5 text-ability"
-            >move chaff-base</span
+            >move rookery-terminal</span
           >
           <span class="text-text-dim">&rarr;</span>
           <span class="border border-border bg-bg-secondary px-1.5 py-0.5 text-ability"
-            >move mid-t3-chaff</span
+            >move coldstore-t3-chaff</span
           >
           <span class="text-text-dim">&rarr;</span>
           <span class="border border-border bg-bg-secondary px-1.5 py-0.5 text-ability"
-            >move mid-t2-chaff</span
+            >move coldstore-t2-chaff</span
           >
           <span class="text-text-dim">&rarr;</span>
           <span class="border border-border bg-bg-secondary px-1.5 py-0.5 text-ability"
-            >move mid-t1-chaff</span
+            >move coldstore-t1-chaff</span
           >
           <span class="text-text-dim">&rarr;</span>
           <span class="border border-border bg-bg-secondary px-1.5 py-0.5 text-ability"
-            >move mid-river</span
+            >move coldstore-cross</span
           >
           <span class="text-text-dim">&rarr;</span>
           <span class="border border-border bg-bg-secondary px-1.5 py-0.5 text-gold"
-            >mid-river</span
+            >coldstore-cross</span
           >
         </div>
         <p class="mt-1 text-[0.75rem] text-text-dim">

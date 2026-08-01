@@ -156,12 +156,12 @@ export function parseBotDifficulty(raw: unknown): BotDifficulty | undefined {
 }
 
 const LANE_PRIORITY_BY_ROLE: Record<HeroRole, string[]> = {
-  carry: ['bot', 'top', 'mid'],
-  support: ['mid', 'bot', 'top'],
-  tank: ['top', 'mid', 'bot'],
-  assassin: ['mid', 'top', 'bot'],
-  mage: ['mid', 'top', 'bot'],
-  offlaner: ['top', 'mid', 'bot'],
+  carry: ['shallows', 'seawall', 'coldstore'],
+  support: ['coldstore', 'shallows', 'seawall'],
+  tank: ['seawall', 'coldstore', 'shallows'],
+  assassin: ['coldstore', 'seawall', 'shallows'],
+  mage: ['coldstore', 'seawall', 'shallows'],
+  offlaner: ['seawall', 'coldstore', 'shallows'],
 }
 
 export function createBotPlayers(
@@ -277,8 +277,8 @@ function assignLanesByRole(
 ): void {
   // Default lane pool; a partial map (e.g. two-lane 3v3) restricts this so a
   // bot is never assigned to a lane that doesn't exist on its map.
-  const lanePool = availableLanes ?? ['top', 'mid', 'bot']
-  const laneCounts: Record<string, number> = { top: 0, mid: 0, bot: 0, jungle: 0 }
+  const lanePool = availableLanes ?? ['seawall', 'coldstore', 'shallows']
+  const laneCounts: Record<string, number> = { seawall: 0, coldstore: 0, shallows: 0, silt: 0 }
   const maxPerLane = 2
 
   bots.sort((a, b) => {
@@ -307,7 +307,7 @@ function assignLanesByRole(
     }
 
     if (!assignedLane) {
-      assignedLane = lanePool[0] ?? 'mid'
+      assignedLane = lanePool[0] ?? 'coldstore'
     }
 
     laneMap.set(bot.playerId, assignedLane)
@@ -338,7 +338,7 @@ export function isGameBot(gameId: string, playerId: string): boolean {
 export function convertToBot(
   gameId: string,
   playerId: string,
-  lane = 'mid',
+  lane = 'coldstore',
   difficulty: BotDifficulty = 'medium',
 ): boolean {
   let bots = gameBots.get(gameId)
@@ -367,7 +367,7 @@ export function convertToBot(
 }
 
 export function getBotLane(gameId: string, botId: string): string {
-  return gameBotLanes.get(gameId)?.get(botId) ?? 'mid'
+  return gameBotLanes.get(gameId)?.get(botId) ?? 'coldstore'
 }
 
 export function getBotDifficulty(gameId: string, botId: string): BotDifficulty {

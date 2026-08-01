@@ -13,7 +13,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestCron',
     team: 'chaff',
     heroId: 'cron',
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: 620,
     maxInteg: 620,
     bw: 380,
@@ -87,9 +87,9 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     },
     players: playerMap,
     zones: {
-      'mid-river': { id: 'mid-river', wards: [] },
-      'top-river': { id: 'top-river', wards: [] },
-      'mid-t1-chaff': { id: 'mid-t1-chaff', wards: [] },
+      'coldstore-cross': { id: 'coldstore-cross', wards: [] },
+      'seawall-cross': { id: 'seawall-cross', wards: [] },
+      'coldstore-t1-chaff': { id: 'coldstore-t1-chaff', wards: [] },
     },
     waves: [],
     ice: [],
@@ -166,7 +166,7 @@ describe('Cron Hero', () => {
 
     it('fails when target is in different zone', () => {
       const player = makePlayer()
-      const ally = makeAlly({ zone: 'top-river' })
+      const ally = makeAlly({ zone: 'seawall-cross' })
       const state = makeState([player, ally])
 
       const result = Effect.runSyncExit(
@@ -346,7 +346,7 @@ describe('Cron Hero', () => {
 
     it('fails when target is in different zone', () => {
       const player = makePlayer()
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(
@@ -406,7 +406,7 @@ describe('Cron Hero', () => {
 
     it('does not affect allies in different zone', () => {
       const player = makePlayer({ level: 6, bw: 500 })
-      const ally = makeAlly({ zone: 'top-river' })
+      const ally = makeAlly({ zone: 'seawall-cross' })
       const state = makeState([player, ally])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
@@ -493,7 +493,7 @@ describe('Cron Hero', () => {
 
     it('does not heal allies in different zone', () => {
       const player = makePlayer()
-      const ally = makeAlly({ integ: 300, maxInteg: 550, zone: 'top-river' })
+      const ally = makeAlly({ integ: 300, maxInteg: 550, zone: 'seawall-cross' })
       const state = makeState([player, ally], { cycle: 8 })
 
       const updated = resolvePassive(state, 'p1', {

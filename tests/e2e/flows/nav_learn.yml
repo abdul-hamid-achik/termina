@@ -102,7 +102,7 @@ steps:
   - id: hop_to_base
     click:
       by: selector
-      selector: '[data-testid="primer-zone-chaff-base"]'
+      selector: '[data-testid="primer-zone-rookery-terminal"]'
   - id: await_hop_caption
     wait:
       text: Standing in Rookery Terminal

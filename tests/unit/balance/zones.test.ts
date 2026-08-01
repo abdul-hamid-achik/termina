@@ -28,7 +28,7 @@ describe('Zone Constants', () => {
 
   describe('zone types', () => {
     it('has exactly 2 fountain zones', () => {
-      const fountains = ZONES.filter((z) => z.type === 'fountain')
+      const fountains = ZONES.filter((z) => z.type === 'anchor')
       expect(fountains).toHaveLength(2)
     })
 
@@ -38,7 +38,7 @@ describe('Zone Constants', () => {
     })
 
     it('has exactly 18 lane zones (3 lanes * 3 tiers * 2 teams)', () => {
-      const lanes = ZONES.filter((z) => z.type === 'lane')
+      const lanes = ZONES.filter((z) => z.type === 'route')
       expect(lanes).toHaveLength(18)
     })
 
@@ -48,7 +48,7 @@ describe('Zone Constants', () => {
     })
 
     it('has exactly 5 river zones', () => {
-      const rivers = ZONES.filter((z) => z.type === 'river')
+      const rivers = ZONES.filter((z) => z.type === 'cross')
       expect(rivers).toHaveLength(5)
     })
 
@@ -61,19 +61,19 @@ describe('Zone Constants', () => {
 
   describe('team assignment', () => {
     it('each base belongs to a team', () => {
-      const chaffBase = ZONE_MAP['chaff-base']
-      const auditBase = ZONE_MAP['audit-base']
+      const chaffBase = ZONE_MAP['rookery-terminal']
+      const auditBase = ZONE_MAP['landing-terminal']
       expect(chaffBase!.team).toBe('chaff')
       expect(auditBase!.team).toBe('audit')
     })
 
     it('each fountain belongs to a team', () => {
-      expect(ZONE_MAP['chaff-fountain']!.team).toBe('chaff')
-      expect(ZONE_MAP['audit-fountain']!.team).toBe('audit')
+      expect(ZONE_MAP['rookery-anchor']!.team).toBe('chaff')
+      expect(ZONE_MAP['landing-anchor']!.team).toBe('audit')
     })
 
     it('river zones are neutral', () => {
-      const rivers = ZONES.filter((z) => z.type === 'river')
+      const rivers = ZONES.filter((z) => z.type === 'cross')
       for (const r of rivers) {
         expect(r.team).toBe('neutral')
       }
@@ -87,7 +87,7 @@ describe('Zone Constants', () => {
     })
 
     it('lane zones belong to correct team based on suffix', () => {
-      const lanes = ZONES.filter((z) => z.type === 'lane')
+      const lanes = ZONES.filter((z) => z.type === 'route')
       for (const l of lanes) {
         if (l.id.endsWith('-chaff')) expect(l.team).toBe('chaff')
         else if (l.id.endsWith('-audit')) expect(l.team).toBe('audit')
@@ -105,16 +105,14 @@ describe('Zone Constants', () => {
     it('only bases and fountains have shops', () => {
       const shops = ZONES.filter((z) => z.shop)
       expect(shops).toHaveLength(4)
-      expect(shops.map((s) => s.id).sort()).toEqual([
-        'audit-base',
-        'audit-fountain',
-        'chaff-base',
-        'chaff-fountain',
-      ])
+      // Order-independent: the list is sorted, so it must be compared sorted.
+      expect(shops.map((s) => s.id).sort()).toEqual(
+        ['landing-terminal', 'landing-anchor', 'rookery-terminal', 'rookery-anchor'].sort(),
+      )
     })
 
     it('both teams can shop without leaving their base', () => {
-      for (const id of ['chaff-base', 'audit-base']) {
+      for (const id of ['rookery-terminal', 'landing-terminal']) {
         expect(ZONES.find((z) => z.id === id)?.shop).toBe(true)
       }
     })
@@ -122,14 +120,14 @@ describe('Zone Constants', () => {
 
   describe('ice zones', () => {
     it('all lane zones have ice', () => {
-      const lanes = ZONES.filter((z) => z.type === 'lane')
+      const lanes = ZONES.filter((z) => z.type === 'route')
       for (const l of lanes) {
         expect(l.ice).toBe(true)
       }
     })
 
     it('non-lane zones do not have ice', () => {
-      const nonLanes = ZONES.filter((z) => z.type !== 'lane')
+      const nonLanes = ZONES.filter((z) => z.type !== 'route')
       for (const z of nonLanes) {
         expect(z.ice).toBe(false)
       }
@@ -168,43 +166,43 @@ describe('Zone Constants', () => {
   })
 
   describe('map layout validation', () => {
-    it('tenant pit is reachable only from cache-top', () => {
+    it('tenant pit is reachable only from cache-seawall', () => {
       const rosh = ZONE_MAP['hollow']!
-      expect(rosh.adjacentTo).toEqual(['cache-top'])
+      expect(rosh.adjacentTo).toEqual(['cache-seawall'])
     })
 
     it('cache spots connect to river crossings and silts', () => {
-      const cacheTop = ZONE_MAP['cache-top']!
-      expect(cacheTop.adjacentTo).toContain('top-river')
-      expect(cacheTop.adjacentTo).toContain('mid-river')
-      expect(cacheTop.adjacentTo).toContain('silt-chaff-top')
-      expect(cacheTop.adjacentTo).toContain('silt-audit-top')
+      const cacheTop = ZONE_MAP['cache-seawall']!
+      expect(cacheTop.adjacentTo).toContain('seawall-cross')
+      expect(cacheTop.adjacentTo).toContain('coldstore-cross')
+      expect(cacheTop.adjacentTo).toContain('silt-chaff-upper')
+      expect(cacheTop.adjacentTo).toContain('silt-audit-upper')
 
-      const cacheBot = ZONE_MAP['cache-bot']!
-      expect(cacheBot.adjacentTo).toContain('bot-river')
-      expect(cacheBot.adjacentTo).toContain('mid-river')
-      expect(cacheBot.adjacentTo).toContain('silt-chaff-bot')
-      expect(cacheBot.adjacentTo).toContain('silt-audit-bot')
+      const cacheBot = ZONE_MAP['cache-shallows']!
+      expect(cacheBot.adjacentTo).toContain('shallows-cross')
+      expect(cacheBot.adjacentTo).toContain('coldstore-cross')
+      expect(cacheBot.adjacentTo).toContain('silt-chaff-lower')
+      expect(cacheBot.adjacentTo).toContain('silt-audit-lower')
     })
 
     it('fountains connect only to their base', () => {
-      expect(ZONE_MAP['chaff-fountain']!.adjacentTo).toEqual(['chaff-base'])
-      expect(ZONE_MAP['audit-fountain']!.adjacentTo).toEqual(['audit-base'])
+      expect(ZONE_MAP['rookery-anchor']!.adjacentTo).toEqual(['rookery-terminal'])
+      expect(ZONE_MAP['landing-anchor']!.adjacentTo).toEqual(['landing-terminal'])
     })
 
     it('bases connect to fountain and all three T3 zones', () => {
-      const radBase = ZONE_MAP['chaff-base']!
-      expect(radBase.adjacentTo).toContain('chaff-fountain')
-      expect(radBase.adjacentTo).toContain('top-t3-chaff')
-      expect(radBase.adjacentTo).toContain('mid-t3-chaff')
-      expect(radBase.adjacentTo).toContain('bot-t3-chaff')
+      const radBase = ZONE_MAP['rookery-terminal']!
+      expect(radBase.adjacentTo).toContain('rookery-anchor')
+      expect(radBase.adjacentTo).toContain('seawall-t3-chaff')
+      expect(radBase.adjacentTo).toContain('coldstore-t3-chaff')
+      expect(radBase.adjacentTo).toContain('shallows-t3-chaff')
       expect(radBase.adjacentTo).toHaveLength(4)
 
-      const auditBase = ZONE_MAP['audit-base']!
-      expect(auditBase.adjacentTo).toContain('audit-fountain')
-      expect(auditBase.adjacentTo).toContain('top-t3-audit')
-      expect(auditBase.adjacentTo).toContain('mid-t3-audit')
-      expect(auditBase.adjacentTo).toContain('bot-t3-audit')
+      const auditBase = ZONE_MAP['landing-terminal']!
+      expect(auditBase.adjacentTo).toContain('landing-anchor')
+      expect(auditBase.adjacentTo).toContain('seawall-t3-audit')
+      expect(auditBase.adjacentTo).toContain('coldstore-t3-audit')
+      expect(auditBase.adjacentTo).toContain('shallows-t3-audit')
       expect(auditBase.adjacentTo).toHaveLength(4)
     })
   })
@@ -246,18 +244,18 @@ describe('shop zones are team-gated', () => {
   // bare `zone.shop` test let the attacker restock from the DEFENDER's shop
   // mid-fight.
   it('lets a team shop in its own base and fountain', () => {
-    expect(isShopZoneFor('chaff-base', 'chaff')).toBe(true)
-    expect(isShopZoneFor('chaff-fountain', 'chaff')).toBe(true)
-    expect(isShopZoneFor('audit-base', 'audit')).toBe(true)
+    expect(isShopZoneFor('rookery-terminal', 'chaff')).toBe(true)
+    expect(isShopZoneFor('rookery-anchor', 'chaff')).toBe(true)
+    expect(isShopZoneFor('landing-terminal', 'audit')).toBe(true)
   })
 
   it('refuses the enemy shop', () => {
-    expect(isShopZoneFor('audit-base', 'chaff')).toBe(false)
-    expect(isShopZoneFor('chaff-base', 'audit')).toBe(false)
-    expect(isShopZoneFor('audit-fountain', 'chaff')).toBe(false)
+    expect(isShopZoneFor('landing-terminal', 'chaff')).toBe(false)
+    expect(isShopZoneFor('rookery-terminal', 'audit')).toBe(false)
+    expect(isShopZoneFor('landing-anchor', 'chaff')).toBe(false)
   })
 
   it('refuses a zone that is not a shop at all', () => {
-    expect(isShopZoneFor('mid-river', 'chaff')).toBe(false)
+    expect(isShopZoneFor('coldstore-cross', 'chaff')).toBe(false)
   })
 })

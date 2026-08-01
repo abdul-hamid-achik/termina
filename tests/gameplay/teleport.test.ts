@@ -12,18 +12,18 @@ describe('teleport (town portal scroll)', () => {
   it('a town portal scroll moves the hero home only after the channel completes', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me0 = await game.me()
-    const fountain = me0.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
+    const fountain = me0.team === 'chaff' ? 'rookery-anchor' : 'landing-anchor'
     await game.patch((s) => ({
       ...s,
       players: {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           items: ['recall_token', null, null, null, null, null],
           buffs: [],
         },
-        [ENEMY]: { ...s.players[ENEMY]!, zone: 'audit-base' }, // far off — can't interrupt
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'landing-terminal' }, // far off — can't interrupt
       },
       waves: [], // nothing to chip the channel and cancel it
     }))
@@ -32,7 +32,7 @@ describe('teleport (town portal scroll)', () => {
     await game.tick()
 
     // The TP is not instant — mid-channel the hero is still at the origin.
-    expect((await game.me()).zone).toBe('mid-river')
+    expect((await game.me()).zone).toBe('coldstore-cross')
 
     // Once the channel resolves, the hero is home at the fountain.
     await game.tick(4)
@@ -46,18 +46,18 @@ describe('teleport (town portal scroll)', () => {
     // client never reads — processCycle bridges it into the _tag channel.
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me0 = await game.me()
-    const fountain = me0.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
+    const fountain = me0.team === 'chaff' ? 'rookery-anchor' : 'landing-anchor'
     await game.patch((s) => ({
       ...s,
       players: {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           items: ['recall_token', null, null, null, null, null],
           buffs: [],
         },
-        [ENEMY]: { ...s.players[ENEMY]!, zone: 'audit-base' },
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'landing-terminal' },
       },
       waves: [],
     }))
@@ -82,7 +82,7 @@ describe('teleport (town portal scroll)', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           // Shadow expires this cycle (cyclesRemaining 1) and its zone differs from
           // the current one, so cycleAllBuffs snaps the hero to it.
           buffs: [
@@ -91,7 +91,7 @@ describe('teleport (town portal scroll)', () => {
               stacks: 1,
               cyclesRemaining: 1,
               source: HUMAN,
-              destination: 'mid-t1-chaff',
+              destination: 'coldstore-t1-chaff',
             },
           ],
         },
@@ -100,7 +100,7 @@ describe('teleport (town portal scroll)', () => {
 
     await game.tick()
 
-    expect((await game.me()).zone).toBe('mid-t1-chaff') // snapped back
+    expect((await game.me()).zone).toBe('coldstore-t1-chaff') // snapped back
     expect(
       game.allEvents.some(
         (e) => e._tag === 'teleport_complete' && e.playerId === HUMAN && e.source === 'next_hop',
@@ -116,11 +116,11 @@ describe('teleport (town portal scroll)', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           items: ['recall_token', null, null, null, null, null],
           buffs: [],
         },
-        [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-river' }, // co-located — can interrupt
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'coldstore-cross' }, // co-located — can interrupt
       },
     }))
 
@@ -132,7 +132,7 @@ describe('teleport (town portal scroll)', () => {
     await game.tick(4)
 
     // Cancelled: the hero never left, and the channel buff is gone (not stuck).
-    expect((await game.me()).zone).toBe('mid-river')
+    expect((await game.me()).zone).toBe('coldstore-cross')
     expect((await game.me()).buffs.some((b) => b.id === 'tp_channeling')).toBe(false)
   })
 })

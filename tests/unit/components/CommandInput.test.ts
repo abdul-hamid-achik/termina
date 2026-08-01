@@ -9,7 +9,7 @@ function makePlayer(over: Partial<PlayerState> = {}): PlayerState {
     name: 'Me',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'chaff-fountain',
+    zone: 'rookery-anchor',
     integ: 500,
     maxInteg: 500,
     bw: 300,
@@ -64,7 +64,7 @@ describe('CommandInput', () => {
       })
 
       const input = wrapper.find('input')
-      await input.setValue('move mid')
+      await input.setValue('move coldstore')
 
       const preview = wrapper.find('[data-testid="command-preview"]')
       expect(preview.exists()).toBe(true)
@@ -96,12 +96,12 @@ describe('CommandInput', () => {
       })
 
       const input = wrapper.find('input')
-      await input.setValue('move mid')
+      await input.setValue('move coldstore')
       await input.trigger('keydown', { key: 'Enter' })
       await wrapper.vm.$nextTick()
 
       expect(wrapper.emitted('submit')).toBeTruthy()
-      expect(wrapper.emitted('submit')![0]).toEqual(['move mid'])
+      expect(wrapper.emitted('submit')![0]).toEqual(['move coldstore'])
     })
 
     it('shows the buffered command notice', () => {
@@ -117,11 +117,11 @@ describe('CommandInput', () => {
 
     it('shows the pending command in the placeholder while waiting', () => {
       const wrapper = mount(CommandInput, {
-        props: { canAct: false, pendingCommand: 'move mid-river' },
+        props: { canAct: false, pendingCommand: 'move coldstore-cross' },
       })
 
       const input = wrapper.find('input')
-      expect(input.attributes('placeholder')).toContain('move mid-river')
+      expect(input.attributes('placeholder')).toContain('move coldstore-cross')
     })
 
     it('should emit submit on Enter', async () => {
@@ -131,12 +131,12 @@ describe('CommandInput', () => {
 
       const input = wrapper.find('input')
 
-      await input.setValue('move mid')
+      await input.setValue('move coldstore')
       await input.trigger('keydown', { key: 'Enter' })
       await wrapper.vm.$nextTick()
 
       expect(wrapper.emitted('submit')).toBeTruthy()
-      expect(wrapper.emitted('submit')![0]).toEqual(['move mid'])
+      expect(wrapper.emitted('submit')![0]).toEqual(['move coldstore'])
     })
   })
 
@@ -192,9 +192,9 @@ describe('CommandInput', () => {
     })
 
     it('shows a valid MOVE preview to an adjacent zone, resolving its name', async () => {
-      // Caster in the fountain — adjacent only to chaff-base, the one legal move.
+      // Caster in the fountain — adjacent only to rookery-terminal, the one legal move.
       const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
-      await wrapper.find('input').setValue('move chaff-base')
+      await wrapper.find('input').setValue('move rookery-terminal')
       const preview = wrapper.get('[data-testid="command-preview"]')
       expect(preview.text()).toContain('Move to')
       expect(preview.classes()).toContain('text-chaff')
@@ -323,11 +323,11 @@ describe('CommandInput', () => {
       expect(wrapper.get('[data-testid="command-preview"]').text()).toContain('Cast W')
     })
 
-    it('submits `move mid` instead of completing it to the tier-3 ice', async () => {
+    it('submits `move coldstore` instead of completing it to the tier-3 ice', async () => {
       const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
-      const input = await typeAndEnter(wrapper, 'move mid')
-      expect(wrapper.emitted('submit')?.[0]).toEqual(['move mid'])
-      expect((input.element as HTMLInputElement).value).not.toContain('mid-t3-chaff')
+      const input = await typeAndEnter(wrapper, 'move coldstore')
+      expect(wrapper.emitted('submit')?.[0]).toEqual(['move coldstore'])
+      expect((input.element as HTMLInputElement).value).not.toContain('coldstore-t3-chaff')
     })
 
     it('still completes a genuine prefix rather than submitting it', async () => {
@@ -340,14 +340,14 @@ describe('CommandInput', () => {
     it('takes an explicitly highlighted suggestion over the typed text', async () => {
       const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
       const input = wrapper.find('input')
-      await input.setValue('move mid')
+      await input.setValue('move coldstore')
       await input.trigger('keydown', { key: 'ArrowDown' })
       await input.trigger('keydown', { key: 'Enter' })
       await wrapper.vm.$nextTick()
 
       expect(wrapper.emitted('submit')).toBeUndefined()
-      expect((input.element as HTMLInputElement).value.trim()).not.toBe('move mid')
-      expect((input.element as HTMLInputElement).value).toContain('move mid-')
+      expect((input.element as HTMLInputElement).value.trim()).not.toBe('move coldstore')
+      expect((input.element as HTMLInputElement).value).toContain('move coldstore-')
     })
 
     it('does not submit `chat team` — its "needs a message" error still gates it', async () => {

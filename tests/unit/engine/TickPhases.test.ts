@@ -163,7 +163,7 @@ describe('processSpecialActions', () => {
           name: 'p1',
           team: 'chaff',
           heroId: 'echo',
-          zone: 'chaff-fountain',
+          zone: 'rookery-anchor',
           integ: 1000,
           maxInteg: 1000,
           bw: 100,
@@ -199,7 +199,7 @@ describe('processSpecialActions', () => {
   it('does not consume non-special commands', () => {
     const state = makeState()
     const result = processSpecialActions(state, [
-      { playerId: 'p1', command: { type: 'move', zone: 'mid-river' } },
+      { playerId: 'p1', command: { type: 'move', zone: 'coldstore-cross' } },
       { playerId: 'p2', command: { type: 'attack', target: { kind: 'hero', id: 'p3' } } },
     ])
     // Move/attack are not handled here — pass through silently

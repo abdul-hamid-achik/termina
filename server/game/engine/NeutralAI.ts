@@ -24,10 +24,10 @@ export function resetNeutralIdCounter(gameId?: string): void {
 
 /** Jungle camp zones */
 const JUNGLE_ZONES = [
-  'silt-chaff-top',
-  'silt-chaff-bot',
-  'silt-audit-top',
-  'silt-audit-bot',
+  'silt-chaff-upper',
+  'silt-chaff-lower',
+  'silt-audit-upper',
+  'silt-audit-lower',
 ] as const
 
 /** Spawn neutral waves in silt camps. `hasZone` skips camps a subset map

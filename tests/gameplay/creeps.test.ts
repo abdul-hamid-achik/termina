@@ -14,8 +14,8 @@ describe('waves: lane combat', () => {
     await game.patch((s) => ({
       ...s,
       waves: [
-        { id: 'rc', team: 'chaff', zone: 'top-river', integ: 400, type: 'line' },
-        { id: 'dc', team: 'audit', zone: 'top-river', integ: 400, type: 'line' },
+        { id: 'rc', team: 'chaff', zone: 'seawall-cross', integ: 400, type: 'line' },
+        { id: 'dc', team: 'audit', zone: 'seawall-cross', integ: 400, type: 'line' },
       ],
     }))
 
@@ -34,8 +34,8 @@ describe('waves: lane combat', () => {
     await game.patch((s) => ({
       ...s,
       waves: [
-        { id: 'rc', team: 'chaff', zone: 'top-river', integ: 400, type: 'line' },
-        { id: 'dc', team: 'audit', zone: 'top-river', integ: 1, type: 'line' },
+        { id: 'rc', team: 'chaff', zone: 'seawall-cross', integ: 400, type: 'line' },
+        { id: 'dc', team: 'audit', zone: 'seawall-cross', integ: 1, type: 'line' },
       ],
     }))
 
@@ -59,9 +59,11 @@ describe('waves: last-hit & burn economy', () => {
     const enemyTeam = me0.team === 'chaff' ? 'audit' : 'chaff'
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' } },
       // One enemy wave at a sliver of INTEG, co-located — a single swing finishes it.
-      waves: [{ id: 'enemy_wave', team: enemyTeam, zone: 'mid-river', integ: 10, type: 'line' }],
+      waves: [
+        { id: 'enemy_wave', team: enemyTeam, zone: 'coldstore-cross', integ: 10, type: 'line' },
+      ],
     }))
 
     const scripBefore = (await game.me()).scrip
@@ -79,9 +81,11 @@ describe('waves: last-hit & burn economy', () => {
     const me0 = await game.me()
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' } },
       // An ALLIED line wave below the 50%-of-400 burn threshold, co-located.
-      waves: [{ id: 'ally_wave', team: me0.team, zone: 'mid-river', integ: 100, type: 'line' }],
+      waves: [
+        { id: 'ally_wave', team: me0.team, zone: 'coldstore-cross', integ: 100, type: 'line' },
+      ],
     }))
 
     const scripBefore = (await game.me()).scrip
@@ -101,9 +105,11 @@ describe('waves: last-hit & burn economy', () => {
     const me0 = await game.me()
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' } },
       // 380 / 400 = 95% INTEG — well above the burn window.
-      waves: [{ id: 'ally_wave', team: me0.team, zone: 'mid-river', integ: 380, type: 'line' }],
+      waves: [
+        { id: 'ally_wave', team: me0.team, zone: 'coldstore-cross', integ: 380, type: 'line' },
+      ],
     }))
 
     game.submit({ type: 'burn', target: { kind: 'wave', index: 0 } })
@@ -131,10 +137,12 @@ describe('waves: last-hit & burn economy', () => {
       ...s,
       players: {
         ...s.players,
-        [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river', xp: 0 },
-        lanemate: { ...s.players['lanemate']!, zone: 'mid-river', alive: true, xp: 0 },
+        [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross', xp: 0 },
+        lanemate: { ...s.players['lanemate']!, zone: 'coldstore-cross', alive: true, xp: 0 },
       },
-      waves: [{ id: 'enemy_wave', team: 'audit', zone: 'mid-river', integ: 10, type: 'line' }],
+      waves: [
+        { id: 'enemy_wave', team: 'audit', zone: 'coldstore-cross', integ: 10, type: 'line' },
+      ],
     }))
 
     game.submit({ type: 'attack', target: { kind: 'wave', index: 0 } })
@@ -163,12 +171,12 @@ describe('waves: last-hit & burn economy', () => {
     await game.patch((s) => ({
       ...s,
       cycle: lateTick,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' } },
       waves: [
         {
           id: 'ally_wave',
           team: me0.team,
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           // Just under half of what this wave actually spawned with. Against the
           // tick-0 constant this reads as ABOVE the threshold and is refused.
           integ: Math.round(spawnMax * 0.45),
@@ -201,12 +209,12 @@ describe('waves: last-hit & burn economy', () => {
     await game.patch((s) => ({
       ...s,
       cycle: lateTick,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' } },
       waves: [
         {
           id: 'old_wave',
           team: me0.team,
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           integ: Math.round(baseMax * 0.6), // above ITS half, below the late tier's half
           maxInteg: baseMax,
           type: 'line',
@@ -228,8 +236,10 @@ describe('waves: last-hit & burn economy', () => {
     const me0 = await game.me()
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
-      waves: [{ id: 'ally_wave', team: me0.team, zone: 'mid-river', integ: 10, type: 'line' }],
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' } },
+      waves: [
+        { id: 'ally_wave', team: me0.team, zone: 'coldstore-cross', integ: 10, type: 'line' },
+      ],
     }))
 
     const scripBefore = (await game.me()).scrip
@@ -250,7 +260,7 @@ describe('waves: last-hit & burn economy', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' } },
       waves: [],
     }))
 

@@ -21,7 +21,7 @@ describe('NPC damage is visible', () => {
     await game.patch((s) => ({
       ...s,
       waves: [],
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-t1-audit' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-t1-audit' } },
     }))
 
     await game.tick(2)
@@ -31,7 +31,7 @@ describe('NPC damage is visible', () => {
     const hit = hits[0]!
     expect(hit).toMatchObject({
       _tag: 'damage',
-      sourceId: 'ice_mid-t1-audit',
+      sourceId: 'ice_coldstore-t1-audit',
       targetId: HUMAN,
       damageType: 'kinetic',
     })
@@ -45,8 +45,8 @@ describe('NPC damage is visible', () => {
     // its "a wave" label off that prefix.
     await game.patch((s) => ({
       ...s,
-      waves: [{ id: 'wave-901', team: 'audit', zone: 'mid-river', integ: 400, type: 'line' }],
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+      waves: [{ id: 'wave-901', team: 'audit', zone: 'coldstore-cross', integ: 400, type: 'line' }],
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' } },
     }))
 
     await game.tick()
@@ -63,14 +63,14 @@ describe('NPC damage is visible', () => {
       neutrals: [
         {
           id: 'neutral_camp_1',
-          zone: 'silt-chaff-top',
+          zone: 'silt-chaff-upper',
           integ: 400,
           maxInteg: 400,
           type: 'warden',
           alive: true,
         },
       ],
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'silt-chaff-top' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'silt-chaff-upper' } },
     }))
 
     await game.tick()
@@ -85,7 +85,7 @@ describe('NPC damage is visible', () => {
     await game.patch((s) => ({
       ...s,
       waves: [],
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-t1-audit' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-t1-audit' } },
     }))
 
     await game.tick(2)

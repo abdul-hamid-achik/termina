@@ -75,7 +75,7 @@ function createPlayerState(setup: PlayerSetup): PlayerState {
     guildTag: setup.guildTag,
     team: setup.team,
     heroId: setup.heroId,
-    zone: setup.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain',
+    zone: setup.team === 'chaff' ? 'rookery-anchor' : 'landing-anchor',
     integ: baseHp,
     maxInteg: baseHp,
     bw: baseMp,

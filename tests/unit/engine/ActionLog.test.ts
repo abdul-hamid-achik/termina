@@ -75,7 +75,7 @@ describe('ActionLog', () => {
     const redis = makeMockRedis()
     await Effect.runPromise(
       appendActions(redis, 'g1', [
-        { cycle: 1, playerId: 'p1', command: { type: 'move', zone: 'mid-river' } },
+        { cycle: 1, playerId: 'p1', command: { type: 'move', zone: 'coldstore-cross' } },
         {
           cycle: 1,
           playerId: 'p2',

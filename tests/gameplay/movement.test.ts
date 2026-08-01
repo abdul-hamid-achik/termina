@@ -14,38 +14,38 @@ describe('movement', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' } },
     }))
 
-    // mid-river borders mid-t1-chaff — a single legal step.
-    expect(areAdjacent('mid-river', 'mid-t1-chaff')).toBe(true)
-    game.submit({ type: 'move', zone: 'mid-t1-chaff' })
+    // coldstore-cross borders coldstore-t1-chaff — a single legal step.
+    expect(areAdjacent('coldstore-cross', 'coldstore-t1-chaff')).toBe(true)
+    game.submit({ type: 'move', zone: 'coldstore-t1-chaff' })
     await game.tick()
 
-    expect((await game.me()).zone).toBe('mid-t1-chaff')
+    expect((await game.me()).zone).toBe('coldstore-t1-chaff')
   })
 
   it('a distant order auto-paths: one hop per cycle, never a teleport, arriving over N ticks', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' } },
     }))
 
-    // audit-base is across the map — 4 hops down mid lane.
-    expect(areAdjacent('mid-river', 'audit-base')).toBe(false)
-    game.submit({ type: 'move', zone: 'audit-base' })
+    // landing-terminal is across the map — 4 hops down mid lane.
+    expect(areAdjacent('coldstore-cross', 'landing-terminal')).toBe(false)
+    game.submit({ type: 'move', zone: 'landing-terminal' })
     await game.tick()
 
     // First hop only, with the destination remembered.
     const afterOne = await game.me()
-    expect(afterOne.zone).toBe('mid-t1-audit')
-    expect(afterOne.moveTarget).toBe('audit-base')
+    expect(afterOne.zone).toBe('coldstore-t1-audit')
+    expect(afterOne.moveTarget).toBe('landing-terminal')
 
     // No further orders — the hero keeps walking and arrives, target cleared.
     await game.tick(3)
     const arrived = await game.me()
-    expect(arrived.zone).toBe('audit-base')
+    expect(arrived.zone).toBe('landing-terminal')
     expect(arrived.moveTarget ?? null).toBeNull()
   })
 
@@ -55,14 +55,14 @@ describe('movement', () => {
       ...s,
       players: {
         ...s.players,
-        [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' },
-        [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t1-audit' },
+        [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' },
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'coldstore-t1-audit' },
       },
     }))
 
-    game.submit({ type: 'move', zone: 'audit-base' })
+    game.submit({ type: 'move', zone: 'landing-terminal' })
     await game.tick()
-    expect((await game.me()).moveTarget).toBe('audit-base')
+    expect((await game.me()).moveTarget).toBe('landing-terminal')
 
     // The hero walked into the enemy's zone; attacking is a new intent — the
     // remaining walk is dropped and the hero holds position.
@@ -71,25 +71,25 @@ describe('movement', () => {
     const afterAttack = await game.me()
     expect(afterAttack.moveTarget ?? null).toBeNull()
     await game.tick(2)
-    expect((await game.me()).zone).toBe('mid-t1-audit')
+    expect((await game.me()).zone).toBe('coldstore-t1-audit')
   })
 
   it('a new move order redirects the walk (latest destination wins)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-t3-chaff' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-t3-chaff' } },
     }))
 
-    game.submit({ type: 'move', zone: 'mid-river' })
+    game.submit({ type: 'move', zone: 'coldstore-cross' })
     await game.tick()
-    expect((await game.me()).moveTarget).toBe('mid-river')
+    expect((await game.me()).moveTarget).toBe('coldstore-cross')
 
-    // Change of plans mid-walk: head home instead (3 hops from mid-t2-chaff).
-    game.submit({ type: 'move', zone: 'chaff-fountain' })
+    // Change of plans mid-walk: head home instead (3 hops from coldstore-t2-chaff).
+    game.submit({ type: 'move', zone: 'rookery-anchor' })
     await game.tick(3)
     const me = await game.me()
-    expect(me.zone).toBe('chaff-fountain')
+    expect(me.zone).toBe('rookery-anchor')
     expect(me.moveTarget ?? null).toBeNull()
   })
 
@@ -97,22 +97,22 @@ describe('movement', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' } },
     }))
 
-    // mid-river borders BOTH mid-t1-chaff and cache-top, so each step is legal on
+    // coldstore-cross borders BOTH coldstore-t1-chaff and cache-seawall, so each step is legal on
     // its own. Queue them back-to-back in one cycle: the queue holds a single
     // action per player, so the later submission replaces the earlier one — the
     // hero ends up at the LAST-submitted zone, not the first.
-    expect(areAdjacent('mid-river', 'mid-t1-chaff')).toBe(true)
-    expect(areAdjacent('mid-river', 'cache-top')).toBe(true)
-    game.submit({ type: 'move', zone: 'mid-t1-chaff' })
-    game.submit({ type: 'move', zone: 'cache-top' })
+    expect(areAdjacent('coldstore-cross', 'coldstore-t1-chaff')).toBe(true)
+    expect(areAdjacent('coldstore-cross', 'cache-seawall')).toBe(true)
+    game.submit({ type: 'move', zone: 'coldstore-t1-chaff' })
+    game.submit({ type: 'move', zone: 'cache-seawall' })
     await game.tick()
 
     const zoneAfter = (await game.me()).zone
-    expect(zoneAfter).toBe('cache-top')
-    expect(zoneAfter).not.toBe('mid-t1-chaff')
+    expect(zoneAfter).toBe('cache-seawall')
+    expect(zoneAfter).not.toBe('coldstore-t1-chaff')
   })
 
   it('a move toward an enemy-held zone is not blocked by the enemy presence (zones are not owned)', async () => {
@@ -123,14 +123,14 @@ describe('movement', () => {
       ...s,
       players: {
         ...s.players,
-        [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' },
-        [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t1-chaff' },
+        [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' },
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'coldstore-t1-chaff' },
       },
     }))
 
-    game.submit({ type: 'move', zone: 'mid-t1-chaff' })
+    game.submit({ type: 'move', zone: 'coldstore-t1-chaff' })
     await game.tick()
 
-    expect((await game.me()).zone).toBe('mid-t1-chaff')
+    expect((await game.me()).zone).toBe('coldstore-t1-chaff')
   })
 })

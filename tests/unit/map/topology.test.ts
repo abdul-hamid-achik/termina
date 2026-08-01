@@ -15,9 +15,9 @@ import type { Zone } from '~~/shared/types/map'
 describe('Topology', () => {
   describe('getZone', () => {
     it('returns a zone by its ID', () => {
-      const zone = getZone('chaff-base')
+      const zone = getZone('rookery-terminal')
       expect(zone).toBeDefined()
-      expect(zone!.id).toBe('chaff-base')
+      expect(zone!.id).toBe('rookery-terminal')
       expect(zone!.name).toBe('Rookery Terminal')
     })
 
@@ -35,12 +35,12 @@ describe('Topology', () => {
   })
 
   describe('getAdjacentZones', () => {
-    it('returns adjacent zones for chaff-base', () => {
-      const adj = getAdjacentZones('chaff-base')
-      expect(adj).toContain('chaff-fountain')
-      expect(adj).toContain('top-t3-chaff')
-      expect(adj).toContain('mid-t3-chaff')
-      expect(adj).toContain('bot-t3-chaff')
+    it('returns adjacent zones for rookery-terminal', () => {
+      const adj = getAdjacentZones('rookery-terminal')
+      expect(adj).toContain('rookery-anchor')
+      expect(adj).toContain('seawall-t3-chaff')
+      expect(adj).toContain('coldstore-t3-chaff')
+      expect(adj).toContain('shallows-t3-chaff')
     })
 
     it('returns empty array for unknown zone', () => {
@@ -48,56 +48,61 @@ describe('Topology', () => {
     })
 
     it('returns exactly 1 neighbor for fountain zones', () => {
-      expect(getAdjacentZones('chaff-fountain')).toEqual(['chaff-base'])
-      expect(getAdjacentZones('audit-fountain')).toEqual(['audit-base'])
+      expect(getAdjacentZones('rookery-anchor')).toEqual(['rookery-terminal'])
+      expect(getAdjacentZones('landing-anchor')).toEqual(['landing-terminal'])
     })
   })
 
   describe('areAdjacent', () => {
     it('returns true for adjacent zones', () => {
-      expect(areAdjacent('chaff-base', 'chaff-fountain')).toBe(true)
-      expect(areAdjacent('top-t1-chaff', 'top-river')).toBe(true)
+      expect(areAdjacent('rookery-terminal', 'rookery-anchor')).toBe(true)
+      expect(areAdjacent('seawall-t1-chaff', 'seawall-cross')).toBe(true)
     })
 
     it('returns false for non-adjacent zones', () => {
-      expect(areAdjacent('chaff-fountain', 'audit-fountain')).toBe(false)
-      expect(areAdjacent('top-t1-chaff', 'bot-t1-chaff')).toBe(false)
+      expect(areAdjacent('rookery-anchor', 'landing-anchor')).toBe(false)
+      expect(areAdjacent('seawall-t1-chaff', 'shallows-t1-chaff')).toBe(false)
     })
 
     it('returns false when either zone does not exist', () => {
-      expect(areAdjacent('nonexistent', 'chaff-base')).toBe(false)
-      expect(areAdjacent('chaff-base', 'nonexistent')).toBe(false)
+      expect(areAdjacent('nonexistent', 'rookery-terminal')).toBe(false)
+      expect(areAdjacent('rookery-terminal', 'nonexistent')).toBe(false)
     })
   })
 
   describe('findPath', () => {
     it('returns single-element path when from === to', () => {
-      expect(findPath('chaff-base', 'chaff-base')).toEqual(['chaff-base'])
+      expect(findPath('rookery-terminal', 'rookery-terminal')).toEqual(['rookery-terminal'])
     })
 
     it('returns empty array when either zone does not exist', () => {
-      expect(findPath('nonexistent', 'chaff-base')).toEqual([])
-      expect(findPath('chaff-base', 'nonexistent')).toEqual([])
+      expect(findPath('nonexistent', 'rookery-terminal')).toEqual([])
+      expect(findPath('rookery-terminal', 'nonexistent')).toEqual([])
     })
 
     it('finds a direct path between adjacent zones', () => {
-      const path = findPath('chaff-fountain', 'chaff-base')
-      expect(path).toEqual(['chaff-fountain', 'chaff-base'])
+      const path = findPath('rookery-anchor', 'rookery-terminal')
+      expect(path).toEqual(['rookery-anchor', 'rookery-terminal'])
     })
 
     it('finds shortest path along mid lane', () => {
-      const path = findPath('mid-t3-chaff', 'mid-river')
-      expect(path).toEqual(['mid-t3-chaff', 'mid-t2-chaff', 'mid-t1-chaff', 'mid-river'])
+      const path = findPath('coldstore-t3-chaff', 'coldstore-cross')
+      expect(path).toEqual([
+        'coldstore-t3-chaff',
+        'coldstore-t2-chaff',
+        'coldstore-t1-chaff',
+        'coldstore-cross',
+      ])
     })
 
     it('includes both endpoints in path', () => {
-      const path = findPath('chaff-fountain', 'audit-fountain')
-      expect(path[0]).toBe('chaff-fountain')
-      expect(path[path.length - 1]).toBe('audit-fountain')
+      const path = findPath('rookery-anchor', 'landing-anchor')
+      expect(path[0]).toBe('rookery-anchor')
+      expect(path[path.length - 1]).toBe('landing-anchor')
     })
 
     it('finds a path from chaff to audit fountain', () => {
-      const path = findPath('chaff-fountain', 'audit-fountain')
+      const path = findPath('rookery-anchor', 'landing-anchor')
       expect(path.length).toBeGreaterThan(2)
       // Verify each step is adjacent to the next
       for (let i = 0; i < path.length - 1; i++) {
@@ -106,7 +111,7 @@ describe('Topology', () => {
     })
 
     it('finds a path through jungle', () => {
-      const path = findPath('silt-chaff-top', 'silt-audit-top')
+      const path = findPath('silt-chaff-upper', 'silt-audit-upper')
       expect(path.length).toBeGreaterThan(0)
       for (let i = 0; i < path.length - 1; i++) {
         expect(areAdjacent(path[i]!, path[i + 1]!)).toBe(true)
@@ -116,30 +121,30 @@ describe('Topology', () => {
 
   describe('getDistance', () => {
     it('returns 0 for same zone', () => {
-      expect(getDistance('chaff-base', 'chaff-base')).toBe(0)
+      expect(getDistance('rookery-terminal', 'rookery-terminal')).toBe(0)
     })
 
     it('returns 1 for adjacent zones', () => {
-      expect(getDistance('chaff-fountain', 'chaff-base')).toBe(1)
+      expect(getDistance('rookery-anchor', 'rookery-terminal')).toBe(1)
     })
 
     it('returns -1 for unreachable zones', () => {
-      expect(getDistance('nonexistent', 'chaff-base')).toBe(-1)
+      expect(getDistance('nonexistent', 'rookery-terminal')).toBe(-1)
     })
 
     it('returns correct distance along mid lane', () => {
-      // mid-t3-chaff -> mid-t2-chaff -> mid-t1-chaff -> mid-river = 3 edges
-      expect(getDistance('mid-t3-chaff', 'mid-river')).toBe(3)
+      // coldstore-t3-chaff -> coldstore-t2-chaff -> coldstore-t1-chaff -> coldstore-cross = 3 edges
+      expect(getDistance('coldstore-t3-chaff', 'coldstore-cross')).toBe(3)
     })
   })
 
   describe('getZonesByType', () => {
     it('returns all fountain zones', () => {
-      const fountains = getZonesByType('fountain')
+      const fountains = getZonesByType('anchor')
       expect(fountains).toHaveLength(2)
       const ids = fountains.map((z) => z.id)
-      expect(ids).toContain('chaff-fountain')
-      expect(ids).toContain('audit-fountain')
+      expect(ids).toContain('rookery-anchor')
+      expect(ids).toContain('landing-anchor')
     })
 
     it('returns all base zones', () => {
@@ -148,7 +153,7 @@ describe('Topology', () => {
     })
 
     it('returns lane zones', () => {
-      const lanes = getZonesByType('lane')
+      const lanes = getZonesByType('route')
       // 3 lanes * 3 tiers * 2 teams = 18
       expect(lanes).toHaveLength(18)
     })
@@ -159,8 +164,8 @@ describe('Topology', () => {
     })
 
     it('returns river zones', () => {
-      const rivers = getZonesByType('river')
-      // top-river, mid-river, bot-river, cache-top, cache-bot = 5
+      const rivers = getZonesByType('cross')
+      // seawall-cross, coldstore-cross, shallows-cross, cache-seawall, cache-shallows = 5
       expect(rivers).toHaveLength(5)
     })
 
@@ -195,40 +200,57 @@ describe('Topology', () => {
     })
   })
 
-  describe('lane structure', () => {
-    for (const lane of ['top', 'mid', 'bot']) {
-      describe(`${lane} lane`, () => {
+  /**
+   * These used to assemble every id they checked (`` `${lane}-t${tier}-${team}` ``),
+   * which is the coupling `tests/unit/map/zoneIdCoupling.test.ts` forbids in
+   * source — so a zone-id rename broke fourteen assertions that were describing
+   * the map's SHAPE, not its naming. Everything below is now derived from the
+   * zone records: find the route's zones by their fields, then assert the chain.
+   */
+  describe('route structure', () => {
+    const routes = [...new Set(ZONES.filter((z) => z.lane).map((z) => z.lane!))]
+
+    it('has exactly three routes', () => {
+      expect(routes).toHaveLength(3)
+    })
+
+    for (const lane of routes) {
+      const on = (pred: (z: (typeof ZONES)[number]) => boolean) =>
+        ZONES.filter((z) => z.lane === lane && pred(z))
+      const tierZone = (tier: number, team: string) =>
+        on((z) => z.tier === tier && z.team === team)[0]
+
+      describe(`${lane} route`, () => {
         it('has 3 ice tiers per team', () => {
           for (const team of ['chaff', 'audit']) {
             for (const tier of [1, 2, 3]) {
-              const id = `${lane}-t${tier}-${team}`
-              expect(getZone(id)).toBeDefined()
-              expect(getZone(id)!.ice).toBe(true)
+              const zone = tierZone(tier, team)
+              expect(zone, `${lane} T${tier} (${team}) missing`).toBeDefined()
+              expect(getZone(zone!.id)!.ice).toBe(true)
             }
           }
         })
 
-        it('has a river crossing', () => {
-          const river = getZone(`${lane}-river`)
-          expect(river).toBeDefined()
-          expect(river!.type).toBe('river')
-          expect(river!.team).toBe('neutral')
+        it('has a neutral crossing', () => {
+          const crossings = on((z) => z.type === 'cross')
+          expect(crossings).toHaveLength(1)
+          expect(crossings[0]!.team).toBe('neutral')
         })
 
-        it('ice zones connect in correct order (T3 → T2 → T1 → river → T1 → T2 → T3)', () => {
-          // Chaff side: t3 -> t2 -> t1 -> river
-          expect(areAdjacent(`${lane}-t3-chaff`, `${lane}-t2-chaff`)).toBe(true)
-          expect(areAdjacent(`${lane}-t2-chaff`, `${lane}-t1-chaff`)).toBe(true)
-          expect(areAdjacent(`${lane}-t1-chaff`, `${lane}-river`)).toBe(true)
-          // Audit side: river -> t1 -> t2 -> t3
-          expect(areAdjacent(`${lane}-river`, `${lane}-t1-audit`)).toBe(true)
-          expect(areAdjacent(`${lane}-t1-audit`, `${lane}-t2-audit`)).toBe(true)
-          expect(areAdjacent(`${lane}-t2-audit`, `${lane}-t3-audit`)).toBe(true)
+        it('ice zones connect in order (T3 → T2 → T1 → crossing → T1 → T2 → T3)', () => {
+          const cross = on((z) => z.type === 'cross')[0]!
+          expect(areAdjacent(tierZone(3, 'chaff')!.id, tierZone(2, 'chaff')!.id)).toBe(true)
+          expect(areAdjacent(tierZone(2, 'chaff')!.id, tierZone(1, 'chaff')!.id)).toBe(true)
+          expect(areAdjacent(tierZone(1, 'chaff')!.id, cross.id)).toBe(true)
+          expect(areAdjacent(cross.id, tierZone(1, 'audit')!.id)).toBe(true)
+          expect(areAdjacent(tierZone(1, 'audit')!.id, tierZone(2, 'audit')!.id)).toBe(true)
+          expect(areAdjacent(tierZone(2, 'audit')!.id, tierZone(3, 'audit')!.id)).toBe(true)
         })
 
-        it('T3 connects to its base', () => {
-          expect(areAdjacent(`${lane}-t3-chaff`, 'chaff-base')).toBe(true)
-          expect(areAdjacent(`${lane}-t3-audit`, 'audit-base')).toBe(true)
+        it('T3 connects to its own base', () => {
+          const base = (team: string) => ZONES.find((z) => z.type === 'base' && z.team === team)!.id
+          expect(areAdjacent(tierZone(3, 'chaff')!.id, base('chaff'))).toBe(true)
+          expect(areAdjacent(tierZone(3, 'audit')!.id, base('audit'))).toBe(true)
         })
       })
     }
@@ -236,35 +258,35 @@ describe('Topology', () => {
 
   describe('jungle connectivity', () => {
     it('chaff top jungle connects to top lane and mid lane', () => {
-      const adj = getAdjacentZones('silt-chaff-top')
-      expect(adj).toContain('top-t2-chaff')
-      expect(adj).toContain('top-t1-chaff')
-      expect(adj).toContain('mid-t2-chaff')
-      expect(adj).toContain('cache-top')
+      const adj = getAdjacentZones('silt-chaff-upper')
+      expect(adj).toContain('seawall-t2-chaff')
+      expect(adj).toContain('seawall-t1-chaff')
+      expect(adj).toContain('coldstore-t2-chaff')
+      expect(adj).toContain('cache-seawall')
     })
 
     it('chaff bot jungle connects to bot lane and mid lane', () => {
-      const adj = getAdjacentZones('silt-chaff-bot')
-      expect(adj).toContain('bot-t2-chaff')
-      expect(adj).toContain('bot-t1-chaff')
-      expect(adj).toContain('mid-t2-chaff')
-      expect(adj).toContain('cache-bot')
+      const adj = getAdjacentZones('silt-chaff-lower')
+      expect(adj).toContain('shallows-t2-chaff')
+      expect(adj).toContain('shallows-t1-chaff')
+      expect(adj).toContain('coldstore-t2-chaff')
+      expect(adj).toContain('cache-shallows')
     })
 
     it('audit top jungle connects to top lane and mid lane', () => {
-      const adj = getAdjacentZones('silt-audit-top')
-      expect(adj).toContain('top-t1-audit')
-      expect(adj).toContain('top-t2-audit')
-      expect(adj).toContain('mid-t2-audit')
-      expect(adj).toContain('cache-top')
+      const adj = getAdjacentZones('silt-audit-upper')
+      expect(adj).toContain('seawall-t1-audit')
+      expect(adj).toContain('seawall-t2-audit')
+      expect(adj).toContain('coldstore-t2-audit')
+      expect(adj).toContain('cache-seawall')
     })
 
     it('audit bot jungle connects to bot lane and mid lane', () => {
-      const adj = getAdjacentZones('silt-audit-bot')
-      expect(adj).toContain('bot-t1-audit')
-      expect(adj).toContain('bot-t2-audit')
-      expect(adj).toContain('mid-t2-audit')
-      expect(adj).toContain('cache-bot')
+      const adj = getAdjacentZones('silt-audit-lower')
+      expect(adj).toContain('shallows-t1-audit')
+      expect(adj).toContain('shallows-t2-audit')
+      expect(adj).toContain('coldstore-t2-audit')
+      expect(adj).toContain('cache-shallows')
     })
   })
 
@@ -279,9 +301,9 @@ describe('Topology', () => {
       }
     })
 
-    it('all zones are reachable from chaff-fountain', () => {
+    it('all zones are reachable from rookery-anchor', () => {
       for (const zone of ZONES) {
-        const dist = getDistance('chaff-fountain', zone.id)
+        const dist = getDistance('rookery-anchor', zone.id)
         expect(dist).toBeGreaterThanOrEqual(0)
       }
     })
@@ -298,10 +320,10 @@ describe('Topology', () => {
 
     it('is exactly the 11 mid-lane zones (no side lanes, jungle, or caches)', () => {
       expect(oneLane).toHaveLength(11)
-      for (const id of ['chaff-fountain', 'mid-river', 'audit-fountain']) {
+      for (const id of ['rookery-anchor', 'coldstore-cross', 'landing-anchor']) {
         expect(ids.has(id), `expected ${id} in the one-lane map`).toBe(true)
       }
-      for (const id of ['top-river', 'bot-river', 'cache-top', 'silt-chaff-top']) {
+      for (const id of ['seawall-cross', 'shallows-cross', 'cache-seawall', 'silt-chaff-upper']) {
         expect(ids.has(id), `${id} must NOT be in the one-lane map`).toBe(false)
       }
     })
@@ -325,9 +347,9 @@ describe('Topology', () => {
       }
     })
 
-    it('forms one connected chain — every zone reachable from chaff-fountain', () => {
-      const seen = new Set<string>(['chaff-fountain'])
-      const queue: string[] = ['chaff-fountain']
+    it('forms one connected chain — every zone reachable from rookery-anchor', () => {
+      const seen = new Set<string>(['rookery-anchor'])
+      const queue: string[] = ['rookery-anchor']
       while (queue.length > 0) {
         const cur = queue.shift()!
         for (const n of byId.get(cur)!.adjacentTo) {
@@ -337,7 +359,7 @@ describe('Topology', () => {
           }
         }
       }
-      expect(seen.has('audit-fountain')).toBe(true)
+      expect(seen.has('landing-anchor')).toBe(true)
       expect(seen.size).toBe(11)
     })
   })
@@ -350,28 +372,34 @@ describe('Topology', () => {
     const ids = new Set(twoLane.map((z) => z.id))
     const byId = new Map<string, Zone>(twoLane.map((z) => [z.id, z]))
 
-    it('is exactly 22 zones (bases + top + mid + top jungles + cache-top + tenant)', () => {
+    it('is exactly 22 zones (bases + top + mid + top jungles + cache-seawall + tenant)', () => {
       expect(twoLane).toHaveLength(22)
     })
 
     it('keeps the top and mid lanes but drops the bot lane', () => {
-      for (const id of ['top-t3-chaff', 'top-river', 'top-t3-audit', 'mid-river', 'mid-t1-audit']) {
+      for (const id of [
+        'seawall-t3-chaff',
+        'seawall-cross',
+        'seawall-t3-audit',
+        'coldstore-cross',
+        'coldstore-t1-audit',
+      ]) {
         expect(ids.has(id), `expected ${id} in two_lane`).toBe(true)
       }
       for (const id of [
-        'bot-t3-chaff',
-        'bot-river',
-        'bot-t3-audit',
-        'silt-chaff-bot',
-        'silt-audit-bot',
-        'cache-bot',
+        'shallows-t3-chaff',
+        'shallows-cross',
+        'shallows-t3-audit',
+        'silt-chaff-lower',
+        'silt-audit-lower',
+        'cache-shallows',
       ]) {
         expect(ids.has(id), `${id} must NOT be in two_lane`).toBe(false)
       }
     })
 
-    it('keeps the top-side river objectives (cache-top + tenant)', () => {
-      expect(ids.has('cache-top')).toBe(true)
+    it('keeps the top-side river objectives (cache-seawall + tenant)', () => {
+      expect(ids.has('cache-seawall')).toBe(true)
       expect(ids.has('hollow')).toBe(true)
     })
 
@@ -394,9 +422,9 @@ describe('Topology', () => {
       }
     })
 
-    it('forms one connected graph — every zone reachable from chaff-fountain', () => {
-      const seen = new Set<string>(['chaff-fountain'])
-      const queue: string[] = ['chaff-fountain']
+    it('forms one connected graph — every zone reachable from rookery-anchor', () => {
+      const seen = new Set<string>(['rookery-anchor'])
+      const queue: string[] = ['rookery-anchor']
       while (queue.length > 0) {
         const cur = queue.shift()!
         for (const n of byId.get(cur)!.adjacentTo) {
@@ -407,33 +435,33 @@ describe('Topology', () => {
         }
       }
       expect(seen.size).toBe(twoLane.length)
-      expect(seen.has('audit-fountain')).toBe(true)
+      expect(seen.has('landing-anchor')).toBe(true)
     })
 
-    it('preserves a full mid-lane chain chaff-base → audit-base', () => {
+    it('preserves a full mid-lane chain rookery-terminal → landing-terminal', () => {
       const chain = [
-        'mid-t3-chaff',
-        'mid-t2-chaff',
-        'mid-t1-chaff',
-        'mid-river',
-        'mid-t1-audit',
-        'mid-t2-audit',
-        'mid-t3-audit',
+        'coldstore-t3-chaff',
+        'coldstore-t2-chaff',
+        'coldstore-t1-chaff',
+        'coldstore-cross',
+        'coldstore-t1-audit',
+        'coldstore-t2-audit',
+        'coldstore-t3-audit',
       ]
       for (let i = 0; i < chain.length - 1; i++) {
         expect(byId.get(chain[i]!)!.adjacentTo).toContain(chain[i + 1])
       }
     })
 
-    it('preserves a full top-lane chain chaff-base → audit-base', () => {
+    it('preserves a full top-lane chain rookery-terminal → landing-terminal', () => {
       const chain = [
-        'top-t3-chaff',
-        'top-t2-chaff',
-        'top-t1-chaff',
-        'top-river',
-        'top-t1-audit',
-        'top-t2-audit',
-        'top-t3-audit',
+        'seawall-t3-chaff',
+        'seawall-t2-chaff',
+        'seawall-t1-chaff',
+        'seawall-cross',
+        'seawall-t1-audit',
+        'seawall-t2-audit',
+        'seawall-t3-audit',
       ]
       for (let i = 0; i < chain.length - 1; i++) {
         expect(byId.get(chain[i]!)!.adjacentTo).toContain(chain[i + 1])

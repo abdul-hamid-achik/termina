@@ -22,7 +22,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: 500,
     maxInteg: 500,
     bw: 400,
@@ -86,7 +86,10 @@ describe('gameplay-fixes: Scythe of Vyse Hex is a hard disable', () => {
   })
 
   it('a hexed hero cannot MOVE', () => {
-    const action: PlayerAction = { playerId: 'p1', command: { type: 'move', zone: 'mid-t1-audit' } }
+    const action: PlayerAction = {
+      playerId: 'p1',
+      command: { type: 'move', zone: 'coldstore-t1-audit' },
+    }
     expect(validateAction(hexedState(), action)).toBe('Cannot act while hexed')
   })
 
@@ -109,11 +112,11 @@ describe('gameplay-fixes: invisibility items fog the holder from enemies', () =>
   function viewerSeesEnemyFogged(enemyBuffs: Buff[]): boolean {
     const state = makeGameState({
       players: {
-        r1: makePlayer({ id: 'r1', team: 'chaff', zone: 'mid-river' }),
+        r1: makePlayer({ id: 'r1', team: 'chaff', zone: 'coldstore-cross' }),
         d1: makePlayer({
           id: 'd1',
           team: 'audit',
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           name: 'Enemy',
           buffs: enemyBuffs,
         }),

@@ -27,7 +27,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-chaff',
+    zone: 'coldstore-t1-chaff',
     integ: 500,
     maxInteg: 500,
     bw: 200,
@@ -91,7 +91,7 @@ describe('systems-gaps: BUYBACK success', () => {
       integ: 0,
       bw: 0,
       scrip: 2000,
-      zone: 'audit-base',
+      zone: 'landing-terminal',
     })
     const cost = calculateBuybackCost(player) // 100 + 125 + 20 = 245
     expect(cost).toBe(245)
@@ -106,7 +106,7 @@ describe('systems-gaps: BUYBACK success', () => {
     expect(after.integ).toBe(after.maxInteg)
     expect(after.bw).toBe(after.maxBw)
     expect(after.respawnCycle).toBeNull()
-    expect(after.zone).toBe('chaff-fountain')
+    expect(after.zone).toBe('rookery-anchor')
     expect(after.buybackCooldown).toBe(50 + BUYBACK_COOLDOWN_CYCLES)
   })
 
@@ -203,7 +203,7 @@ describe('systems-gaps: BACKUP ground pickup', () => {
   it('pickupBackup is a no-op when the player is outside hollow (in-pit guard)', () => {
     const state = makeGameState({
       backup: { zone: 'hollow', cycle: 100, holderId: null },
-      players: { p1: makePlayer({ id: 'p1', zone: 'mid-river' }) },
+      players: { p1: makePlayer({ id: 'p1', zone: 'coldstore-cross' }) },
     })
     const { state: after, event } = pickupBackup(state, 'p1')
     expect(after.players['p1']!.buffs.find((b) => b.id === 'backup')).toBeUndefined()
@@ -247,12 +247,12 @@ describe('systems-gaps: VISION gaps', () => {
     const dayState = makeGameState({
       timeOfDay: 'day',
       ice: [],
-      players: { pDay: makePlayer({ id: 'pDay', zone: 'mid-river' }) },
+      players: { pDay: makePlayer({ id: 'pDay', zone: 'coldstore-cross' }) },
     })
     const nightState = makeGameState({
       timeOfDay: 'night',
       ice: [],
-      players: { pNight: makePlayer({ id: 'pNight', zone: 'mid-river' }) },
+      players: { pNight: makePlayer({ id: 'pNight', zone: 'coldstore-cross' }) },
     })
 
     const dayVision = calculateVision(dayState, 'pDay')
@@ -263,22 +263,22 @@ describe('systems-gaps: VISION gaps', () => {
     expect(nightVision.size).toBeLessThan(dayVision.size)
     // ...but a hero ALWAYS sees its own zone, even at night (regression guard
     // for the bug where the night slice lopped the own zone off).
-    expect(nightVision.has('mid-river')).toBe(true)
+    expect(nightVision.has('coldstore-cross')).toBe(true)
     // every night-visible zone is also day-visible (strict shrink, no new zones)
     for (const z of nightVision) expect(dayVision.has(z)).toBe(true)
   })
 
   it("'revealed' buff pierces fog: an enemy in an unseen zone is shown unfogged", () => {
-    // enemy sits in audit-base (not in chaff viewer's vision), carries a
+    // enemy sits in landing-terminal (not in chaff viewer's vision), carries a
     // 'revealed' buff sourced from a chaff teammate.
     const state = makeGameState({
       timeOfDay: 'day',
       players: {
-        p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-t1-chaff' }),
+        p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-t1-chaff' }),
         e1: makePlayer({
           id: 'e1',
           team: 'audit',
-          zone: 'audit-base',
+          zone: 'landing-terminal',
           name: 'RevealedEnemy',
           integ: 321,
           buffs: [{ id: 'revealed', stacks: 1, cyclesRemaining: 5, source: 'p1' }],
@@ -290,18 +290,18 @@ describe('systems-gaps: VISION gaps', () => {
     const enemy = filtered.players['e1']!
     expect('fogged' in enemy).toBe(false)
     expect((enemy as PlayerState).integ).toBe(321)
-    expect(filtered.visibleZones).toContain('audit-base')
+    expect(filtered.visibleZones).toContain('landing-terminal')
   })
 
   it('without the revealed buff the same far enemy stays fogged', () => {
     const state = makeGameState({
       timeOfDay: 'day',
       players: {
-        p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-t1-chaff' }),
+        p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-t1-chaff' }),
         e1: makePlayer({
           id: 'e1',
           team: 'audit',
-          zone: 'audit-base',
+          zone: 'landing-terminal',
           name: 'HiddenEnemy',
           integ: 321,
         }),
@@ -313,11 +313,11 @@ describe('systems-gaps: VISION gaps', () => {
   })
 
   it('sniffer true-sight reveals invisible enemies in an ADJACENT zone (radius >= 1)', () => {
-    // sentry placed in mid-river; invisible enemy stands in an ADJACENT zone.
+    // sentry placed in coldstore-cross; invisible enemy stands in an ADJACENT zone.
     const zones = initializeZoneStates()
-    const adjacentZone = zones['mid-river']!.id
-    // pick a real neighbor of mid-river
-    const neighbor = 'mid-t1-audit'
+    const adjacentZone = zones['coldstore-cross']!.id
+    // pick a real neighbor of coldstore-cross
+    const neighbor = 'coldstore-t1-audit'
     zones[adjacentZone]!.wards.push({
       team: 'chaff',
       placedTick: 0,
@@ -330,7 +330,7 @@ describe('systems-gaps: VISION gaps', () => {
       players: {
         // viewer adjacent so the enemy zone is in the visible set (true-sight only
         // strips the invis fog; it does not by itself add the zone to vision)
-        p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
+        p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' }),
         e1: makePlayer({
           id: 'e1',
           team: 'audit',
@@ -344,7 +344,7 @@ describe('systems-gaps: VISION gaps', () => {
 
     const filtered = filterStateForPlayer(state, 'p1')
     const enemy = filtered.players['e1']!
-    // neighbor is adjacent to mid-river (sentry radius 1) AND to the viewer => unfogged
+    // neighbor is adjacent to coldstore-cross (sentry radius 1) AND to the viewer => unfogged
     expect('fogged' in enemy).toBe(false)
     expect((enemy as PlayerState).integ).toBe(277)
   })

@@ -58,7 +58,7 @@ describe('abilities', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
           buffs: [{ id: 'root', stacks: 1, cyclesRemaining: 5, source: ENEMY }],
         },
@@ -67,9 +67,9 @@ describe('abilities', () => {
 
     // Rooted: a move to an adjacent zone is dropped — the hero stays put, and
     // the rejection reason reaches the player.
-    game.submit({ type: 'move', zone: 'mid-t1-chaff' })
+    game.submit({ type: 'move', zone: 'coldstore-t1-chaff' })
     await game.tick()
-    expect((await game.me()).zone).toBe('mid-river')
+    expect((await game.me()).zone).toBe('coldstore-cross')
     expect(game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('rooted'))).toBe(
       true,
     )
@@ -88,7 +88,7 @@ describe('abilities', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
           buffs: [{ id: 'silence', stacks: 1, cyclesRemaining: 5, source: ENEMY }],
         },
@@ -101,9 +101,9 @@ describe('abilities', () => {
     expect((await game.me()).cooldowns.w).toBe(0)
 
     // But moving is unaffected by silence — the hero relocates to the adjacent zone.
-    game.submit({ type: 'move', zone: 'mid-t1-chaff' })
+    game.submit({ type: 'move', zone: 'coldstore-t1-chaff' })
     await game.tick()
-    expect((await game.me()).zone).toBe('mid-t1-chaff')
+    expect((await game.me()).zone).toBe('coldstore-t1-chaff')
   })
 
   it('a rejected action surfaces a reason to the player (not a silent drop)', async () => {
@@ -220,7 +220,7 @@ describe('abilities', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
           buffs: [{ id: 'cyclone', stacks: 1, cyclesRemaining: 5, source: ENEMY }],
         },
@@ -228,9 +228,9 @@ describe('abilities', () => {
     }))
 
     // Move is blocked — the hero stays put — and the reason reaches the player.
-    game.submit({ type: 'move', zone: 'mid-t1-chaff' })
+    game.submit({ type: 'move', zone: 'coldstore-t1-chaff' })
     await game.tick()
-    expect((await game.me()).zone).toBe('mid-river')
+    expect((await game.me()).zone).toBe('coldstore-cross')
     expect(
       game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('cycloned')),
     ).toBe(true)
@@ -540,7 +540,7 @@ describe('abilities', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
           buffs: [{ id: 'hex', stacks: 1, cyclesRemaining: 5, source: ENEMY }],
         },
@@ -548,9 +548,9 @@ describe('abilities', () => {
     }))
 
     // Move is blocked — the hero stays put — and the reason reaches the player.
-    game.submit({ type: 'move', zone: 'mid-t1-chaff' })
+    game.submit({ type: 'move', zone: 'coldstore-t1-chaff' })
     await game.tick()
-    expect((await game.me()).zone).toBe('mid-river')
+    expect((await game.me()).zone).toBe('coldstore-cross')
     expect(game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('hexed'))).toBe(
       true,
     )
@@ -670,7 +670,7 @@ describe('abilities', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           buffs: [
             { id: 'root', stacks: 1, cyclesRemaining: 5, source: ENEMY },
             { id: 'airgap', stacks: 1, cyclesRemaining: 5, source: HUMAN },
@@ -678,9 +678,9 @@ describe('abilities', () => {
         },
       },
     }))
-    game.submit({ type: 'move', zone: 'mid-t1-chaff' })
+    game.submit({ type: 'move', zone: 'coldstore-t1-chaff' })
     await game.tick()
-    expect((await game.me()).zone).toBe('mid-t1-chaff')
+    expect((await game.me()).zone).toBe('coldstore-t1-chaff')
 
     // Stunned + BKB, co-located with the enemy → the attack still lands.
     await game.patch((s) => ({
@@ -854,7 +854,7 @@ describe('abilities', () => {
  * only verb that worked on the board in front of you was `attack wave:N`.
  */
 describe('abilities vs waves', () => {
-  const LANE = 'mid-river'
+  const LANE = 'coldstore-cross'
 
   /** Seed the human alone in a lane with `hp`-strong enemy waves in front. The
    *  BW pool is widened to the level being faked, since the per-cycle recalc
@@ -875,7 +875,7 @@ describe('abilities vs waves', () => {
           maxBw: 900,
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
         },
-        [ENEMY]: { ...s.players[ENEMY]!, zone: 'audit-fountain' },
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'landing-anchor' },
       },
       waves: waveHp.map((integ, i) => ({
         id: `wave_${i}`,
@@ -951,21 +951,21 @@ describe('abilities vs waves', () => {
           ...s.players,
           [HUMAN]: {
             ...s.players[HUMAN]!,
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             level: 6,
             bw: 500,
             maxBw: 500,
             cooldowns: { q: 0, w: 0, e: 0, r: 0 },
             talents: { tier10: null, tier15: null, tier20: null, tier25 },
           },
-          [ENEMY]: { ...s.players[ENEMY]!, zone: 'audit-fountain' },
+          [ENEMY]: { ...s.players[ENEMY]!, zone: 'landing-anchor' },
         },
-        // mid-t1-audit IS adjacent to mid-river.
+        // coldstore-t1-audit IS adjacent to coldstore-cross.
         waves: [
           {
             id: 'next_lane',
             team: 'audit',
-            zone: 'mid-t1-audit',
+            zone: 'coldstore-t1-audit',
             integ: 400,
             maxInteg: 400,
             type: 'line',

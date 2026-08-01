@@ -25,9 +25,9 @@ export function resetWaveIdCounter(): void {
 
 /** Lane spawn points for each team. */
 const LANE_SPAWN_ZONES: Record<string, { chaff: string; audit: string }> = {
-  top: { chaff: 'top-t3-chaff', audit: 'top-t3-audit' },
-  mid: { chaff: 'mid-t3-chaff', audit: 'mid-t3-audit' },
-  bot: { chaff: 'bot-t3-chaff', audit: 'bot-t3-audit' },
+  seawall: { chaff: 'seawall-t3-chaff', audit: 'seawall-t3-audit' },
+  coldstore: { chaff: 'coldstore-t3-chaff', audit: 'coldstore-t3-audit' },
+  shallows: { chaff: 'shallows-t3-chaff', audit: 'shallows-t3-audit' },
 }
 
 /**
@@ -82,7 +82,7 @@ export function spawnWaveUnits(
   const waveNumber = cycle / WAVE_INTERVAL_CYCLES
   const newWaves: WaveUnitState[] = []
 
-  for (const lane of ['top', 'mid', 'bot']) {
+  for (const lane of ['seawall', 'coldstore', 'shallows']) {
     const spawn = LANE_SPAWN_ZONES[lane]
     if (hasZone && spawn && (!hasZone(spawn.chaff) || !hasZone(spawn.audit))) continue
     newWaves.push(...spawnWave('chaff', lane, waveNumber, cycle))
@@ -113,7 +113,7 @@ export function spawnCaches(
   if (cycle === 0 || cycle % CACHE_INTERVAL_CYCLES !== 0) return []
 
   const caches: CacheSpawn[] = []
-  for (const zone of ['cache-top', 'cache-bot']) {
+  for (const zone of ['cache-seawall', 'cache-shallows']) {
     if (hasZone && !hasZone(zone)) continue
     if (activeCaches && activeCaches.has(zone)) continue // spot already occupied
     const type = CACHE_TYPES[Math.floor(Math.random() * CACHE_TYPES.length)]!

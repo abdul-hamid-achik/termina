@@ -4,12 +4,28 @@ import StatusLines from './StatusLines.vue'
 
 const trace: TraceModel = {
   playerTeam: 'chaff',
-  currentRoute: 'mid',
+  currentRoute: 'coldstore',
   hopIndex: 2,
   routes: [
-    { route: 'mid', name: 'Coldstore', depth: 2, total: 5, hostiles: 1, seen: 3, active: true },
-    { route: 'top', name: 'Seawall', depth: 0, total: 5, hostiles: 0, seen: 5, active: false },
-    { route: 'bot', name: 'Shallows', depth: 0, total: 5, hostiles: 0, seen: 0, active: false },
+    {
+      route: 'coldstore',
+      name: 'Coldstore',
+      depth: 2,
+      total: 5,
+      hostiles: 1,
+      seen: 3,
+      active: true,
+    },
+    { route: 'seawall', name: 'Seawall', depth: 0, total: 5, hostiles: 0, seen: 5, active: false },
+    {
+      route: 'shallows',
+      name: 'Shallows',
+      depth: 0,
+      total: 5,
+      hostiles: 0,
+      seen: 0,
+      active: false,
+    },
   ],
   contacts: [],
   terminals: [

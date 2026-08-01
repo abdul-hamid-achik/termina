@@ -29,7 +29,7 @@ function makeBot(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'bot_alpha',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'chaff-fountain',
+    zone: 'rookery-anchor',
     integ: 550,
     maxInteg: 550,
     bw: 280,
@@ -87,7 +87,7 @@ describe('BotAI - integrated forward progress', () => {
         id,
         name: id,
         team: 'chaff',
-        zone: 'chaff-fountain',
+        zone: 'rookery-anchor',
         // Vary lanes so they don't all stack: roles drive lane assignment, but
         // the zone progression is what we measure.
         heroId: ['echo', 'daemon', 'kernel'][i] ?? 'echo',
@@ -98,7 +98,7 @@ describe('BotAI - integrated forward progress', () => {
         id,
         name: id,
         team: 'audit',
-        zone: 'audit-fountain',
+        zone: 'landing-anchor',
         heroId: ['regex', 'echo'][i] ?? 'echo',
       }),
     )

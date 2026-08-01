@@ -42,17 +42,17 @@ describe('maps', () => {
     it('is exactly the 11 mid-lane zones', () => {
       expect(ONE_LANE_ZONES).toHaveLength(11)
       for (const id of [
-        'chaff-fountain',
-        'chaff-base',
-        'mid-t3-chaff',
-        'mid-t2-chaff',
-        'mid-t1-chaff',
-        'mid-river',
-        'mid-t1-audit',
-        'mid-t2-audit',
-        'mid-t3-audit',
-        'audit-base',
-        'audit-fountain',
+        'rookery-anchor',
+        'rookery-terminal',
+        'coldstore-t3-chaff',
+        'coldstore-t2-chaff',
+        'coldstore-t1-chaff',
+        'coldstore-cross',
+        'coldstore-t1-audit',
+        'coldstore-t2-audit',
+        'coldstore-t3-audit',
+        'landing-terminal',
+        'landing-anchor',
       ]) {
         expect(ids.has(id), `expected ${id} in one_lane`).toBe(true)
       }
@@ -60,17 +60,17 @@ describe('maps', () => {
 
     it('excludes side lanes, jungle, caches, and tenant', () => {
       for (const id of [
-        'top-river',
-        'bot-river',
-        'cache-top',
-        'cache-bot',
-        'silt-chaff-top',
-        'silt-chaff-bot',
-        'silt-audit-top',
-        'silt-audit-bot',
+        'seawall-cross',
+        'shallows-cross',
+        'cache-seawall',
+        'cache-shallows',
+        'silt-chaff-upper',
+        'silt-chaff-lower',
+        'silt-audit-upper',
+        'silt-audit-lower',
         'hollow',
-        'top-t3-chaff',
-        'bot-t3-chaff',
+        'seawall-t3-chaff',
+        'shallows-t3-chaff',
       ]) {
         expect(ids.has(id), `${id} must NOT be in one_lane`).toBe(false)
       }
@@ -97,35 +97,35 @@ describe('maps', () => {
     const ids = new Set(TWO_LANE_ZONES.map((z) => z.id))
     const byId = new Map<string, Zone>(TWO_LANE_ZONES.map((z) => [z.id, z]))
 
-    it('contains exactly the top + mid lanes, their jungles, cache-top, and tenant', () => {
+    it('contains exactly the top + mid lanes, their jungles, cache-seawall, and tenant', () => {
       // 4 bases/fountains + 7 top lane + 7 mid lane + 2 jungles + 2 objectives = 22
       expect(TWO_LANE_ZONES).toHaveLength(22)
       for (const id of [
-        'chaff-fountain',
-        'audit-fountain',
-        'chaff-base',
-        'audit-base',
+        'rookery-anchor',
+        'landing-anchor',
+        'rookery-terminal',
+        'landing-terminal',
         // Top lane chain
-        'top-t3-chaff',
-        'top-t2-chaff',
-        'top-t1-chaff',
-        'top-river',
-        'top-t1-audit',
-        'top-t2-audit',
-        'top-t3-audit',
+        'seawall-t3-chaff',
+        'seawall-t2-chaff',
+        'seawall-t1-chaff',
+        'seawall-cross',
+        'seawall-t1-audit',
+        'seawall-t2-audit',
+        'seawall-t3-audit',
         // Mid lane chain
-        'mid-t3-chaff',
-        'mid-t2-chaff',
-        'mid-t1-chaff',
-        'mid-river',
-        'mid-t1-audit',
-        'mid-t2-audit',
-        'mid-t3-audit',
+        'coldstore-t3-chaff',
+        'coldstore-t2-chaff',
+        'coldstore-t1-chaff',
+        'coldstore-cross',
+        'coldstore-t1-audit',
+        'coldstore-t2-audit',
+        'coldstore-t3-audit',
         // Top-side jungle
-        'silt-chaff-top',
-        'silt-audit-top',
+        'silt-chaff-upper',
+        'silt-audit-upper',
         // Top-side river objectives
-        'cache-top',
+        'cache-seawall',
         'hollow',
       ]) {
         expect(ids.has(id), `expected ${id} in two_lane`).toBe(true)
@@ -134,16 +134,16 @@ describe('maps', () => {
 
     it('excludes the entire bot lane and bot-side objectives', () => {
       for (const id of [
-        'bot-t3-chaff',
-        'bot-t2-chaff',
-        'bot-t1-chaff',
-        'bot-river',
-        'bot-t1-audit',
-        'bot-t2-audit',
-        'bot-t3-audit',
-        'silt-chaff-bot',
-        'silt-audit-bot',
-        'cache-bot',
+        'shallows-t3-chaff',
+        'shallows-t2-chaff',
+        'shallows-t1-chaff',
+        'shallows-cross',
+        'shallows-t1-audit',
+        'shallows-t2-audit',
+        'shallows-t3-audit',
+        'silt-chaff-lower',
+        'silt-audit-lower',
+        'cache-shallows',
       ]) {
         expect(ids.has(id), `${id} must NOT be in two_lane`).toBe(false)
       }
@@ -165,9 +165,9 @@ describe('maps', () => {
       }
     })
 
-    it('forms one connected graph — every zone reachable from chaff-fountain', () => {
-      const seen = new Set<string>(['chaff-fountain'])
-      const queue: string[] = ['chaff-fountain']
+    it('forms one connected graph — every zone reachable from rookery-anchor', () => {
+      const seen = new Set<string>(['rookery-anchor'])
+      const queue: string[] = ['rookery-anchor']
       while (queue.length > 0) {
         const cur = queue.shift()!
         for (const n of byId.get(cur)!.adjacentTo) {
@@ -178,33 +178,33 @@ describe('maps', () => {
         }
       }
       expect(seen.size).toBe(TWO_LANE_ZONES.length)
-      expect(seen.has('audit-fountain')).toBe(true)
+      expect(seen.has('landing-anchor')).toBe(true)
     })
 
-    it('still allows a full mid-lane path from chaff-base to audit-base', () => {
+    it('still allows a full mid-lane path from rookery-terminal to landing-terminal', () => {
       const mid = [
-        'mid-t3-chaff',
-        'mid-t2-chaff',
-        'mid-t1-chaff',
-        'mid-river',
-        'mid-t1-audit',
-        'mid-t2-audit',
-        'mid-t3-audit',
+        'coldstore-t3-chaff',
+        'coldstore-t2-chaff',
+        'coldstore-t1-chaff',
+        'coldstore-cross',
+        'coldstore-t1-audit',
+        'coldstore-t2-audit',
+        'coldstore-t3-audit',
       ]
       for (let i = 0; i < mid.length - 1; i++) {
         expect(byId.get(mid[i]!)!.adjacentTo).toContain(mid[i + 1])
       }
     })
 
-    it('still allows a full top-lane path from chaff-base to audit-base', () => {
+    it('still allows a full top-lane path from rookery-terminal to landing-terminal', () => {
       const top = [
-        'top-t3-chaff',
-        'top-t2-chaff',
-        'top-t1-chaff',
-        'top-river',
-        'top-t1-audit',
-        'top-t2-audit',
-        'top-t3-audit',
+        'seawall-t3-chaff',
+        'seawall-t2-chaff',
+        'seawall-t1-chaff',
+        'seawall-cross',
+        'seawall-t1-audit',
+        'seawall-t2-audit',
+        'seawall-t3-audit',
       ]
       for (let i = 0; i < top.length - 1; i++) {
         expect(byId.get(top[i]!)!.adjacentTo).toContain(top[i + 1])

@@ -53,7 +53,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff' as const,
     heroId,
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: maxInteg,
     maxInteg,
     bw: maxBw,
@@ -490,19 +490,24 @@ describe('Item actives — forced movement', () => {
         p1: makePlayer({
           id: 'p1',
           team: 'chaff',
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           items: ['shove_splice', null, null, null, null, null],
         }),
       },
     })
     const r = run(state, [{ playerId: 'p1', command: { type: 'use', item: 'shove_splice' } }])
     const newZone = r.state.players['p1']!.zone
-    expect(newZone).not.toBe('mid-river')
-    expect(['mid-t1-chaff', 'mid-t1-audit', 'cache-top', 'cache-bot']).toContain(newZone)
+    expect(newZone).not.toBe('coldstore-cross')
+    expect([
+      'coldstore-t1-chaff',
+      'coldstore-t1-audit',
+      'cache-seawall',
+      'cache-shallows',
+    ]).toContain(newZone)
     // Disengage, not random: the push lands strictly CLOSER to the chaff
-    // fountain than mid-river was (an earlier version shoved a random direction).
-    expect(getDistance(newZone, 'chaff-fountain')).toBeLessThan(
-      getDistance('mid-river', 'chaff-fountain'),
+    // fountain than coldstore-cross was (an earlier version shoved a random direction).
+    expect(getDistance(newZone, 'rookery-anchor')).toBeLessThan(
+      getDistance('coldstore-cross', 'rookery-anchor'),
     )
     expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_force_staff')).toBe(true)
   })
@@ -513,10 +518,10 @@ describe('Item actives — forced movement', () => {
         p1: makePlayer({
           id: 'p1',
           team: 'chaff',
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           items: ['kickback_splice', null, null, null, null, null],
         }),
-        p2: makePlayer({ id: 'p2', team: 'audit', name: 'Enemy', zone: 'mid-river' }),
+        p2: makePlayer({ id: 'p2', team: 'audit', name: 'Enemy', zone: 'coldstore-cross' }),
       },
     })
     const r = run(state, [
@@ -526,14 +531,14 @@ describe('Item actives — forced movement', () => {
       },
     ])
     const newZone = r.state.players['p1']!.zone
-    expect(newZone).not.toBe('mid-river')
+    expect(newZone).not.toBe('coldstore-cross')
     // Disengage toward home, not a random direction: the push lands strictly
-    // CLOSER to the chaff fountain than mid-river (and never onto the target).
-    expect(getDistance(newZone, 'chaff-fountain')).toBeLessThan(
-      getDistance('mid-river', 'chaff-fountain'),
+    // CLOSER to the chaff fountain than coldstore-cross (and never onto the target).
+    expect(getDistance(newZone, 'rookery-anchor')).toBeLessThan(
+      getDistance('coldstore-cross', 'rookery-anchor'),
     )
     // target stays put (push self away).
-    expect(r.state.players['p2']!.zone).toBe('mid-river')
+    expect(r.state.players['p2']!.zone).toBe('coldstore-cross')
     expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_hurricane_pike')).toBe(true)
     // post-thrust attack steroid (read in getEffectiveAttack)
     const steroid = r.state.players['p1']!.buffs.find((b) => b.id === 'kickback_splice_attacks')
@@ -622,8 +627,8 @@ describe('Cryo Routine active (was a dead effect — buffs consumed nowhere)', (
     const state = makeGameState({
       players: {
         p1: shiva(),
-        p2: makePlayer({ id: 'p2', team: 'audit', name: 'E1', zone: 'mid-river' }),
-        p3: makePlayer({ id: 'p3', team: 'audit', name: 'E2', zone: 'mid-river' }),
+        p2: makePlayer({ id: 'p2', team: 'audit', name: 'E1', zone: 'coldstore-cross' }),
+        p3: makePlayer({ id: 'p3', team: 'audit', name: 'E2', zone: 'coldstore-cross' }),
       },
     })
     const [s2, s3] = [state.players['p2']!.integ, state.players['p3']!.integ]
@@ -639,8 +644,8 @@ describe('Cryo Routine active (was a dead effect — buffs consumed nowhere)', (
     const state = makeGameState({
       players: {
         p1: shiva(),
-        ally: makePlayer({ id: 'ally', team: 'chaff', zone: 'mid-river' }),
-        far: makePlayer({ id: 'far', team: 'audit', zone: 'audit-base' }),
+        ally: makePlayer({ id: 'ally', team: 'chaff', zone: 'coldstore-cross' }),
+        far: makePlayer({ id: 'far', team: 'audit', zone: 'landing-terminal' }),
       },
     })
     const [allyHp, farHp] = [state.players['ally']!.integ, state.players['far']!.integ]
@@ -657,7 +662,7 @@ describe('Cryo Routine active (was a dead effect — buffs consumed nowhere)', (
           id: 'bkb',
           team: 'audit',
           name: 'Immune',
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           buffs: [{ id: 'airgap', stacks: 1, cyclesRemaining: 4, source: 'hardshell' }],
         }),
       },
@@ -676,7 +681,7 @@ describe('Cryo Routine active (was a dead effect — buffs consumed nowhere)', (
       makeGameState({
         players: {
           p1: shiva(),
-          e: makePlayer({ id: 'e', team: 'audit', name: 'E', zone: 'mid-river', buffs }),
+          e: makePlayer({ id: 'e', team: 'audit', name: 'E', zone: 'coldstore-cross', buffs }),
         },
       })
     const plain = mk([])
@@ -690,7 +695,10 @@ describe('Cryo Routine active (was a dead effect — buffs consumed nowhere)', (
 })
 
 describe('Cache effects (dd / haste were applied but consumed nowhere)', () => {
-  const moveAudit = { playerId: 'p1', command: { type: 'move' as const, zone: 'mid-t1-audit' } }
+  const moveAudit = {
+    playerId: 'p1',
+    command: { type: 'move' as const, zone: 'coldstore-t1-audit' },
+  }
 
   it('Double Damage cache (dd) doubles basic-attack damage', () => {
     const state = makeGameState({
@@ -716,7 +724,7 @@ describe('Cache effects (dd / haste were applied but consumed nowhere)', () => {
         p1: makePlayer({
           id: 'p1',
           team: 'chaff',
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           buffs: [
             { id: 'slow', stacks: 80, cyclesRemaining: 9999, source: 'x' },
             { id: 'haste', stacks: 1, cyclesRemaining: 9999, source: 'cache_haste' },
@@ -725,7 +733,7 @@ describe('Cache effects (dd / haste were applied but consumed nowhere)', () => {
       },
     })
     for (let i = 0; i < 20; i++) {
-      expect(run(state, [moveAudit]).state.players['p1']!.zone).toBe('mid-t1-audit')
+      expect(run(state, [moveAudit]).state.players['p1']!.zone).toBe('coldstore-t1-audit')
     }
   })
 
@@ -742,14 +750,14 @@ describe('Cache effects (dd / haste were applied but consumed nowhere)', () => {
           p1: makePlayer({
             id: 'p1',
             team: 'chaff',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             buffs: [{ id: 'slow', stacks: 80, cyclesRemaining: 9999, source: 'x' }],
           }),
         },
       })
       const zone = run(state, [moveAudit]).state.players['p1']!.zone
-      if (zone === 'mid-river') failedAtLeastOnce = true
-      if (zone === 'mid-t1-audit') passedAtLeastOnce = true
+      if (zone === 'coldstore-cross') failedAtLeastOnce = true
+      if (zone === 'coldstore-t1-audit') passedAtLeastOnce = true
     }
     expect(failedAtLeastOnce).toBe(true)
     expect(passedAtLeastOnce).toBe(true)

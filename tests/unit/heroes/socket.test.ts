@@ -13,7 +13,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestSocket',
     team: 'chaff',
     heroId: 'socket',
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: 650,
     maxInteg: 650,
     bw: 300,
@@ -75,13 +75,13 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     },
     players: playerMap,
     zones: {
-      'mid-river': { id: 'mid-river', wards: [] },
-      'mid-t1-chaff': { id: 'mid-t1-chaff', wards: [] },
-      'mid-t1-audit': { id: 'mid-t1-audit', wards: [] },
-      'top-river': { id: 'top-river', wards: [] },
-      'cache-top': { id: 'cache-top', wards: [] },
-      'cache-bot': { id: 'cache-bot', wards: [] },
-      'audit-fountain': { id: 'audit-fountain', wards: [] },
+      'coldstore-cross': { id: 'coldstore-cross', wards: [] },
+      'coldstore-t1-chaff': { id: 'coldstore-t1-chaff', wards: [] },
+      'coldstore-t1-audit': { id: 'coldstore-t1-audit', wards: [] },
+      'seawall-cross': { id: 'seawall-cross', wards: [] },
+      'cache-seawall': { id: 'cache-seawall', wards: [] },
+      'cache-shallows': { id: 'cache-shallows', wards: [] },
+      'landing-anchor': { id: 'landing-anchor', wards: [] },
     },
     waves: [],
     ice: [],
@@ -129,7 +129,7 @@ describe('Socket Hero', () => {
 
     it('fails when target is in different zone', () => {
       const player = makePlayer()
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(
@@ -159,18 +159,18 @@ describe('Socket Hero', () => {
 
       const trapEvent = result.events.find((e) => e.type === 'trap_placed')
       expect(trapEvent).toBeDefined()
-      expect(trapEvent!.payload['zone']).toBe('mid-river')
+      expect(trapEvent!.payload['zone']).toBe('coldstore-cross')
       expect(trapEvent!.payload['owner']).toBe('p1')
       expect(trapEvent!.payload['expiryTick']).toBe(40) // tick 10 + 30
     })
 
     it('arms a trap in the current zone state', () => {
-      const player = makePlayer({ level: 1, zone: 'mid-river' })
+      const player = makePlayer({ level: 1, zone: 'coldstore-cross' })
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
 
-      const traps = result.state.zones['mid-river']!.traps
+      const traps = result.state.zones['coldstore-cross']!.traps
       expect(traps).toHaveLength(1)
       expect(traps![0]!.owner).toBe('p1')
       expect(traps![0]!.team).toBe('chaff')
@@ -202,19 +202,19 @@ describe('Socket Hero', () => {
     it('pulls target enemy into caster zone', () => {
       const player = makePlayer({ level: 1 })
       // Enemy in adjacent zone
-      const enemy = makeEnemy({ zone: 'mid-t1-audit' })
+      const enemy = makeEnemy({ zone: 'coldstore-t1-audit' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       // Enemy should have moved closer to player's zone
       const updatedEnemy = result.state.players['e1']!
-      expect(updatedEnemy.zone).toBe('mid-river') // Pulled to caster's zone
+      expect(updatedEnemy.zone).toBe('coldstore-cross') // Pulled to caster's zone
     })
 
     it('fails if target is not in adjacent zone', () => {
       const player = makePlayer()
-      const enemy = makeEnemy({ zone: 'audit-fountain' })
+      const enemy = makeEnemy({ zone: 'landing-anchor' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(
@@ -225,7 +225,7 @@ describe('Socket Hero', () => {
 
     it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
-      const enemy = makeEnemy({ zone: 'mid-t1-audit' })
+      const enemy = makeEnemy({ zone: 'coldstore-t1-audit' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
@@ -256,7 +256,7 @@ describe('Socket Hero', () => {
     it('applies broadcast_slow to all enemies on the map', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const enemy1 = makeEnemy()
-      const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2', zone: 'top-river' })
+      const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2', zone: 'seawall-cross' })
       const state = makeState([player, enemy1, enemy2])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))

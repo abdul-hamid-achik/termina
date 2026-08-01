@@ -15,7 +15,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestProxy',
     team: 'chaff',
     heroId: 'proxy',
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: 580,
     maxInteg: 580,
     bw: 380,
@@ -89,9 +89,9 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     },
     players: playerMap,
     zones: {
-      'mid-river': { id: 'mid-river', wards: [] },
-      'top-river': { id: 'top-river', wards: [] },
-      'mid-t1-chaff': { id: 'mid-t1-chaff', wards: [] },
+      'coldstore-cross': { id: 'coldstore-cross', wards: [] },
+      'seawall-cross': { id: 'seawall-cross', wards: [] },
+      'coldstore-t1-chaff': { id: 'coldstore-t1-chaff', wards: [] },
     },
     waves: [],
     ice: [],
@@ -162,7 +162,7 @@ describe('Proxy Hero', () => {
 
     it('fails when target is in different zone', () => {
       const player = makePlayer()
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(
@@ -232,7 +232,7 @@ describe('Proxy Hero', () => {
 
     it('fails when target is in different zone', () => {
       const player = makePlayer()
-      const ally = makeAlly({ zone: 'top-river' })
+      const ally = makeAlly({ zone: 'seawall-cross' })
       const state = makeState([player, ally])
 
       const result = Effect.runSyncExit(
@@ -276,7 +276,7 @@ describe('Proxy Hero', () => {
 
     it('does not heal allies in different zone', () => {
       const player = makePlayer({ level: 1, integ: 400, maxInteg: 580 })
-      const ally = makeAlly({ integ: 300, zone: 'top-river' })
+      const ally = makeAlly({ integ: 300, zone: 'seawall-cross' })
       const state = makeState([player, ally])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
@@ -320,18 +320,18 @@ describe('Proxy Hero', () => {
 
     it('swaps zones between caster and ally', () => {
       const player = makePlayer({ level: 6, bw: 500 })
-      const ally = makeAlly({ zone: 'top-river' })
+      const ally = makeAlly({ zone: 'seawall-cross' })
       const state = makeState([player, ally])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'a1' }))
 
-      expect(result.state.players['p1']!.zone).toBe('top-river')
-      expect(result.state.players['a1']!.zone).toBe('mid-river')
+      expect(result.state.players['p1']!.zone).toBe('seawall-cross')
+      expect(result.state.players['a1']!.zone).toBe('coldstore-cross')
     })
 
     it('grants invulnerability to both for 1 tick', () => {
       const player = makePlayer({ level: 6, bw: 500 })
-      const ally = makeAlly({ zone: 'top-river' })
+      const ally = makeAlly({ zone: 'seawall-cross' })
       const state = makeState([player, ally])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'a1' }))
@@ -344,7 +344,7 @@ describe('Proxy Hero', () => {
 
     it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 6, bw: 500 })
-      const ally = makeAlly({ zone: 'top-river' })
+      const ally = makeAlly({ zone: 'seawall-cross' })
       const state = makeState([player, ally])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'a1' }))
@@ -487,11 +487,11 @@ describe('Proxy Hero', () => {
       const proxy = makePlayer({
         id: 'p1',
         team: 'chaff',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         integ: 500,
         maxInteg: 580,
       })
-      const ally = makeAlly({ id: 'a1', zone: 'mid-river', integ: 400, maxInteg: 600 }) // just took a hit
+      const ally = makeAlly({ id: 'a1', zone: 'coldstore-cross', integ: 400, maxInteg: 600 }) // just took a hit
       const state = makeState([proxy, ally])
 
       const updated = resolvePassive(state, 'p1', {
@@ -508,7 +508,7 @@ describe('Proxy Hero', () => {
       const proxy = makePlayer({
         id: 'p1',
         team: 'chaff',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         integ: 500,
         maxInteg: 580,
       })
@@ -527,11 +527,11 @@ describe('Proxy Hero', () => {
       const proxy = makePlayer({
         id: 'p1',
         team: 'chaff',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         integ: 500,
         maxInteg: 580,
       })
-      const ally = makeAlly({ id: 'a1', zone: 'top-river', integ: 400, maxInteg: 600 })
+      const ally = makeAlly({ id: 'a1', zone: 'seawall-cross', integ: 400, maxInteg: 600 })
       const state = makeState([proxy, ally])
 
       const updated = resolvePassive(state, 'p1', {

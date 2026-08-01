@@ -15,7 +15,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-chaff',
+    zone: 'coldstore-t1-chaff',
     integ: 500,
     maxInteg: 500,
     bw: 200,
@@ -98,7 +98,12 @@ describe('NeutralAI', () => {
 
     it('should spawn neutrals in jungle zones', () => {
       const neutrals = spawnSiltDwellers(60)
-      const jungleZones = ['silt-chaff-top', 'silt-chaff-bot', 'silt-audit-top', 'silt-audit-bot']
+      const jungleZones = [
+        'silt-chaff-upper',
+        'silt-chaff-lower',
+        'silt-audit-upper',
+        'silt-audit-lower',
+      ]
 
       for (const neutral of neutrals) {
         expect(jungleZones).toContain(neutral.zone)
@@ -121,7 +126,7 @@ describe('NeutralAI', () => {
         neutrals: [
           {
             id: 'neutral_1',
-            zone: 'silt-chaff-top',
+            zone: 'silt-chaff-upper',
             integ: 100,
             maxInteg: 100,
             type: 'stub',
@@ -129,7 +134,7 @@ describe('NeutralAI', () => {
           },
         ],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'silt-chaff-top', integ: 500 }),
+          p1: makePlayer({ id: 'p1', zone: 'silt-chaff-upper', integ: 500 }),
         },
       })
 
@@ -144,7 +149,7 @@ describe('NeutralAI', () => {
         neutrals: [
           {
             id: 'neutral_1',
-            zone: 'silt-chaff-top',
+            zone: 'silt-chaff-upper',
             integ: 100,
             maxInteg: 100,
             type: 'stub',
@@ -152,7 +157,7 @@ describe('NeutralAI', () => {
           },
         ],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', zone: 'coldstore-cross' }),
         },
       })
 
@@ -165,7 +170,7 @@ describe('NeutralAI', () => {
         neutrals: [
           {
             id: 'neutral_1',
-            zone: 'silt-chaff-top',
+            zone: 'silt-chaff-upper',
             integ: 0,
             maxInteg: 100,
             type: 'stub',
@@ -173,7 +178,7 @@ describe('NeutralAI', () => {
           },
         ],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'silt-chaff-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'silt-chaff-upper' }),
         },
       })
 
@@ -188,7 +193,7 @@ describe('NeutralAI', () => {
         neutrals: [
           {
             id: 'neutral_1',
-            zone: 'silt-chaff-top',
+            zone: 'silt-chaff-upper',
             integ: 100,
             maxInteg: 100,
             type: 'stub',
@@ -196,7 +201,7 @@ describe('NeutralAI', () => {
           },
         ],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'silt-chaff-top', integ: 500 }),
+          p1: makePlayer({ id: 'p1', zone: 'silt-chaff-upper', integ: 500 }),
         },
       })
 
@@ -215,7 +220,7 @@ describe('NeutralAI', () => {
         neutrals: [
           {
             id: 'neutral_1',
-            zone: 'silt-chaff-top',
+            zone: 'silt-chaff-upper',
             integ: 100,
             maxInteg: 100,
             type: 'stub',
@@ -223,7 +228,7 @@ describe('NeutralAI', () => {
           },
         ],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'silt-chaff-top', integ: 500 }),
+          p1: makePlayer({ id: 'p1', zone: 'silt-chaff-upper', integ: 500 }),
         },
       })
 
@@ -251,7 +256,7 @@ describe('NeutralAI', () => {
         neutrals: [
           {
             id: 'neutral_1',
-            zone: 'silt-chaff-top',
+            zone: 'silt-chaff-upper',
             integ: 100,
             maxInteg: 100,
             type: 'stub',
@@ -261,7 +266,7 @@ describe('NeutralAI', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'silt-chaff-top',
+            zone: 'silt-chaff-upper',
             integ: 500,
             buffs: [{ id: 'shield', stacks: 999, cyclesRemaining: 5, source: 'x' }],
           }),

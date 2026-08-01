@@ -112,11 +112,11 @@ describe('Game Flow Integration', () => {
       // the audit Terminal vulnerable), the chaff hero has sieged into the
       // enemy base, and the Terminal is low so the test stays fast.
       await arrange(sm, gameId, (s) => {
-        const sieged = setPlayer(s, 'fg_r0', { zone: 'audit-base' })
+        const sieged = setPlayer(s, 'fg_r0', { zone: 'landing-terminal' })
         return {
           ...sieged,
           ice: sieged.ice.map((t) =>
-            t.zone === 'mid-t3-audit' ? { ...t, alive: false, integ: 0 } : t,
+            t.zone === 'coldstore-t3-audit' ? { ...t, alive: false, integ: 0 } : t,
           ),
           terminals: {
             ...sieged.terminals,
@@ -198,9 +198,9 @@ describe('Game Flow Integration', () => {
       // killer + assister + victim share a zone; the 2nd audit player idles in
       // the fountain keeping team net-worths balanced (comeback multiplier ≈ 1)
       await arrange(sm, gameId, (s) => {
-        let next = setPlayer(s, 'tf_r0', { zone: 'mid-river' })
-        next = setPlayer(next, 'tf_r1', { zone: 'mid-river' })
-        next = setPlayer(next, 'tf_d0', { zone: 'mid-river' })
+        let next = setPlayer(s, 'tf_r0', { zone: 'coldstore-cross' })
+        next = setPlayer(next, 'tf_r1', { zone: 'coldstore-cross' })
+        next = setPlayer(next, 'tf_d0', { zone: 'coldstore-cross' })
         return next
       })
 
@@ -252,9 +252,9 @@ describe('Game Flow Integration', () => {
       const gameId = uid('mk')
       const sm = await startGame(gameId, makePlayers('mk', 2))
       await arrange(sm, gameId, (s) => {
-        let next = setPlayer(s, 'mk_r0', { zone: 'mid-river' })
-        next = setPlayer(next, 'mk_d0', { zone: 'mid-river', integ: 1 })
-        next = setPlayer(next, 'mk_d1', { zone: 'mid-river' })
+        let next = setPlayer(s, 'mk_r0', { zone: 'coldstore-cross' })
+        next = setPlayer(next, 'mk_d0', { zone: 'coldstore-cross', integ: 1 })
+        next = setPlayer(next, 'mk_d1', { zone: 'coldstore-cross' })
         return next
       })
 
@@ -437,7 +437,7 @@ describe('Game Flow Integration', () => {
           {
             id: 'wave_fog_probe',
             team: 'audit' as const,
-            zone: 'audit-base',
+            zone: 'landing-terminal',
             integ: 550,
             type: 'line' as const,
           },
@@ -448,10 +448,10 @@ describe('Game Flow Integration', () => {
       const view = filterStateForPlayer(state, 'vis_r0')
 
       // Own surroundings are visible; the enemy side is not
-      expect(view.visibleZones).toContain('chaff-fountain')
-      expect(view.visibleZones).toContain('chaff-base')
-      expect(view.visibleZones).not.toContain('audit-fountain')
-      expect(view.visibleZones).not.toContain('audit-base')
+      expect(view.visibleZones).toContain('rookery-anchor')
+      expect(view.visibleZones).toContain('rookery-terminal')
+      expect(view.visibleZones).not.toContain('landing-anchor')
+      expect(view.visibleZones).not.toContain('landing-terminal')
 
       // The enemy hero appears only as a FoggedPlayer — no zone/gold leak
       const enemy = view.players['vis_d0']!
@@ -460,21 +460,21 @@ describe('Game Flow Integration', () => {
       expect('scrip' in enemy).toBe(false)
 
       // Waves in fogged zones are stripped from the payload. This used to also
-      // assert `view.zones['audit-base'].waves` was empty — a field deleted from
+      // assert `view.zones['landing-terminal'].waves` was empty — a field deleted from
       // ZoneRuntimeState in 0e82d3c, so the assertion was reading `undefined`
       // off a live object and comparing it to []. The top-level wave list is
       // where waves actually live, and it is the real fog guarantee.
       expect(view.waves.some((c) => c.id === 'wave_fog_probe')).toBe(false)
-      expect(view.zones['audit-base']).toBeDefined()
+      expect(view.zones['landing-terminal']).toBeDefined()
 
       // Once the enemy steps into chaff vision they are fully revealed
       const revealed = filterStateForPlayer(
-        setPlayer(state, 'vis_d0', { zone: 'chaff-base' }),
+        setPlayer(state, 'vis_d0', { zone: 'rookery-terminal' }),
         'vis_r0',
       )
       const enemyVisible = revealed.players['vis_d0']!
       expect('fogged' in enemyVisible).toBe(false)
-      expect((enemyVisible as PlayerState).zone).toBe('chaff-base')
+      expect((enemyVisible as PlayerState).zone).toBe('rookery-terminal')
     })
 
     it('updates vision when wards are placed', async () => {
@@ -483,23 +483,23 @@ describe('Game Flow Integration', () => {
 
       const before = await Effect.runPromise(sm.getState(gameId))
       const viewBefore = filterStateForPlayer(before, 'ward_r0')
-      expect(viewBefore.visibleZones).not.toContain('mid-t2-audit')
+      expect(viewBefore.visibleZones).not.toContain('coldstore-t2-audit')
 
       // Walk the warder deep into audit territory carrying an observer ward
       await arrange(sm, gameId, (s) =>
         setPlayer(s, 'ward_r0', {
-          zone: 'mid-t1-audit',
+          zone: 'coldstore-t1-audit',
           items: ['camtap', null, null, null, null, null],
         }),
       )
 
-      submitAction(gameId, 'ward_r0', { type: 'ward', zone: 'mid-t2-audit' })
+      submitAction(gameId, 'ward_r0', { type: 'ward', zone: 'coldstore-t2-audit' })
       const result = await runTick(sm, gameId)
 
-      expect(result.events.some((e) => e._tag === 'ward_placed' && e.zone === 'mid-t2-audit')).toBe(
-        true,
-      )
-      const wards = result.state.zones['mid-t2-audit']!.wards
+      expect(
+        result.events.some((e) => e._tag === 'ward_placed' && e.zone === 'coldstore-t2-audit'),
+      ).toBe(true)
+      const wards = result.state.zones['coldstore-t2-audit']!.wards
       expect(wards).toHaveLength(1)
       expect(wards[0]).toMatchObject({ team: 'chaff', type: 'camtap' })
       // The ward was consumed from the inventory
@@ -507,9 +507,9 @@ describe('Game Flow Integration', () => {
 
       // Send the warder home — the warded zone stays visible to the team
       // purely through the ward (no hero, ice, or ally anywhere near it)
-      const homeState = setPlayer(result.state, 'ward_r0', { zone: 'chaff-fountain' })
+      const homeState = setPlayer(result.state, 'ward_r0', { zone: 'rookery-anchor' })
       const viewAfter = filterStateForPlayer(homeState, 'ward_r0')
-      expect(viewAfter.visibleZones).toContain('mid-t2-audit')
+      expect(viewAfter.visibleZones).toContain('coldstore-t2-audit')
     })
   })
 })

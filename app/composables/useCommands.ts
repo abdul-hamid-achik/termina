@@ -9,7 +9,7 @@ import type {
 } from '~~/shared/types/game'
 import type { ItemDef } from '~~/shared/types/items'
 import type { AbilityDef } from '~~/shared/types/hero'
-import { isShopZoneFor, ZONE_IDS, ZONE_MAP } from '~~/shared/constants/zones'
+import { isShopZoneFor, ZONE_IDS, ZONE_MAP, ZONES } from '~~/shared/constants/zones'
 import { zonesForMap } from '~~/shared/constants/maps'
 import { findPath } from '~~/shared/pathfinding'
 import { HEROES, isHeroId } from '~~/shared/constants/heroes'
@@ -391,32 +391,30 @@ export const SHORTCUTS: Record<string, string> = {
   br: 'breach',
 }
 
-// Zone aliases for easier typing
+// Zone aliases for easier typing. The three routes are SEAWALL / COLDSTORE /
+// SHALLOWS; a bare route name means its crossing, the contested middle.
 const ZONE_ALIASES: Record<string, string> = {
-  // Lane shortcuts
-  mid: 'mid-river',
-  top: 'top-river',
-  bot: 'bot-river',
-  // Full lane paths
-  'top-lane': 'top-t1-chaff',
-  'mid-lane': 'mid-river',
-  'bot-lane': 'bot-river',
-  // Jungles — the Silt
-  'jg-chaff': 'silt-chaff-top',
-  'jg-audit': 'silt-audit-top',
-  'silt-chaff': 'silt-chaff-top',
-  'silt-audit': 'silt-audit-top',
-  // Bases
-  base: 'chaff-base',
-  fountain: 'chaff-fountain',
+  // Route shortcuts — a bare route name is its crossing
+  coldstore: 'coldstore-cross',
+  seawall: 'seawall-cross',
+  shallows: 'shallows-cross',
+  // Three-letter forms, because these get typed under a four-second clock
+  cs: 'coldstore-cross',
+  sw: 'seawall-cross',
+  sh: 'shallows-cross',
+  // The Silt
+  'silt-chaff': 'silt-chaff-upper',
+  'silt-audit': 'silt-audit-upper',
+  // Your own ground. Both are team-relative — see the resolver below.
+  terminal: 'rookery-terminal',
+  anchor: 'rookery-anchor',
   // The Tenant's pit
   hollow: 'hollow',
   // Cache drops. There is deliberately no bare `cache` alias: it used to point
-  // at mid-river, a zone with no cache in it, so `move cache` walked you past both.
-  'cache-top': 'cache-top',
-  'cache-bot': 'cache-bot',
-  rt: 'cache-top',
-  rb: 'cache-bot',
+  // at the mid crossing, a zone with no cache in it, so `move cache` walked you
+  // past both.
+  'cache-seawall': 'cache-seawall',
+  'cache-shallows': 'cache-shallows',
 }
 
 function parseTarget(raw: string): TargetRef | null {
@@ -588,7 +586,7 @@ export function validateCommand(command: Command, context: GameContext): string 
         if (neutral.zone !== player.zone) return 'That neutral camp is not in your zone'
       }
       if (t.kind === 'terminal') {
-        const enemyBase = player.team === 'chaff' ? 'audit-base' : 'chaff-base'
+        const enemyBase = player.team === 'chaff' ? 'landing-terminal' : 'rookery-terminal'
         if (player.zone !== enemyBase) {
           return `Must be in the enemy base (${enemyBase}) to attack their Terminal`
         }
@@ -703,18 +701,25 @@ export function validateCommand(command: Command, context: GameContext): string 
 
 /**
  * Resolve a zone alias to the actual zone ID, or return the input if it's
- * already a valid zone. `base`/`fountain` are resolved relative to the player's
- * team — so a audit player typing `move base` heads to audit-base, not the enemy's.
+ * already a valid zone.
+ *
+ * `terminal` and `anchor` are TEAM-RELATIVE: an AUDIT player typing
+ * `move terminal` heads to landing-terminal, never the enemy's. They replace
+ * `base`/`fountain`, which were the last classic-MOBA words a player still had
+ * to type — the zones themselves have read "Rookery Terminal" and "Landing
+ * Anchor" since the world landed.
  */
 function resolveZoneAlias(zoneInput: string, team: TeamId = 'chaff'): string {
   // Check if it's already a valid zone ID
   if (ZONE_IDS.includes(zoneInput)) return zoneInput
   // Team-relative "home" shortcuts resolve to YOUR side of the map.
-  if (zoneInput === 'base') return `${team}-base`
-  if (zoneInput === 'fountain') return `${team}-fountain`
+  const home = ZONES.find((z) => z.type === 'base' && z.team === team)
+  const anchor = ZONES.find((z) => z.type === 'anchor' && z.team === team)
+  if (zoneInput === 'terminal' && home) return home.id
+  if (zoneInput === 'anchor' && anchor) return anchor.id
   // Check if it's an alias
   if (ZONE_ALIASES[zoneInput]) return ZONE_ALIASES[zoneInput]
-  // Check if it matches a zone ID prefix (e.g., "mid" -> "mid-river" if unambiguous)
+  // Check if it matches a zone ID prefix (e.g. "cold" -> the coldstore zones)
   const matches = ZONE_IDS.filter((z) => z.startsWith(zoneInput))
   if (matches.length === 1) return matches[0]!
   // Return as-is (let server validate)
@@ -727,14 +732,15 @@ function resolveZoneAlias(zoneInput: string, team: TeamId = 'chaff'): string {
  * costing the player their one action for the cycle with no explanation.
  */
 function ambiguousZoneError(zoneInput: string): string | null {
-  if (ZONE_IDS.includes(zoneInput) || zoneInput === 'base' || zoneInput === 'fountain') return null
+  if (ZONE_IDS.includes(zoneInput) || zoneInput === 'terminal' || zoneInput === 'anchor')
+    return null
   if (ZONE_ALIASES[zoneInput]) return null
   // Legacy word from the old vocabulary: `cache` matched both cache spots. The
-  // spots are cache-top/cache-bot now, but a player who types `move cache` still
+  // spots are cache-seawall/cache-shallows now, but a player who types `move cache` still
   // means "a cache drop" — guide them to both rather than dumping a raw prefix
   // on the server (which would burn their one action on a rejection).
   if (zoneInput === 'cache') {
-    return `"cache" is ambiguous — did you mean cache-top or cache-bot?`
+    return `"cache" is ambiguous — did you mean cache-seawall or cache-shallows?`
   }
   const matches = ZONE_IDS.filter((z) => z.startsWith(zoneInput))
   if (matches.length < 2) return null
@@ -781,7 +787,7 @@ export function useCommands() {
           return {
             command: null,
             error:
-              'Usage: attack <target>  (e.g. attack hero:daemon, attack wave:0, attack neutral:0, attack tenant, attack ice:mid-t1-chaff, attack terminal)',
+              'Usage: attack <target>  (e.g. attack hero:daemon, attack wave:0, attack neutral:0, attack tenant, attack ice:coldstore-t1-chaff, attack terminal)',
           }
         const target = parseTarget(targetStr)
         if (!target)
@@ -1160,7 +1166,7 @@ export function useCommands() {
     const team = context.player?.team ?? 'chaff'
 
     // An exact alias outranks every prefix match: `mid` means the river, and
-    // burying it under `mid-t3-chaff` (first in zone order) walked players into
+    // burying it under `coldstore-t3-chaff` (first in zone order) walked players into
     // their OWN tier-3 ice the moment Enter accepted the top suggestion.
     const exact = partial ? resolveZoneAlias(partial, team) : ''
     if (exact !== partial && zonePool.includes(exact) && ZONE_MAP[exact]) {
@@ -1318,7 +1324,7 @@ export function useCommands() {
     }
 
     // Suggest the enemy Terminal when standing in the enemy base
-    const enemyBase = context.player.team === 'chaff' ? 'audit-base' : 'chaff-base'
+    const enemyBase = context.player.team === 'chaff' ? 'landing-terminal' : 'rookery-terminal'
     if (context.player.zone === enemyBase && 'terminal'.includes(partial)) {
       suggestions.push({ text: 'terminal', description: 'Enemy Terminal (win the game!)' })
     }

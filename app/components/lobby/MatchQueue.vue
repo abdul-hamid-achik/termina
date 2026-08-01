@@ -122,7 +122,7 @@ function formatTime(seconds: number): string {
 // Build the visual slot list
 const slots = computed(() => {
   const result: {
-    type: 'player' | 'bot' | 'empty' | 'typing'
+    type: 'player' | 'shallows' | 'empty' | 'typing'
     username?: string
     mmrBracket?: string
     index: number
@@ -143,7 +143,7 @@ const slots = computed(() => {
 
   // Bots that have typed in
   for (let i = 0; i < botLen; i++) {
-    result.push({ type: 'bot', username: filledBotNames.value[i], index: rosterLen + i })
+    result.push({ type: 'shallows', username: filledBotNames.value[i], index: rosterLen + i })
   }
 
   // Bot currently typing
@@ -212,7 +212,7 @@ const filledCount = computed(() => {
             class="flex items-center gap-2 border-l-2 px-3 py-1"
             :class="{
               'border-chaff bg-chaff/5': slot.type === 'player',
-              'border-gold bg-gold/5': slot.type === 'bot',
+              'border-gold bg-gold/5': slot.type === 'shallows',
               'border-border bg-transparent': slot.type === 'empty',
               'border-ability bg-ability/5': slot.type === 'typing',
             }"
@@ -223,7 +223,7 @@ const filledCount = computed(() => {
               :class="{
                 'text-text-dim': slot.type === 'empty',
                 'text-chaff': slot.type === 'player',
-                'text-gold': slot.type === 'bot',
+                'text-gold': slot.type === 'shallows',
                 'text-ability': slot.type === 'typing',
               }"
             >
@@ -239,7 +239,7 @@ const filledCount = computed(() => {
               <span class="shrink-0 text-[0.65rem] text-text-dim">[{{ slot.mmrBracket }}]</span>
             </template>
 
-            <template v-else-if="slot.type === 'bot'">
+            <template v-else-if="slot.type === 'shallows'">
               <span class="flex-1 truncate text-xs text-gold">{{ slot.username }}</span>
               <span class="shrink-0 text-[0.65rem] text-text-dim">[AI]</span>
             </template>

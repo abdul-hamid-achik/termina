@@ -10,7 +10,7 @@ import type { TerminalState, TeamId } from '~~/shared/types/game'
  * the rename; this model must have no `.includes('rad')` in it).
  */
 
-export type RouteId = 'top' | 'mid' | 'bot'
+export type RouteId = 'seawall' | 'coldstore' | 'shallows'
 
 export interface TraceContact {
   id: string
@@ -57,11 +57,11 @@ export interface TraceModel {
   terminals: TerminalState[]
 }
 
-const ROUTE_IDS: RouteId[] = ['top', 'mid', 'bot']
+const ROUTE_IDS: RouteId[] = ['seawall', 'coldstore', 'shallows']
 
 /** Display name of a route, from its river zone's record (never the id). */
 function routeName(route: RouteId, team: TeamId): string {
-  const riverZone = LANE_ROUTES_CORE[route]![team]!.find((z) => ZONE_MAP[z]?.type === 'river')
+  const riverZone = LANE_ROUTES_CORE[route]![team]!.find((z) => ZONE_MAP[z]?.type === 'cross')
   return riverZone ? (ZONE_MAP[riverZone]!.name.replace(' Crossing', '') ?? route) : route
 }
 

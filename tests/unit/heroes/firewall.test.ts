@@ -15,7 +15,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestFirewall',
     team: 'chaff',
     heroId: 'firewall',
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: 720,
     maxInteg: 720,
     bw: 270,
@@ -77,8 +77,8 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     },
     players: playerMap,
     zones: {
-      'mid-river': { id: 'mid-river', wards: [] },
-      'top-river': { id: 'top-river', wards: [] },
+      'coldstore-cross': { id: 'coldstore-cross', wards: [] },
+      'seawall-cross': { id: 'seawall-cross', wards: [] },
     },
     waves: [],
     ice: [],
@@ -149,7 +149,7 @@ describe('Firewall Hero', () => {
 
     it('fails when target is in different zone', () => {
       const player = makePlayer()
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(
@@ -251,7 +251,7 @@ describe('Firewall Hero', () => {
 
     it('does not taunt enemies in different zone', () => {
       const player = makePlayer({ level: 1 })
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))

@@ -2,11 +2,11 @@
 import MarqueeStrip from './MarqueeStrip.vue'
 
 const commands = [
-  'move mid-river',
+  'move coldstore-cross',
   'attack wave:0',
   'cast q hero:daemon',
   'buy edge_kit',
-  'ward mid-river',
+  'ward coldstore-cross',
   'attack tenant',
 ]
 const short = ['alpha', 'beta', 'gamma']

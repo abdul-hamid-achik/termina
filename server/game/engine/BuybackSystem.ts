@@ -81,7 +81,7 @@ export function buyback(
     bw: player.maxBw,
     respawnCycle: null,
     buybackCooldown: state.cycle + BUYBACK_COOLDOWN_CYCLES,
-    zone: player.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain',
+    zone: player.team === 'chaff' ? 'rookery-anchor' : 'landing-anchor',
   }
 
   updatedPlayers[playerId] = updatedPlayer

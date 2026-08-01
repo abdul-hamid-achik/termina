@@ -34,7 +34,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  /** A command string for GameScreen's handleCommand ('attack wave:2', 'move mid-river', 'Q', 'SHOP'…). */
+  /** A command string for GameScreen's handleCommand ('attack wave:2', 'move coldstore-cross', 'Q', 'SHOP'…). */
   command: [cmd: string]
 }>()
 

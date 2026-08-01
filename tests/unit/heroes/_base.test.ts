@@ -40,7 +40,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestPlayer',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-chaff',
+    zone: 'coldstore-t1-chaff',
     integ: 500,
     maxInteg: 500,
     bw: 200,
@@ -633,23 +633,23 @@ describe('_base hero utilities', () => {
     it('should return players in zone', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-river' }),
-          p2: makePlayer({ id: 'p2', zone: 'mid-river' }),
-          p3: makePlayer({ id: 'p3', zone: 'top-river' }),
+          p1: makePlayer({ id: 'p1', zone: 'coldstore-cross' }),
+          p2: makePlayer({ id: 'p2', zone: 'coldstore-cross' }),
+          p3: makePlayer({ id: 'p3', zone: 'seawall-cross' }),
         },
       })
-      const result = getPlayersInZone(state, 'mid-river')
+      const result = getPlayersInZone(state, 'coldstore-cross')
       expect(result).toHaveLength(2)
     })
 
     it('should exclude dead players', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-river', alive: false }),
-          p2: makePlayer({ id: 'p2', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', zone: 'coldstore-cross', alive: false }),
+          p2: makePlayer({ id: 'p2', zone: 'coldstore-cross' }),
         },
       })
-      const result = getPlayersInZone(state, 'mid-river')
+      const result = getPlayersInZone(state, 'coldstore-cross')
       expect(result).toHaveLength(1)
     })
   })
@@ -658,8 +658,8 @@ describe('_base hero utilities', () => {
     it('should return enemies in zone', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'coldstore-cross' }),
         },
       })
       const result = getEnemiesInZone(state, state.players['p1']!)
@@ -672,9 +672,9 @@ describe('_base hero utilities', () => {
     it('should return allies in zone excluding self', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
-          p2: makePlayer({ id: 'p2', team: 'chaff', zone: 'mid-river' }),
-          p3: makePlayer({ id: 'p3', team: 'audit', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' }),
+          p2: makePlayer({ id: 'p2', team: 'chaff', zone: 'coldstore-cross' }),
+          p3: makePlayer({ id: 'p3', team: 'audit', zone: 'coldstore-cross' }),
         },
       })
       const result = getAlliesInZone(state, state.players['p1']!)
@@ -814,7 +814,7 @@ describe('_base hero utilities', () => {
   describe('TP channeling completion', () => {
     it('should complete teleport after channeling duration', () => {
       const player = makePlayer({
-        zone: 'mid-t1-chaff',
+        zone: 'coldstore-t1-chaff',
         buffs: [
           { id: 'tp_channeling', stacks: 1, cyclesRemaining: 1, source: 'recall_token' },
           {
@@ -822,7 +822,7 @@ describe('_base hero utilities', () => {
             stacks: 1,
             cyclesRemaining: 2,
             source: 'recall_token',
-            destination: 'chaff-fountain',
+            destination: 'rookery-anchor',
           },
         ],
       })
@@ -830,16 +830,16 @@ describe('_base hero utilities', () => {
 
       const result = cycleAllBuffs(state)
 
-      expect(result.players['p1']!.zone).toBe('chaff-fountain')
+      expect(result.players['p1']!.zone).toBe('rookery-anchor')
       expect(result.players['p1']!.buffs).toHaveLength(0)
       expect(result.events).toHaveLength(1)
       expect(result.events[0]!.type).toBe('teleport_complete')
-      expect(result.events[0]!.payload.destination).toBe('chaff-fountain')
+      expect(result.events[0]!.payload.destination).toBe('rookery-anchor')
     })
 
     it('should not teleport while channeling is in progress', () => {
       const player = makePlayer({
-        zone: 'mid-t1-chaff',
+        zone: 'coldstore-t1-chaff',
         buffs: [
           { id: 'tp_channeling', stacks: 1, cyclesRemaining: 2, source: 'recall_token' },
           {
@@ -847,7 +847,7 @@ describe('_base hero utilities', () => {
             stacks: 1,
             cyclesRemaining: 3,
             source: 'recall_token',
-            destination: 'chaff-fountain',
+            destination: 'rookery-anchor',
           },
         ],
       })
@@ -855,7 +855,7 @@ describe('_base hero utilities', () => {
 
       const result = cycleAllBuffs(state)
 
-      expect(result.players['p1']!.zone).toBe('mid-t1-chaff')
+      expect(result.players['p1']!.zone).toBe('coldstore-t1-chaff')
       expect(result.players['p1']!.buffs).toHaveLength(2)
       expect(result.events).toHaveLength(0)
     })
@@ -863,7 +863,7 @@ describe('_base hero utilities', () => {
     it('should teleport to audit fountain for audit player', () => {
       const player = makePlayer({
         team: 'audit',
-        zone: 'mid-t1-audit',
+        zone: 'coldstore-t1-audit',
         buffs: [
           { id: 'tp_channeling', stacks: 1, cyclesRemaining: 1, source: 'recall_token' },
           {
@@ -871,7 +871,7 @@ describe('_base hero utilities', () => {
             stacks: 1,
             cyclesRemaining: 2,
             source: 'recall_token',
-            destination: 'audit-fountain',
+            destination: 'landing-anchor',
           },
         ],
       })
@@ -879,20 +879,20 @@ describe('_base hero utilities', () => {
 
       const result = cycleAllBuffs(state)
 
-      expect(result.players['p1']!.zone).toBe('audit-fountain')
+      expect(result.players['p1']!.zone).toBe('landing-anchor')
       expect(result.players['p1']!.buffs).toHaveLength(0)
     })
 
     it('should handle missing destination buff gracefully', () => {
       const player = makePlayer({
-        zone: 'mid-t1-chaff',
+        zone: 'coldstore-t1-chaff',
         buffs: [{ id: 'tp_channeling', stacks: 1, cyclesRemaining: 1, source: 'recall_token' }],
       })
       const state = makeGameState({ players: { p1: player } })
 
       const result = cycleAllBuffs(state)
 
-      expect(result.players['p1']!.zone).toBe('mid-t1-chaff')
+      expect(result.players['p1']!.zone).toBe('coldstore-t1-chaff')
       expect(result.players['p1']!.buffs).toHaveLength(0)
     })
   })
@@ -901,7 +901,7 @@ describe('_base hero utilities', () => {
     const wave = (over: Partial<WaveUnitState> = {}): WaveUnitState => ({
       id: 'c1',
       team: 'audit',
-      zone: 'mid-t1-chaff',
+      zone: 'coldstore-t1-chaff',
       integ: 400,
       maxInteg: 400,
       type: 'line',
@@ -909,7 +909,7 @@ describe('_base hero utilities', () => {
     })
     const neutral = (over: Partial<SiltDwellerState> = {}): SiltDwellerState => ({
       id: 'n1',
-      zone: 'silt-chaff-top',
+      zone: 'silt-chaff-upper',
       integ: 250,
       maxInteg: 250,
       type: 'stub',
@@ -918,7 +918,7 @@ describe('_base hero utilities', () => {
     })
 
     it('damages enemy waves standing in the caster’s zone', () => {
-      const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
+      const caster = makePlayer({ zone: 'coldstore-t1-chaff', team: 'chaff' })
       const state = makeGameState({ waves: [wave()] })
 
       const result = damageEnemyNpcsInZone(state, caster, 150, 'code')
@@ -927,9 +927,12 @@ describe('_base hero utilities', () => {
     })
 
     it('spares allied waves and waves in every other zone', () => {
-      const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
+      const caster = makePlayer({ zone: 'coldstore-t1-chaff', team: 'chaff' })
       const state = makeGameState({
-        waves: [wave({ id: 'ally', team: 'chaff' }), wave({ id: 'elsewhere', zone: 'top-river' })],
+        waves: [
+          wave({ id: 'ally', team: 'chaff' }),
+          wave({ id: 'elsewhere', zone: 'seawall-cross' }),
+        ],
       })
 
       const result = damageEnemyNpcsInZone(state, caster, 150, 'code')
@@ -940,7 +943,7 @@ describe('_base hero utilities', () => {
     })
 
     it('kills a wave to exactly 0 rather than negative INTEG', () => {
-      const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
+      const caster = makePlayer({ zone: 'coldstore-t1-chaff', team: 'chaff' })
       const state = makeGameState({ waves: [wave({ integ: 30 })] })
 
       const result = damageEnemyNpcsInZone(state, caster, 900, 'kinetic')
@@ -949,7 +952,7 @@ describe('_base hero utilities', () => {
     })
 
     it('leaves a dead wave in the buffer so the caller can credit the kill', () => {
-      const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
+      const caster = makePlayer({ zone: 'coldstore-t1-chaff', team: 'chaff' })
       const state = makeGameState({ waves: [wave({ integ: 30 })] })
 
       const result = damageEnemyNpcsInZone(state, caster, 900, 'kinetic')
@@ -959,7 +962,7 @@ describe('_base hero utilities', () => {
     })
 
     it('does not re-damage a wave already at 0 INTEG', () => {
-      const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
+      const caster = makePlayer({ zone: 'coldstore-t1-chaff', team: 'chaff' })
       const dead = wave({ integ: 0 })
       const state = makeGameState({ waves: [dead] })
 
@@ -969,7 +972,7 @@ describe('_base hero utilities', () => {
     })
 
     it('damages neutrals, which are hostile to both teams, and flips alive on death', () => {
-      const caster = makePlayer({ zone: 'silt-chaff-top', team: 'chaff' })
+      const caster = makePlayer({ zone: 'silt-chaff-upper', team: 'chaff' })
       const state = makeGameState({ neutrals: [neutral({ integ: 100 })] })
 
       const chipped = damageEnemyNpcsInZone(state, caster, 40, 'code')
@@ -982,7 +985,7 @@ describe('_base hero utilities', () => {
     })
 
     it('applies the caster’s Mystical Staff amp to code damage only', () => {
-      const zone = 'mid-t1-chaff'
+      const zone = 'coldstore-t1-chaff'
       const amped = makePlayer({ zone, items: ['amp_stack', null, null, null, null, null] })
       const plain = makePlayer({ zone })
       const state = makeGameState({ waves: [wave()] })
@@ -994,20 +997,20 @@ describe('_base hero utilities', () => {
     })
 
     it('no-ops on a zero-damage cast (cache R with nothing banked)', () => {
-      const caster = makePlayer({ zone: 'mid-t1-chaff' })
+      const caster = makePlayer({ zone: 'coldstore-t1-chaff' })
       const state = makeGameState({ waves: [wave()] })
 
       expect(damageEnemyNpcsInZone(state, caster, 0, 'black')).toBe(state)
     })
 
     it('reaches the widened zone list an AOE+ cast passes in', () => {
-      const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
-      const state = makeGameState({ waves: [wave({ id: 'next-door', zone: 'mid-river' })] })
+      const caster = makePlayer({ zone: 'coldstore-t1-chaff', team: 'chaff' })
+      const state = makeGameState({ waves: [wave({ id: 'next-door', zone: 'coldstore-cross' })] })
 
       expect(damageEnemyNpcsInZone(state, caster, 150, 'code')).toBe(state)
       const widened = damageEnemyNpcsInZone(state, caster, 150, 'code', [
-        'mid-t1-chaff',
-        'mid-river',
+        'coldstore-t1-chaff',
+        'coldstore-cross',
       ])
       expect(widened.waves[0]!.integ).toBe(250)
     })
@@ -1015,12 +1018,12 @@ describe('_base hero utilities', () => {
 
   describe('zonesInAbilityRange', () => {
     it('returns just the caster’s zone unless the reach is widened', () => {
-      expect(zonesInAbilityRange('mid-river', false)).toEqual(['mid-river'])
+      expect(zonesInAbilityRange('coldstore-cross', false)).toEqual(['coldstore-cross'])
     })
 
     it('adds every adjacent zone when widened, with the caster’s zone first', () => {
-      const widened = zonesInAbilityRange('mid-river', true)
-      expect(widened[0]).toBe('mid-river')
+      const widened = zonesInAbilityRange('coldstore-cross', true)
+      expect(widened[0]).toBe('coldstore-cross')
       expect(widened.length).toBeGreaterThan(1)
       expect(new Set(widened).size).toBe(widened.length)
     })

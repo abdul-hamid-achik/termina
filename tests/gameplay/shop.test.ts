@@ -73,18 +73,18 @@ describe('shop', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           items: ['jump_shunt', null, null, null, null, null],
           buffs: [], // no item cooldown
         },
       },
     }))
 
-    // mid-river is adjacent to mid-t1-chaff; blink takes a zone-id string target.
-    game.submit({ type: 'use', item: 'jump_shunt', target: 'mid-t1-chaff' })
+    // coldstore-cross is adjacent to coldstore-t1-chaff; blink takes a zone-id string target.
+    game.submit({ type: 'use', item: 'jump_shunt', target: 'coldstore-t1-chaff' })
     await game.tick()
 
-    expect((await game.me()).zone).toBe('mid-t1-chaff')
+    expect((await game.me()).zone).toBe('coldstore-t1-chaff')
   })
 
   it('using Burnout nukes a targeted enemy for code damage (offensive item active)', async () => {

@@ -11,7 +11,7 @@ const TERMINALS: Record<TeamId, TerminalState> = {
 
 function mountLines(over: Partial<Parameters<typeof mount>[0]> = {}) {
   const trace = buildTrace({
-    playerZone: 'mid-t2-chaff',
+    playerZone: 'coldstore-t2-chaff',
     playerTeam: 'chaff',
     contacts: [],
     terminals: TERMINALS,

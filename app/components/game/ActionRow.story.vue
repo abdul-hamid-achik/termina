@@ -4,7 +4,7 @@ import ActionRow from './ActionRow.vue'
 
 const moveZones: ZoneDisplay[] = [
   {
-    id: 'mid-river',
+    id: 'coldstore-cross',
     name: 'Coldstore Crossing',
     playerHere: false,
     allies: [],
@@ -12,7 +12,7 @@ const moveZones: ZoneDisplay[] = [
     fogged: false,
   },
   {
-    id: 'mid-t1-chaff',
+    id: 'coldstore-t1-chaff',
     name: 'Coldstore T1',
     playerHere: false,
     allies: [],

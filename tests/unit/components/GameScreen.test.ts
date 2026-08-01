@@ -236,7 +236,7 @@ describe('GameScreen', () => {
 
     it('shows RESOLVING once the player has already acted this cycle', async () => {
       const store = seedActiveGame()
-      store.markActionSent('move mid-river') // lastActionCycle === current tick
+      store.markActionSent('move coldstore-cross') // lastActionCycle === current tick
       const wrapper = mountGameScreen()
 
       const header = wrapper.find('[data-testid="theater-header"]')
@@ -424,12 +424,12 @@ describe('GameScreen', () => {
   describe('map affordances (W2-8)', () => {
     /** The mid corridor plus a cache spot, so subset-map pruning is observable. */
     const CORRIDOR = [
-      'chaff-base',
-      'mid-t3-chaff',
-      'mid-t2-chaff',
-      'mid-t1-chaff',
-      'mid-river',
-      'cache-top',
+      'rookery-terminal',
+      'coldstore-t3-chaff',
+      'coldstore-t2-chaff',
+      'coldstore-t1-chaff',
+      'coldstore-cross',
+      'cache-seawall',
     ]
 
     function seedMap(zone: string, overrides: Partial<GameState> = {}) {
@@ -445,7 +445,7 @@ describe('GameScreen', () => {
     }
 
     it('renders the trace rail with the player route as hop depth', () => {
-      seedMap('mid-river')
+      seedMap('coldstore-cross')
       const wrapper = mountGameScreen()
       expect(wrapper.find('[data-testid="trace-rail"]').exists()).toBe(true)
       expect(wrapper.get('[data-testid="trace-current"]').text()).toContain('hop')
@@ -455,16 +455,16 @@ describe('GameScreen', () => {
     it('the trace still renders on a subset map (no phantom zones in the picker)', () => {
       // REGRESSION coverage moved to the [MOVE] picker test below — the picker
       // only ever offers on-map adjacent zones. Here the rail simply must render.
-      seedMap('mid-river', { mapId: 'one_lane' })
+      seedMap('coldstore-cross', { mapId: 'one_lane' })
       const wrapper = mountGameScreen()
       expect(wrapper.find('[data-testid="trace-rail"]').exists()).toBe(true)
       wrapper.unmount()
     })
 
     it('[MOVE] opens a picker of named adjacent zones instead of dumping slugs', async () => {
-      // REGRESSION: it printed "Adjacent zones: mid-t1-chaff, cache-top, …" — raw
+      // REGRESSION: it printed "Adjacent zones: coldstore-t1-chaff, cache-seawall, …" — raw
       // identifiers that appear nowhere else in the UI, and no way to act on them.
-      seedMap('mid-t1-chaff')
+      seedMap('coldstore-t1-chaff')
       const wrapper = mountGameScreen()
       const moveBtn = wrapper.findAll('button').find((b) => b.text() === 'MOVE')!
 
@@ -475,12 +475,12 @@ describe('GameScreen', () => {
       expect(picker.exists()).toBe(true)
       expect(picker.text()).toContain('Coldstore T2 (CHAFF)')
       expect(picker.text()).toContain('Coldstore Crossing')
-      expect(picker.text()).not.toContain('mid-t2-chaff')
+      expect(picker.text()).not.toContain('coldstore-t2-chaff')
       wrapper.unmount()
     })
 
     it('[MOVE] picker actually moves', async () => {
-      seedMap('mid-t1-chaff')
+      seedMap('coldstore-t1-chaff')
       const wrapper = mountGameScreen()
       await wrapper
         .findAll('button')
@@ -488,11 +488,11 @@ describe('GameScreen', () => {
         .trigger('click')
 
       socketSpies.send.mockClear()
-      await wrapper.find('[data-testid="move-picker-mid-river"]').trigger('click')
+      await wrapper.find('[data-testid="move-picker-coldstore-cross"]').trigger('click')
 
       expect(socketSpies.send).toHaveBeenCalledWith({
         type: 'action',
-        command: { type: 'move', zone: 'mid-river' },
+        command: { type: 'move', zone: 'coldstore-cross' },
       })
       // The picker closes behind the order rather than covering the log.
       expect(wrapper.find('[data-testid="move-picker"]').exists()).toBe(false)
@@ -500,7 +500,7 @@ describe('GameScreen', () => {
     })
 
     it('offers only on-map zones in the picker on a subset map', async () => {
-      seedMap('mid-river', { mapId: 'one_lane' })
+      seedMap('coldstore-cross', { mapId: 'one_lane' })
       const wrapper = mountGameScreen()
       await wrapper
         .findAll('button')
@@ -508,41 +508,43 @@ describe('GameScreen', () => {
         .trigger('click')
 
       const picker = wrapper.find('[data-testid="move-picker"]')
-      // mid-river's GLOBAL neighbours are mid-t1-chaff, mid-t1-audit, cache-top and
-      // cache-bot — half of them do not exist in a one-lane game.
+      // coldstore-cross's GLOBAL neighbours are coldstore-t1-chaff, coldstore-t1-audit, cache-seawall and
+      // cache-shallows — half of them do not exist in a one-lane game.
       expect(picker.findAll('button')).toHaveLength(2)
       expect(picker.text()).not.toMatch(/Cache/i)
       wrapper.unmount()
     })
 
     it('surfaces the queued walk with a live hop count and a stop control', async () => {
-      seedMap('chaff-base')
+      seedMap('rookery-terminal')
       const wrapper = mountGameScreen()
       expect(wrapper.find('[data-testid="walk-strip"]').exists()).toBe(false)
 
-      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move mid-t1-chaff')
+      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move coldstore-t1-chaff')
       await wrapper.vm.$nextTick()
 
-      // chaff-base → mid-t3-chaff → mid-t2-chaff → mid-t1-chaff
+      // rookery-terminal → coldstore-t3-chaff → coldstore-t2-chaff → coldstore-t1-chaff
       expect(wrapper.find('[data-testid="walk-strip"]').text()).toContain(
         'WALKING → Coldstore T1 (CHAFF) · 3c',
       )
-      seedMap('mid-t3-chaff', { players: rosterWalking('mid-t3-chaff', 'mid-t1-chaff') })
+      seedMap('coldstore-t3-chaff', {
+        players: rosterWalking('coldstore-t3-chaff', 'coldstore-t1-chaff'),
+      })
       await wrapper.vm.$nextTick()
       expect(wrapper.find('[data-testid="walk-strip"]').text()).toContain('· 2c')
       wrapper.unmount()
     })
 
     it('[stop] cancels the walk by re-ordering a move to where you stand', async () => {
-      seedMap('chaff-base')
+      seedMap('rookery-terminal')
       const wrapper = mountGameScreen()
-      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move mid-t1-chaff')
+      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move coldstore-t1-chaff')
       await wrapper.vm.$nextTick()
 
       // One hop later, mid-walk — the tick that frees the player to act again.
-      seedMap('mid-t3-chaff', {
+      seedMap('coldstore-t3-chaff', {
         cycle: 241,
-        players: rosterWalking('mid-t3-chaff', 'mid-t1-chaff'),
+        players: rosterWalking('coldstore-t3-chaff', 'coldstore-t1-chaff'),
       })
       await wrapper.vm.$nextTick()
 
@@ -553,7 +555,7 @@ describe('GameScreen', () => {
       // next hop and nulls moveTarget (resolveMovementPhase).
       expect(socketSpies.send).toHaveBeenCalledWith({
         type: 'action',
-        command: { type: 'move', zone: 'mid-t3-chaff' },
+        command: { type: 'move', zone: 'coldstore-t3-chaff' },
       })
       wrapper.unmount()
     })
@@ -562,13 +564,13 @@ describe('GameScreen', () => {
       // handleCommand remembers every move order locally (the server nulls
       // moveTarget on the last hop). Remembering a stop would make the NEXT
       // zone change narrate as progress back toward where you stopped.
-      seedMap('mid-t3-chaff')
+      seedMap('coldstore-t3-chaff')
       const wrapper = mountGameScreen()
 
-      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move mid-t3-chaff')
+      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move coldstore-t3-chaff')
       await wrapper.vm.$nextTick()
 
-      seedMap('mid-t2-chaff', { cycle: 241 })
+      seedMap('coldstore-t2-chaff', { cycle: 241 })
       await wrapper.vm.$nextTick()
 
       const feed = (

@@ -19,7 +19,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'cache-top',
+    zone: 'cache-seawall',
     integ: 500,
     maxInteg: 500,
     bw: 200,
@@ -46,7 +46,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 
 function makeCache(overrides: Partial<CacheState> = {}): CacheState {
   return {
-    zone: 'cache-top',
+    zone: 'cache-seawall',
     type: 'haste',
     cycle: 60,
     ...overrides,
@@ -130,13 +130,13 @@ describe('CacheAI', () => {
     it('should add cache buff to player', () => {
       const state = makeGameState({
         cycle: 60,
-        caches: [makeCache({ zone: 'cache-top', type: 'haste', cycle: 60 })],
+        caches: [makeCache({ zone: 'cache-seawall', type: 'haste', cycle: 60 })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-seawall' }),
         },
       })
 
-      const result = pickupCache(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-seawall')
       const hasteBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'haste')
       expect(hasteBuff).toBeDefined()
     })
@@ -144,38 +144,38 @@ describe('CacheAI', () => {
     it('should remove cache from ground', () => {
       const state = makeGameState({
         cycle: 60,
-        caches: [makeCache({ zone: 'cache-top', type: 'haste', cycle: 60 })],
+        caches: [makeCache({ zone: 'cache-seawall', type: 'haste', cycle: 60 })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-seawall' }),
         },
       })
 
-      const result = pickupCache(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-seawall')
       expect(result.state.caches).toHaveLength(0)
     })
 
     it('should fail if player not in same zone', () => {
       const state = makeGameState({
-        caches: [makeCache({ zone: 'cache-top' })],
+        caches: [makeCache({ zone: 'cache-seawall' })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'cache-bot' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-shallows' }),
         },
       })
 
-      const result = pickupCache(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-seawall')
       expect(result.state.caches).toHaveLength(1)
       expect(result.state.players['p1']!.buffs).toHaveLength(0)
     })
 
     it('should fail if player is dead', () => {
       const state = makeGameState({
-        caches: [makeCache({ zone: 'cache-top' })],
+        caches: [makeCache({ zone: 'cache-seawall' })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'cache-top', alive: false }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-seawall', alive: false }),
         },
       })
 
-      const result = pickupCache(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-seawall')
       expect(result.state.caches).toHaveLength(1)
       expect(result.state.players['p1']!.buffs).toHaveLength(0)
     })
@@ -184,33 +184,33 @@ describe('CacheAI', () => {
       const state = makeGameState({
         caches: [],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-seawall' }),
         },
       })
 
-      const result = pickupCache(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-seawall')
       expect(result.state.players['p1']!.buffs).toHaveLength(0)
     })
 
     it('should handle non-existent player', () => {
       const state = makeGameState({
-        caches: [makeCache({ zone: 'cache-top' })],
+        caches: [makeCache({ zone: 'cache-seawall' })],
       })
 
-      const result = pickupCache(state, 'nonexistent', 'cache-top')
+      const result = pickupCache(state, 'nonexistent', 'cache-seawall')
       expect(result.state.caches).toHaveLength(1)
     })
 
     it('should emit cache_picked event', () => {
       const state = makeGameState({
         cycle: 60,
-        caches: [makeCache({ zone: 'cache-top', type: 'haste', cycle: 60 })],
+        caches: [makeCache({ zone: 'cache-seawall', type: 'haste', cycle: 60 })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-seawall' }),
         },
       })
 
-      const result = pickupCache(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-seawall')
       expect(result.event).not.toBeNull()
       expect(result.event!._tag).toBe('cache_picked')
     })
@@ -218,13 +218,13 @@ describe('CacheAI', () => {
     it('should pickup dd cache correctly', () => {
       const state = makeGameState({
         cycle: 60,
-        caches: [makeCache({ zone: 'cache-top', type: 'dd', cycle: 60 })],
+        caches: [makeCache({ zone: 'cache-seawall', type: 'dd', cycle: 60 })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-seawall' }),
         },
       })
 
-      const result = pickupCache(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-seawall')
       const ddBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'dd')
       expect(ddBuff).toBeDefined()
     })
@@ -232,13 +232,13 @@ describe('CacheAI', () => {
     it('should pickup regen cache correctly', () => {
       const state = makeGameState({
         cycle: 60,
-        caches: [makeCache({ zone: 'cache-top', type: 'regen', cycle: 60 })],
+        caches: [makeCache({ zone: 'cache-seawall', type: 'regen', cycle: 60 })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-seawall' }),
         },
       })
 
-      const result = pickupCache(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-seawall')
       const regenBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'regen')
       expect(regenBuff).toBeDefined()
     })
@@ -246,13 +246,13 @@ describe('CacheAI', () => {
     it('should pickup arcane cache correctly', () => {
       const state = makeGameState({
         cycle: 60,
-        caches: [makeCache({ zone: 'cache-top', type: 'arcane', cycle: 60 })],
+        caches: [makeCache({ zone: 'cache-seawall', type: 'arcane', cycle: 60 })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-seawall' }),
         },
       })
 
-      const result = pickupCache(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-seawall')
       const arcaneBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'arcane')
       expect(arcaneBuff).toBeDefined()
     })
@@ -260,13 +260,13 @@ describe('CacheAI', () => {
     it('should pickup invis cache correctly', () => {
       const state = makeGameState({
         cycle: 60,
-        caches: [makeCache({ zone: 'cache-top', type: 'invis', cycle: 60 })],
+        caches: [makeCache({ zone: 'cache-seawall', type: 'invis', cycle: 60 })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-seawall' }),
         },
       })
 
-      const result = pickupCache(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-seawall')
       const invisBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'invis')
       expect(invisBuff).toBeDefined()
     })
@@ -275,11 +275,11 @@ describe('CacheAI', () => {
       const state = makeGameState({
         caches: undefined as unknown as CacheState[],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-seawall' }),
         },
       })
 
-      const result = pickupCache(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-seawall')
       expect(result.state.players['p1']!.buffs).toHaveLength(0)
     })
   })
@@ -289,7 +289,7 @@ describe('CacheAI', () => {
       const spawnTick = 60
       const state = makeGameState({
         cycle: spawnTick + CACHE_DURATION_CYCLES,
-        caches: [makeCache({ zone: 'cache-top', cycle: spawnTick })],
+        caches: [makeCache({ zone: 'cache-seawall', cycle: spawnTick })],
       })
 
       const result = removeExpiredCaches(state)
@@ -300,7 +300,7 @@ describe('CacheAI', () => {
       const spawnTick = 60
       const state = makeGameState({
         cycle: spawnTick + CACHE_DURATION_CYCLES - 1,
-        caches: [makeCache({ zone: 'cache-top', cycle: spawnTick })],
+        caches: [makeCache({ zone: 'cache-seawall', cycle: spawnTick })],
       })
 
       const result = removeExpiredCaches(state)
@@ -311,8 +311,8 @@ describe('CacheAI', () => {
       const state = makeGameState({
         cycle: 85,
         caches: [
-          makeCache({ zone: 'cache-top', cycle: 60 }),
-          makeCache({ zone: 'cache-bot', cycle: 60 }),
+          makeCache({ zone: 'cache-seawall', cycle: 60 }),
+          makeCache({ zone: 'cache-shallows', cycle: 60 }),
         ],
       })
 
@@ -323,7 +323,7 @@ describe('CacheAI', () => {
     it('should return unchanged state if no caches expire', () => {
       const state = makeGameState({
         cycle: 65,
-        caches: [makeCache({ zone: 'cache-top', cycle: 60 })],
+        caches: [makeCache({ zone: 'cache-seawall', cycle: 60 })],
       })
 
       const result = removeExpiredCaches(state)
@@ -625,13 +625,13 @@ describe('CacheAI', () => {
       const spawnTick = 60
       const state = makeGameState({
         cycle: spawnTick + CACHE_DURATION_CYCLES - 1,
-        caches: [makeCache({ zone: 'cache-top', type: 'haste', cycle: spawnTick })],
+        caches: [makeCache({ zone: 'cache-seawall', type: 'haste', cycle: spawnTick })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-seawall' }),
         },
       })
 
-      const result = pickupCache(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-seawall')
       expect(result.state.players['p1']!.buffs).toHaveLength(1)
     })
 

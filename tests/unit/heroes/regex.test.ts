@@ -12,7 +12,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestRegex',
     team: 'chaff',
     heroId: 'regex',
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: 450,
     maxInteg: 450,
     bw: 400,
@@ -74,8 +74,8 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     },
     players: playerMap,
     zones: {
-      'mid-river': { id: 'mid-river', wards: [] },
-      'top-river': { id: 'top-river', wards: [] },
+      'coldstore-cross': { id: 'coldstore-cross', wards: [] },
+      'seawall-cross': { id: 'seawall-cross', wards: [] },
     },
     waves: [],
     neutrals: [],
@@ -177,7 +177,7 @@ describe('Regex Hero', () => {
 
     it('fails when target is in different zone', () => {
       const player = makePlayer()
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(
@@ -257,14 +257,14 @@ describe('Regex Hero', () => {
 
   describe('E: Substitution', () => {
     it('swaps positions with target', () => {
-      const player = makePlayer({ zone: 'mid-river' })
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const player = makePlayer({ zone: 'coldstore-cross' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
-      expect(result.state.players['p1']!.zone).toBe('top-river')
-      expect(result.state.players['e1']!.zone).toBe('mid-river')
+      expect(result.state.players['p1']!.zone).toBe('seawall-cross')
+      expect(result.state.players['e1']!.zone).toBe('coldstore-cross')
     })
 
     it('stuns both caster and target', () => {
@@ -316,14 +316,14 @@ describe('Regex Hero', () => {
     })
 
     it('works on targets in different zones', () => {
-      const player = makePlayer({ zone: 'mid-river' })
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const player = makePlayer({ zone: 'coldstore-cross' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
-      expect(result.state.players['p1']!.zone).toBe('top-river')
-      expect(result.state.players['e1']!.zone).toBe('mid-river')
+      expect(result.state.players['p1']!.zone).toBe('seawall-cross')
+      expect(result.state.players['e1']!.zone).toBe('coldstore-cross')
     })
 
     it('requires hero target', () => {

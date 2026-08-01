@@ -18,7 +18,7 @@ function makePlayer(o: Partial<PlayerState> = {}): PlayerState {
     name: 'P1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: 0,
     maxInteg: 600,
     bw: 0,
@@ -93,12 +93,12 @@ describe('BuybackSystem', () => {
       expect(np.respawnCycle).toBeNull()
       expect(np.scrip).toBe(99999 - calculateBuybackCost(p))
       expect(np.buybackCooldown).toBe(50 + BUYBACK_COOLDOWN_CYCLES)
-      expect(np.zone).toBe('chaff-fountain')
+      expect(np.zone).toBe('rookery-anchor')
     })
 
     it('sends a audit buyback to the audit fountain', () => {
       const p = makePlayer({ alive: false, scrip: 99999, team: 'audit' })
-      expect(buyback(makeState(p), 'p1').newState!.players['p1']!.zone).toBe('audit-fountain')
+      expect(buyback(makeState(p), 'p1').newState!.players['p1']!.zone).toBe('landing-anchor')
     })
 
     it('fails for a living player and leaves no state', () => {

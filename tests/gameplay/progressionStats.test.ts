@@ -16,8 +16,10 @@ describe('progression: last hits and burns', () => {
     const enemyTeam = me0.team === 'chaff' ? 'audit' : 'chaff'
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
-      waves: [{ id: 'enemy_wave', team: enemyTeam, zone: 'mid-river', integ: 10, type: 'line' }],
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' } },
+      waves: [
+        { id: 'enemy_wave', team: enemyTeam, zone: 'coldstore-cross', integ: 10, type: 'line' },
+      ],
     }))
 
     expect(getFarmStats(game.gameId)[HUMAN]?.lastHits ?? 0).toBe(0)
@@ -33,9 +35,9 @@ describe('progression: last hits and burns', () => {
     const me0 = await game.me()
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' } },
       // Own wave under the burn window (LINE_UNIT_HP 400 × BURN_HP_THRESHOLD 0.5).
-      waves: [{ id: 'own_wave', team: me0.team, zone: 'mid-river', integ: 20, type: 'line' }],
+      waves: [{ id: 'own_wave', team: me0.team, zone: 'coldstore-cross', integ: 20, type: 'line' }],
     }))
 
     game.submit({ type: 'burn', target: { kind: 'wave', index: 0 } })
@@ -52,8 +54,10 @@ describe('progression: last hits and burns', () => {
     for (let i = 0; i < 3; i++) {
       await game.patch((s) => ({
         ...s,
-        players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
-        waves: [{ id: `ec${i}`, team: enemyTeam, zone: 'mid-river', integ: 10, type: 'line' }],
+        players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' } },
+        waves: [
+          { id: `ec${i}`, team: enemyTeam, zone: 'coldstore-cross', integ: 10, type: 'line' },
+        ],
       }))
       game.submit({ type: 'attack', target: { kind: 'wave', index: 0 } })
       await game.tick()
@@ -69,8 +73,8 @@ describe('progression: last hits and burns', () => {
     const enemyTeam = me0.team === 'chaff' ? 'audit' : 'chaff'
     await a.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
-      waves: [{ id: 'ec', team: enemyTeam, zone: 'mid-river', integ: 10, type: 'line' }],
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' } },
+      waves: [{ id: 'ec', team: enemyTeam, zone: 'coldstore-cross', integ: 10, type: 'line' }],
     }))
     a.submit({ type: 'attack', target: { kind: 'wave', index: 0 } })
     await a.tick()

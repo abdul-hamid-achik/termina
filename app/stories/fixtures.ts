@@ -84,7 +84,7 @@ export function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'player_one',
     team: 'chaff',
     heroId: SAMPLE_HERO_ID,
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: 520,
     maxInteg: 620,
     bw: 180,
@@ -181,7 +181,7 @@ export function makeTenant(overrides: Partial<TenantState> = {}): TenantState {
 
 export function makeCache(overrides: Partial<CacheState> = {}): CacheState {
   return {
-    zone: 'cache-top',
+    zone: 'cache-seawall',
     type: 'dd',
     cycle: 240,
     ...overrides,
@@ -220,12 +220,12 @@ export function makePlayerEndStats(overrides: Partial<PlayerEndStats> = {}): Pla
  */
 export function makeRoster(): Record<string, PlayerState> {
   const chaff: PlayerState[] = [
-    makePlayer({ id: 'p1', name: 'you', heroId: SAMPLE_HEROES.echo, zone: 'mid-river' }),
+    makePlayer({ id: 'p1', name: 'you', heroId: SAMPLE_HEROES.echo, zone: 'coldstore-cross' }),
     makePlayer({
       id: 'p2',
       name: 'kernel_main',
       heroId: SAMPLE_HEROES.kernel,
-      zone: 'top-river',
+      zone: 'seawall-cross',
       level: 8,
       integ: 720,
       maxInteg: 980,
@@ -234,7 +234,7 @@ export function makeRoster(): Record<string, PlayerState> {
       id: 'p3',
       name: 'support_sock',
       heroId: SAMPLE_HEROES.socket,
-      zone: 'bot-t1-audit',
+      zone: 'shallows-t1-audit',
       level: 6,
       scrip: 600,
       kills: 1,
@@ -246,14 +246,14 @@ export function makeRoster(): Record<string, PlayerState> {
       id: 'p4',
       name: 'proxy_jg',
       heroId: SAMPLE_HEROES.proxy,
-      zone: 'silt-chaff-top',
+      zone: 'silt-chaff-upper',
       level: 7,
     }),
     makePlayer({
       id: 'p5',
       name: 'cipher_off',
       heroId: SAMPLE_HEROES.cipher,
-      zone: 'top-river',
+      zone: 'seawall-cross',
       level: 9,
       alive: false,
       respawnCycle: 268,
@@ -266,7 +266,7 @@ export function makeRoster(): Record<string, PlayerState> {
       name: 'daemon_carry',
       team: 'audit',
       heroId: SAMPLE_HEROES.daemon,
-      zone: 'mid-river',
+      zone: 'coldstore-cross',
       level: 9,
     }),
     makePlayer({
@@ -274,7 +274,7 @@ export function makeRoster(): Record<string, PlayerState> {
       name: 'regex_mid',
       team: 'audit',
       heroId: SAMPLE_HEROES.regex,
-      zone: 'bot-river',
+      zone: 'shallows-cross',
       level: 8,
     }),
     makePlayer({
@@ -282,7 +282,7 @@ export function makeRoster(): Record<string, PlayerState> {
       name: 'cache_sup',
       team: 'audit',
       heroId: SAMPLE_HEROES.cache,
-      zone: 'audit-base',
+      zone: 'landing-terminal',
       level: 5,
     }),
     makePlayer({
@@ -290,7 +290,7 @@ export function makeRoster(): Record<string, PlayerState> {
       name: 'firewall_tank',
       team: 'audit',
       heroId: SAMPLE_HEROES.firewall,
-      zone: 'silt-audit-bot',
+      zone: 'silt-audit-lower',
       level: 7,
     }),
     makePlayer({
@@ -298,7 +298,7 @@ export function makeRoster(): Record<string, PlayerState> {
       name: 'nullref_pos5',
       team: 'audit',
       heroId: SAMPLE_HEROES.null_ref,
-      zone: 'audit-fountain',
+      zone: 'landing-anchor',
       level: 6,
     }),
   ]
@@ -337,9 +337,9 @@ export const SAMPLE_NET_WORTH_HISTORY: { chaff: number[]; audit: number[] } = {
 
 /** A few sample {@link GameEvent}s for combat-log / ticker stories. */
 export const SAMPLE_EVENTS: GameEvent[] = [
-  { cycle: 238, type: 'kill', payload: { killer: 'p1', victim: 'e2', zone: 'mid-river' } },
-  { cycle: 239, type: 'ice_destroyed', payload: { team: 'audit', zone: 'mid-t1-audit' } },
-  { cycle: 240, type: 'cache_spawn', payload: { zone: 'cache-top', cache: 'dd' } },
+  { cycle: 238, type: 'kill', payload: { killer: 'p1', victim: 'e2', zone: 'coldstore-cross' } },
+  { cycle: 239, type: 'ice_destroyed', payload: { team: 'audit', zone: 'coldstore-t1-audit' } },
+  { cycle: 240, type: 'cache_spawn', payload: { zone: 'cache-seawall', cache: 'dd' } },
 ]
 
 /**
@@ -360,9 +360,9 @@ export function makeGameState(overrides: Partial<GameState> = {}): GameState {
     waves: [],
     neutrals: [],
     ice: [
-      makeIce('audit', 'mid-t1-audit', { alive: false, integ: 0 }),
-      makeIce('audit', 'mid-t2-audit'),
-      makeIce('chaff', 'mid-t1-chaff'),
+      makeIce('audit', 'coldstore-t1-audit', { alive: false, integ: 0 }),
+      makeIce('audit', 'coldstore-t2-audit'),
+      makeIce('chaff', 'coldstore-t1-chaff'),
     ],
     terminals: { chaff: makeTerminal('chaff'), audit: makeTerminal('audit') },
     caches: [makeCache()],

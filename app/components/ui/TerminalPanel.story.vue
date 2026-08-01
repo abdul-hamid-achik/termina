@@ -53,7 +53,7 @@ import TerminalPanel from './TerminalPanel.vue'
       <div class="bg-bg-primary p-2" style="width: 320px; height: 160px">
         <TerminalPanel title="Combat Log">
           <ul class="space-y-1 font-mono text-xs text-text-primary">
-            <li v-for="n in 20" :key="n">[t{{ 230 + n }}] echo slew regex in mid-river</li>
+            <li v-for="n in 20" :key="n">[t{{ 230 + n }}] echo slew regex in coldstore-cross</li>
           </ul>
         </TerminalPanel>
       </div>

@@ -73,7 +73,7 @@ describe('HUD type floor (W2-7)', () => {
       name: 'You',
       team: 'chaff',
       heroId: 'echo',
-      zone: 'mid-river',
+      zone: 'coldstore-cross',
       integ: 500,
       maxInteg: 500,
       bw: 200,

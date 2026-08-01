@@ -192,7 +192,7 @@ describe('lobby page', () => {
       // TWO_LANE_ZONES has 22.
       expect(wrapper.get('[data-testid="mode-ranked_5v5"]').text()).toContain('3 lanes · 32 zones')
       expect(wrapper.get('[data-testid="mode-quick_3v3"]').text()).toContain('2 lanes · 22 zones')
-      expect(wrapper.get('[data-testid="mode-1v1"]').text()).toContain('1 lane · 11 zones')
+      expect(wrapper.get('[data-testid="mode-1v1"]').text()).toContain('1 route · 11 zones')
       wrapper.unmount()
     })
   })

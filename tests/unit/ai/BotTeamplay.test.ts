@@ -27,7 +27,7 @@ function makeBot(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'bot_alpha',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-chaff',
+    zone: 'coldstore-t1-chaff',
     integ: 900,
     maxInteg: 900,
     bw: 400,
@@ -113,7 +113,7 @@ describe('BotAI - integrated teamplay', () => {
       name: 'bot_foe',
       team: 'audit',
       heroId: 'kernel',
-      zone: 'mid-t1-chaff',
+      zone: 'coldstore-t1-chaff',
       bw: 0,
       cooldowns: { q: 9, w: 9, e: 9, r: 9 },
     })
@@ -121,7 +121,7 @@ describe('BotAI - integrated teamplay', () => {
       {
         id: 'wave-own',
         team: 'chaff',
-        zone: 'mid-t1-chaff',
+        zone: 'coldstore-t1-chaff',
         integ: 40,
         maxInteg: 200,
         type: 'line',
@@ -150,7 +150,7 @@ describe('BotAI - integrated teamplay', () => {
         id,
         name: id,
         heroId: ['echo', 'malloc', 'cipher'][i] ?? 'echo',
-        zone: i === 0 ? 'hollow' : 'cache-top',
+        zone: i === 0 ? 'hollow' : 'cache-seawall',
       }),
     )
     const players: Record<string, PlayerState> = {}

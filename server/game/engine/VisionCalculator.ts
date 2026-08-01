@@ -149,8 +149,8 @@ function calculateVisionUncached(state: GameState, player: PlayerState, team: Te
     addZoneWithAdjacent(visible, player.zone, isNight, team)
   }
 
-  const baseZone = team === 'chaff' ? 'chaff-base' : 'audit-base'
-  const fountainZone = team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
+  const baseZone = team === 'chaff' ? 'rookery-terminal' : 'landing-terminal'
+  const fountainZone = team === 'chaff' ? 'rookery-anchor' : 'landing-anchor'
   addZoneWithAdjacent(visible, baseZone, isNight, team)
   addZoneWithAdjacent(visible, fountainZone, isNight, team)
 

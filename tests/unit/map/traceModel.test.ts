@@ -21,32 +21,32 @@ const TERMINALS: Record<TeamId, TerminalState> = {
 
 describe('traceModel', () => {
   it('maps a lane zone to its route and hop index, never from the id string', () => {
-    // mid-t2-chaff is hop 1 on the chaff mid route (T3 → T2 → …)
-    expect(routeOfZone('mid-t2-chaff', 'chaff')).toBe('mid')
-    expect(hopIndexOf('mid-t2-chaff', 'chaff')).toBe(1)
-    expect(routeOfZone('silt-chaff-top', 'chaff')).toBeNull()
-    expect(hopIndexOf('silt-chaff-top', 'chaff')).toBe(-1)
+    // coldstore-t2-chaff is hop 1 on the chaff mid route (T3 → T2 → …)
+    expect(routeOfZone('coldstore-t2-chaff', 'chaff')).toBe('coldstore')
+    expect(hopIndexOf('coldstore-t2-chaff', 'chaff')).toBe(1)
+    expect(routeOfZone('silt-chaff-upper', 'chaff')).toBeNull()
+    expect(hopIndexOf('silt-chaff-upper', 'chaff')).toBe(-1)
   })
 
   it('hop index is team-relative (the same zone is a different hop per side)', () => {
-    // mid-t1-audit is hop 4 for chaff (past the river), hop 2 for audit.
-    expect(hopIndexOf('mid-t1-audit', 'chaff')).toBe(4)
-    expect(hopIndexOf('mid-t1-audit', 'audit')).toBe(2)
+    // coldstore-t1-audit is hop 4 for chaff (past the river), hop 2 for audit.
+    expect(hopIndexOf('coldstore-t1-audit', 'chaff')).toBe(4)
+    expect(hopIndexOf('coldstore-t1-audit', 'audit')).toBe(2)
   })
 
   it('builds your route first with depth, other routes one line each', () => {
     const model = buildTrace({
-      playerZone: 'top-t1-chaff',
+      playerZone: 'seawall-t1-chaff',
       playerTeam: 'chaff',
       contacts: [],
       terminals: TERMINALS,
     })
-    expect(model.currentRoute).toBe('top')
+    expect(model.currentRoute).toBe('seawall')
     expect(model.hopIndex).toBe(2)
-    expect(model.routes[0]!.route).toBe('top')
+    expect(model.routes[0]!.route).toBe('seawall')
     expect(model.routes[0]!.active).toBe(true)
     expect(model.routes[0]!.depth).toBe(2)
-    expect(model.routes[0]!.total).toBe(LANE_ROUTES_CORE.top!.chaff!.length)
+    expect(model.routes[0]!.total).toBe(LANE_ROUTES_CORE.seawall!.chaff!.length)
     expect(model.routes[1]!.active).toBe(false)
     expect(model.routes[1]!.depth).toBe(0)
     expect(model.routes).toHaveLength(3)
@@ -54,26 +54,26 @@ describe('traceModel', () => {
 
   it('counts hostiles per route from visible contacts only', () => {
     const model = buildTrace({
-      playerZone: 'mid-river',
+      playerZone: 'coldstore-cross',
       playerTeam: 'chaff',
       contacts: [
-        { id: 'e1', name: 'Enemy1', zone: 'mid-t1-audit', team: 'audit', alive: true },
-        { id: 'e2', name: 'Enemy2', zone: 'bot-t1-audit', team: 'audit', alive: true },
+        { id: 'e1', name: 'Enemy1', zone: 'coldstore-t1-audit', team: 'audit', alive: true },
+        { id: 'e2', name: 'Enemy2', zone: 'shallows-t1-audit', team: 'audit', alive: true },
         {
           id: 'e3',
           name: 'Enemy3',
-          zone: 'mid-t2-audit',
+          zone: 'coldstore-t2-audit',
           team: 'audit',
           alive: true,
           fogged: true,
         },
-        { id: 'a1', name: 'Ally1', zone: 'mid-t1-chaff', team: 'chaff', alive: true },
-        { id: 'e4', name: 'Enemy4', zone: 'mid-t1-audit', team: 'audit', alive: false },
+        { id: 'a1', name: 'Ally1', zone: 'coldstore-t1-chaff', team: 'chaff', alive: true },
+        { id: 'e4', name: 'Enemy4', zone: 'coldstore-t1-audit', team: 'audit', alive: false },
       ],
       terminals: TERMINALS,
     })
-    const mid = model.routes.find((r) => r.route === 'mid')!
-    const bot = model.routes.find((r) => r.route === 'bot')!
+    const mid = model.routes.find((r) => r.route === 'coldstore')!
+    const bot = model.routes.find((r) => r.route === 'shallows')!
     expect(mid.hostiles).toBe(1) // fogged + dead excluded
     expect(bot.hostiles).toBe(1)
     expect(model.contacts).toHaveLength(3)
@@ -82,7 +82,7 @@ describe('traceModel', () => {
 
   it('reports both terminal states', () => {
     const model = buildTrace({
-      playerZone: 'mid-river',
+      playerZone: 'coldstore-cross',
       playerTeam: 'chaff',
       contacts: [],
       terminals: TERMINALS,
@@ -111,10 +111,10 @@ describe('traceModel', () => {
   // so TRACE listed all five enemies as live contacts, most at a blank location.
   it('excludes contacts with no observed position from the contact list', () => {
     const model = buildTrace({
-      playerZone: 'mid-river',
+      playerZone: 'coldstore-cross',
       playerTeam: 'chaff',
       contacts: [
-        { id: 'seen', name: 'Seen', zone: 'mid-river', team: 'audit', alive: true },
+        { id: 'seen', name: 'Seen', zone: 'coldstore-cross', team: 'audit', alive: true },
         { id: 'fog', name: 'Fogged', zone: '', team: 'audit', alive: true, fogged: true },
       ],
       terminals: TERMINALS,
@@ -124,9 +124,9 @@ describe('traceModel', () => {
 
   it('carries each contact team so hostility need not be encoded as hue', () => {
     const model = buildTrace({
-      playerZone: 'mid-river',
+      playerZone: 'coldstore-cross',
       playerTeam: 'audit',
-      contacts: [{ id: 'a', name: 'A', zone: 'mid-river', team: 'audit', alive: true }],
+      contacts: [{ id: 'a', name: 'A', zone: 'coldstore-cross', team: 'audit', alive: true }],
       terminals: TERMINALS,
     })
     expect(model.contacts[0]!.team).toBe('audit')
@@ -139,10 +139,10 @@ describe('traceModel', () => {
       playerTeam: 'chaff',
       contacts: [],
       terminals: TERMINALS,
-      visibleZoneIds: ['top-t1-chaff', 'top-t2-chaff'],
+      visibleZoneIds: ['seawall-t1-chaff', 'seawall-t2-chaff'],
     })
-    expect(model.routes.find((r) => r.route === 'top')!.seen).toBe(2)
-    expect(model.routes.find((r) => r.route === 'bot')!.seen).toBe(0)
+    expect(model.routes.find((r) => r.route === 'seawall')!.seen).toBe(2)
+    expect(model.routes.find((r) => r.route === 'shallows')!.seen).toBe(0)
   })
 
   it('treats omitted vision as unknown, never as full vision', () => {

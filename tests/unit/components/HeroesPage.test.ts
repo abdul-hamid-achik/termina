@@ -116,7 +116,7 @@ describe('heroes page — decision content', () => {
   it('labels the per-cycle refill as a sandbox aid, not innate regen', () => {
     const note = mountHeroes().find('[data-testid="console-refill-note"]').text()
     expect(note).toContain('no innate regen')
-    expect(note).toContain('fountain')
+    expect(note).toContain('anchor')
   })
 
   it('starts practice as the selected hero', async () => {

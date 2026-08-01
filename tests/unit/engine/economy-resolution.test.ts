@@ -88,7 +88,7 @@ function inCombatBuff() {
 /**
  * Place exactly ONE wave in `zone` so its per-zone burn/attack index is a
  * deterministic 0. (A fresh game seeds waves in lane zones, never in
- * `mid-river`, which is where we stage these fixtures.)
+ * `coldstore-cross`, which is where we stage these fixtures.)
  */
 function withSoloWave(state: GameState, wave: WaveUnitState): GameState {
   const others = state.waves.filter((c) => c.zone !== wave.zone)
@@ -102,12 +102,12 @@ describe('Economy through resolution', () => {
       const sm = await startGame(gameId, makePlayers('dn', 1))
 
       await arrange(sm, gameId, (s) => {
-        const moved = setPlayer(s, 'dn_r0', { zone: 'mid-river' })
+        const moved = setPlayer(s, 'dn_r0', { zone: 'coldstore-cross' })
         // Allied (chaff) line wave at 100/400 INTEG — well under the 50% burn gate.
         return withSoloWave(moved, {
           id: 'deny_target',
           team: 'chaff',
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           integ: 100,
           type: 'line',
         })
@@ -145,12 +145,12 @@ describe('Economy through resolution', () => {
       const sm = await startGame(gameId, makePlayers('dg', 1))
 
       await arrange(sm, gameId, (s) => {
-        const moved = setPlayer(s, 'dg_r0', { zone: 'mid-river' })
+        const moved = setPlayer(s, 'dg_r0', { zone: 'coldstore-cross' })
         // 300/400 = 75% INTEG — above the 50% burn threshold; burn must no-op.
         return withSoloWave(moved, {
           id: 'healthy_ally',
           team: 'chaff',
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           integ: 300,
           type: 'line',
         })
@@ -175,13 +175,13 @@ describe('Economy through resolution', () => {
       const sm = await startGame(gameId, makePlayers('lh', 1))
 
       await arrange(sm, gameId, (s) => {
-        const moved = setPlayer(s, 'lh_r0', { zone: 'mid-river' })
+        const moved = setPlayer(s, 'lh_r0', { zone: 'coldstore-cross' })
         // Enemy (audit) BREACH wave at 1 INTEG — breach last-hit scrip is the fixed
         // BREACH_UNIT_SCRIP (line/sweep is randomized; breach keeps it exact).
         return withSoloWave(moved, {
           id: 'enemy_breach',
           team: 'audit',
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           integ: 1,
           type: 'breach',
         })
@@ -207,11 +207,11 @@ describe('Economy through resolution', () => {
       const sm = await startGame(gameId, makePlayers('lm', 1))
 
       await arrange(sm, gameId, (s) => {
-        const moved = setPlayer(s, 'lm_r0', { zone: 'mid-river' })
+        const moved = setPlayer(s, 'lm_r0', { zone: 'coldstore-cross' })
         return withSoloWave(moved, {
           id: 'enemy_line',
           team: 'audit',
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           integ: 1,
           type: 'line',
         })
@@ -246,11 +246,11 @@ describe('Economy through resolution', () => {
         // All four players share VICTIM_LEVEL so both teams' average level is
         // equal — the XP comeback multiplier is exactly 1 and the raw kill-XP
         // formula (base + 20*victim.level) holds without a comeback adjustment.
-        let next = setPlayer(s, 'kx_r0', { zone: 'mid-river', level: VICTIM_LEVEL })
-        next = setPlayer(next, 'kx_r1', { zone: 'mid-river', level: VICTIM_LEVEL })
+        let next = setPlayer(s, 'kx_r0', { zone: 'coldstore-cross', level: VICTIM_LEVEL })
+        next = setPlayer(next, 'kx_r1', { zone: 'coldstore-cross', level: VICTIM_LEVEL })
         next = setPlayer(next, 'kx_d1', { level: VICTIM_LEVEL })
         next = setPlayer(next, 'kx_d0', {
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           level: VICTIM_LEVEL,
           buffs: [inCombatBuff()],
         })
@@ -296,9 +296,9 @@ describe('Economy through resolution', () => {
       const sm = await startGame(gameId, makePlayers('kg', 2))
 
       await arrange(sm, gameId, (s) => {
-        let next = setPlayer(s, 'kg_r0', { zone: 'mid-river' })
-        next = setPlayer(next, 'kg_r1', { zone: 'mid-river' })
-        return setPlayer(next, 'kg_d0', { zone: 'mid-river', buffs: [inCombatBuff()] })
+        let next = setPlayer(s, 'kg_r0', { zone: 'coldstore-cross' })
+        next = setPlayer(next, 'kg_r1', { zone: 'coldstore-cross' })
+        return setPlayer(next, 'kg_d0', { zone: 'coldstore-cross', buffs: [inCombatBuff()] })
       })
 
       submitAction(gameId, 'kg_r1', { type: 'attack', target: { kind: 'hero', name: 'kg_d0' } })
@@ -344,11 +344,11 @@ describe('Economy through resolution', () => {
       expect(startXp).toBeGreaterThanOrEqual(0)
 
       await arrange(sm, gameId, (s) => {
-        const moved = setPlayer(s, 'lu_r0', { zone: 'mid-river', level: 1, xp: startXp })
+        const moved = setPlayer(s, 'lu_r0', { zone: 'coldstore-cross', level: 1, xp: startXp })
         return withSoloWave(moved, {
           id: 'levelup_wave',
           team: 'audit',
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           integ: 1,
           type: 'line',
         })
@@ -373,11 +373,11 @@ describe('Economy through resolution', () => {
       const threshold = XP_PER_LEVEL[6]!
       const startXp = threshold - WAVE_XP
       await arrange(sm, gameId, (s) => {
-        const moved = setPlayer(s, 'ps_r0', { zone: 'mid-river', level: 5, xp: startXp })
+        const moved = setPlayer(s, 'ps_r0', { zone: 'coldstore-cross', level: 5, xp: startXp })
         return withSoloWave(moved, {
           id: 'spike_wave',
           team: 'audit',
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           integ: 1,
           type: 'line',
         })
@@ -410,11 +410,11 @@ describe('Economy through resolution', () => {
       await arrange(sm, gameId, (s) => {
         let next = s
         // attackers: same hero, same zone, same level
-        next = setPlayer(next, 'ar_r0', { zone: 'mid-river', heroId: 'kernel', level: 5 })
-        next = setPlayer(next, 'ar_r1', { zone: 'mid-river', heroId: 'kernel', level: 5 })
+        next = setPlayer(next, 'ar_r0', { zone: 'coldstore-cross', heroId: 'kernel', level: 5 })
+        next = setPlayer(next, 'ar_r1', { zone: 'coldstore-cross', heroId: 'kernel', level: 5 })
         // targets: same hero/level so base armor is identical
         next = setPlayer(next, 'ar_d0', {
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           heroId: 'cipher',
           level: 5,
           integ: 5000,
@@ -422,7 +422,7 @@ describe('Economy through resolution', () => {
           buffs: [inCombatBuff()],
         })
         next = setPlayer(next, 'ar_d1', {
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           heroId: 'cipher',
           level: 5,
           integ: 5000,
@@ -466,19 +466,19 @@ describe('Economy through resolution', () => {
       await arrange(sm, gameId, (s) => {
         let next = s
         next = setPlayer(next, 'mr_r0', {
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           heroId: 'kernel',
           level: 5,
           items: ['truestrike_rig', null, null, null, null, null],
         })
         next = setPlayer(next, 'mr_r1', {
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           heroId: 'kernel',
           level: 5,
           items: ['truestrike_rig', null, null, null, null, null],
         })
         next = setPlayer(next, 'mr_d0', {
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           heroId: 'cipher',
           level: 5,
           integ: 5000,
@@ -486,7 +486,7 @@ describe('Economy through resolution', () => {
           buffs: [inCombatBuff()],
         })
         next = setPlayer(next, 'mr_d1', {
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           heroId: 'cipher',
           level: 5,
           integ: 5000,

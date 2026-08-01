@@ -18,7 +18,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'chaff-fountain',
+    zone: 'rookery-anchor',
     integ: 550,
     maxInteg: 550,
     bw: 280,
@@ -55,7 +55,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     },
     players: {
       p1: makePlayer({ id: 'p1' }),
-      p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain', name: 'Player2' }),
+      p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor', name: 'Player2' }),
     },
     zones: initializeZoneStates(),
     waves: [],
@@ -134,11 +134,11 @@ describe('LeaverSystem AFK detection', () => {
   it('processCycle stamps lastActionCycle when a player acts', () => {
     const state = makeGameState({
       players: {
-        p1: makePlayer({ id: 'p1', zone: 'mid-t1-chaff' }),
-        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+        p1: makePlayer({ id: 'p1', zone: 'coldstore-t1-chaff' }),
+        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
       },
     })
-    submitAction('afk-stamp-1', 'p1', { type: 'move', zone: 'mid-river' })
+    submitAction('afk-stamp-1', 'p1', { type: 'move', zone: 'coldstore-cross' })
     const result = Effect.runSync(processCycle('afk-stamp-1', state))
     expect(result.state.players['p1']!.lastActionCycle).toBe(1)
     expect(result.state.players['p2']!.lastActionCycle).toBeUndefined()
@@ -153,7 +153,7 @@ describe('shouldConvertAFK (presence gate)', () => {
       players: {
         p1: makePlayer({ id: 'p1', ...p1 }),
         p3: makePlayer({ id: 'p3', name: 'Player3', lastActionCycle: cycle }),
-        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain', lastActionCycle: cycle }),
+        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor', lastActionCycle: cycle }),
       },
     })
   }
@@ -175,7 +175,7 @@ describe('shouldConvertAFK (presence gate)', () => {
       players: {
         p1: makePlayer({ id: 'p1', lastActionCycle: 0 }),
         bot_ally: makePlayer({ id: 'bot_ally', name: 'Bot' }),
-        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain', lastActionCycle: 600 }),
+        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor', lastActionCycle: 600 }),
       },
     })
     expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: null })).toBe(false)
@@ -187,7 +187,7 @@ describe('shouldConvertAFK (presence gate)', () => {
       players: {
         p1: makePlayer({ id: 'p1', lastActionCycle: 0 }),
         p3: makePlayer({ id: 'p3', name: 'Player3', aiControlled: true }),
-        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain', lastActionCycle: 600 }),
+        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor', lastActionCycle: 600 }),
       },
     })
     expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: null })).toBe(false)

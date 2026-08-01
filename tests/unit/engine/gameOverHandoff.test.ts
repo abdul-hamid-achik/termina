@@ -191,8 +191,10 @@ describe('game loop: final handoff', () => {
     await Effect.runPromise(
       sm.updateState(gameId, (s) => ({
         ...s,
-        players: { ...s.players, p1: { ...s.players.p1!, zone: 'mid-river' } },
-        waves: [{ id: 'c1', team: 'audit', zone: 'mid-river', integ: 5, type: 'line' as const }],
+        players: { ...s.players, p1: { ...s.players.p1!, zone: 'coldstore-cross' } },
+        waves: [
+          { id: 'c1', team: 'audit', zone: 'coldstore-cross', integ: 5, type: 'line' as const },
+        ],
       })),
     )
     submitAction(gameId, 'p1', { type: 'attack', target: { kind: 'wave', index: 0 } })

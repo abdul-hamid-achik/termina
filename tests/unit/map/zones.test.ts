@@ -30,16 +30,16 @@ describe('Zones', () => {
     it('names are drawn from the lexicon: districts, routes, the Silt, the Hollow', () => {
       const byId = Object.fromEntries(ZONES.map((z) => [z.id, z.name]))
       // Districts host the two base+fountain pairs.
-      expect(byId['chaff-base']).toBe('Rookery Terminal')
-      expect(byId['audit-base']).toBe('Landing Terminal')
+      expect(byId['rookery-terminal']).toBe('Rookery Terminal')
+      expect(byId['landing-terminal']).toBe('Landing Terminal')
       // The three routes.
-      expect(byId['top-t1-chaff']).toBe('Seawall T1 (CHAFF)')
-      expect(byId['mid-t1-audit']).toBe('Coldstore T1 (AUDIT)')
-      expect(byId['bot-t1-chaff']).toBe('Shallows T1 (CHAFF)')
+      expect(byId['seawall-t1-chaff']).toBe('Seawall T1 (CHAFF)')
+      expect(byId['coldstore-t1-audit']).toBe('Coldstore T1 (AUDIT)')
+      expect(byId['shallows-t1-chaff']).toBe('Shallows T1 (CHAFF)')
       // Jungle is the Silt; the pit is the Hollow; cache spots are cache drops.
-      expect(byId['silt-chaff-top']).toBe('Chaff Upper Silt')
+      expect(byId['silt-chaff-upper']).toBe('Chaff Upper Silt')
       expect(byId['hollow']).toBe('The Hollow')
-      expect(byId['cache-top']).toBe('Seawall Cache Drop')
+      expect(byId['cache-seawall']).toBe('Seawall Cache Drop')
     })
   })
 
@@ -122,12 +122,12 @@ describe('Zones', () => {
   describe('placeWard', () => {
     it('places a ward in a valid zone', () => {
       const zones = initializeZoneStates()
-      const result = placeWard(zones, 'mid-river', 'chaff', 10)
+      const result = placeWard(zones, 'coldstore-cross', 'chaff', 10)
       expect(result).toBe(true)
-      expect(zones['mid-river']!.wards).toHaveLength(1)
-      expect(zones['mid-river']!.wards[0]!.team).toBe('chaff')
-      expect(zones['mid-river']!.wards[0]!.placedTick).toBe(10)
-      expect(zones['mid-river']!.wards[0]!.expiryTick).toBe(10 + CAMTAP_DURATION_CYCLES)
+      expect(zones['coldstore-cross']!.wards).toHaveLength(1)
+      expect(zones['coldstore-cross']!.wards[0]!.team).toBe('chaff')
+      expect(zones['coldstore-cross']!.wards[0]!.placedTick).toBe(10)
+      expect(zones['coldstore-cross']!.wards[0]!.expiryTick).toBe(10 + CAMTAP_DURATION_CYCLES)
     })
 
     it('returns false for unknown zone', () => {
@@ -138,98 +138,98 @@ describe('Zones', () => {
     it('enforces ward limit per team', () => {
       const zones = initializeZoneStates()
       for (let i = 0; i < WARD_LIMIT_PER_TEAM; i++) {
-        expect(placeWard(zones, 'mid-river', 'chaff', 10)).toBe(true)
+        expect(placeWard(zones, 'coldstore-cross', 'chaff', 10)).toBe(true)
       }
       // Next ward should fail
-      expect(placeWard(zones, 'top-river', 'chaff', 10)).toBe(false)
+      expect(placeWard(zones, 'seawall-cross', 'chaff', 10)).toBe(false)
     })
 
     it('tracks ward limits independently per team', () => {
       const zones = initializeZoneStates()
       for (let i = 0; i < WARD_LIMIT_PER_TEAM; i++) {
-        expect(placeWard(zones, 'mid-river', 'chaff', 10)).toBe(true)
+        expect(placeWard(zones, 'coldstore-cross', 'chaff', 10)).toBe(true)
       }
       // Audit should still be able to place wards
-      expect(placeWard(zones, 'mid-river', 'audit', 10)).toBe(true)
+      expect(placeWard(zones, 'coldstore-cross', 'audit', 10)).toBe(true)
     })
   })
 
   describe('removeExpiredWards', () => {
     it('removes wards that have expired', () => {
       const zones = initializeZoneStates()
-      placeWard(zones, 'mid-river', 'chaff', 10)
-      expect(zones['mid-river']!.wards).toHaveLength(1)
+      placeWard(zones, 'coldstore-cross', 'chaff', 10)
+      expect(zones['coldstore-cross']!.wards).toHaveLength(1)
 
       const updated = removeExpiredWards(zones, 10 + CAMTAP_DURATION_CYCLES + 1)
-      expect(updated['mid-river']!.wards).toHaveLength(0)
+      expect(updated['coldstore-cross']!.wards).toHaveLength(0)
     })
 
     it('keeps wards that have not expired', () => {
       const zones = initializeZoneStates()
-      placeWard(zones, 'mid-river', 'chaff', 10)
+      placeWard(zones, 'coldstore-cross', 'chaff', 10)
 
       const updated = removeExpiredWards(zones, 10 + CAMTAP_DURATION_CYCLES - 1)
-      expect(updated['mid-river']!.wards).toHaveLength(1)
+      expect(updated['coldstore-cross']!.wards).toHaveLength(1)
     })
 
     it('removes ward at exactly expiry tick', () => {
       const zones = initializeZoneStates()
-      placeWard(zones, 'mid-river', 'chaff', 10)
+      placeWard(zones, 'coldstore-cross', 'chaff', 10)
 
       // expiryTick = 10 + CAMTAP_DURATION_CYCLES. Filter keeps w.expiryTick > currentCycle
       const updated = removeExpiredWards(zones, 10 + CAMTAP_DURATION_CYCLES)
-      expect(updated['mid-river']!.wards).toHaveLength(0)
+      expect(updated['coldstore-cross']!.wards).toHaveLength(0)
     })
   })
 
   describe('canAttackIce', () => {
     it('T1 ice can always be attacked', () => {
       const ice = initializeIce()
-      expect(canAttackIce(ice, 'mid-t1-chaff')).toBe(true)
-      expect(canAttackIce(ice, 'top-t1-audit')).toBe(true)
+      expect(canAttackIce(ice, 'coldstore-t1-chaff')).toBe(true)
+      expect(canAttackIce(ice, 'seawall-t1-audit')).toBe(true)
     })
 
     it('T2 cannot be attacked while T1 is alive', () => {
       const ice = initializeIce()
-      expect(canAttackIce(ice, 'mid-t2-chaff')).toBe(false)
+      expect(canAttackIce(ice, 'coldstore-t2-chaff')).toBe(false)
     })
 
     it('T2 can be attacked when T1 is destroyed', () => {
       const ice = initializeIce()
-      const t1 = ice.find((t) => t.zone === 'mid-t1-chaff')!
+      const t1 = ice.find((t) => t.zone === 'coldstore-t1-chaff')!
       t1.alive = false
       t1.integ = 0
-      expect(canAttackIce(ice, 'mid-t2-chaff')).toBe(true)
+      expect(canAttackIce(ice, 'coldstore-t2-chaff')).toBe(true)
     })
 
     it('T3 cannot be attacked while T2 is alive', () => {
       const ice = initializeIce()
       // Destroy T1
-      const t1 = ice.find((t) => t.zone === 'mid-t1-chaff')!
+      const t1 = ice.find((t) => t.zone === 'coldstore-t1-chaff')!
       t1.alive = false
-      expect(canAttackIce(ice, 'mid-t3-chaff')).toBe(false)
+      expect(canAttackIce(ice, 'coldstore-t3-chaff')).toBe(false)
     })
 
     it('T3 can be attacked when T2 is destroyed', () => {
       const ice = initializeIce()
-      const t1 = ice.find((t) => t.zone === 'mid-t1-chaff')!
-      const t2 = ice.find((t) => t.zone === 'mid-t2-chaff')!
+      const t1 = ice.find((t) => t.zone === 'coldstore-t1-chaff')!
+      const t2 = ice.find((t) => t.zone === 'coldstore-t2-chaff')!
       t1.alive = false
       t2.alive = false
-      expect(canAttackIce(ice, 'mid-t3-chaff')).toBe(true)
+      expect(canAttackIce(ice, 'coldstore-t3-chaff')).toBe(true)
     })
 
     it('returns false for a dead ice', () => {
       const ice = initializeIce()
-      const t1 = ice.find((t) => t.zone === 'mid-t1-chaff')!
+      const t1 = ice.find((t) => t.zone === 'coldstore-t1-chaff')!
       t1.alive = false
-      expect(canAttackIce(ice, 'mid-t1-chaff')).toBe(false)
+      expect(canAttackIce(ice, 'coldstore-t1-chaff')).toBe(false)
     })
 
     it('returns false for zones without ice', () => {
       const ice = initializeIce()
-      expect(canAttackIce(ice, 'mid-river')).toBe(false)
-      expect(canAttackIce(ice, 'chaff-base')).toBe(false)
+      expect(canAttackIce(ice, 'coldstore-cross')).toBe(false)
+      expect(canAttackIce(ice, 'rookery-terminal')).toBe(false)
     })
   })
 
@@ -246,7 +246,7 @@ describe('Zones', () => {
       const iceZones = ZONES.filter((z) => z.ice)
       for (const z of iceZones) {
         expect(z.lane).toBeDefined()
-        expect(['top', 'mid', 'bot']).toContain(z.lane)
+        expect(['seawall', 'coldstore', 'shallows']).toContain(z.lane)
       }
     })
 
@@ -272,8 +272,8 @@ describe('Zones', () => {
     })
 
     it('river crossing zones have a lane field', () => {
-      const riverZones = ZONES.filter((z) => z.type === 'river' && z.lane)
-      expect(riverZones.length).toBe(3) // top-river, mid-river, bot-river
+      const riverZones = ZONES.filter((z) => z.type === 'cross' && z.lane)
+      expect(riverZones.length).toBe(3) // seawall-cross, coldstore-cross, shallows-cross
       for (const z of riverZones) {
         expect(z.lane).toBe(z.id.split('-')[0])
       }

@@ -218,13 +218,13 @@ describe('GameScreen overlays', () => {
         {
           cycle: 240,
           type: 'damage',
-          payload: { sourceId: 'ice_mid-t1-audit', targetId: 'p1', amount: 110 },
+          payload: { sourceId: 'ice_coldstore-t1-audit', targetId: 'p1', amount: 110 },
         },
         { cycle: 240, type: 'death', payload: { playerId: 'p1', respawnCycle: 270 } },
       ] as never)
 
       const overlay = mountGameScreen().find('[data-testid="death-overlay"]')
-      expect(overlay.text()).toContain('ice (mid-t1-audit)')
+      expect(overlay.text()).toContain('ice (coldstore-t1-audit)')
       // ...and NOT the stale killer from the death 140 ticks ago.
       expect(overlay.text()).not.toContain('Daemon')
     })
@@ -523,7 +523,7 @@ describe('GameScreen overlays', () => {
         {
           cycle: 240,
           type: 'ice_kill',
-          payload: { zone: 'mid-t1-chaff', team: 'chaff', killerTeam: 'audit' },
+          payload: { zone: 'coldstore-t1-chaff', team: 'chaff', killerTeam: 'audit' },
         },
       ])
       expect(audio.playSound).toHaveBeenCalledWith('ice_lost')
@@ -535,7 +535,7 @@ describe('GameScreen overlays', () => {
         {
           cycle: 241,
           type: 'ice_kill',
-          payload: { zone: 'mid-t1-audit', team: 'audit', killerTeam: 'chaff' },
+          payload: { zone: 'coldstore-t1-audit', team: 'audit', killerTeam: 'chaff' },
         },
       ])
       expect(audio.playSound).toHaveBeenCalledWith('ice_fall')
@@ -610,11 +610,11 @@ describe('GameScreen overlays', () => {
       store.gameId = 'game_submit'
       store.playerId = 'p1'
       const zones: Record<string, ZoneRuntimeState> = {}
-      for (const id of ['mid-river', 'mid-t1-chaff']) zones[id] = makeZone(id)
+      for (const id of ['coldstore-cross', 'coldstore-t1-chaff']) zones[id] = makeZone(id)
       store.updateFromCycle(makeCycleMessage({ cycle: 240, zones }))
       const wrapper = mountGameScreen()
 
-      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move mid-t1-chaff')
+      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move coldstore-t1-chaff')
       await wrapper.vm.$nextTick()
 
       expect(socketSpies.send).toHaveBeenCalled()

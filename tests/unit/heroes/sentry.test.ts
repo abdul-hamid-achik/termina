@@ -12,7 +12,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestSentry',
     team: 'chaff',
     heroId: 'sentry',
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: 600,
     maxInteg: 600,
     bw: 350,
@@ -90,8 +90,8 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     },
     players: playerMap,
     zones: {
-      'mid-river': { id: 'mid-river', wards: [] },
-      'top-river': { id: 'top-river', wards: [] },
+      'coldstore-cross': { id: 'coldstore-cross', wards: [] },
+      'seawall-cross': { id: 'seawall-cross', wards: [] },
     },
     waves: [],
     neutrals: [],
@@ -188,7 +188,7 @@ describe('Sentry Hero', () => {
 
     it('fails when target is in different zone', () => {
       const player = makePlayer()
-      const ally = makeAlly({ zone: 'top-river' })
+      const ally = makeAlly({ zone: 'seawall-cross' })
       const state = makeState([player, ally])
 
       const result = Effect.runSyncExit(
@@ -463,9 +463,9 @@ describe('Sentry Hero', () => {
 
   describe('Passive: Overwatch aura', () => {
     it('grants +5 plate to the Sentry and allies in its zone (read by EffectiveStats)', () => {
-      const sentry = makePlayer({ id: 'p1', zone: 'mid-river' })
-      const allyInZone = makeAlly({ id: 'a1', zone: 'mid-river' })
-      const allyElsewhere = makeAlly({ id: 'a2', zone: 'top-river' })
+      const sentry = makePlayer({ id: 'p1', zone: 'coldstore-cross' })
+      const allyInZone = makeAlly({ id: 'a1', zone: 'coldstore-cross' })
+      const allyElsewhere = makeAlly({ id: 'a2', zone: 'seawall-cross' })
       const state = makeState([sentry, allyInZone, allyElsewhere])
 
       const updated = resolvePassive(state, 'p1', tickEnd)
@@ -476,8 +476,8 @@ describe('Sentry Hero', () => {
     })
 
     it('does not buff enemies in the zone', () => {
-      const sentry = makePlayer({ id: 'p1', zone: 'mid-river' })
-      const enemy = makeAlly({ id: 'e1', team: 'audit', zone: 'mid-river' })
+      const sentry = makePlayer({ id: 'p1', zone: 'coldstore-cross' })
+      const enemy = makeAlly({ id: 'e1', team: 'audit', zone: 'coldstore-cross' })
       const state = makeState([sentry, enemy])
 
       const updated = resolvePassive(state, 'p1', tickEnd)

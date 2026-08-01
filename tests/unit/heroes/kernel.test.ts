@@ -15,7 +15,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestKernel',
     team: 'chaff',
     heroId: 'kernel',
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: 750,
     maxInteg: 750,
     bw: 250,
@@ -77,9 +77,9 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     },
     players: playerMap,
     zones: {
-      'mid-river': { id: 'mid-river', wards: [] },
-      'top-river': { id: 'top-river', wards: [] },
-      'cache-top': { id: 'cache-top', wards: [] },
+      'coldstore-cross': { id: 'coldstore-cross', wards: [] },
+      'seawall-cross': { id: 'seawall-cross', wards: [] },
+      'cache-seawall': { id: 'cache-seawall', wards: [] },
     },
     waves: [],
     ice: [],
@@ -139,7 +139,7 @@ describe('Kernel Hero', () => {
 
     it('fails when target is in different zone', () => {
       const player = makePlayer()
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(
@@ -252,8 +252,8 @@ describe('Kernel Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
       const updatedEnemy = result.state.players['e1']!
-      // Enemy should have moved to an adjacent zone (random, but not mid-river)
-      expect(updatedEnemy.zone).not.toBe('mid-river')
+      // Enemy should have moved to an adjacent zone (random, but not coldstore-cross)
+      expect(updatedEnemy.zone).not.toBe('coldstore-cross')
       expect(hasBuff(updatedEnemy, 'feared')).toBe(true)
     })
 
@@ -276,7 +276,7 @@ describe('Kernel Hero', () => {
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
-      expect(result.state.players['a1']!.zone).toBe('mid-river')
+      expect(result.state.players['a1']!.zone).toBe('coldstore-cross')
     })
   })
 

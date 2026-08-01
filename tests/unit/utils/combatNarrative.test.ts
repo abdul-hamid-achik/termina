@@ -94,13 +94,13 @@ describe('eventToLine: structure damage collapses', () => {
     const line = eventToLine(
       ev('damage', {
         sourceId: 'me',
-        targetId: 'ice_mid-t1-audit',
+        targetId: 'ice_coldstore-t1-audit',
         amount: 70,
         damageType: 'kinetic',
       }),
       ctx,
     )!
-    expect(line.dedupKey).toBe('dmg:me->ice_mid-t1-audit')
+    expect(line.dedupKey).toBe('dmg:me->ice_coldstore-t1-audit')
     expect(line.dmgAmount).toBe(70)
   })
 })
@@ -216,7 +216,7 @@ describe('eventToLine: previously-orphaned events get real text', () => {
     ).toContain('Tenant')
     expect(
       eventToLine(
-        ev('cache_picked', { playerId: 'me', zone: 'cache-top', cacheType: 'haste' }),
+        ev('cache_picked', { playerId: 'me', zone: 'cache-seawall', cacheType: 'haste' }),
         ctx,
       )!.text,
     ).toContain('cache')
@@ -225,7 +225,7 @@ describe('eventToLine: previously-orphaned events get real text', () => {
       eventToLine(
         ev('ward_placed', {
           playerId: 'me',
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           team: 'chaff',
           wardType: 'observer',
         }),
@@ -266,9 +266,9 @@ describe('eventToLine: previously-orphaned events get real text', () => {
   it('explains the two failures that used to be emitted then silently dropped', () => {
     // Both are the server's answer to an action the player just spent a cycle
     // on — swallowing them left the cycle looking like it did nothing at all.
-    const invuln = eventToLine(ev('ice_invulnerable', { zone: 'mid-t1-chaff' }), ctx)!
+    const invuln = eventToLine(ev('ice_invulnerable', { zone: 'coldstore-t1-chaff' }), ctx)!
     expect(invuln.text).toContain('Harden')
-    expect(invuln.text).toContain('mid-t1-chaff')
+    expect(invuln.text).toContain('coldstore-t1-chaff')
 
     const cd = eventToLine(ev('harden_on_cooldown', { playerId: 'me', remainingTicks: 120 }), ctx)!
     expect(cd.text).toContain('120c')
@@ -281,12 +281,12 @@ describe('buildCombatLines', () => {
     const events: GameEvent[] = [
       ev(
         'damage',
-        { sourceId: 'me', targetId: 'ice_mid-t1-audit', amount: 70, damageType: 'kinetic' },
+        { sourceId: 'me', targetId: 'ice_coldstore-t1-audit', amount: 70, damageType: 'kinetic' },
         1,
       ),
       ev(
         'damage',
-        { sourceId: 'me', targetId: 'ice_mid-t1-audit', amount: 70, damageType: 'kinetic' },
+        { sourceId: 'me', targetId: 'ice_coldstore-t1-audit', amount: 70, damageType: 'kinetic' },
         2,
       ),
       ev('scrip_change', { playerId: 'me', amount: 40, reason: 'wave last hit' }, 2),
@@ -350,7 +350,7 @@ describe('deriveKillFeed', () => {
   it('emits ice / tenant / core headline entries', () => {
     const feed = deriveKillFeed(
       [
-        ev('ice_kill', { killerTeam: 'chaff', team: 'audit', zone: 'mid-t1-audit' }, 1),
+        ev('ice_kill', { killerTeam: 'chaff', team: 'audit', zone: 'coldstore-t1-audit' }, 1),
         ev('tenant_killed', { killerTeam: 'chaff', scripAwarded: 600 }, 2),
         ev('terminal_destroyed', { killerTeam: 'chaff', team: 'audit' }, 3),
       ],
@@ -431,8 +431,16 @@ describe('eventToLine: narration coverage for every event type', () => {
     ['neutral_killed', { playerId: 'me', neutralType: 'stub' }, 'stub camp'],
     ['backup_used', { playerId: 'me' }, 'reincarnated'],
     ['talent_selected', { playerId: 'me', talentName: '+250 INTEG' }, 'learned +250 INTEG'],
-    ['teleport_complete', { playerId: 'me', destination: 'mid-river' }, 'teleported to mid-river'],
-    ['trap_triggered', { owner: 'me', targetId: 'enemy1', zone: 'mid-river', damage: 100 }, 'trap'],
+    [
+      'teleport_complete',
+      { playerId: 'me', destination: 'coldstore-cross' },
+      'teleported to coldstore-cross',
+    ],
+    [
+      'trap_triggered',
+      { owner: 'me', targetId: 'enemy1', zone: 'coldstore-cross', damage: 100 },
+      'trap',
+    ],
     ['teleport_cancelled', { playerId: 'me', reason: 'stunned' }, 'cancelled'],
     ['harden_used', { team: 'chaff' }, 'Harden'],
     ['surrender_vote', { team: 'chaff', votesFor: 2, votesNeeded: 3 }, '2/3'],
@@ -453,7 +461,11 @@ describe('eventToLine: narration coverage for every event type', () => {
 
   it('narrates the next_hop return-shadow teleport variant', () => {
     const line = eventToLine(
-      ev('teleport_complete', { playerId: 'me', destination: 'mid-river', source: 'next_hop' }),
+      ev('teleport_complete', {
+        playerId: 'me',
+        destination: 'coldstore-cross',
+        source: 'next_hop',
+      }),
       ctx,
     )
     expect(line!.text).toContain('return shadow')
@@ -620,8 +632,8 @@ describe('narration drift guard', () => {
     team: 'chaff',
     killerTeam: 'chaff',
     winner: 'chaff',
-    zone: 'mid-river',
-    destination: 'mid-river',
+    zone: 'coldstore-cross',
+    destination: 'coldstore-cross',
     amount: 10,
     damage: 10,
     scripAwarded: 40,
@@ -682,12 +694,12 @@ describe('combatLog label helpers', () => {
     expect(terminalLabel('terminal_audit')).toBe('the AUDIT Terminal')
     // Unknown team falls back to a readable label rather than null/crash.
     expect(terminalLabel('terminal_neutral')).toBe('the neutral Terminal')
-    expect(terminalLabel('ice_mid-t1-chaff')).toBeNull()
+    expect(terminalLabel('ice_coldstore-t1-chaff')).toBeNull()
     expect(terminalLabel('hero_echo')).toBeNull()
   })
 
   it('isStructureTarget is true only for ice/terminal string ids', () => {
-    expect(isStructureTarget('ice_mid-t1-chaff')).toBe(true)
+    expect(isStructureTarget('ice_coldstore-t1-chaff')).toBe(true)
     expect(isStructureTarget('terminal_audit')).toBe(true)
     expect(isStructureTarget('hero_echo')).toBe(false)
     expect(isStructureTarget('creep_3')).toBe(false)
@@ -791,8 +803,12 @@ describe('eventToLine: remaining event-type lines', () => {
   })
   it('trap_triggered → trap caught line', () => {
     expect(
-      line('trap_triggered', { owner: 'me', targetId: 'enemy1', zone: 'mid-river', damage: 80 })!
-        .text,
+      line('trap_triggered', {
+        owner: 'me',
+        targetId: 'enemy1',
+        zone: 'coldstore-cross',
+        damage: 80,
+      })!.text,
     ).toContain('trap caught')
   })
   it('teleport_cancelled → cancelled with reason', () => {
@@ -864,7 +880,12 @@ describe('eventToLine: damage metadata for the cycle recap', () => {
     // trap hit. Giving this line a dmgAmount made the per-cycle recap, which sums
     // dmgAmount across lines, report every trap at double its real damage.
     const line = eventToLine(
-      ev('trap_triggered', { owner: 'enemy1', targetId: 'me', zone: 'mid-river', damage: 100 }),
+      ev('trap_triggered', {
+        owner: 'enemy1',
+        targetId: 'me',
+        zone: 'coldstore-cross',
+        damage: 100,
+      }),
       ctx,
     )!
     expect(line.dmgAmount).toBeUndefined()

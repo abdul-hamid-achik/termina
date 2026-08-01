@@ -13,7 +13,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-chaff',
+    zone: 'coldstore-t1-chaff',
     integ: 500,
     maxInteg: 500,
     bw: 200,
@@ -60,35 +60,35 @@ describe('VisionCalculator', () => {
     it('should include current zone and adjacent zones for alive player', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ zone: 'mid-river' }),
+          p1: makePlayer({ zone: 'coldstore-cross' }),
         },
       })
 
       const vision = calculateVision(state, 'p1')
 
-      // mid-river is adjacent to: mid-t1-chaff, mid-t1-audit, cache-top, cache-bot
-      expect(vision.has('mid-river')).toBe(true)
-      expect(vision.has('mid-t1-chaff')).toBe(true)
-      expect(vision.has('mid-t1-audit')).toBe(true)
-      expect(vision.has('cache-top')).toBe(true)
-      expect(vision.has('cache-bot')).toBe(true)
+      // coldstore-cross is adjacent to: coldstore-t1-chaff, coldstore-t1-audit, cache-seawall, cache-shallows
+      expect(vision.has('coldstore-cross')).toBe(true)
+      expect(vision.has('coldstore-t1-chaff')).toBe(true)
+      expect(vision.has('coldstore-t1-audit')).toBe(true)
+      expect(vision.has('cache-seawall')).toBe(true)
+      expect(vision.has('cache-shallows')).toBe(true)
     })
 
     it('should always include own base and fountain', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ team: 'chaff', zone: 'mid-river' }),
+          p1: makePlayer({ team: 'chaff', zone: 'coldstore-cross' }),
         },
       })
 
       const vision = calculateVision(state, 'p1')
-      expect(vision.has('chaff-base')).toBe(true)
-      expect(vision.has('chaff-fountain')).toBe(true)
+      expect(vision.has('rookery-terminal')).toBe(true)
+      expect(vision.has('rookery-anchor')).toBe(true)
     })
 
     it('should include ward vision', () => {
       const zones = initializeZoneStates()
-      zones['bot-river']!.wards.push({
+      zones['shallows-cross']!.wards.push({
         team: 'chaff',
         placedTick: 0,
         expiryTick: 100,
@@ -97,28 +97,28 @@ describe('VisionCalculator', () => {
 
       const state = makeGameState({
         players: {
-          p1: makePlayer({ team: 'chaff', zone: 'chaff-fountain' }),
+          p1: makePlayer({ team: 'chaff', zone: 'rookery-anchor' }),
         },
         zones,
       })
 
       const vision = calculateVision(state, 'p1')
-      // Ward at bot-river should grant vision of bot-river + adjacent
-      expect(vision.has('bot-river')).toBe(true)
-      expect(vision.has('bot-t1-chaff')).toBe(true)
-      expect(vision.has('bot-t1-audit')).toBe(true)
+      // Ward at shallows-cross should grant vision of shallows-cross + adjacent
+      expect(vision.has('shallows-cross')).toBe(true)
+      expect(vision.has('shallows-t1-chaff')).toBe(true)
+      expect(vision.has('shallows-t1-audit')).toBe(true)
     })
 
     it('should include ice vision for alive team ice', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ team: 'chaff', zone: 'chaff-fountain' }),
+          p1: makePlayer({ team: 'chaff', zone: 'rookery-anchor' }),
         },
       })
 
       const vision = calculateVision(state, 'p1')
-      // Chaff T1 mid ice at mid-t1-chaff should grant vision
-      expect(vision.has('mid-t1-chaff')).toBe(true)
+      // Chaff T1 mid ice at coldstore-t1-chaff should grant vision
+      expect(vision.has('coldstore-t1-chaff')).toBe(true)
     })
 
     it('should not grant vision from dead player position', () => {
@@ -132,15 +132,15 @@ describe('VisionCalculator', () => {
       // Dead player doesn't contribute base vision from their zone
       // (but still has ice/base vision)
       // hollow should not be visible unless a ice or ward covers it
-      // hollow is adjacent to cache-top only, and cache-top isn't a chaff ice
+      // hollow is adjacent to cache-seawall only, and cache-seawall isn't a chaff ice
       // However, base + fountain vision still applies
-      expect(vision.has('chaff-base')).toBe(true)
+      expect(vision.has('rookery-terminal')).toBe(true)
     })
 
     it('should include allied hero vision', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'chaff-fountain', team: 'chaff' }),
+          p1: makePlayer({ id: 'p1', zone: 'rookery-anchor', team: 'chaff' }),
           p2: makePlayer({ id: 'p2', zone: 'hollow', team: 'chaff' }),
         },
       })
@@ -148,7 +148,7 @@ describe('VisionCalculator', () => {
       const vision = calculateVision(state, 'p1')
       // p2 is at hollow, so p1 should see hollow + adjacent
       expect(vision.has('hollow')).toBe(true)
-      expect(vision.has('cache-top')).toBe(true)
+      expect(vision.has('cache-seawall')).toBe(true)
     })
 
     it('should return empty set for unknown player', () => {
@@ -162,14 +162,14 @@ describe('VisionCalculator', () => {
     it('should show full info for teammates', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-t1-chaff' }),
-          p2: makePlayer({ id: 'p2', team: 'chaff', zone: 'bot-t3-chaff', name: 'Ally' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-t1-chaff' }),
+          p2: makePlayer({ id: 'p2', team: 'chaff', zone: 'shallows-t3-chaff', name: 'Ally' }),
         },
       })
 
       const filtered = filterStateForPlayer(state, 'p1')
       const ally = filtered.players['p2'] as PlayerState
-      expect(ally.zone).toBe('bot-t3-chaff')
+      expect(ally.zone).toBe('shallows-t3-chaff')
       expect(ally.integ).toBe(500)
       expect('fogged' in ally).toBe(false)
     })
@@ -177,8 +177,8 @@ describe('VisionCalculator', () => {
     it('should fog enemies in non-visible zones', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'chaff-fountain' }),
-          e1: makePlayer({ id: 'e1', team: 'audit', zone: 'audit-fountain', name: 'Enemy' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'rookery-anchor' }),
+          e1: makePlayer({ id: 'e1', team: 'audit', zone: 'landing-anchor', name: 'Enemy' }),
         },
       })
 
@@ -193,22 +193,22 @@ describe('VisionCalculator', () => {
     it("strips a VISIBLE enemy's queued auto-path destination (intent must not leak)", () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' }),
           // Same zone — fully visible enemy, mid-walk toward the chaff base.
           e1: makePlayer({
             id: 'e1',
             team: 'audit',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             name: 'Enemy',
-            moveTarget: 'chaff-base',
+            moveTarget: 'rookery-terminal',
           }),
           // Teammate mid-walk: allies DO see each other's destinations.
           p2: makePlayer({
             id: 'p2',
             team: 'chaff',
-            zone: 'mid-t1-chaff',
+            zone: 'coldstore-t1-chaff',
             name: 'Ally',
-            moveTarget: 'audit-base',
+            moveTarget: 'landing-terminal',
           }),
         },
       })
@@ -219,24 +219,24 @@ describe('VisionCalculator', () => {
       expect(enemy.integ).toBe(500)
       expect('moveTarget' in enemy).toBe(false) // ...but never their intent
       const ally = filtered.players['p2'] as PlayerState
-      expect(ally.moveTarget).toBe('audit-base')
+      expect(ally.moveTarget).toBe('landing-terminal')
     })
 
     it("strips a VISIBLE enemy's standing attack order (what they've committed to)", () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' }),
           e1: makePlayer({
             id: 'e1',
             team: 'audit',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             name: 'Enemy',
-            attackTarget: { kind: 'ice', zone: 'mid-t1-chaff' },
+            attackTarget: { kind: 'ice', zone: 'coldstore-t1-chaff' },
           }),
           p2: makePlayer({
             id: 'p2',
             team: 'chaff',
-            zone: 'mid-t1-chaff',
+            zone: 'coldstore-t1-chaff',
             name: 'Ally',
             attackTarget: { kind: 'tenant' },
           }),
@@ -255,11 +255,11 @@ describe('VisionCalculator', () => {
     it('keeps a fogged enemy KDA + level public (scoreboard shows it even in fog)', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'chaff-fountain' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'rookery-anchor' }),
           e1: makePlayer({
             id: 'e1',
             team: 'audit',
-            zone: 'audit-fountain',
+            zone: 'landing-anchor',
             name: 'Enemy',
             kills: 7,
             deaths: 2,
@@ -286,11 +286,11 @@ describe('VisionCalculator', () => {
     it('should show full info for enemies in visible zones', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' }),
           e1: makePlayer({
             id: 'e1',
             team: 'audit',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             name: 'VisibleEnemy',
             integ: 300,
           }),
@@ -299,7 +299,7 @@ describe('VisionCalculator', () => {
 
       const filtered = filterStateForPlayer(state, 'p1')
       const enemy = filtered.players['e1'] as PlayerState
-      expect(enemy.zone).toBe('mid-river')
+      expect(enemy.zone).toBe('coldstore-cross')
       expect(enemy.integ).toBe(300)
       expect('fogged' in enemy).toBe(false)
     })
@@ -307,24 +307,24 @@ describe('VisionCalculator', () => {
     it('should not reveal waves in fogged zones', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'chaff-fountain' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'rookery-anchor' }),
         },
         waves: [
-          { id: 'c1', team: 'audit', zone: 'audit-fountain', integ: 400, type: 'line' },
-          { id: 'c2', team: 'chaff', zone: 'chaff-base', integ: 400, type: 'line' },
+          { id: 'c1', team: 'audit', zone: 'landing-anchor', integ: 400, type: 'line' },
+          { id: 'c2', team: 'chaff', zone: 'rookery-terminal', integ: 400, type: 'line' },
         ],
       })
 
       const filtered = filterStateForPlayer(state, 'p1')
-      // c1 in audit-fountain should be hidden
+      // c1 in landing-anchor should be hidden
       expect(filtered.waves.find((c) => c.id === 'c1')).toBeUndefined()
-      // c2 in chaff-base should be visible
+      // c2 in rookery-terminal should be visible
       expect(filtered.waves.find((c) => c.id === 'c2')).toBeDefined()
     })
 
     it('should not reveal enemy wards in fogged zones', () => {
       const zones = initializeZoneStates()
-      zones['audit-base']!.wards.push({
+      zones['landing-terminal']!.wards.push({
         team: 'audit',
         placedTick: 0,
         expiryTick: 100,
@@ -333,19 +333,19 @@ describe('VisionCalculator', () => {
 
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'chaff-fountain' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'rookery-anchor' }),
         },
         zones,
       })
 
       const filtered = filterStateForPlayer(state, 'p1')
-      const dZone = filtered.zones['audit-base']
+      const dZone = filtered.zones['landing-terminal']
       expect(dZone?.wards.length).toBe(0)
     })
 
     it('should reveal invisible enemies in true sight zones', () => {
       const zones = initializeZoneStates()
-      zones['mid-river']!.wards.push({
+      zones['coldstore-cross']!.wards.push({
         team: 'chaff',
         placedTick: 0,
         expiryTick: 100,
@@ -354,11 +354,11 @@ describe('VisionCalculator', () => {
 
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' }),
           e1: makePlayer({
             id: 'e1',
             team: 'audit',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             name: 'InvisEnemy',
             integ: 300,
             buffs: [{ id: 'invisible', stacks: 1, cyclesRemaining: 5, source: 'e1' }],
@@ -375,7 +375,7 @@ describe('VisionCalculator', () => {
 
     it('should not reveal invisible enemies outside true sight zones', () => {
       const zones = initializeZoneStates()
-      zones['mid-river']!.wards.push({
+      zones['coldstore-cross']!.wards.push({
         team: 'chaff',
         placedTick: 0,
         expiryTick: 100,
@@ -384,11 +384,11 @@ describe('VisionCalculator', () => {
 
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' }),
           e1: makePlayer({
             id: 'e1',
             team: 'audit',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             name: 'InvisEnemy',
             integ: 300,
             buffs: [{ id: 'invisible', stacks: 1, cyclesRemaining: 5, source: 'e1' }],
@@ -408,13 +408,13 @@ describe('VisionCalculator', () => {
           p1: makePlayer({
             id: 'p1',
             team: 'chaff',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             buffs: [{ id: 'dust_reveal', stacks: 1, cyclesRemaining: 2, source: 'p1' }],
           }),
           e1: makePlayer({
             id: 'e1',
             team: 'audit',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             name: 'InvisEnemy',
             integ: 300,
             buffs: [{ id: 'invisible', stacks: 1, cyclesRemaining: 5, source: 'e1' }],
@@ -434,13 +434,13 @@ describe('VisionCalculator', () => {
           p1: makePlayer({
             id: 'p1',
             team: 'chaff',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             buffs: [{ id: 'dust_reveal', stacks: 1, cyclesRemaining: 2, source: 'p1' }],
           }),
           e1: makePlayer({
             id: 'e1',
             team: 'audit',
-            zone: 'mid-t1-audit', // adjacent to mid-river
+            zone: 'coldstore-t1-audit', // adjacent to coldstore-cross
             name: 'InvisEnemy',
             buffs: [{ id: 'invisible', stacks: 1, cyclesRemaining: 5, source: 'e1' }],
           }),
@@ -458,14 +458,14 @@ describe('VisionCalculator', () => {
           p1: makePlayer({
             id: 'p1',
             team: 'chaff',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             name: 'InvisCarrier',
             buffs: [
               { id: 'dust_reveal', stacks: 1, cyclesRemaining: 2, source: 'p1' },
               { id: 'invisible', stacks: 1, cyclesRemaining: 5, source: 'p1' },
             ],
           }),
-          e2: makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', name: 'AuditViewer' }),
+          e2: makePlayer({ id: 'e2', team: 'audit', zone: 'coldstore-cross', name: 'AuditViewer' }),
         },
       })
 
@@ -478,13 +478,13 @@ describe('VisionCalculator', () => {
     it('should include visibleZones in the output', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', zone: 'coldstore-cross' }),
         },
       })
 
       const filtered = filterStateForPlayer(state, 'p1')
       expect(filtered.visibleZones.length).toBeGreaterThan(0)
-      expect(filtered.visibleZones).toContain('mid-river')
+      expect(filtered.visibleZones).toContain('coldstore-cross')
     })
   })
 
@@ -492,14 +492,14 @@ describe('VisionCalculator', () => {
     it("keeps the hero's own zone visible at night (regression: own zone went blind)", () => {
       const state = makeGameState({
         timeOfDay: 'night',
-        players: { p1: makePlayer({ zone: 'mid-river' }) },
+        players: { p1: makePlayer({ zone: 'coldstore-cross' }) },
       })
       // The own zone is always visible, even at night.
-      expect(calculateVision(state, 'p1').has('mid-river')).toBe(true)
+      expect(calculateVision(state, 'p1').has('coldstore-cross')).toBe(true)
     })
 
     it('reveals strictly fewer zones at night than by day (vision is reduced)', () => {
-      const players = { p1: makePlayer({ zone: 'mid-river' }) }
+      const players = { p1: makePlayer({ zone: 'coldstore-cross' }) }
       const day = calculateVision(makeGameState({ timeOfDay: 'day', players }), 'p1')
       const night = calculateVision(makeGameState({ timeOfDay: 'night', players }), 'p1')
 
@@ -517,11 +517,13 @@ describe('VisionCalculator', () => {
         source: 'p1',
       }
       const base = calculateVision(
-        makeGameState({ players: { p1: makePlayer({ zone: 'mid-river' }) } }),
+        makeGameState({ players: { p1: makePlayer({ zone: 'coldstore-cross' }) } }),
         'p1',
       )
       const traced = calculateVision(
-        makeGameState({ players: { p1: makePlayer({ zone: 'mid-river', buffs: [tracepath] }) } }),
+        makeGameState({
+          players: { p1: makePlayer({ zone: 'coldstore-cross', buffs: [tracepath] }) },
+        }),
         'p1',
       )
 
@@ -564,36 +566,36 @@ describe('VisionCalculator', () => {
 
   describe('night vision ordering', () => {
     it('drops the enemy-territory neighbor first, keeping own-team vision', () => {
-      // A chaff hero in mid-river (neutral) at night. mid-river's neighbors
-      // include mid-t1-chaff (chaff) and mid-t1-audit (audit). With PENALTY=1,
+      // A chaff hero in coldstore-cross (neutral) at night. coldstore-cross's neighbors
+      // include coldstore-t1-chaff (chaff) and coldstore-t1-audit (audit). With PENALTY=1,
       // the audit (enemy) neighbor should be dropped, keeping chaff-side vision.
       const state = makeGameState({
         timeOfDay: 'night',
         players: {
-          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' }),
         },
       })
       const vision = calculateVision(state, 'p1', 'game-night-test')
 
       // Own zone always visible
-      expect(vision.has('mid-river')).toBe(true)
+      expect(vision.has('coldstore-cross')).toBe(true)
       // Chaff T1 (own territory) should still be visible at night
-      expect(vision.has('mid-t1-chaff')).toBe(true)
+      expect(vision.has('coldstore-t1-chaff')).toBe(true)
       // Audit T1 (enemy territory) should be the dropped neighbor
-      expect(vision.has('mid-t1-audit')).toBe(false)
+      expect(vision.has('coldstore-t1-audit')).toBe(false)
     })
 
     it('at day, sees all neighbors regardless of team', () => {
       const state = makeGameState({
         timeOfDay: 'day',
         players: {
-          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' }),
         },
       })
       const vision = calculateVision(state, 'p1', 'game-day-test')
-      expect(vision.has('mid-river')).toBe(true)
-      expect(vision.has('mid-t1-chaff')).toBe(true)
-      expect(vision.has('mid-t1-audit')).toBe(true)
+      expect(vision.has('coldstore-cross')).toBe(true)
+      expect(vision.has('coldstore-t1-chaff')).toBe(true)
+      expect(vision.has('coldstore-t1-audit')).toBe(true)
     })
   })
 
@@ -604,23 +606,23 @@ describe('VisionCalculator', () => {
       // stale set. River zones aren't ice zones, so the only vision source is
       // the player's own sight (keeping the assertion clean).
       const stateA = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', zone: 'mid-river' }) },
+        players: { p1: makePlayer({ id: 'p1', zone: 'coldstore-cross' }) },
       })
       const stateB = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', zone: 'bot-river' }) },
+        players: { p1: makePlayer({ id: 'p1', zone: 'shallows-cross' }) },
       })
 
       const visionA = calculateVision(stateA, 'p1', 'game-A')
       const visionB = calculateVision(stateB, 'p1', 'game-B')
 
-      // mid-river is visible in A (player's zone) and is a neighbor of bot-river
-      // via cache-bot, so it MAY be visible in B too. Instead assert on the
+      // coldstore-cross is visible in A (player's zone) and is a neighbor of shallows-cross
+      // via cache-shallows, so it MAY be visible in B too. Instead assert on the
       // player's own zone being the distinguishing factor: both river zones are
       // visible in their respective games.
-      expect(visionA.has('mid-river')).toBe(true)
-      expect(visionB.has('bot-river')).toBe(true)
-      // bot-river is NOT visible in A (it's 2 hops from mid-river through
-      // cache-bot, but cache-bot's neighbors get the night treatment... at day
+      expect(visionA.has('coldstore-cross')).toBe(true)
+      expect(visionB.has('shallows-cross')).toBe(true)
+      // shallows-cross is NOT visible in A (it's 2 hops from coldstore-cross through
+      // cache-shallows, but cache-shallows's neighbors get the night treatment... at day
       // all are visible. Verify the cache didn't return A's set for B.)
       // The key assertion: the cache returned DIFFERENT sets for the two games.
       expect(visionA).not.toEqual(visionB)

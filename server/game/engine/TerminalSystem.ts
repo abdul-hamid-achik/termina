@@ -19,8 +19,8 @@ import { scaledTerminalHp } from './fastGame'
 
 /** The zone each team's Terminal occupies. */
 export const TERMINAL_ZONES: Record<TeamId, string> = {
-  chaff: 'chaff-base',
-  audit: 'audit-base',
+  chaff: 'rookery-terminal',
+  audit: 'landing-terminal',
 }
 
 /** Stable target id for a Terminal, used in damage events and targeting. */

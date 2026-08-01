@@ -19,7 +19,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestMutex',
     team: 'chaff',
     heroId: 'mutex',
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: 680,
     maxInteg: 680,
     bw: 260,
@@ -81,8 +81,8 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     },
     players: playerMap,
     zones: {
-      'mid-river': { id: 'mid-river', wards: [] },
-      'top-river': { id: 'top-river', wards: [] },
+      'coldstore-cross': { id: 'coldstore-cross', wards: [] },
+      'seawall-cross': { id: 'seawall-cross', wards: [] },
     },
     waves: [],
     ice: [],
@@ -164,7 +164,7 @@ describe('Mutex Hero', () => {
 
     it('fails when target is in different zone', () => {
       const player = makePlayer()
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(
@@ -418,7 +418,7 @@ describe('Mutex Hero', () => {
 
   describe('Passive: Deadlock', () => {
     it('tracks zone on first tick_end', () => {
-      const player = makePlayer({ zone: 'mid-river' })
+      const player = makePlayer({ zone: 'coldstore-cross' })
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
@@ -430,16 +430,16 @@ describe('Mutex Hero', () => {
       const updatedPlayer = updated.players['p1']!
       expect(hasBuff(updatedPlayer, 'deadlockZone')).toBe(true)
       const zoneBuff = updatedPlayer.buffs.find((b) => b.id === 'deadlockZone')
-      expect(zoneBuff!.source).toBe('mid-river')
+      expect(zoneBuff!.source).toBe('coldstore-cross')
     })
 
     it('increments stacks when staying in same zone', () => {
-      let player = makePlayer({ zone: 'mid-river' })
+      let player = makePlayer({ zone: 'coldstore-cross' })
       player = applyBuff(player, {
         id: 'deadlockZone',
         stacks: 1,
         cyclesRemaining: 9999,
-        source: 'mid-river',
+        source: 'coldstore-cross',
       })
       const state = makeState([player])
 
@@ -453,7 +453,7 @@ describe('Mutex Hero', () => {
     })
 
     it('caps at 5 stacks', () => {
-      let player = makePlayer({ zone: 'mid-river' })
+      let player = makePlayer({ zone: 'coldstore-cross' })
       player = applyBuff(player, {
         id: 'deadlock',
         stacks: 5,
@@ -464,7 +464,7 @@ describe('Mutex Hero', () => {
         id: 'deadlockZone',
         stacks: 1,
         cyclesRemaining: 9999,
-        source: 'mid-river',
+        source: 'coldstore-cross',
       })
       const state = makeState([player])
 
@@ -478,7 +478,7 @@ describe('Mutex Hero', () => {
     })
 
     it('resets stacks on move event', () => {
-      let player = makePlayer({ zone: 'top-river' })
+      let player = makePlayer({ zone: 'seawall-cross' })
       player = applyBuff(player, {
         id: 'deadlock',
         stacks: 3,
@@ -489,14 +489,14 @@ describe('Mutex Hero', () => {
         id: 'deadlockZone',
         stacks: 1,
         cyclesRemaining: 9999,
-        source: 'mid-river',
+        source: 'coldstore-cross',
       })
       const state = makeState([player])
 
       const updated = resolvePassive(state, 'p1', {
         cycle: 11,
         type: 'move',
-        payload: { playerId: 'p1', from: 'mid-river', to: 'top-river' },
+        payload: { playerId: 'p1', from: 'coldstore-cross', to: 'seawall-cross' },
       })
 
       expect(getBuffStacks(updated.players['p1']!, 'deadlock')).toBe(0)

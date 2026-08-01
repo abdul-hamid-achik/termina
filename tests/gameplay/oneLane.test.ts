@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { seedGame, HUMAN } from './harness'
+import { ZONE_MAP } from '~~/shared/constants/zones'
 
 /**
  * One-lane map (slice 1): a self-contained mid-lane subgraph of the full 5v5
@@ -8,30 +9,30 @@ import { seedGame, HUMAN } from './harness'
  * to the lane — all through the in-process gameplay harness, no server/DB.
  */
 describe('one-lane map', () => {
-  it('initializes only the 11 mid-lane zones and 6 ice (3 per team)', async () => {
+  it('initializes only the 11 Coldstore zones and 6 ice (3 per team)', async () => {
     const game = await seedGame('fresh', { mapId: 'one_lane' })
     const s = await game.state()
 
     expect(s.mapId).toBe('one_lane')
     expect(Object.keys(s.zones).length).toBe(11)
-    expect(s.zones['top-t3-chaff']).toBeUndefined() // dropped lanes don't exist
+    expect(s.zones['seawall-t3-chaff']).toBeUndefined() // dropped lanes don't exist
     expect(s.zones['hollow']).toBeUndefined()
 
     expect(s.ice.length).toBe(6)
-    expect(s.ice.every((t) => t.zone.startsWith('mid-'))).toBe(true)
+    expect(s.ice.every((t) => ZONE_MAP[t.zone]?.lane === 'coldstore')).toBe(true)
   })
 
   it('spawns the human in its fountain and walks the lane one zone per cycle', async () => {
     const game = await seedGame('fresh', { mapId: 'one_lane' })
-    expect((await game.me()).zone).toBe('chaff-fountain')
+    expect((await game.me()).zone).toBe('rookery-anchor')
 
     // fountain → base → down the mid lane to the river, one hop per cycle.
     for (const zone of [
-      'chaff-base',
-      'mid-t3-chaff',
-      'mid-t2-chaff',
-      'mid-t1-chaff',
-      'mid-river',
+      'rookery-terminal',
+      'coldstore-t3-chaff',
+      'coldstore-t2-chaff',
+      'coldstore-t1-chaff',
+      'coldstore-cross',
     ]) {
       game.submit({ type: 'move', zone })
       await game.tick()
@@ -41,16 +42,16 @@ describe('one-lane map', () => {
 
   it('refuses a move to a zone that is not on this map (a dropped lane)', async () => {
     const game = await seedGame('fresh', { mapId: 'one_lane' })
-    game.submit({ type: 'move', zone: 'chaff-base' })
+    game.submit({ type: 'move', zone: 'rookery-terminal' })
     await game.tick()
 
-    // chaff-base is globally adjacent to top-t3-chaff, but that zone isn't on the
+    // rookery-terminal is globally adjacent to seawall-t3-chaff, but that zone isn't on the
     // one-lane map — no path exists inside this map's zone set, so the move must
     // be refused (auto-path included), not step into an uninitialized zone.
-    game.submit({ type: 'move', zone: 'top-t3-chaff' })
+    game.submit({ type: 'move', zone: 'seawall-t3-chaff' })
     await game.tick()
 
-    expect((await game.me()).zone).toBe('chaff-base') // stayed put
+    expect((await game.me()).zone).toBe('rookery-terminal') // stayed put
     expect(
       game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('No path')),
     ).toBe(true)

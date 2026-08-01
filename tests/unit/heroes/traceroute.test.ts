@@ -20,7 +20,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestTraceroute',
     team: 'chaff',
     heroId: 'traceroute',
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: 470,
     maxInteg: 470,
     bw: 290,
@@ -94,9 +94,9 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     },
     players: playerMap,
     zones: {
-      'mid-river': { id: 'mid-river', wards: [] },
-      'top-river': { id: 'top-river', wards: [] },
-      'mid-t1-chaff': { id: 'mid-t1-chaff', wards: [] },
+      'coldstore-cross': { id: 'coldstore-cross', wards: [] },
+      'seawall-cross': { id: 'seawall-cross', wards: [] },
+      'coldstore-t1-chaff': { id: 'coldstore-t1-chaff', wards: [] },
     },
     waves: [],
     ice: [],
@@ -204,7 +204,7 @@ describe('Traceroute Hero', () => {
 
     it('fails when target is in different zone', () => {
       const player = makePlayer()
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(
@@ -272,7 +272,7 @@ describe('Traceroute Hero', () => {
 
     it('fails when target is in different zone', () => {
       const player = makePlayer()
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(
@@ -336,55 +336,55 @@ describe('Traceroute Hero', () => {
     })
 
     it('marks the current zone as the return point on cast', () => {
-      const player = makePlayer({ zone: 'mid-river', level: 1 })
+      const player = makePlayer({ zone: 'coldstore-cross', level: 1 })
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
       const shadow = result.state.players['p1']!.buffs.find((b) => b.id === 'nextHopShadow')
-      expect(shadow!.destination).toBe('mid-river')
+      expect(shadow!.destination).toBe('coldstore-cross')
     })
 
     it('snaps the caster back to the marked zone when the shadow expires', () => {
-      // Cast E in mid-river → drops a return shadow marking mid-river.
-      const player = makePlayer({ zone: 'mid-river', level: 1 })
+      // Cast E in coldstore-cross → drops a return shadow marking coldstore-cross.
+      const player = makePlayer({ zone: 'coldstore-cross', level: 1 })
       const state = makeState([player])
       const cast = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
-      // Player roams to top-river while the shadow is up.
+      // Player roams to seawall-cross while the shadow is up.
       let s: GameState = {
         ...cast.state,
         players: {
           ...cast.state.players,
-          p1: { ...cast.state.players['p1']!, zone: 'top-river' },
+          p1: { ...cast.state.players['p1']!, zone: 'seawall-cross' },
         },
       }
 
       // Tick 1: shadow still pending (cyclesRemaining 2 → 1), no return yet.
       s = cycleAllBuffs(s)
-      expect(s.players['p1']!.zone).toBe('top-river')
+      expect(s.players['p1']!.zone).toBe('seawall-cross')
       expect(hasBuff(s.players['p1']!, 'nextHopShadow')).toBe(true)
 
-      // Tick 2: shadow expires → snap back to mid-river.
+      // Tick 2: shadow expires → snap back to coldstore-cross.
       s = cycleAllBuffs(s)
-      expect(s.players['p1']!.zone).toBe('mid-river')
+      expect(s.players['p1']!.zone).toBe('coldstore-cross')
       expect(hasBuff(s.players['p1']!, 'nextHopShadow')).toBe(false)
 
       const ev = s.events.find((e) => e.type === 'teleport_complete')
       expect(ev).toBeDefined()
-      expect(ev!.payload['destination']).toBe('mid-river')
+      expect(ev!.payload['destination']).toBe('coldstore-cross')
       expect(ev!.payload['source']).toBe('next_hop')
     })
 
     it('does not fire a teleport if the caster never left the marked zone', () => {
-      const player = makePlayer({ zone: 'mid-river', level: 1 })
+      const player = makePlayer({ zone: 'coldstore-cross', level: 1 })
       const state = makeState([player])
       let s = Effect.runSync(resolveAbility(state, 'p1', 'e')).state
 
       s = cycleAllBuffs(s) // cyclesRemaining 2 → 1
       s = cycleAllBuffs(s) // expires; destination === zone, so no teleport
 
-      expect(s.players['p1']!.zone).toBe('mid-river')
+      expect(s.players['p1']!.zone).toBe('coldstore-cross')
       expect(s.events.find((e) => e.type === 'teleport_complete')).toBeUndefined()
     })
   })
@@ -401,7 +401,7 @@ describe('Traceroute Hero', () => {
     it('applies revealed debuff to all enemy players', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const enemy1 = makeEnemy()
-      const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2', zone: 'top-river' })
+      const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2', zone: 'seawall-cross' })
       const state = makeState([player, enemy1, enemy2])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
@@ -414,7 +414,7 @@ describe('Traceroute Hero', () => {
 
     it('reveals enemies in different zones (global)', () => {
       const player = makePlayer({ level: 6, bw: 500 })
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
@@ -476,7 +476,7 @@ describe('Traceroute Hero', () => {
       const updated = resolvePassive(state, 'p1', {
         cycle: 10,
         type: 'move',
-        payload: { playerId: 'p1', from: 'mid-t1-chaff', to: 'mid-river' },
+        payload: { playerId: 'p1', from: 'coldstore-t1-chaff', to: 'coldstore-cross' },
       })
 
       expect(getBuffStacks(updated.players['p1']!, 'hopCount')).toBe(1)
@@ -495,7 +495,7 @@ describe('Traceroute Hero', () => {
       state = resolvePassive(state, 'p1', {
         cycle: 10,
         type: 'move',
-        payload: { playerId: 'p1', from: 'mid-t1-chaff', to: 'mid-river' },
+        payload: { playerId: 'p1', from: 'coldstore-t1-chaff', to: 'coldstore-cross' },
       })
 
       expect(getBuffStacks(state.players['p1']!, 'hopCount')).toBe(3)
@@ -504,7 +504,7 @@ describe('Traceroute Hero', () => {
       state = resolvePassive(state, 'p1', {
         cycle: 11,
         type: 'move',
-        payload: { playerId: 'p1', from: 'mid-river', to: 'top-river' },
+        payload: { playerId: 'p1', from: 'coldstore-cross', to: 'seawall-cross' },
       })
 
       expect(getBuffStacks(state.players['p1']!, 'hopCount')).toBe(3) // still 3
@@ -517,7 +517,7 @@ describe('Traceroute Hero', () => {
       const updated = resolvePassive(state, 'p1', {
         cycle: 10,
         type: 'move',
-        payload: { playerId: 'p1', from: 'mid-t1-chaff', to: 'mid-river' },
+        payload: { playerId: 'p1', from: 'coldstore-t1-chaff', to: 'coldstore-cross' },
       })
 
       const buff = updated.players['p1']!.buffs.find((b) => b.id === 'hopCount')
@@ -532,7 +532,7 @@ describe('Traceroute Hero', () => {
       const updated = resolvePassive(state, 'p1', {
         cycle: 10,
         type: 'move',
-        payload: { playerId: 'e1', from: 'mid-t1-chaff', to: 'mid-river' },
+        payload: { playerId: 'e1', from: 'coldstore-t1-chaff', to: 'coldstore-cross' },
       })
 
       expect(getBuffStacks(updated.players['p1']!, 'hopCount')).toBe(0)

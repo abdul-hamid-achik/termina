@@ -16,10 +16,10 @@ const { isEventVisibleToPlayer } = await import('~~/server/plugins/game-server')
 
 const state = {
   players: {
-    me: { id: 'me', team: 'chaff', zone: 'mid-river' },
-    ally: { id: 'ally', team: 'chaff', zone: 'top-river' },
-    enemy: { id: 'enemy', team: 'audit', zone: 'bot-river' },
-    enemy2: { id: 'enemy2', team: 'audit', zone: 'bot-river' },
+    me: { id: 'me', team: 'chaff', zone: 'coldstore-cross' },
+    ally: { id: 'ally', team: 'chaff', zone: 'seawall-cross' },
+    enemy: { id: 'enemy', team: 'audit', zone: 'shallows-cross' },
+    enemy2: { id: 'enemy2', team: 'audit', zone: 'shallows-cross' },
   },
 } as unknown as GameState
 
@@ -31,27 +31,39 @@ const tpCancelled = (playerId: string): GameEngineEvent =>
 describe('isEventVisibleToPlayer — teleport vision gating', () => {
   it('always shows your own and your allies teleports', () => {
     expect(
-      isEventVisibleToPlayer(tpComplete('me', 'chaff-fountain'), 'me', 'chaff', new Set(), state),
+      isEventVisibleToPlayer(tpComplete('me', 'rookery-anchor'), 'me', 'chaff', new Set(), state),
     ).toBe(true)
     expect(
-      isEventVisibleToPlayer(tpComplete('ally', 'audit-base'), 'me', 'chaff', new Set(), state),
+      isEventVisibleToPlayer(
+        tpComplete('ally', 'landing-terminal'),
+        'me',
+        'chaff',
+        new Set(),
+        state,
+      ),
     ).toBe(true)
   })
 
   it('hides an enemy teleport whose destination you cannot see (no rotation leak)', () => {
-    const ev = tpComplete('enemy', 'audit-base')
-    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['mid-river']), state)).toBe(false)
+    const ev = tpComplete('enemy', 'landing-terminal')
+    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['coldstore-cross']), state)).toBe(
+      false,
+    )
   })
 
   it('reveals an enemy teleport when you can see where they arrive', () => {
-    const ev = tpComplete('enemy', 'mid-river')
-    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['mid-river']), state)).toBe(true)
+    const ev = tpComplete('enemy', 'coldstore-cross')
+    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['coldstore-cross']), state)).toBe(
+      true,
+    )
   })
 
   it('hides an enemy teleport_cancelled unless you can see them', () => {
-    const ev = tpCancelled('enemy') // enemy is at bot-river
-    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['mid-river']), state)).toBe(false)
-    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['bot-river']), state)).toBe(true)
+    const ev = tpCancelled('enemy') // enemy is at shallows-cross
+    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['coldstore-cross']), state)).toBe(
+      false,
+    )
+    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['shallows-cross']), state)).toBe(true)
   })
 
   it('still always shows your own teleport_cancelled', () => {
@@ -80,15 +92,19 @@ const talentSelected = (playerId: string): GameEngineEvent =>
 
 describe('isEventVisibleToPlayer — enemy-info leaks', () => {
   it('hides an enemy jungle kill unless you can see the camp', () => {
-    const ev = neutralKilled('enemy', 'silt-audit-bot')
-    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['mid-river']), state)).toBe(false)
-    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['silt-audit-bot']), state)).toBe(true)
+    const ev = neutralKilled('enemy', 'silt-audit-lower')
+    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['coldstore-cross']), state)).toBe(
+      false,
+    )
+    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['silt-audit-lower']), state)).toBe(
+      true,
+    )
   })
 
   it('always shows your own / allied jungle kills (own scrip/xp + shared vision)', () => {
     expect(
       isEventVisibleToPlayer(
-        neutralKilled('me', 'silt-chaff-top'),
+        neutralKilled('me', 'silt-chaff-upper'),
         'me',
         'chaff',
         new Set(),
@@ -97,7 +113,7 @@ describe('isEventVisibleToPlayer — enemy-info leaks', () => {
     ).toBe(true)
     expect(
       isEventVisibleToPlayer(
-        neutralKilled('ally', 'silt-chaff-bot'),
+        neutralKilled('ally', 'silt-chaff-lower'),
         'me',
         'chaff',
         new Set(),
@@ -128,7 +144,7 @@ describe('isEventVisibleToPlayer — enemy-info leaks', () => {
     // Even with vision of the enemy's zone — a spike is build/level info, not a
     // sighting; it leaks only through scouting, never a broadcast.
     expect(
-      isEventVisibleToPlayer(spike('enemy'), 'me', 'chaff', new Set(['bot-river']), state),
+      isEventVisibleToPlayer(spike('enemy'), 'me', 'chaff', new Set(['shallows-cross']), state),
     ).toBe(false)
     expect(isEventVisibleToPlayer(spike('me'), 'me', 'chaff', new Set(), state)).toBe(true)
     expect(isEventVisibleToPlayer(spike('ally'), 'me', 'chaff', new Set(), state)).toBe(true)
@@ -171,8 +187,8 @@ describe('isEventVisibleToPlayer — damage/heal', () => {
       amount: 50,
       damageType: 'kinetic',
     })
-    expect(vis(e, ['mid-river'])).toBe(false)
-    expect(vis(e, ['bot-river'])).toBe(true)
+    expect(vis(e, ['coldstore-cross'])).toBe(false)
+    expect(vis(e, ['shallows-cross'])).toBe(true)
   })
 })
 
@@ -182,7 +198,7 @@ describe('isEventVisibleToPlayer — economy is team-private', () => {
       expect(vis(ev(tag, { playerId: 'me' }))).toBe(true)
       expect(vis(ev(tag, { playerId: 'ally' }))).toBe(true)
       expect(vis(ev(tag, { playerId: 'enemy' }))).toBe(false) // even with vision — economy is private
-      expect(vis(ev(tag, { playerId: 'enemy' }), ['bot-river'])).toBe(false)
+      expect(vis(ev(tag, { playerId: 'enemy' }), ['shallows-cross'])).toBe(false)
     }
   })
 })
@@ -192,10 +208,14 @@ describe('isEventVisibleToPlayer — ability / ward / cache', () => {
     expect(vis(ev('ability_used', { playerId: 'me', abilityId: 'q', cooldown: 5 }))).toBe(true)
     expect(vis(ev('ability_used', { playerId: 'ally', abilityId: 'q', cooldown: 5 }))).toBe(true)
     expect(
-      vis(ev('ability_used', { playerId: 'enemy', abilityId: 'q', cooldown: 5 }), ['mid-river']),
+      vis(ev('ability_used', { playerId: 'enemy', abilityId: 'q', cooldown: 5 }), [
+        'coldstore-cross',
+      ]),
     ).toBe(false)
     expect(
-      vis(ev('ability_used', { playerId: 'enemy', abilityId: 'q', cooldown: 5 }), ['bot-river']),
+      vis(ev('ability_used', { playerId: 'enemy', abilityId: 'q', cooldown: 5 }), [
+        'shallows-cross',
+      ]),
     ).toBe(true)
   })
   it('ward_placed: own/allied-team always, enemy only when the ward zone is visible', () => {
@@ -203,7 +223,7 @@ describe('isEventVisibleToPlayer — ability / ward / cache', () => {
       vis(
         ev('ward_placed', {
           playerId: 'ally',
-          zone: 'cache-top',
+          zone: 'cache-seawall',
           team: 'chaff',
           wardType: 'camtap',
         }),
@@ -213,33 +233,33 @@ describe('isEventVisibleToPlayer — ability / ward / cache', () => {
       vis(
         ev('ward_placed', {
           playerId: 'enemy',
-          zone: 'cache-bot',
+          zone: 'cache-shallows',
           team: 'audit',
           wardType: 'camtap',
         }),
-        ['cache-top'],
+        ['cache-seawall'],
       ),
     ).toBe(false)
     expect(
       vis(
         ev('ward_placed', {
           playerId: 'enemy',
-          zone: 'cache-bot',
+          zone: 'cache-shallows',
           team: 'audit',
           wardType: 'camtap',
         }),
-        ['cache-bot'],
+        ['cache-shallows'],
       ),
     ).toBe(true)
   })
   it('cache_picked: own always, otherwise only when the cache zone is visible', () => {
-    expect(vis(ev('cache_picked', { playerId: 'me', zone: 'cache-top' }))).toBe(true)
-    expect(vis(ev('cache_picked', { playerId: 'enemy', zone: 'cache-bot' }), ['cache-top'])).toBe(
-      false,
-    )
-    expect(vis(ev('cache_picked', { playerId: 'enemy', zone: 'cache-bot' }), ['cache-bot'])).toBe(
-      true,
-    )
+    expect(vis(ev('cache_picked', { playerId: 'me', zone: 'cache-seawall' }))).toBe(true)
+    expect(
+      vis(ev('cache_picked', { playerId: 'enemy', zone: 'cache-shallows' }), ['cache-seawall']),
+    ).toBe(false)
+    expect(
+      vis(ev('cache_picked', { playerId: 'enemy', zone: 'cache-shallows' }), ['cache-shallows']),
+    ).toBe(true)
   })
 })
 
@@ -271,7 +291,13 @@ describe('status_applied obeys the same fog rule as damage', () => {
 
   it('shows an enemy-on-enemy disable in a zone I can see', () => {
     expect(
-      isEventVisibleToPlayer(cc('enemy', 'enemy2'), 'me', 'chaff', new Set(['bot-river']), state),
+      isEventVisibleToPlayer(
+        cc('enemy', 'enemy2'),
+        'me',
+        'chaff',
+        new Set(['shallows-cross']),
+        state,
+      ),
     ).toBe(true)
   })
 })

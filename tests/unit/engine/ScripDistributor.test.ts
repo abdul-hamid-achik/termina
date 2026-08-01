@@ -33,7 +33,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-chaff',
+    zone: 'coldstore-t1-chaff',
     integ: 500,
     maxInteg: 500,
     bw: 200,
@@ -347,7 +347,7 @@ describe('ScripDistributor', () => {
         },
       })
 
-      const result = awardIceKill(state, 'mid-t1-audit', ['p1', 'p2'])
+      const result = awardIceKill(state, 'coldstore-t1-audit', ['p1', 'p2'])
       const goldEach = Math.floor(ICE_SCRIP / 2)
       expect(result.players['p1']!.scrip).toBe(100 + goldEach)
       expect(result.players['p2']!.scrip).toBe(200 + goldEach)
@@ -360,7 +360,7 @@ describe('ScripDistributor', () => {
         },
       })
 
-      const result = awardIceKill(state, 'mid-t1-audit', ['p1'])
+      const result = awardIceKill(state, 'coldstore-t1-audit', ['p1'])
       expect(result.players['p1']!.scrip).toBe(100 + ICE_SCRIP)
     })
 
@@ -371,7 +371,7 @@ describe('ScripDistributor', () => {
         },
       })
 
-      const result = awardIceKill(state, 'mid-t1-audit', [])
+      const result = awardIceKill(state, 'coldstore-t1-audit', [])
       expect(result).toEqual(state)
     })
 
@@ -384,7 +384,7 @@ describe('ScripDistributor', () => {
         },
       })
 
-      const result = awardIceKill(state, 'mid-t1-audit', ['p1', 'p2', 'p3'])
+      const result = awardIceKill(state, 'coldstore-t1-audit', ['p1', 'p2', 'p3'])
       const goldEach = Math.floor(ICE_SCRIP / 3)
       expect(result.players['p1']!.scrip).toBe(goldEach)
       expect(result.players['p2']!.scrip).toBe(goldEach)

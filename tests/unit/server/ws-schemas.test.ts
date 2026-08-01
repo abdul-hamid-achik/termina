@@ -106,7 +106,7 @@ describe('targetRefSchema (via commandSchema attack)', () => {
 
   describe('zone', () => {
     it('accepts a zone target', () => {
-      ok(commandSchema, attack({ kind: 'zone', zone: 'river' }))
+      ok(commandSchema, attack({ kind: 'zone', zone: 'cross' }))
     })
     it('rejects missing zone field', () => {
       bad(commandSchema, attack({ kind: 'zone' }))
@@ -225,7 +225,7 @@ describe('commandSchema', () => {
 
   describe('ward', () => {
     it('accepts a valid ward placement', () => {
-      ok(commandSchema, { type: 'ward', zone: 'river' })
+      ok(commandSchema, { type: 'ward', zone: 'cross' })
     })
     it('rejects empty or oversized zone', () => {
       bad(commandSchema, { type: 'ward', zone: '' })
@@ -345,11 +345,11 @@ describe('commandSchema', () => {
 
   describe('discriminator behaviour', () => {
     it('rejects unknown command types', () => {
-      bad(commandSchema, { type: 'teleport', zone: 'mid' })
+      bad(commandSchema, { type: 'teleport', zone: 'coldstore' })
       bad(commandSchema, { type: 'hack' })
     })
     it('rejects missing type', () => {
-      bad(commandSchema, { zone: 'mid' })
+      bad(commandSchema, { zone: 'coldstore' })
     })
     it('rejects non-object input', () => {
       bad(commandSchema, 'move')
@@ -359,10 +359,14 @@ describe('commandSchema', () => {
       bad(commandSchema, ['move'])
     })
     it('strips unrecognized extra fields instead of keeping them', () => {
-      const result = commandSchema.safeParse({ type: 'move', zone: 'mid', exploit: 'payload' })
+      const result = commandSchema.safeParse({
+        type: 'move',
+        zone: 'coldstore',
+        exploit: 'payload',
+      })
       expect(result.success).toBe(true)
       if (result.success) {
-        expect(result.data).toEqual({ type: 'move', zone: 'mid' })
+        expect(result.data).toEqual({ type: 'move', zone: 'coldstore' })
         expect('exploit' in result.data).toBe(false)
       }
     })
@@ -372,7 +376,7 @@ describe('commandSchema', () => {
 describe('clientMessageSchema', () => {
   describe('action', () => {
     it('accepts a valid wrapped command', () => {
-      ok(clientMessageSchema, { type: 'action', command: { type: 'move', zone: 'mid' } })
+      ok(clientMessageSchema, { type: 'action', command: { type: 'move', zone: 'coldstore' } })
       ok(clientMessageSchema, {
         type: 'action',
         command: { type: 'attack', target: { kind: 'terminal' } },
@@ -414,7 +418,7 @@ describe('clientMessageSchema', () => {
 
   describe('ping_map', () => {
     it('accepts a valid zone ping', () => {
-      ok(clientMessageSchema, { type: 'ping_map', zone: 'river' })
+      ok(clientMessageSchema, { type: 'ping_map', zone: 'cross' })
       ok(clientMessageSchema, { type: 'ping_map', zone: str(64) })
     })
     it('rejects empty or oversized zones', () => {
@@ -530,7 +534,7 @@ describe('clientMessageSchema', () => {
       bad(clientMessageSchema, { type: 'full_state', cycle: 1, state: {} })
     })
     it('rejects missing type', () => {
-      bad(clientMessageSchema, { command: { type: 'move', zone: 'mid' } })
+      bad(clientMessageSchema, { command: { type: 'move', zone: 'coldstore' } })
       bad(clientMessageSchema, {})
     })
     it('rejects non-object payloads', () => {

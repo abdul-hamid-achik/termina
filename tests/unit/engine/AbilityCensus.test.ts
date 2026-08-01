@@ -21,8 +21,8 @@ import type { TargetRef } from '~~/shared/types/commands'
 import { resolveAbility } from '~~/server/game/heroes'
 import { HEROES } from '~~/shared/constants/heroes'
 
-const ZONE = 'mid-river'
-const ADJ = 'mid-t1-chaff'
+const ZONE = 'coldstore-cross'
+const ADJ = 'coldstore-t1-chaff'
 
 function mkPlayer(
   id: string,
@@ -77,7 +77,7 @@ function baseState(heroId: string): GameState {
   const players: Record<string, PlayerState> = {}
   for (const p of [caster, efull, elow, eadj, ally]) players[p.id] = p
   const zones: GameState['zones'] = {}
-  for (const z of [ZONE, ADJ, 'mid-t1-audit', 'top-river', 'bot-river']) {
+  for (const z of [ZONE, ADJ, 'coldstore-t1-audit', 'seawall-cross', 'shallows-cross']) {
     zones[z] = { id: z, wards: [] }
   }
   return {

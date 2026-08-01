@@ -49,18 +49,18 @@ describe('same-tick combos', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          zone: 'mid-t1-chaff',
+          zone: 'coldstore-t1-chaff',
           items: ['jump_shunt', null, null, null, null, null],
         },
-        [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-river' },
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'coldstore-cross' },
       },
     }))
 
-    game.submit({ type: 'use', item: 'jump_shunt', target: 'mid-river' })
+    game.submit({ type: 'use', item: 'jump_shunt', target: 'coldstore-cross' })
     game.attackHero(ENEMY)
     await game.tick()
 
-    expect((await game.me()).zone).toBe('mid-river')
+    expect((await game.me()).zone).toBe('coldstore-cross')
     expect(
       game.lastEvents.some(
         (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,

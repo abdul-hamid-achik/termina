@@ -18,23 +18,24 @@ describe('standing attack orders', () => {
     await game.patch((s) => ({
       ...s,
       cycle: 60,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-t1-audit' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-t1-audit' } },
     }))
 
     const iceHits = () =>
       game.lastEvents.filter(
-        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === 'ice_mid-t1-audit',
+        (e) =>
+          e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === 'ice_coldstore-t1-audit',
       ).length
 
-    game.submit({ type: 'attack', target: { kind: 'ice', zone: 'mid-t1-audit' } })
+    game.submit({ type: 'attack', target: { kind: 'ice', zone: 'coldstore-t1-audit' } })
     await game.tick()
     expect(iceHits()).toBe(1)
-    expect((await game.me()).attackTarget).toEqual({ kind: 'ice', zone: 'mid-t1-audit' })
+    expect((await game.me()).attackTarget).toEqual({ kind: 'ice', zone: 'coldstore-t1-audit' })
 
     // Nothing submitted this cycle — the order carries itself.
     await game.tick()
     expect(iceHits()).toBe(1)
-    expect((await game.me()).attackTarget).toEqual({ kind: 'ice', zone: 'mid-t1-audit' })
+    expect((await game.me()).attackTarget).toEqual({ kind: 'ice', zone: 'coldstore-t1-audit' })
   })
 
   it('last-hitting stays manual — a wave attack sets no standing order', async () => {
@@ -45,7 +46,7 @@ describe('standing attack orders', () => {
         {
           id: 'creep_hold_1',
           team: 'audit' as const,
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           integ: 500,
           maxInteg: 500,
           type: 'line' as const,
@@ -70,7 +71,7 @@ describe('standing attack orders', () => {
     await game.tick()
     expect((await game.me()).attackTarget).toEqual({ kind: 'hero', name: ENEMY })
 
-    game.submit({ type: 'move', zone: 'mid-t1-chaff' })
+    game.submit({ type: 'move', zone: 'coldstore-t1-chaff' })
     await game.tick()
     expect((await game.me()).attackTarget ?? null).toBeNull()
   })
@@ -84,7 +85,7 @@ describe('standing attack orders', () => {
 
     // The enemy walks out. The re-swing is an order the player typed a tick ago,
     // so its failure must not surface as a rejection they have to read.
-    game.submit({ type: 'move', zone: 'mid-t1-audit' }, ENEMY)
+    game.submit({ type: 'move', zone: 'coldstore-t1-audit' }, ENEMY)
     await game.tick()
 
     expect((await game.me()).attackTarget ?? null).toBeNull()
@@ -112,7 +113,7 @@ describe('standing attack orders', () => {
           ...s.players[HUMAN]!,
           buffs: [{ id: 'stun', stacks: 1, cyclesRemaining: 3, source: ENEMY }],
         },
-        [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t1-audit' },
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'coldstore-t1-audit' },
       },
     }))
 

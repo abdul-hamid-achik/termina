@@ -1,10 +1,10 @@
-export type ZoneType = 'base' | 'fountain' | 'lane' | 'silt' | 'river' | 'objective'
+export type ZoneType = 'base' | 'anchor' | 'route' | 'silt' | 'cross' | 'objective'
 
 /** Ice tier (1 = outermost, 3 = innermost, 4 = base/sweep). Undefined = no ice. */
 export type IceTier = 1 | 2 | 3 | 4
 
 /** Lane identifier for ice-bearing zones. Undefined = non-lane zone. */
-export type Lane = 'top' | 'mid' | 'bot'
+export type Lane = 'seawall' | 'coldstore' | 'shallows'
 
 export interface Zone {
   id: string

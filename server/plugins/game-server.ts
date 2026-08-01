@@ -906,10 +906,10 @@ export default defineNitroPlugin(async (nitroApp) => {
           difficulty: botDifficultyForRoster(gameData.players),
         }
         if (mapId === ONE_LANE_MAP_ID) {
-          botOpts.forceLane = 'mid'
+          botOpts.forceLane = 'coldstore'
         } else if (mapId === TWO_LANE_MAP_ID) {
           // 3v3 two-lane map: top + mid only, no bot lane to path into.
-          botOpts.availableLanes = ['top', 'mid']
+          botOpts.availableLanes = ['seawall', 'coldstore']
         }
         registerBots(
           gameId,
@@ -1034,7 +1034,7 @@ export default defineNitroPlugin(async (nitroApp) => {
       {
         // On a subset map the role lanes (top/bot/jungle) don't exist; pin bots to
         // mid so their global-graph pathing can't walk them off the map.
-        forceLane: opts.mapId === 'one_lane' ? 'mid' : undefined,
+        forceLane: opts.mapId === 'one_lane' ? 'coldstore' : undefined,
         // Tutorial bots play gently by default — 'easy' lowers their cast rate and
         // last-hit accuracy, makes them retreat earlier and slower (reactionDelay),
         // and drops cache/silt/threat awareness — so a new player isn't punished

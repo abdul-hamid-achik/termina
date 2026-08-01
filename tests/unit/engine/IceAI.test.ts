@@ -14,7 +14,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-chaff',
+    zone: 'coldstore-t1-chaff',
     integ: 500,
     maxInteg: 500,
     bw: 200,
@@ -43,7 +43,7 @@ function makeWave(overrides: Partial<WaveUnitState> = {}): WaveUnitState {
   return {
     id: 'c1',
     team: 'chaff',
-    zone: 'mid-t1-chaff',
+    zone: 'coldstore-t1-chaff',
     integ: 400,
     type: 'line',
     ...overrides,
@@ -75,7 +75,7 @@ describe('IceAI', () => {
       const state = makeGameState({
         ice,
         players: {
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff' }),
+          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'coldstore-t1-chaff' }),
         },
       })
 
@@ -86,7 +86,7 @@ describe('IceAI', () => {
     it('should not generate actions when no enemies in ice zone', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-t1-chaff' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-t1-chaff' }),
         },
       })
 
@@ -98,12 +98,12 @@ describe('IceAI', () => {
     it('should target enemy heroes in ice zone', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff' }),
+          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'coldstore-t1-chaff' }),
         },
       })
 
       const actions = runIceAI(state)
-      const midT1Action = actions.find((a) => a.iceZone === 'mid-t1-chaff')
+      const midT1Action = actions.find((a) => a.iceZone === 'coldstore-t1-chaff')
       expect(midT1Action).toBeDefined()
       expect(midT1Action!.targetType).toBe('hero')
       expect(midT1Action!.targetId).toBe('p1')
@@ -112,11 +112,11 @@ describe('IceAI', () => {
 
     it('should target enemy waves in ice zone', () => {
       const state = makeGameState({
-        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'coldstore-t1-chaff' })],
       })
 
       const actions = runIceAI(state)
-      const midT1Action = actions.find((a) => a.iceZone === 'mid-t1-chaff')
+      const midT1Action = actions.find((a) => a.iceZone === 'coldstore-t1-chaff')
       expect(midT1Action).toBeDefined()
       expect(midT1Action!.targetType).toBe('wave')
       expect(midT1Action!.targetId).toBe('c1')
@@ -125,13 +125,13 @@ describe('IceAI', () => {
     it('should prioritize waves over a passive hero (MOBA aggro convention)', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff' }),
+          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'coldstore-t1-chaff' }),
         },
-        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'coldstore-t1-chaff' })],
       })
 
       const actions = runIceAI(state)
-      const midT1Action = actions.find((a) => a.iceZone === 'mid-t1-chaff')
+      const midT1Action = actions.find((a) => a.iceZone === 'coldstore-t1-chaff')
       expect(midT1Action!.targetType).toBe('wave')
       expect(midT1Action!.targetId).toBe('c1')
     })
@@ -139,22 +139,22 @@ describe('IceAI', () => {
     it('should prioritize a hero attacking an allied hero above waves', () => {
       const state = makeGameState({
         players: {
-          ally: makePlayer({ id: 'ally', team: 'chaff', zone: 'mid-t1-chaff' }),
+          ally: makePlayer({ id: 'ally', team: 'chaff', zone: 'coldstore-t1-chaff' }),
           attacker: makePlayer({
             id: 'attacker',
             team: 'audit',
-            zone: 'mid-t1-chaff',
+            zone: 'coldstore-t1-chaff',
             name: 'Attacker',
           }),
         },
-        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'coldstore-t1-chaff' })],
       })
 
       const heroAttackers = new Map<string, string>()
       heroAttackers.set('attacker', 'ally')
 
       const actions = runIceAI(state, heroAttackers)
-      const midT1Action = actions.find((a) => a.iceZone === 'mid-t1-chaff')
+      const midT1Action = actions.find((a) => a.iceZone === 'coldstore-t1-chaff')
       expect(midT1Action!.targetType).toBe('hero')
       expect(midT1Action!.targetId).toBe('attacker')
     })
@@ -165,11 +165,11 @@ describe('IceAI', () => {
           attacker: makePlayer({
             id: 'attacker',
             team: 'audit',
-            zone: 'mid-t1-chaff',
+            zone: 'coldstore-t1-chaff',
             name: 'Attacker',
           }),
         },
-        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'coldstore-t1-chaff' })],
       })
 
       // Hero→ice damage events carry targetId `ice_${zone}`
@@ -178,14 +178,14 @@ describe('IceAI', () => {
           _tag: 'damage',
           cycle: 1,
           sourceId: 'attacker',
-          targetId: 'ice_mid-t1-chaff',
+          targetId: 'ice_coldstore-t1-chaff',
           amount: 60,
           damageType: 'kinetic',
         },
       ]
 
       const actions = runIceAI(state, undefined, priorEvents)
-      const midT1Action = actions.find((a) => a.iceZone === 'mid-t1-chaff')
+      const midT1Action = actions.find((a) => a.iceZone === 'coldstore-t1-chaff')
       expect(midT1Action!.targetType).toBe('hero')
       expect(midT1Action!.targetId).toBe('attacker')
     })
@@ -196,11 +196,11 @@ describe('IceAI', () => {
           attacker: makePlayer({
             id: 'attacker',
             team: 'audit',
-            zone: 'mid-t1-chaff',
+            zone: 'coldstore-t1-chaff',
             name: 'Attacker',
           }),
         },
-        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'coldstore-t1-chaff' })],
       })
 
       const priorEvents: GameEngineEvent[] = [
@@ -208,14 +208,14 @@ describe('IceAI', () => {
           _tag: 'damage',
           cycle: 1,
           sourceId: 'attacker',
-          targetId: 'ice_top-t1-chaff',
+          targetId: 'ice_seawall-t1-chaff',
           amount: 60,
           damageType: 'kinetic',
         },
       ]
 
       const actions = runIceAI(state, undefined, priorEvents)
-      const midT1Action = actions.find((a) => a.iceZone === 'mid-t1-chaff')
+      const midT1Action = actions.find((a) => a.iceZone === 'coldstore-t1-chaff')
       // Different ice attacked — waves still tank this one
       expect(midT1Action!.targetType).toBe('wave')
     })
@@ -223,17 +223,17 @@ describe('IceAI', () => {
     it('should prioritize hero attacking allied hero in ice zone (priority 1)', () => {
       const state = makeGameState({
         players: {
-          ally: makePlayer({ id: 'ally', team: 'chaff', zone: 'mid-t1-chaff' }),
+          ally: makePlayer({ id: 'ally', team: 'chaff', zone: 'coldstore-t1-chaff' }),
           attacker: makePlayer({
             id: 'attacker',
             team: 'audit',
-            zone: 'mid-t1-chaff',
+            zone: 'coldstore-t1-chaff',
             name: 'Attacker',
           }),
           bystander: makePlayer({
             id: 'bystander',
             team: 'audit',
-            zone: 'mid-t1-chaff',
+            zone: 'coldstore-t1-chaff',
             name: 'Bystander',
           }),
         },
@@ -244,7 +244,7 @@ describe('IceAI', () => {
       heroAttackers.set('attacker', 'ally')
 
       const actions = runIceAI(state, heroAttackers)
-      const midT1Action = actions.find((a) => a.iceZone === 'mid-t1-chaff')
+      const midT1Action = actions.find((a) => a.iceZone === 'coldstore-t1-chaff')
       expect(midT1Action!.targetType).toBe('hero')
       expect(midT1Action!.targetId).toBe('attacker')
     })
@@ -252,39 +252,45 @@ describe('IceAI', () => {
     it('should not target dead enemy heroes', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', alive: false, integ: 0 }),
+          p1: makePlayer({
+            id: 'p1',
+            team: 'audit',
+            zone: 'coldstore-t1-chaff',
+            alive: false,
+            integ: 0,
+          }),
         },
       })
 
       const actions = runIceAI(state)
-      const midT1Action = actions.find((a) => a.iceZone === 'mid-t1-chaff')
+      const midT1Action = actions.find((a) => a.iceZone === 'coldstore-t1-chaff')
       expect(midT1Action).toBeUndefined()
     })
 
     it('should not target dead waves', () => {
       const state = makeGameState({
-        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', integ: 0 })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'coldstore-t1-chaff', integ: 0 })],
       })
 
       const actions = runIceAI(state)
-      const midT1Action = actions.find((a) => a.iceZone === 'mid-t1-chaff')
+      const midT1Action = actions.find((a) => a.iceZone === 'coldstore-t1-chaff')
       expect(midT1Action).toBeUndefined()
     })
 
     it('should generate actions for multiple ice simultaneously', () => {
       const state = makeGameState({
         waves: [
-          makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' }),
-          makeWave({ id: 'c2', team: 'audit', zone: 'top-t1-chaff' }),
-          makeWave({ id: 'c3', team: 'chaff', zone: 'bot-t1-audit' }),
+          makeWave({ id: 'c1', team: 'audit', zone: 'coldstore-t1-chaff' }),
+          makeWave({ id: 'c2', team: 'audit', zone: 'seawall-t1-chaff' }),
+          makeWave({ id: 'c3', team: 'chaff', zone: 'shallows-t1-audit' }),
         ],
       })
 
       const actions = runIceAI(state)
       // Mid T1 rad should target c1, Top T1 rad should target c2, Bot T1 audit should target c3
-      expect(actions.find((a) => a.iceZone === 'mid-t1-chaff')!.targetId).toBe('c1')
-      expect(actions.find((a) => a.iceZone === 'top-t1-chaff')!.targetId).toBe('c2')
-      expect(actions.find((a) => a.iceZone === 'bot-t1-audit')!.targetId).toBe('c3')
+      expect(actions.find((a) => a.iceZone === 'coldstore-t1-chaff')!.targetId).toBe('c1')
+      expect(actions.find((a) => a.iceZone === 'seawall-t1-chaff')!.targetId).toBe('c2')
+      expect(actions.find((a) => a.iceZone === 'shallows-t1-audit')!.targetId).toBe('c3')
     })
 
     it('should fall back to hero when hero attacker targets non-ally', () => {
@@ -293,7 +299,7 @@ describe('IceAI', () => {
           attacker: makePlayer({
             id: 'attacker',
             team: 'audit',
-            zone: 'mid-t1-chaff',
+            zone: 'coldstore-t1-chaff',
             name: 'Attacker',
           }),
         },
@@ -304,7 +310,7 @@ describe('IceAI', () => {
       heroAttackers.set('attacker', 'someone-else')
 
       const actions = runIceAI(state, heroAttackers)
-      const midT1Action = actions.find((a) => a.iceZone === 'mid-t1-chaff')
+      const midT1Action = actions.find((a) => a.iceZone === 'coldstore-t1-chaff')
       // Should still target the enemy hero (priority 2 fallback)
       expect(midT1Action!.targetType).toBe('hero')
       expect(midT1Action!.targetId).toBe('attacker')
@@ -316,7 +322,7 @@ describe('IceAI', () => {
       const player = makePlayer({
         id: 'p1',
         team: 'audit',
-        zone: 'mid-t1-chaff',
+        zone: 'coldstore-t1-chaff',
         integ: 500,
         plate: 3,
       })
@@ -325,7 +331,7 @@ describe('IceAI', () => {
       })
 
       const actions: IceAction[] = [
-        { iceZone: 'mid-t1-chaff', targetType: 'hero', targetId: 'p1', damage: ICE_ATTACK },
+        { iceZone: 'coldstore-t1-chaff', targetType: 'hero', targetId: 'p1', damage: ICE_ATTACK },
       ]
 
       const result = applyIceActions(state, actions).state
@@ -343,14 +349,14 @@ describe('IceAI', () => {
             p1: makePlayer({
               id: 'p1',
               team: 'audit',
-              zone: 'mid-t1-chaff',
+              zone: 'coldstore-t1-chaff',
               integ: 500,
               buffs: [{ id, stacks: 1, cyclesRemaining: 2, source: 'x' }],
             }),
           },
         })
         const actions: IceAction[] = [
-          { iceZone: 'mid-t1-chaff', targetType: 'hero', targetId: 'p1', damage: ICE_ATTACK },
+          { iceZone: 'coldstore-t1-chaff', targetType: 'hero', targetId: 'p1', damage: ICE_ATTACK },
         ]
         const result = applyIceActions(state, actions).state
         expect(result.players['p1']!.integ).toBe(500) // unscathed
@@ -358,11 +364,11 @@ describe('IceAI', () => {
     })
 
     it('emits a damage event naming the ice that fired', () => {
-      const player = makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', integ: 500 })
+      const player = makePlayer({ id: 'p1', team: 'audit', zone: 'coldstore-t1-chaff', integ: 500 })
       const state = makeGameState({ cycle: 7, players: { p1: player } })
 
       const actions: IceAction[] = [
-        { iceZone: 'mid-t1-chaff', targetType: 'hero', targetId: 'p1', damage: ICE_ATTACK },
+        { iceZone: 'coldstore-t1-chaff', targetType: 'hero', targetId: 'p1', damage: ICE_ATTACK },
       ]
 
       const { state: after, events } = applyIceActions(state, actions)
@@ -372,7 +378,7 @@ describe('IceAI', () => {
           _tag: 'damage',
           cycle: 7,
           // Same id convention selectIceTarget reads for hero→ice damage.
-          sourceId: 'ice_mid-t1-chaff',
+          sourceId: 'ice_coldstore-t1-chaff',
           targetId: 'p1',
           amount: expectedDamage,
           damageType: 'kinetic',
@@ -390,14 +396,14 @@ describe('IceAI', () => {
           p1: makePlayer({
             id: 'p1',
             team: 'audit',
-            zone: 'mid-t1-chaff',
+            zone: 'coldstore-t1-chaff',
             integ: 500,
             buffs: [{ id: 'shield', stacks: 999, cyclesRemaining: 5, source: 'x' }],
           }),
         },
       })
       const actions: IceAction[] = [
-        { iceZone: 'mid-t1-chaff', targetType: 'hero', targetId: 'p1', damage: ICE_ATTACK },
+        { iceZone: 'coldstore-t1-chaff', targetType: 'hero', targetId: 'p1', damage: ICE_ATTACK },
       ]
 
       const result = applyIceActions(state, actions)
@@ -407,10 +413,10 @@ describe('IceAI', () => {
 
     it('emits no damage event for a wave shot — only hero damage is narrated', () => {
       const state = makeGameState({
-        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', integ: 400 })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'coldstore-t1-chaff', integ: 400 })],
       })
       const actions: IceAction[] = [
-        { iceZone: 'mid-t1-chaff', targetType: 'wave', targetId: 'c1', damage: ICE_ATTACK },
+        { iceZone: 'coldstore-t1-chaff', targetType: 'wave', targetId: 'c1', damage: ICE_ATTACK },
       ]
 
       expect(applyIceActions(state, actions).events).toEqual([])
@@ -419,12 +425,12 @@ describe('IceAI', () => {
     it('should kill heroes when INTEG drops to 0', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', integ: 50 }),
+          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'coldstore-t1-chaff', integ: 50 }),
         },
       })
 
       const actions: IceAction[] = [
-        { iceZone: 'mid-t1-chaff', targetType: 'hero', targetId: 'p1', damage: ICE_ATTACK },
+        { iceZone: 'coldstore-t1-chaff', targetType: 'hero', targetId: 'p1', damage: ICE_ATTACK },
       ]
 
       const result = applyIceActions(state, actions).state
@@ -434,11 +440,11 @@ describe('IceAI', () => {
 
     it('should apply damage to waves', () => {
       const state = makeGameState({
-        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', integ: 400 })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'coldstore-t1-chaff', integ: 400 })],
       })
 
       const actions: IceAction[] = [
-        { iceZone: 'mid-t1-chaff', targetType: 'wave', targetId: 'c1', damage: ICE_ATTACK },
+        { iceZone: 'coldstore-t1-chaff', targetType: 'wave', targetId: 'c1', damage: ICE_ATTACK },
       ]
 
       const result = applyIceActions(state, actions).state
@@ -448,11 +454,11 @@ describe('IceAI', () => {
 
     it('should remove dead waves after damage', () => {
       const state = makeGameState({
-        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', integ: 50 })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'coldstore-t1-chaff', integ: 50 })],
       })
 
       const actions: IceAction[] = [
-        { iceZone: 'mid-t1-chaff', targetType: 'wave', targetId: 'c1', damage: ICE_ATTACK },
+        { iceZone: 'coldstore-t1-chaff', targetType: 'wave', targetId: 'c1', damage: ICE_ATTACK },
       ]
 
       const result = applyIceActions(state, actions).state
@@ -462,12 +468,12 @@ describe('IceAI', () => {
     it('should clamp hero INTEG to 0 (not negative)', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', integ: 1 }),
+          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'coldstore-t1-chaff', integ: 1 }),
         },
       })
 
       const actions: IceAction[] = [
-        { iceZone: 'mid-t1-chaff', targetType: 'hero', targetId: 'p1', damage: ICE_ATTACK },
+        { iceZone: 'coldstore-t1-chaff', targetType: 'hero', targetId: 'p1', damage: ICE_ATTACK },
       ]
 
       const result = applyIceActions(state, actions).state
@@ -477,14 +483,14 @@ describe('IceAI', () => {
     it('should handle multiple ice actions', () => {
       const state = makeGameState({
         waves: [
-          makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', integ: 400 }),
-          makeWave({ id: 'c2', team: 'chaff', zone: 'mid-t1-audit', integ: 400 }),
+          makeWave({ id: 'c1', team: 'audit', zone: 'coldstore-t1-chaff', integ: 400 }),
+          makeWave({ id: 'c2', team: 'chaff', zone: 'coldstore-t1-audit', integ: 400 }),
         ],
       })
 
       const actions: IceAction[] = [
-        { iceZone: 'mid-t1-chaff', targetType: 'wave', targetId: 'c1', damage: ICE_ATTACK },
-        { iceZone: 'mid-t1-audit', targetType: 'wave', targetId: 'c2', damage: ICE_ATTACK },
+        { iceZone: 'coldstore-t1-chaff', targetType: 'wave', targetId: 'c1', damage: ICE_ATTACK },
+        { iceZone: 'coldstore-t1-audit', targetType: 'wave', targetId: 'c2', damage: ICE_ATTACK },
       ]
 
       const result = applyIceActions(state, actions).state
@@ -497,12 +503,18 @@ describe('IceAI', () => {
     it('should not damage already dead heroes', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', integ: 0, alive: false }),
+          p1: makePlayer({
+            id: 'p1',
+            team: 'audit',
+            zone: 'coldstore-t1-chaff',
+            integ: 0,
+            alive: false,
+          }),
         },
       })
 
       const actions: IceAction[] = [
-        { iceZone: 'mid-t1-chaff', targetType: 'hero', targetId: 'p1', damage: ICE_ATTACK },
+        { iceZone: 'coldstore-t1-chaff', targetType: 'hero', targetId: 'p1', damage: ICE_ATTACK },
       ]
 
       const result = applyIceActions(state, actions).state

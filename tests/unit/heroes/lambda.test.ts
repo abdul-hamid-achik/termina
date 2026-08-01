@@ -20,7 +20,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestLambda',
     team: 'chaff',
     heroId: 'lambda',
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: 460,
     maxInteg: 460,
     bw: 400,
@@ -82,8 +82,8 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     },
     players: playerMap,
     zones: {
-      'mid-river': { id: 'mid-river', wards: [] },
-      'top-river': { id: 'top-river', wards: [] },
+      'coldstore-cross': { id: 'coldstore-cross', wards: [] },
+      'seawall-cross': { id: 'seawall-cross', wards: [] },
     },
     waves: [],
     ice: [],
@@ -222,7 +222,7 @@ describe('Lambda Hero', () => {
 
     it('fails when target is in different zone', () => {
       const player = makePlayer()
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(
@@ -244,7 +244,7 @@ describe('Lambda Hero', () => {
     })
 
     it('records the current zone in the returnMark buff destination', () => {
-      const player = makePlayer({ zone: 'mid-river' })
+      const player = makePlayer({ zone: 'coldstore-cross' })
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
@@ -252,36 +252,36 @@ describe('Lambda Hero', () => {
       const updated = result.state.players['p1']!
       const mark = updated.buffs.find((b) => b.id === 'returnMark')
       expect(mark).toBeDefined()
-      expect(mark!.destination).toBe('mid-river') // origin zone to snap back to
+      expect(mark!.destination).toBe('coldstore-cross') // origin zone to snap back to
     })
 
     it('snaps the caster back to the marked zone when Return expires (formerly dead)', () => {
-      const player = makePlayer({ zone: 'mid-river', level: 1 })
+      const player = makePlayer({ zone: 'coldstore-cross', level: 1 })
       const state = makeState([player])
       const cast = Effect.runSync(resolveAbility(state, 'p1', 'w'))
 
-      // Roam to top-river while the mark (cyclesRemaining 3) is up.
+      // Roam to seawall-cross while the mark (cyclesRemaining 3) is up.
       let s: GameState = {
         ...cast.state,
         players: {
           ...cast.state.players,
-          p1: { ...cast.state.players['p1']!, zone: 'top-river' },
+          p1: { ...cast.state.players['p1']!, zone: 'seawall-cross' },
         },
       }
 
       // Away for 2 ticks (cyclesRemaining 3 → 2 → 1) — still away, mark still up.
       for (let i = 0; i < 2; i++) s = cycleAllBuffs(s)
-      expect(s.players['p1']!.zone).toBe('top-river')
+      expect(s.players['p1']!.zone).toBe('seawall-cross')
       expect(hasBuff(s.players['p1']!, 'returnMark')).toBe(true)
 
-      // The next (3rd) tick expires it → snap back to mid-river.
+      // The next (3rd) tick expires it → snap back to coldstore-cross.
       s = cycleAllBuffs(s)
-      expect(s.players['p1']!.zone).toBe('mid-river')
+      expect(s.players['p1']!.zone).toBe('coldstore-cross')
       expect(hasBuff(s.players['p1']!, 'returnMark')).toBe(false)
 
       const ev = s.events.find((e) => e.type === 'teleport_complete')
       expect(ev).toBeDefined()
-      expect(ev!.payload['destination']).toBe('mid-river')
+      expect(ev!.payload['destination']).toBe('coldstore-cross')
       expect(ev!.payload['source']).toBe('return')
     })
 
@@ -563,7 +563,7 @@ describe('Lambda Hero', () => {
 
     it('fails when target is in different zone', () => {
       const player = makePlayer({ level: 6, bw: 500 })
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(

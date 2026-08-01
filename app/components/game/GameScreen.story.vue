@@ -47,7 +47,7 @@ function seedDead() {
     id: 'p1',
     name: 'you',
     heroId: SAMPLE_HEROES.echo,
-    zone: 'chaff-base',
+    zone: 'rookery-terminal',
     alive: false,
     integ: 0,
     respawnCycle: 252,
@@ -57,7 +57,11 @@ function seedDead() {
   store.updateFromCycle(makeCycleMessage({ cycle: 240, players }))
   store.addEvents([
     ...SAMPLE_EVENTS,
-    { cycle: 240, type: 'kill', payload: { killerId: 'e1', victimId: 'p1', zone: 'chaff-base' } },
+    {
+      cycle: 240,
+      type: 'kill',
+      payload: { killerId: 'e1', victimId: 'p1', zone: 'rookery-terminal' },
+    },
   ])
 }
 

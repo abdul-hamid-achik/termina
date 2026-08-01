@@ -243,7 +243,7 @@ export function sparkline(values: number[]): string {
 // ── helpers ─────────────────────────────────────────────────────────
 
 /** Short, human zone label — the zone's display NAME from the record
- *  ("mid-river" -> "Coldstore Crossing"), falling back to the raw id. */
+ *  ("coldstore-cross" -> "Coldstore Crossing"), falling back to the raw id. */
 export function shortZone(zoneId: string): string {
   return ZONE_MAP[zoneId]?.name ?? zoneId
 }

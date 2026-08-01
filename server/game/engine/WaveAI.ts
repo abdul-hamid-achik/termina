@@ -14,8 +14,8 @@ import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 /** The enemy base zone for a wave team — the end of every lane route. */
 const ENEMY_BASE: Record<TeamId, string> = {
-  chaff: 'audit-base',
-  audit: 'chaff-base',
+  chaff: 'landing-terminal',
+  audit: 'rookery-terminal',
 }
 
 /** Lane routes: ordered zone sequences from each base toward the enemy base. */
@@ -24,10 +24,10 @@ const LANE_ROUTES = LANE_ROUTES_CORE
 /**
  * Determine which route a wave is on, from the zone RECORD.
  *
- * This used to read the id: `=== 'chaff-base'`, `.includes('fountain')`, then
- * `startsWith('top-'|'mid-'|'bot-')`. Only route zones carry a `lane`, so bases,
- * anchors, the Silt and the Hollow fall out as null on their own — and a zone-id
- * rename can no longer strand every wave at spawn.
+ * This used to read the id — an equality check against each base, a substring
+ * test for the anchors, then a prefix test per route. Only route zones carry a
+ * `lane`, so bases, anchors, the Silt and the Hollow fall out as null on their
+ * own, and a zone-id rename can no longer strand every wave at spawn.
  */
 function getWaveLane(zone: string): string | null {
   return ZONE_MAP[zone]?.lane ?? null

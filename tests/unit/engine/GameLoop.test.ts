@@ -21,7 +21,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-chaff',
+    zone: 'coldstore-t1-chaff',
     integ: 550,
     maxInteg: 550,
     bw: 280,
@@ -57,8 +57,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
       audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
     },
     players: {
-      p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'chaff-fountain' }),
-      p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain', name: 'Player2' }),
+      p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'rookery-anchor' }),
+      p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor', name: 'Player2' }),
     },
     zones: initializeZoneStates(),
     waves: [],
@@ -101,7 +101,7 @@ describe('GameLoop', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', alive: false, integ: 0, respawnCycle: 10 }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
       const result = Effect.runSync(processCycle('game1', state))
@@ -112,14 +112,14 @@ describe('GameLoop', () => {
     it('should process submitted actions', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-t1-chaff' }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p1: makePlayer({ id: 'p1', zone: 'coldstore-t1-chaff' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
-      submitAction('game-test', 'p1', { type: 'move', zone: 'mid-river' })
+      submitAction('game-test', 'p1', { type: 'move', zone: 'coldstore-cross' })
       const result = Effect.runSync(processCycle('game-test', state))
-      expect(result.state.players['p1']!.zone).toBe('mid-river')
+      expect(result.state.players['p1']!.zone).toBe('coldstore-cross')
     })
 
     it('should spawn wave waves at wave intervals', () => {
@@ -143,13 +143,13 @@ describe('GameLoop', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'chaff-fountain',
+            zone: 'rookery-anchor',
             integ: 100,
             maxInteg: 550,
             bw: 50,
             maxBw: 280,
           }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
@@ -172,7 +172,7 @@ describe('GameLoop', () => {
             maxBw: 280,
             respawnCycle: 10,
           }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
@@ -181,7 +181,7 @@ describe('GameLoop', () => {
       const p1 = result.state.players['p1']!
       expect(p1.alive).toBe(true)
       expect(p1.integ).toBe(550) // Full INTEG (echo base INTEG)
-      expect(p1.zone).toBe('chaff-fountain')
+      expect(p1.zone).toBe('rookery-anchor')
     })
 
     it('should detect chaff win when the audit Terminal is destroyed', () => {
@@ -193,7 +193,7 @@ describe('GameLoop', () => {
         },
         players: {
           p1: makePlayer({ id: 'p1' }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
@@ -211,7 +211,7 @@ describe('GameLoop', () => {
         ice,
         players: {
           p1: makePlayer({ id: 'p1' }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
@@ -223,7 +223,7 @@ describe('GameLoop', () => {
 
     it('should mark a Terminal vulnerable when one of its T3 ice falls', () => {
       const ice = initializeIce().map((t) =>
-        t.zone === 'mid-t3-audit' ? { ...t, integ: 0, alive: false } : t,
+        t.zone === 'coldstore-t3-audit' ? { ...t, integ: 0, alive: false } : t,
       )
 
       const state = makeGameState({ ice })
@@ -234,7 +234,7 @@ describe('GameLoop', () => {
 
     it('should keep Terminals invulnerable while only T1/T2 ice are down', () => {
       const ice = initializeIce().map((t) =>
-        t.zone === 'mid-t1-audit' || t.zone === 'mid-t2-audit'
+        t.zone === 'coldstore-t1-audit' || t.zone === 'coldstore-t2-audit'
           ? { ...t, integ: 0, alive: false }
           : t,
       )
@@ -248,24 +248,24 @@ describe('GameLoop', () => {
     it('should handle only one action per player per cycle', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-t1-chaff' }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p1: makePlayer({ id: 'p1', zone: 'coldstore-t1-chaff' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
       // Submit two actions for same player — second should override
-      submitAction('game-override', 'p1', { type: 'move', zone: 'mid-t2-chaff' })
-      submitAction('game-override', 'p1', { type: 'move', zone: 'mid-river' })
+      submitAction('game-override', 'p1', { type: 'move', zone: 'coldstore-t2-chaff' })
+      submitAction('game-override', 'p1', { type: 'move', zone: 'coldstore-cross' })
 
       const result = Effect.runSync(processCycle('game-override', state))
-      expect(result.state.players['p1']!.zone).toBe('mid-river')
+      expect(result.state.players['p1']!.zone).toBe('coldstore-cross')
     })
 
     it('should set death respawn timer for killed players', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', alive: false, integ: 0, level: 1, respawnCycle: null }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
@@ -283,7 +283,7 @@ describe('GameLoop', () => {
         cycle: 5,
         players: {
           p1: makePlayer({ id: 'p1', alive: false, integ: 0, respawnCycle: 10 }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
@@ -296,13 +296,13 @@ describe('GameLoop', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'chaff-fountain',
+            zone: 'rookery-anchor',
             bw: 50,
             maxBw: 280,
             integ: 550,
             maxInteg: 550,
           }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
@@ -315,11 +315,11 @@ describe('GameLoop', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             integ: 100,
             maxInteg: 550,
           }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
@@ -334,11 +334,11 @@ describe('GameLoop', () => {
           p1: makePlayer({
             id: 'p1',
             team: 'chaff',
-            zone: 'audit-fountain',
+            zone: 'landing-anchor',
             integ: 100,
             maxInteg: 550,
           }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
@@ -351,13 +351,13 @@ describe('GameLoop', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'chaff-fountain',
+            zone: 'rookery-anchor',
             integ: 540,
             maxInteg: 550,
             bw: 275,
             maxBw: 280,
           }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
@@ -369,18 +369,18 @@ describe('GameLoop', () => {
     it('auto-paths a distant move one hop per cycle and stores the destination', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-t1-chaff' }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p1: makePlayer({ id: 'p1', zone: 'coldstore-t1-chaff' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
       // Distant zone: a valid order now — the hero walks one hop per cycle
-      submitAction('game-mixed', 'p1', { type: 'move', zone: 'bot-t1-chaff' })
+      submitAction('game-mixed', 'p1', { type: 'move', zone: 'shallows-t1-chaff' })
 
       const result = Effect.runSync(processCycle('game-mixed', state))
       const p1 = result.state.players['p1']!
-      expect(p1.zone).not.toBe('mid-t1-chaff') // took the first hop
-      expect(p1.moveTarget).toBe('bot-t1-chaff') // still walking
+      expect(p1.zone).not.toBe('coldstore-t1-chaff') // took the first hop
+      expect(p1.moveTarget).toBe('shallows-t1-chaff') // still walking
     })
 
     it('should not process actions when game is ended', () => {
@@ -391,8 +391,8 @@ describe('GameLoop', () => {
           audit: { ...terminals.audit, integ: 0, alive: false, vulnerable: true },
         },
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-t1-chaff' }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p1: makePlayer({ id: 'p1', zone: 'coldstore-t1-chaff' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
@@ -409,7 +409,7 @@ describe('GameLoop', () => {
         },
         players: {
           p1: makePlayer({ id: 'p1' }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
@@ -422,7 +422,7 @@ describe('GameLoop', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1' }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
@@ -434,7 +434,7 @@ describe('GameLoop', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', alive: false, integ: 0, respawnCycle: null }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
@@ -453,14 +453,14 @@ describe('GameLoop', () => {
             alive: false,
             integ: 0,
             bw: 0,
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             respawnCycle: null,
             // Died mid-walk: the backup revive must ALSO cancel the auto-path
             // (or the hero resumes marching into whoever just killed them).
-            moveTarget: 'audit-base',
+            moveTarget: 'landing-terminal',
             buffs: [{ id: 'backup', stacks: 1, cyclesRemaining: 999, source: 'tenant' }],
           }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
@@ -472,7 +472,7 @@ describe('GameLoop', () => {
       expect(p1.bw).toBe(280)
       expect(p1.respawnCycle).toBeNull()
       expect(p1.buffs).toEqual([])
-      expect(p1.zone).toBe('mid-river')
+      expect(p1.zone).toBe('coldstore-cross')
       expect(p1.moveTarget ?? null).toBeNull()
 
       const backupEvents = result.events.filter((e) => e._tag === 'backup_used')
@@ -483,7 +483,7 @@ describe('GameLoop', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', alive: false, integ: 0, respawnCycle: null }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
@@ -508,7 +508,7 @@ describe('GameLoop', () => {
               { id: 'regeneration', stacks: 1, cyclesRemaining: 5, source: 'cache' },
             ],
           }),
-          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor' }),
         },
       })
 
@@ -589,11 +589,11 @@ describe('GameLoop', () => {
         },
         // Keep audit T3 mid dead so vulnerability stays true after recompute
         ice: initializeIce().map((t) =>
-          t.zone === 'mid-t3-audit' ? { ...t, integ: 0, alive: false } : t,
+          t.zone === 'coldstore-t3-audit' ? { ...t, integ: 0, alive: false } : t,
         ),
         waves: [
-          { id: 'c1', team: 'chaff', zone: 'audit-base', integ: 400, type: 'line' },
-          { id: 'c2', team: 'chaff', zone: 'audit-base', integ: 250, type: 'sweep' },
+          { id: 'c1', team: 'chaff', zone: 'landing-terminal', integ: 400, type: 'line' },
+          { id: 'c2', team: 'chaff', zone: 'landing-terminal', integ: 250, type: 'sweep' },
         ],
       })
 
@@ -615,9 +615,9 @@ describe('GameLoop', () => {
           audit: { ...terminals.audit, integ: 10, vulnerable: true },
         },
         ice: initializeIce().map((t) =>
-          t.zone === 'mid-t3-audit' ? { ...t, integ: 0, alive: false } : t,
+          t.zone === 'coldstore-t3-audit' ? { ...t, integ: 0, alive: false } : t,
         ),
-        waves: [{ id: 'c1', team: 'chaff', zone: 'audit-base', integ: 400, type: 'line' }],
+        waves: [{ id: 'c1', team: 'chaff', zone: 'landing-terminal', integ: 400, type: 'line' }],
       })
 
       const result = Effect.runSync(processCycle('game-terminal-end', state))
@@ -628,7 +628,7 @@ describe('GameLoop', () => {
 
     it('waves idling in base with an invulnerable Terminal are garbage collected', () => {
       let state = makeGameState({
-        waves: [{ id: 'c1', team: 'chaff', zone: 'audit-base', integ: 400, type: 'line' }],
+        waves: [{ id: 'c1', team: 'chaff', zone: 'landing-terminal', integ: 400, type: 'line' }],
       })
 
       // Terminal is invulnerable (all ice alive), no heroes in base.
@@ -643,7 +643,7 @@ describe('GameLoop', () => {
       const waves = Array.from({ length: 30 }, (_, i) => ({
         id: `stack_${i}`,
         team: 'chaff' as const,
-        zone: 'mid-t2-chaff',
+        zone: 'coldstore-t2-chaff',
         integ: 400,
         type: 'line' as const,
       }))

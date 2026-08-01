@@ -22,7 +22,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-chaff',
+    zone: 'coldstore-t1-chaff',
     integ: 500,
     maxInteg: 500,
     bw: 200,
@@ -83,22 +83,22 @@ describe('ActionResolver', () => {
   describe('validateAction', () => {
     it('should allow moving to adjacent zone', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ zone: 'mid-t1-chaff' }) },
+        players: { p1: makePlayer({ zone: 'coldstore-t1-chaff' }) },
       })
       const error = validateAction(state, {
         playerId: 'p1',
-        command: { type: 'move', zone: 'mid-t2-chaff' },
+        command: { type: 'move', zone: 'coldstore-t2-chaff' },
       })
       expect(error).toBeNull()
     })
 
     it('should allow moving to a distant zone (auto-path walks one hop per cycle)', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ zone: 'mid-t1-chaff' }) },
+        players: { p1: makePlayer({ zone: 'coldstore-t1-chaff' }) },
       })
       const error = validateAction(state, {
         playerId: 'p1',
-        command: { type: 'move', zone: 'bot-t1-chaff' },
+        command: { type: 'move', zone: 'shallows-t1-chaff' },
       })
       expect(error).toBeNull()
     })
@@ -109,18 +109,22 @@ describe('ActionResolver', () => {
       const allZones = initializeZoneStates()
       const subset = Object.fromEntries(
         Object.entries(allZones).filter(([id]) =>
-          ['chaff-fountain', 'chaff-base', 'mid-t3-chaff', 'mid-t2-chaff', 'mid-t1-chaff'].includes(
-            id,
-          ),
+          [
+            'rookery-anchor',
+            'rookery-terminal',
+            'coldstore-t3-chaff',
+            'coldstore-t2-chaff',
+            'coldstore-t1-chaff',
+          ].includes(id),
         ),
       )
       const state = makeGameState({
         zones: subset,
-        players: { p1: makePlayer({ zone: 'mid-t1-chaff' }) },
+        players: { p1: makePlayer({ zone: 'coldstore-t1-chaff' }) },
       })
       const error = validateAction(state, {
         playerId: 'p1',
-        command: { type: 'move', zone: 'bot-t1-chaff' },
+        command: { type: 'move', zone: 'shallows-t1-chaff' },
       })
       expect(error).toBe('No path to that zone')
     })
@@ -131,7 +135,7 @@ describe('ActionResolver', () => {
       })
       const error = validateAction(state, {
         playerId: 'p1',
-        command: { type: 'move', zone: 'mid-t2-chaff' },
+        command: { type: 'move', zone: 'coldstore-t2-chaff' },
       })
       expect(error).toBe('Player is dead')
     })
@@ -140,13 +144,13 @@ describe('ActionResolver', () => {
       const cyclonedState = makeGameState({
         players: {
           p1: makePlayer({
-            zone: 'mid-t1-chaff',
+            zone: 'coldstore-t1-chaff',
             buffs: [{ id: 'cyclone', stacks: 1, cyclesRemaining: 2, source: 'stasis_shunt' }],
           }),
         },
       })
       for (const command of [
-        { type: 'move', zone: 'mid-t2-chaff' },
+        { type: 'move', zone: 'coldstore-t2-chaff' },
         { type: 'attack', target: { kind: 'hero', name: 'x' } },
         { type: 'cast', ability: 'q' },
       ] as const) {
@@ -184,13 +188,13 @@ describe('ActionResolver', () => {
             maxBw: 280,
             integ: 550,
             maxInteg: 550,
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             team: 'chaff',
           }),
           p2: makePlayer({
             id: 'p2',
             name: 'Enemy',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             team: 'audit',
             integ: 550,
             maxInteg: 550,
@@ -220,7 +224,7 @@ describe('ActionResolver', () => {
 
     it('should reject buying outside shop', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ zone: 'mid-river' }) },
+        players: { p1: makePlayer({ zone: 'coldstore-cross' }) },
       })
       const error = validateAction(state, {
         playerId: 'p1',
@@ -231,7 +235,7 @@ describe('ActionResolver', () => {
 
     it('should allow buying in fountain (shop zone)', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ zone: 'chaff-fountain' }) },
+        players: { p1: makePlayer({ zone: 'rookery-anchor' }) },
       })
       const error = validateAction(state, {
         playerId: 'p1',
@@ -250,7 +254,7 @@ describe('ActionResolver', () => {
       })
       const error = validateAction(state, {
         playerId: 'p1',
-        command: { type: 'move', zone: 'mid-t2-chaff' },
+        command: { type: 'move', zone: 'coldstore-t2-chaff' },
       })
       expect(error).toBe('Cannot move while rooted or stunned')
     })
@@ -271,42 +275,42 @@ describe('ActionResolver', () => {
     it('should move players to new zones', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-t1-chaff' }),
+          p1: makePlayer({ id: 'p1', zone: 'coldstore-t1-chaff' }),
         },
       })
 
       const actions: PlayerAction[] = [
-        { playerId: 'p1', command: { type: 'move', zone: 'mid-river' } },
+        { playerId: 'p1', command: { type: 'move', zone: 'coldstore-cross' } },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
-      expect(result.state.players['p1']!.zone).toBe('mid-river')
+      expect(result.state.players['p1']!.zone).toBe('coldstore-cross')
     })
 
     it('should resolve multiple moves simultaneously', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-t1-chaff', team: 'chaff' }),
-          p2: makePlayer({ id: 'p2', zone: 'mid-t1-audit', team: 'audit' }),
+          p1: makePlayer({ id: 'p1', zone: 'coldstore-t1-chaff', team: 'chaff' }),
+          p2: makePlayer({ id: 'p2', zone: 'coldstore-t1-audit', team: 'audit' }),
         },
       })
 
       const actions: PlayerAction[] = [
-        { playerId: 'p1', command: { type: 'move', zone: 'mid-river' } },
-        { playerId: 'p2', command: { type: 'move', zone: 'mid-river' } },
+        { playerId: 'p1', command: { type: 'move', zone: 'coldstore-cross' } },
+        { playerId: 'p2', command: { type: 'move', zone: 'coldstore-cross' } },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
-      // Both should be in mid-river — zones hold multiple units
-      expect(result.state.players['p1']!.zone).toBe('mid-river')
-      expect(result.state.players['p2']!.zone).toBe('mid-river')
+      // Both should be in coldstore-cross — zones hold multiple units
+      expect(result.state.players['p1']!.zone).toBe('coldstore-cross')
+      expect(result.state.players['p2']!.zone).toBe('coldstore-cross')
     })
 
     it('should track hero attackers for ice AI', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'chaff' }),
-          p2: makePlayer({ id: 'p2', zone: 'mid-river', team: 'audit', name: 'Enemy' }),
+          p1: makePlayer({ id: 'p1', zone: 'coldstore-cross', team: 'chaff' }),
+          p2: makePlayer({ id: 'p2', zone: 'coldstore-cross', team: 'audit', name: 'Enemy' }),
         },
       })
 
@@ -321,8 +325,14 @@ describe('ActionResolver', () => {
     it('should generate damage events on attack', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'chaff', heroId: 'echo' }),
-          p2: makePlayer({ id: 'p2', zone: 'mid-river', team: 'audit', name: 'Enemy', integ: 500 }),
+          p1: makePlayer({ id: 'p1', zone: 'coldstore-cross', team: 'chaff', heroId: 'echo' }),
+          p2: makePlayer({
+            id: 'p2',
+            zone: 'coldstore-cross',
+            team: 'audit',
+            name: 'Enemy',
+            integ: 500,
+          }),
         },
       })
 
@@ -342,10 +352,10 @@ describe('ActionResolver', () => {
       // exact matches still win and the normalised map is only a fallback.
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'chaff', heroId: 'echo' }),
+          p1: makePlayer({ id: 'p1', zone: 'coldstore-cross', team: 'chaff', heroId: 'echo' }),
           p2: makePlayer({
             id: 'p2',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             team: 'audit',
             heroId: 'null_ref',
             integ: 500,
@@ -370,7 +380,7 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             team: 'chaff',
             heroId: 'echo',
             scrip: 600,
@@ -378,7 +388,7 @@ describe('ActionResolver', () => {
           }),
         },
         neutrals: [
-          { id: 'n1', zone: 'mid-river', type: 'stub', integ: 1, maxInteg: 250, alive: true },
+          { id: 'n1', zone: 'coldstore-cross', type: 'stub', integ: 1, maxInteg: 250, alive: true },
         ],
       })
 
@@ -440,7 +450,7 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             team: 'chaff',
             items: ['camtap', null, null, null, null, null],
           }),
@@ -448,7 +458,7 @@ describe('ActionResolver', () => {
       })
 
       const actions: PlayerAction[] = [
-        { playerId: 'p1', command: { type: 'ward', zone: 'mid-river' } },
+        { playerId: 'p1', command: { type: 'ward', zone: 'coldstore-cross' } },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
@@ -461,7 +471,7 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             team: 'chaff',
             items: ['sniffer', null, null, null, null, null],
           }),
@@ -469,14 +479,14 @@ describe('ActionResolver', () => {
       })
 
       const actions: PlayerAction[] = [
-        { playerId: 'p1', command: { type: 'ward', zone: 'mid-river' } },
+        { playerId: 'p1', command: { type: 'ward', zone: 'coldstore-cross' } },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
       const wardEvents = result.events.filter((e) => e._tag === 'ward_placed')
       expect(wardEvents.length).toBe(1)
       expect(wardEvents[0]!.wardType).toBe('sniffer')
-      expect(result.state.zones['mid-river']!.wards[0]!.type).toBe('sniffer')
+      expect(result.state.zones['coldstore-cross']!.wards[0]!.type).toBe('sniffer')
     })
 
     it('should store ward type correctly for observer wards', () => {
@@ -484,7 +494,7 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             team: 'chaff',
             items: ['camtap', null, null, null, null, null],
           }),
@@ -492,11 +502,11 @@ describe('ActionResolver', () => {
       })
 
       const actions: PlayerAction[] = [
-        { playerId: 'p1', command: { type: 'ward', zone: 'mid-river' } },
+        { playerId: 'p1', command: { type: 'ward', zone: 'coldstore-cross' } },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
-      expect(result.state.zones['mid-river']!.wards[0]!.type).toBe('camtap')
+      expect(result.state.zones['coldstore-cross']!.wards[0]!.type).toBe('camtap')
     })
 
     it('should use different durations for sentry and observer wards', () => {
@@ -504,7 +514,7 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             team: 'chaff',
             items: ['camtap', null, null, null, null, null],
           }),
@@ -515,7 +525,7 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             team: 'chaff',
             items: ['sniffer', null, null, null, null, null],
           }),
@@ -526,18 +536,18 @@ describe('ActionResolver', () => {
 
       const observerResult = Effect.runSync(
         resolveActions({ ...observerState, cycle }, [
-          { playerId: 'p1', command: { type: 'ward', zone: 'mid-river' } },
+          { playerId: 'p1', command: { type: 'ward', zone: 'coldstore-cross' } },
         ]),
       )
 
       const sentryResult = Effect.runSync(
         resolveActions({ ...sentryState, cycle }, [
-          { playerId: 'p1', command: { type: 'ward', zone: 'mid-river' } },
+          { playerId: 'p1', command: { type: 'ward', zone: 'coldstore-cross' } },
         ]),
       )
 
-      const camtapWard = observerResult.state.zones['mid-river']!.wards[0]!
-      const snifferWard = sentryResult.state.zones['mid-river']!.wards[0]!
+      const camtapWard = observerResult.state.zones['coldstore-cross']!.wards[0]!
+      const snifferWard = sentryResult.state.zones['coldstore-cross']!.wards[0]!
 
       expect(camtapWard.type).toBe('camtap')
       expect(snifferWard.type).toBe('sniffer')
@@ -549,11 +559,17 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             team: 'chaff',
             items: ['concussion_hammer', null, null, null, null, null],
           }),
-          p2: makePlayer({ id: 'p2', zone: 'mid-river', team: 'audit', name: 'Enemy', integ: 500 }),
+          p2: makePlayer({
+            id: 'p2',
+            zone: 'coldstore-cross',
+            team: 'audit',
+            name: 'Enemy',
+            integ: 500,
+          }),
         },
       })
 
@@ -601,7 +617,7 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'mid-t1-chaff',
+            zone: 'coldstore-t1-chaff',
             buffs: [
               { id: 'tp_channeling', stacks: 1, cyclesRemaining: 2, source: 'recall_token' },
               {
@@ -609,7 +625,7 @@ describe('ActionResolver', () => {
                 stacks: 1,
                 cyclesRemaining: 3,
                 source: 'recall_token',
-                destination: 'chaff-fountain',
+                destination: 'rookery-anchor',
               },
             ],
           }),
@@ -617,12 +633,12 @@ describe('ActionResolver', () => {
       })
 
       const actions: PlayerAction[] = [
-        { playerId: 'p1', command: { type: 'move', zone: 'mid-t2-chaff' } },
+        { playerId: 'p1', command: { type: 'move', zone: 'coldstore-t2-chaff' } },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
 
-      expect(result.state.players['p1']!.zone).toBe('mid-t2-chaff')
+      expect(result.state.players['p1']!.zone).toBe('coldstore-t2-chaff')
       expect(result.state.players['p1']!.buffs).toHaveLength(0)
 
       const tpCancelEvents = result.events.filter((e) => e._tag === 'teleport_cancelled')
@@ -635,7 +651,7 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             team: 'chaff',
             buffs: [
               { id: 'tp_channeling', stacks: 1, cyclesRemaining: 2, source: 'recall_token' },
@@ -644,13 +660,13 @@ describe('ActionResolver', () => {
                 stacks: 1,
                 cyclesRemaining: 3,
                 source: 'recall_token',
-                destination: 'chaff-fountain',
+                destination: 'rookery-anchor',
               },
             ],
           }),
           p2: makePlayer({
             id: 'p2',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             team: 'audit',
             name: 'Enemy',
           }),
@@ -675,19 +691,19 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'mid-t1-chaff',
+            zone: 'coldstore-t1-chaff',
             buffs: [{ id: 'some_other_buff', stacks: 1, cyclesRemaining: 2, source: 'test' }],
           }),
         },
       })
 
       const actions: PlayerAction[] = [
-        { playerId: 'p1', command: { type: 'move', zone: 'mid-t2-chaff' } },
+        { playerId: 'p1', command: { type: 'move', zone: 'coldstore-t2-chaff' } },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
 
-      expect(result.state.players['p1']!.zone).toBe('mid-t2-chaff')
+      expect(result.state.players['p1']!.zone).toBe('coldstore-t2-chaff')
       expect(result.state.players['p1']!.buffs).toHaveLength(1)
 
       const tpCancelEvents = result.events.filter((e) => e._tag === 'teleport_cancelled')
@@ -730,65 +746,67 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'mid-t1-audit',
+            zone: 'coldstore-t1-audit',
             team: 'chaff',
           }),
         },
         ice: initializeIce().map((t) =>
-          t.zone === 'mid-t1-audit' ? { ...t, invulnerable: true } : t,
+          t.zone === 'coldstore-t1-audit' ? { ...t, invulnerable: true } : t,
         ),
       })
 
       const actions: PlayerAction[] = [
         {
           playerId: 'p1',
-          command: { type: 'attack', target: { kind: 'ice', zone: 'mid-t1-audit' } },
+          command: { type: 'attack', target: { kind: 'ice', zone: 'coldstore-t1-audit' } },
         },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
 
-      const ice = result.state.ice.find((t) => t.zone === 'mid-t1-audit')
+      const ice = result.state.ice.find((t) => t.zone === 'coldstore-t1-audit')
       expect(ice?.integ).toBe(ice?.maxInteg)
 
       const invulnEvents = result.events.filter((e) => e._tag === 'ice_invulnerable')
       expect(invulnEvents.length).toBe(1)
-      expect(invulnEvents[0]!.zone).toBe('mid-t1-audit')
+      expect(invulnEvents[0]!.zone).toBe('coldstore-t1-audit')
     })
 
     it('damages a vulnerable enemy ice on a basic attack and tracks ice damage', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', zone: 'mid-t1-audit', team: 'chaff' }) },
+        players: { p1: makePlayer({ id: 'p1', zone: 'coldstore-t1-audit', team: 'chaff' }) },
       })
       const actions: PlayerAction[] = [
         {
           playerId: 'p1',
-          command: { type: 'attack', target: { kind: 'ice', zone: 'mid-t1-audit' } },
+          command: { type: 'attack', target: { kind: 'ice', zone: 'coldstore-t1-audit' } },
         },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
 
-      const ice = result.state.ice.find((t) => t.zone === 'mid-t1-audit')!
+      const ice = result.state.ice.find((t) => t.zone === 'coldstore-t1-audit')!
       expect(ice.integ).toBeLessThan(ice.maxInteg)
       expect(result.state.players['p1']!.iceDamageDealt).toBeGreaterThan(0)
     })
 
     it('destroys a low-INTEG enemy ice and awards the ice-kill bounty', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', zone: 'mid-t1-audit', team: 'chaff', scrip: 600 }) },
-        ice: initializeIce().map((t) => (t.zone === 'mid-t1-audit' ? { ...t, integ: 1 } : t)),
+        players: {
+          p1: makePlayer({ id: 'p1', zone: 'coldstore-t1-audit', team: 'chaff', scrip: 600 }),
+        },
+        ice: initializeIce().map((t) => (t.zone === 'coldstore-t1-audit' ? { ...t, integ: 1 } : t)),
       })
       const actions: PlayerAction[] = [
         {
           playerId: 'p1',
-          command: { type: 'attack', target: { kind: 'ice', zone: 'mid-t1-audit' } },
+          command: { type: 'attack', target: { kind: 'ice', zone: 'coldstore-t1-audit' } },
         },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
 
-      const ice = result.state.ice.find((t) => t.zone === 'mid-t1-audit')!
+      const ice = result.state.ice.find((t) => t.zone === 'coldstore-t1-audit')!
       expect(ice.alive).toBe(false)
       // awardIceKill pays the in-zone attacker (ice_kill event itself is emitted by GameLoop)
       expect(result.state.players['p1']!.scrip).toBeGreaterThan(600)
@@ -900,7 +918,7 @@ describe('ActionResolver', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             maxInteg: 550,
             integ: 550,
             bw: 280,
@@ -917,21 +935,21 @@ describe('ActionResolver', () => {
       expect(p1.items[0]).toBeNull()
       expect(p1.buffs.some((b) => b.id === 'tp_channeling')).toBe(true)
       const dest = p1.buffs.find((b) => b.id === 'tp_destination')
-      expect(dest?.destination).toBe('chaff-fountain')
+      expect(dest?.destination).toBe('rookery-anchor')
 
       // GameLoop ticks buffs each cycle; teleport completes when channel finishes
       let channeled = result.state
       for (let i = 0; i < 3; i++) {
         channeled = cycleAllBuffs(channeled)
       }
-      expect(channeled.players['p1']!.zone).toBe('chaff-fountain')
+      expect(channeled.players['p1']!.zone).toBe('rookery-anchor')
     })
 
     it('blink module moves the player to an adjacent zone', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
-            zone: 'mid-t1-chaff',
+            zone: 'coldstore-t1-chaff',
             items: ['jump_shunt', null, null, null, null, null],
           }),
         },
@@ -941,12 +959,12 @@ describe('ActionResolver', () => {
         resolveActions(state, [
           {
             playerId: 'p1',
-            command: { type: 'use', item: 'jump_shunt', target: 'mid-river' },
+            command: { type: 'use', item: 'jump_shunt', target: 'coldstore-cross' },
           },
         ]),
       )
       const p1 = result.state.players['p1']!
-      expect(p1.zone).toBe('mid-river')
+      expect(p1.zone).toBe('coldstore-cross')
       // Not a consumable — stays in inventory, goes on cooldown
       expect(p1.items[0]).toBe('jump_shunt')
       expect(p1.buffs.some((b) => b.id === 'item_cd_blink_module')).toBe(true)
@@ -977,11 +995,11 @@ describe('ActionResolver', () => {
       const state = makeGameState({
         players: {
           // kernel = kinetic AA so ghost_form (kinetic-immune) actually blocks it
-          p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'chaff', heroId: 'kernel' }),
+          p1: makePlayer({ id: 'p1', zone: 'coldstore-cross', team: 'chaff', heroId: 'kernel' }),
           p2: makePlayer({
             id: 'p2',
             name: 'Enemy',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             team: 'audit',
             integ: 550,
             maxInteg: 550,
@@ -1012,14 +1030,14 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             team: 'chaff',
             heroId: 'kernel', // kinetic AA
           }),
           p2: makePlayer({
             id: 'p2',
             name: 'Enemy',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             team: 'audit',
             items: ['spite_plate', null, null, null, null, null],
           }),
@@ -1061,23 +1079,23 @@ describe('ActionResolver', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
-            zone: 'mid-t1-chaff',
+            zone: 'coldstore-t1-chaff',
             items: ['jump_shunt', null, null, null, null, null],
           }),
         },
       })
 
-      // audit-fountain is not adjacent to mid-t1-chaff — useItem fails
+      // landing-anchor is not adjacent to coldstore-t1-chaff — useItem fails
       const result = Effect.runSync(
         resolveActions(state, [
           {
             playerId: 'p1',
-            command: { type: 'use', item: 'jump_shunt', target: 'audit-fountain' },
+            command: { type: 'use', item: 'jump_shunt', target: 'landing-anchor' },
           },
         ]),
       )
       const p1 = result.state.players['p1']!
-      expect(p1.zone).toBe('mid-t1-chaff')
+      expect(p1.zone).toBe('coldstore-t1-chaff')
       expect(p1.items[0]).toBe('jump_shunt')
       expect(result.events.filter((e) => e._tag === 'ability_used')).toHaveLength(0)
     })
@@ -1093,7 +1111,7 @@ describe('ActionResolver', () => {
     }
 
     it('damages the vulnerable enemy terminal from the enemy base', () => {
-      const state = stateWithVulnerableAuditTerminal('audit-base')
+      const state = stateWithVulnerableAuditTerminal('landing-terminal')
       const result = Effect.runSync(
         resolveActions(state, [
           { playerId: 'p1', command: { type: 'attack', target: { kind: 'terminal' } } },
@@ -1110,7 +1128,7 @@ describe('ActionResolver', () => {
     })
 
     it('does not damage an invulnerable terminal', () => {
-      const state = stateWithVulnerableAuditTerminal('audit-base', false)
+      const state = stateWithVulnerableAuditTerminal('landing-terminal', false)
       const result = Effect.runSync(
         resolveActions(state, [
           { playerId: 'p1', command: { type: 'attack', target: { kind: 'terminal' } } },
@@ -1122,7 +1140,7 @@ describe('ActionResolver', () => {
     })
 
     it('requires the attacker to be in the enemy base zone', () => {
-      const state = stateWithVulnerableAuditTerminal('mid-river')
+      const state = stateWithVulnerableAuditTerminal('coldstore-cross')
       const result = Effect.runSync(
         resolveActions(state, [
           { playerId: 'p1', command: { type: 'attack', target: { kind: 'terminal' } } },
@@ -1149,8 +1167,16 @@ describe('ActionResolver', () => {
       )
     const echoStats = { heroId: 'echo', integ: 550, maxInteg: 550, bw: 280, maxBw: 280 } as const
     const enemy = (buffs: PlayerState['buffs']) =>
-      makePlayer({ id: 'p2', name: 'Enemy', team: 'audit', zone: 'mid-river', ...echoStats, buffs })
-    const caster = () => makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river', ...echoStats })
+      makePlayer({
+        id: 'p2',
+        name: 'Enemy',
+        team: 'audit',
+        zone: 'coldstore-cross',
+        ...echoStats,
+        buffs,
+      })
+    const caster = () =>
+      makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross', ...echoStats })
 
     it('control: the spell lands on an unbuffed target', () => {
       const state = makeGameState({ players: { p1: caster(), p2: enemy([]) } })
@@ -1237,7 +1263,7 @@ describe('ActionResolver', () => {
           p1: makePlayer({
             id: 'p1',
             team: 'chaff',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             ...echoStats,
             buffs: casterBuffs,
           }),
@@ -1245,7 +1271,7 @@ describe('ActionResolver', () => {
             id: 'p2',
             name: 'Enemy',
             team: 'audit',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             ...echoStats,
           }),
         },
@@ -1284,7 +1310,7 @@ describe('ActionResolver', () => {
           p1: makePlayer({
             id: 'p1',
             team: 'chaff',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             items: attackerItems,
             integ: maxInteg,
             maxInteg,
@@ -1295,7 +1321,7 @@ describe('ActionResolver', () => {
             id: 'p2',
             name: 'Enemy',
             team: 'audit',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             integ: maxInteg,
             maxInteg,
             bw: maxBw,
@@ -1399,10 +1425,10 @@ describe('ActionResolver', () => {
           p1: makePlayer({
             id: 'p1',
             team: 'chaff',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             items: ['concussion_hammer', null, null, null, null, null],
           }),
-          p2: makePlayer({ id: 'p2', name: 'Enemy', team: 'audit', zone: 'mid-river' }),
+          p2: makePlayer({ id: 'p2', name: 'Enemy', team: 'audit', zone: 'coldstore-cross' }),
         },
       })
     }
@@ -1451,14 +1477,14 @@ describe('ActionResolver', () => {
       const immuneButNotStunned = makePlayer({
         id: 'p1',
         team: 'chaff',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         buffs: [{ id: 'stun_immune', stacks: 1, cyclesRemaining: 2, source: 'x' }],
       })
       const enemy = makePlayer({
         id: 'p2',
         name: 'Enemy',
         team: 'audit',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         integ: 9999,
         maxInteg: 9999,
       })
@@ -1484,7 +1510,7 @@ describe('ActionResolver', () => {
    * tutorial's "the player performed the taught verb" check.
    */
   describe('attack mis-targets are reported, never swallowed', () => {
-    const attacker = () => makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
+    const attacker = () => makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' })
 
     const attack = (state: GameState, target: TargetRef) =>
       Effect.runSync(
@@ -1507,7 +1533,7 @@ describe('ActionResolver', () => {
             id: 'p2',
             name: 'Enemy',
             team: 'audit',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             alive: false,
           }),
         },
@@ -1521,7 +1547,13 @@ describe('ActionResolver', () => {
       const state = makeGameState({
         players: {
           p1: attacker(),
-          p2: makePlayer({ id: 'p2', name: 'Buddy', team: 'chaff', zone: 'mid-river', integ: 500 }),
+          p2: makePlayer({
+            id: 'p2',
+            name: 'Buddy',
+            team: 'chaff',
+            zone: 'coldstore-cross',
+            integ: 500,
+          }),
         },
       })
       const result = attack(state, { kind: 'hero', name: 'p2' })
@@ -1544,10 +1576,10 @@ describe('ActionResolver', () => {
       const state = makeGameState({
         players: { p1: attacker() },
         waves: [
-          { id: 'c0', team: 'audit', zone: 'mid-river', integ: 400, type: 'line' },
-          { id: 'c1', team: 'audit', zone: 'mid-river', integ: 400, type: 'line' },
+          { id: 'c0', team: 'audit', zone: 'coldstore-cross', integ: 400, type: 'line' },
+          { id: 'c1', team: 'audit', zone: 'coldstore-cross', integ: 400, type: 'line' },
           // A wave in another zone must not widen the quoted range.
-          { id: 'c2', team: 'audit', zone: 'top-river', integ: 400, type: 'line' },
+          { id: 'c2', team: 'audit', zone: 'seawall-cross', integ: 400, type: 'line' },
         ],
       })
       const result = attack(state, { kind: 'wave', index: 4 })
@@ -1558,7 +1590,7 @@ describe('ActionResolver', () => {
     it('says the wave is already dead', () => {
       const state = makeGameState({
         players: { p1: attacker() },
-        waves: [{ id: 'c0', team: 'audit', zone: 'mid-river', integ: 0, type: 'line' }],
+        waves: [{ id: 'c0', team: 'audit', zone: 'coldstore-cross', integ: 0, type: 'line' }],
       })
       const result = attack(state, { kind: 'wave', index: 0 })
       expect(result.rejected).toHaveLength(1)
@@ -1569,8 +1601,10 @@ describe('ActionResolver', () => {
       // The bug this pins: with no team guard the swing killed the ally wave
       // and banked the FULL last-hit bounty — the opposite of last-hitting.
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river', scrip: 600 }) },
-        waves: [{ id: 'ally0', team: 'chaff', zone: 'mid-river', integ: 5, type: 'line' }],
+        players: {
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross', scrip: 600 }),
+        },
+        waves: [{ id: 'ally0', team: 'chaff', zone: 'coldstore-cross', integ: 5, type: 'line' }],
       })
       const result = attack(state, { kind: 'wave', index: 0 })
       expect(result.rejected).toHaveLength(1)
@@ -1582,9 +1616,9 @@ describe('ActionResolver', () => {
 
     it('says there is no standing ice in the targeted zone', () => {
       const state = makeGameState({ players: { p1: attacker() } })
-      const result = attack(state, { kind: 'ice', zone: 'mid-river' })
+      const result = attack(state, { kind: 'ice', zone: 'coldstore-cross' })
       expect(result.rejected).toHaveLength(1)
-      expect(result.rejected[0]!.reason).toContain('mid-river')
+      expect(result.rejected[0]!.reason).toContain('coldstore-cross')
     })
 
     it('says Tenant is already dead', () => {
@@ -1599,11 +1633,11 @@ describe('ActionResolver', () => {
 
     it('reports a dead neutral and an out-of-range neutral index differently', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'silt-chaff-top' }) },
+        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'silt-chaff-upper' }) },
         neutrals: [
           {
             id: 'n0',
-            zone: 'silt-chaff-top',
+            zone: 'silt-chaff-upper',
             integ: 0,
             maxInteg: 100,
             type: 'stub',
@@ -1621,7 +1655,7 @@ describe('ActionResolver', () => {
       // The wire schema accepts every TargetRef kind for `attack`, including
       // 'zone' and 'self', which fell off the end of the branch chain.
       const state = makeGameState({ players: { p1: attacker() } })
-      const result = attack(state, { kind: 'zone', zone: 'mid-river' })
+      const result = attack(state, { kind: 'zone', zone: 'coldstore-cross' })
       expect(result.rejected).toHaveLength(1)
       expect(result.rejected[0]!.reason).toMatch(/cannot attack/i)
     })

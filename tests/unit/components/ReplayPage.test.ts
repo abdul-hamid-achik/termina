@@ -51,7 +51,7 @@ function replayResult(): FetchResult {
             deaths: 2,
             assists: 3,
             alive: true,
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
           },
         },
         timeOfDay: 'day',
@@ -87,7 +87,7 @@ function framesResult(): FetchResult {
               deaths: 0,
               assists: 0,
               alive: true,
-              zone: 'chaff-base',
+              zone: 'rookery-terminal',
               items: [],
             },
           },
@@ -240,7 +240,7 @@ describe('replay page', () => {
       deaths: 0,
       assists: 0,
       alive: true,
-      zone: 'mid-river',
+      zone: 'coldstore-cross',
       items: [] as (string | null)[],
     })
     // Teams are grouped by the snapshot meta, so it must carry both players.

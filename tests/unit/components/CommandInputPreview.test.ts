@@ -19,7 +19,7 @@ function makeShopPlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return makePlayer({
     id: 'me',
     heroId: SAMPLE_HEROES.echo,
-    zone: 'chaff-fountain',
+    zone: 'rookery-anchor',
     scrip: 5000,
     bw: 400,
     maxBw: 400,
@@ -66,24 +66,24 @@ describe('CommandInput preview line', () => {
   it('renders a valid move preview with the resolved zone name', async () => {
     // mid alias resolves to "Coldstore Crossing"; fountain is adjacent to base only,
     // so move uses a player whose move target is reachable — preview reflects the dest name.
-    const wrapper = mountInput(makeShopPlayer({ zone: 'mid-river' }))
-    const preview = await previewFor(wrapper, 'move mid')
+    const wrapper = mountInput(makeShopPlayer({ zone: 'coldstore-cross' }))
+    const preview = await previewFor(wrapper, 'move coldstore')
     expect(preview.text()).toContain('>> Move to Coldstore Crossing')
     expect(preview.classes()).toContain('text-chaff')
     wrapper.unmount()
   })
 
   it('previews a distant move as a travel plan with its ETA (auto-path)', async () => {
-    const wrapper = mountInput(makeShopPlayer({ zone: 'mid-river' }))
-    const preview = await previewFor(wrapper, 'move audit-base')
-    // mid-river → mid-t1/2/3-audit → audit-base = 4 hops.
+    const wrapper = mountInput(makeShopPlayer({ zone: 'coldstore-cross' }))
+    const preview = await previewFor(wrapper, 'move landing-terminal')
+    // coldstore-cross → mid-t1/2/3-audit → landing-terminal = 4 hops.
     expect(preview.text()).toContain('>> Move to Landing Terminal (4 cycles)')
     expect(preview.classes()).toContain('text-chaff')
     wrapper.unmount()
   })
 
   it('renders a valid attack preview against a hero target', async () => {
-    const wrapper = mountInput(makeShopPlayer({ zone: 'mid-river' }))
+    const wrapper = mountInput(makeShopPlayer({ zone: 'coldstore-cross' }))
     const preview = await previewFor(wrapper, 'attack wave:0')
     expect(preview.text()).toContain('>> Attack wave #0')
     wrapper.unmount()
@@ -113,7 +113,7 @@ describe('CommandInput preview line', () => {
   })
 
   it('errors a buy when outside a shop zone', async () => {
-    const wrapper = mountInput(makeShopPlayer({ zone: 'mid-river' }))
+    const wrapper = mountInput(makeShopPlayer({ zone: 'coldstore-cross' }))
     const preview = await previewFor(wrapper, 'buy trauma_patch')
     expect(preview.text()).toContain('!!')
     expect(preview.text().toLowerCase()).toContain('shop')
@@ -130,9 +130,9 @@ describe('CommandInput preview line', () => {
   })
 
   it('renders a ward preview for the current zone', async () => {
-    const wrapper = mountInput(makeShopPlayer({ zone: 'mid-river' }))
-    const preview = await previewFor(wrapper, 'ward mid-river')
-    expect(preview.text()).toContain('>> Place ward in mid-river')
+    const wrapper = mountInput(makeShopPlayer({ zone: 'coldstore-cross' }))
+    const preview = await previewFor(wrapper, 'ward coldstore-cross')
+    expect(preview.text()).toContain('>> Place ward in coldstore-cross')
     wrapper.unmount()
   })
 
@@ -202,9 +202,16 @@ describe('CommandInput attack target labels', () => {
   })
 
   it('names a neutral camp by its index rather than "self"', async () => {
-    const wrapper = mountInput(makeShopPlayer({ zone: 'silt-chaff-top' }), {
+    const wrapper = mountInput(makeShopPlayer({ zone: 'silt-chaff-upper' }), {
       neutrals: [
-        { id: 'n0', zone: 'silt-chaff-top', integ: 100, maxInteg: 100, type: 'stub', alive: true },
+        {
+          id: 'n0',
+          zone: 'silt-chaff-upper',
+          integ: 100,
+          maxInteg: 100,
+          type: 'stub',
+          alive: true,
+        },
       ],
     })
     const preview = await previewFor(wrapper, 'attack neutral:0')
@@ -237,7 +244,7 @@ describe('CommandInput surrender gate', () => {
 
 describe('CommandInput keyboard driving', () => {
   it('does not submit a command whose preview is an error', async () => {
-    const wrapper = mountInput(makeShopPlayer({ zone: 'mid-river' }))
+    const wrapper = mountInput(makeShopPlayer({ zone: 'coldstore-cross' }))
     const input = wrapper.find('input')
     await input.setValue('use burnout') // not owned -> error preview
 

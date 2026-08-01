@@ -50,14 +50,14 @@ describe('StateManager', () => {
       const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1', team: 'chaff', heroId: 'echo' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
-      expect(state.players['p1']!.zone).toBe('chaff-fountain')
+      expect(state.players['p1']!.zone).toBe('rookery-anchor')
     })
 
     it('should place audit players in audit fountain', () => {
       const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1', team: 'audit', heroId: 'echo' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
-      expect(state.players['p1']!.zone).toBe('audit-fountain')
+      expect(state.players['p1']!.zone).toBe('landing-anchor')
     })
 
     it('should initialize players with hero base stats', () => {

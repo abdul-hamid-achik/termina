@@ -10,7 +10,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Test',
     team: 'chaff',
     heroId: 'socket',
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: 650,
     maxInteg: 650,
     bw: 300,
@@ -55,8 +55,8 @@ function makeState(players: PlayerState[], traps: TrapState[], overrides: Partia
     },
     players: playerMap,
     zones: {
-      'mid-river': { id: 'mid-river', wards: [], traps },
-      'top-river': { id: 'top-river', wards: [] },
+      'coldstore-cross': { id: 'coldstore-cross', wards: [], traps },
+      'seawall-cross': { id: 'seawall-cross', wards: [] },
     },
     waves: [],
     ice: [],
@@ -69,8 +69,8 @@ function makeState(players: PlayerState[], traps: TrapState[], overrides: Partia
 
 describe('TrapSystem.processTraps', () => {
   it('detonates on the first enemy hero in the trapped zone', () => {
-    const owner = makePlayer({ id: 'p1', team: 'chaff', zone: 'top-river' })
-    const enemy = makePlayer({ id: 'e1', team: 'audit', heroId: 'echo', zone: 'mid-river' })
+    const owner = makePlayer({ id: 'p1', team: 'chaff', zone: 'seawall-cross' })
+    const enemy = makePlayer({ id: 'e1', team: 'audit', heroId: 'echo', zone: 'coldstore-cross' })
     const state = makeState([owner, enemy], [TRAP])
 
     const { state: next, events } = processTraps(state)
@@ -81,7 +81,7 @@ describe('TrapSystem.processTraps', () => {
     expect(victim.buffs.some((b) => b.id === 'revealed' && b.source === 'p1')).toBe(true)
 
     // Trap consumed.
-    expect(next.zones['mid-river']!.traps).toHaveLength(0)
+    expect(next.zones['coldstore-cross']!.traps).toHaveLength(0)
 
     // Emits a damage event (kill credit) and a trap_triggered event.
     const dmg = events.find((e) => e._tag === 'damage')
@@ -94,36 +94,36 @@ describe('TrapSystem.processTraps', () => {
   })
 
   it('leaves the trap armed when no enemy is present', () => {
-    const owner = makePlayer({ id: 'p1', team: 'chaff', zone: 'top-river' })
+    const owner = makePlayer({ id: 'p1', team: 'chaff', zone: 'seawall-cross' })
     const state = makeState([owner], [TRAP])
 
     const { state: next, events } = processTraps(state)
 
-    expect(next.zones['mid-river']!.traps).toHaveLength(1)
+    expect(next.zones['coldstore-cross']!.traps).toHaveLength(1)
     expect(events).toHaveLength(0)
   })
 
   it('does not trigger on an allied hero', () => {
-    const owner = makePlayer({ id: 'p1', team: 'chaff', zone: 'top-river' })
-    const ally = makePlayer({ id: 'a1', team: 'chaff', heroId: 'echo', zone: 'mid-river' })
+    const owner = makePlayer({ id: 'p1', team: 'chaff', zone: 'seawall-cross' })
+    const ally = makePlayer({ id: 'a1', team: 'chaff', heroId: 'echo', zone: 'coldstore-cross' })
     const state = makeState([owner, ally], [TRAP])
 
     const { state: next, events } = processTraps(state)
 
     expect(next.players['a1']!.integ).toBe(ally.integ)
-    expect(next.zones['mid-river']!.traps).toHaveLength(1)
+    expect(next.zones['coldstore-cross']!.traps).toHaveLength(1)
     expect(events).toHaveLength(0)
   })
 
   it('disarms an expired trap without triggering, even with an enemy present', () => {
-    const enemy = makePlayer({ id: 'e1', team: 'audit', heroId: 'echo', zone: 'mid-river' })
+    const enemy = makePlayer({ id: 'e1', team: 'audit', heroId: 'echo', zone: 'coldstore-cross' })
     const expired: TrapState = { ...TRAP, expiryTick: 10 } // cycle === expiryTick → expired
     const state = makeState([enemy], [expired], { cycle: 10 })
 
     const { state: next, events } = processTraps(state)
 
     expect(next.players['e1']!.integ).toBe(enemy.integ)
-    expect(next.zones['mid-river']!.traps).toHaveLength(0)
+    expect(next.zones['coldstore-cross']!.traps).toHaveLength(0)
     expect(events).toHaveLength(0)
   })
 })

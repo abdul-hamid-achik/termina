@@ -27,8 +27,8 @@ describe('MapPrimer', () => {
 
   it('lists the adjacent zones as clickable hops and moves the explorer on click', async () => {
     const w = mountPrimer()
-    // chaff-fountain is adjacent only to chaff-base.
-    const hop = w.find('[data-testid="primer-zone-chaff-base"]')
+    // rookery-anchor is adjacent only to rookery-terminal.
+    const hop = w.find('[data-testid="primer-zone-rookery-terminal"]')
     expect(hop.exists()).toBe(true)
     await hop.trigger('click')
     const cap = caption(w)

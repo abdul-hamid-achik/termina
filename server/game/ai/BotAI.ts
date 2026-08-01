@@ -122,8 +122,13 @@ const SALVE_HP_PERCENT = 60
 /** TP home instead of walking when the fountain is further than this. */
 const TP_RETREAT_MIN_DISTANCE = 2
 
-const CACHE_ZONES = ['cache-top', 'cache-bot']
-const JUNGLE_ZONES = ['silt-chaff-top', 'silt-chaff-bot', 'silt-audit-top', 'silt-audit-bot']
+const CACHE_ZONES = ['cache-seawall', 'cache-shallows']
+const JUNGLE_ZONES = [
+  'silt-chaff-upper',
+  'silt-chaff-lower',
+  'silt-audit-upper',
+  'silt-audit-lower',
+]
 
 interface ComboState {
   currentCombo: string[] | null
@@ -336,7 +341,7 @@ function getCachesInZone(state: GameState, zone: string): CacheState[] {
 }
 
 function getFountainZone(team: TeamId): string {
-  return team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
+  return team === 'chaff' ? 'rookery-anchor' : 'landing-anchor'
 }
 
 function isInFountain(bot: PlayerState): boolean {
@@ -1149,7 +1154,7 @@ function tryBuyback(
   if (bot.respawnCycle - state.cycle <= 2) return null
   // Buyback when the Terminal is under threat or allies are fighting near our base
   const enemyTeam: TeamId = bot.team === 'chaff' ? 'audit' : 'chaff'
-  const ourBaseZone = bot.team === 'chaff' ? 'chaff-base' : 'audit-base'
+  const ourBaseZone = bot.team === 'chaff' ? 'rookery-terminal' : 'landing-terminal'
   const enemyNearBase = Object.values(state.players).some(
     (p) => p.team === enemyTeam && p.alive && getDistance(p.zone, ourBaseZone, hasZone) <= 2,
   )
@@ -1661,7 +1666,7 @@ export function decideBotAction(
   }
   const cacheCmd = tryPickupRune(state, bot, config, hasZone)
   if (cacheCmd) return cacheCmd
-  if (assignedLane === 'jungle' || (config.jungleFarming && getHpPercent(bot) > 60)) {
+  if (assignedLane === 'silt' || (config.jungleFarming && getHpPercent(bot) > 60)) {
     const jungleCmd = tryFarmJungle(state, bot, config, hasZone)
     if (jungleCmd) return jungleCmd
   }

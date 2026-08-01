@@ -136,7 +136,7 @@ describe('Game Store — buffered command', () => {
   it('a newer buffered command replaces the previous one', () => {
     const store = useGameStore()
 
-    store.bufferCommand('move mid-river')
+    store.bufferCommand('move coldstore-cross')
     store.bufferCommand('attack hero:daemon')
 
     expect(store.consumeBufferedCommand()).toBe('attack hero:daemon')

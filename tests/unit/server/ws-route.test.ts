@@ -419,7 +419,7 @@ describe('ws route — ping sweep', () => {
 describe('ws route — action', () => {
   it('rejects actions before joining a game with NO_GAME', () => {
     const peer = openAuthedPeer('p_nogame')
-    sendMsg(peer, { type: 'action', command: { type: 'move', zone: 'mid' } })
+    sendMsg(peer, { type: 'action', command: { type: 'move', zone: 'coldstore' } })
     expect(lastMessage(peer)).toMatchObject({ type: 'error', code: 'NO_GAME' })
     expect(submitAction).not.toHaveBeenCalled()
   })
@@ -436,7 +436,7 @@ describe('ws route — action', () => {
   it('drops rate-limited actions with RATE_LIMITED and never submits them', () => {
     const { peer } = openPeerInGame('p_spam', 'game_1')
     vi.mocked(checkRateLimit).mockReturnValue(false)
-    sendMsg(peer, { type: 'action', command: { type: 'move', zone: 'mid' } })
+    sendMsg(peer, { type: 'action', command: { type: 'move', zone: 'coldstore' } })
     expect(lastMessage(peer)).toMatchObject({ type: 'error', code: 'RATE_LIMITED' })
     expect(submitAction).not.toHaveBeenCalled()
   })
@@ -449,7 +449,7 @@ describe('ws route — action', () => {
       convertToBot('game_afk', 'p_converted')
 
       // Ordinary input is dropped with the takeover notice…
-      sendMsg(peer, { type: 'action', command: { type: 'move', zone: 'mid' } })
+      sendMsg(peer, { type: 'action', command: { type: 'move', zone: 'coldstore' } })
       expect(lastMessage(peer)).toMatchObject({ type: 'error', code: 'AI_CONTROLLED' })
       expect(submitAction).not.toHaveBeenCalled()
 
@@ -474,7 +474,7 @@ describe('ws route — action', () => {
       const { peer } = openPeerInGame('p_straggler', 'game_over')
       // Game ended: cleanup ran clearPlayerGame, so the assignment is gone.
       vi.mocked(getPlayerGame).mockReturnValue(undefined)
-      sendMsg(peer, { type: 'action', command: { type: 'move', zone: 'mid' } })
+      sendMsg(peer, { type: 'action', command: { type: 'move', zone: 'coldstore' } })
       expect(msSinceClientInput('game_over', 'p_straggler')).toBeNull()
     } finally {
       clearClientInput('game_over')
@@ -554,7 +554,7 @@ describe('ws route — join_game', () => {
     const peer = openAuthedPeer('p_join5')
     sendMsg(peer, { type: 'join_game', gameId: 'game_1' })
     peer.send.mockClear()
-    sendMsg(peer, { type: 'action', command: { type: 'move', zone: 'mid' } })
+    sendMsg(peer, { type: 'action', command: { type: 'move', zone: 'coldstore' } })
     expect(lastMessage(peer)).toMatchObject({ type: 'error', code: 'NO_GAME' })
     expect(submitAction).not.toHaveBeenCalled()
   })
@@ -725,12 +725,12 @@ describe('ws route — chat / ping_map fan-out', () => {
 
   it('fans ping_map out the same way', async () => {
     const { peer } = openPeerInGame('p_ping1', 'game_1')
-    sendMsg(peer, { type: 'ping_map', zone: 'river' })
+    sendMsg(peer, { type: 'ping_map', zone: 'cross' })
     await vi.waitFor(() => {
       expect(sendToPeer).toHaveBeenCalledWith('other_player', {
         playerId: 'p_ping1',
         type: 'ping_map',
-        zone: 'river',
+        zone: 'cross',
       })
     })
   })

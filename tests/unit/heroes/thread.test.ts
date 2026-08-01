@@ -13,7 +13,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestThread',
     team: 'chaff',
     heroId: 'thread',
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: 530,
     maxInteg: 530,
     bw: 270,
@@ -75,8 +75,8 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     },
     players: playerMap,
     zones: {
-      'mid-river': { id: 'mid-river', wards: [] },
-      'top-river': { id: 'top-river', wards: [] },
+      'coldstore-cross': { id: 'coldstore-cross', wards: [] },
+      'seawall-cross': { id: 'seawall-cross', wards: [] },
     },
     waves: [],
     ice: [],
@@ -192,7 +192,7 @@ describe('Thread Hero', () => {
 
     it('fails when target is in different zone', () => {
       const player = makePlayer()
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(
@@ -314,7 +314,7 @@ describe('Thread Hero', () => {
 
     it('fails when target is in different zone', () => {
       const player = makePlayer()
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(
@@ -484,7 +484,7 @@ describe('Thread Hero', () => {
     it('does not splash to enemies in different zone', () => {
       const player = makePlayer()
       const enemy1 = makeEnemy()
-      const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2', zone: 'top-river' })
+      const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2', zone: 'seawall-cross' })
       const state = makeState([player, enemy1, enemy2])
 
       const updated = resolvePassive(state, 'p1', {

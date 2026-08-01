@@ -118,18 +118,18 @@ describe('exotic tier-25 cast effects', () => {
           ...s.players,
           [HUMAN]: {
             ...s.players[HUMAN]!,
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             level: 6,
             bw: 500,
             maxBw: 500,
             cooldowns: { q: 0, w: 0, e: 0, r: 0 },
             talents: { tier10: null, tier15: null, tier20: null, tier25 },
           },
-          // top-river is NOT adjacent to mid-river → only a global ult can reach it.
+          // seawall-cross is NOT adjacent to coldstore-cross → only a global ult can reach it.
           // R4-11: silence is hard control — seed BREACHED so the cast is not teaching-rejected.
           [ENEMY]: {
             ...s.players[ENEMY]!,
-            zone: 'top-river',
+            zone: 'seawall-cross',
             bw: 100,
             maxBw: 500,
             buffs: [{ id: 'breached', stacks: 1, cyclesRemaining: 5, source: 'test' }],
@@ -163,15 +163,15 @@ describe('exotic tier-25 cast effects', () => {
           ...s.players,
           [HUMAN]: {
             ...s.players[HUMAN]!,
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             level: 6,
             bw: 500,
             maxBw: 500,
             cooldowns: { q: 0, w: 0, e: 0, r: 0 },
             talents: { tier10: null, tier15: null, tier20: null, tier25 },
           },
-          // mid-t1-audit IS adjacent to mid-river.
-          [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t1-audit', bw: 500, maxBw: 500 },
+          // coldstore-t1-audit IS adjacent to coldstore-cross.
+          [ENEMY]: { ...s.players[ENEMY]!, zone: 'coldstore-t1-audit', bw: 500, maxBw: 500 },
         },
       }))
     const dmgFromMe = () =>
@@ -201,7 +201,7 @@ describe('exotic tier-25 cast effects', () => {
           ...s.players,
           [HUMAN]: {
             ...s.players[HUMAN]!,
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             level: 6,
             integ: Math.floor(s.players[HUMAN]!.maxInteg / 2), // room to heal
             bw: 500,
@@ -214,7 +214,7 @@ describe('exotic tier-25 cast effects', () => {
           // the spread would otherwise carry alive:false into this cast.
           [ENEMY]: {
             ...s.players[ENEMY]!,
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             integ: 100,
             maxInteg: 1000,
             bw: 500,

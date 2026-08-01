@@ -42,7 +42,7 @@ const stream: CombatLine[] = [
   },
   {
     cycle: 239,
-    text: 'CHAFF razed the AUDIT ice in mid-t1-audit',
+    text: 'CHAFF razed the AUDIT ice in coldstore-t1-audit',
     type: 'kill',
     salience: 'mine-out',
   },

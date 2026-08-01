@@ -169,8 +169,8 @@ describe('learn page', () => {
 
   it('uses the real silt zone naming (silt-team-side)', () => {
     const text = mountLearn().text()
-    expect(text).toContain('silt-chaff-top')
-    expect(text).toContain('silt-audit-bot')
+    expect(text).toContain('silt-chaff-upper')
+    expect(text).toContain('silt-audit-lower')
     expect(text).not.toContain('rad-jungle-top')
   })
 
@@ -180,9 +180,9 @@ describe('learn page', () => {
     expect(text).not.toContain('Boots of Speed (+1 move speed)')
   })
 
-  it('shows the corrected 5-cycle fountain-to-mid-river example path', () => {
+  it('shows the corrected 5-cycle fountain-to-coldstore-cross example path', () => {
     const text = mountLearn().text()
-    expect(text).toContain('move mid-river')
+    expect(text).toContain('move coldstore-cross')
     expect(text).toContain('5 cycles (20 seconds)')
     expect(text).not.toContain('4 ticks to reach mid river')
   })

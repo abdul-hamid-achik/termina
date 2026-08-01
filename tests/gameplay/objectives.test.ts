@@ -32,7 +32,7 @@ describe('objectives: Tenant & backup', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' } },
       tenant: { ...s.tenant, alive: true, integ: 100 },
       backup: null,
     }))
@@ -102,8 +102,11 @@ describe('objectives: caches', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'cache-top', buffs: [] } },
-      caches: [{ zone: 'cache-top', type: 'haste', cycle: s.cycle }],
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, zone: 'cache-seawall', buffs: [] },
+      },
+      caches: [{ zone: 'cache-seawall', type: 'haste', cycle: s.cycle }],
     }))
 
     game.submit({ type: 'grab' })
@@ -112,7 +115,7 @@ describe('objectives: caches', () => {
     const me = await game.me()
     expect(me.buffs.some((b) => b.id === 'haste')).toBe(true)
     const state = await game.state()
-    expect(state.caches.some((r) => r.zone === 'cache-top')).toBe(false) // consumed
+    expect(state.caches.some((r) => r.zone === 'cache-seawall')).toBe(false) // consumed
     expect(game.lastEvents.some((e) => e._tag === 'cache_picked' && e.playerId === HUMAN)).toBe(
       true,
     )
@@ -122,8 +125,11 @@ describe('objectives: caches', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'cache-top', buffs: [] } },
-      caches: [{ zone: 'cache-top', type: 'dd', cycle: s.cycle }],
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, zone: 'cache-seawall', buffs: [] },
+      },
+      caches: [{ zone: 'cache-seawall', type: 'dd', cycle: s.cycle }],
     }))
 
     game.submit({ type: 'grab' })
@@ -182,10 +188,17 @@ describe('objectives: silt dwellers', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'silt-chaff-top' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'silt-chaff-upper' } },
       // A stub at 1 INTEG — one basic attack finishes it (bounty 20sc / 25xp).
       neutrals: [
-        { id: 'camp0', zone: 'silt-chaff-top', integ: 1, maxInteg: 250, type: 'stub', alive: true },
+        {
+          id: 'camp0',
+          zone: 'silt-chaff-upper',
+          integ: 1,
+          maxInteg: 250,
+          type: 'stub',
+          alive: true,
+        },
       ],
     }))
 
@@ -207,11 +220,11 @@ describe('objectives: silt dwellers', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' } },
       neutrals: [
         {
           id: 'camp0',
-          zone: 'silt-chaff-top',
+          zone: 'silt-chaff-upper',
           integ: 100,
           maxInteg: 250,
           type: 'stub',

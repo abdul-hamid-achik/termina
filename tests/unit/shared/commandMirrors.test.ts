@@ -93,12 +93,12 @@ describe('Trap #9 — command vocabulary mirrors', () => {
   })
 
   it('commandSchema accepts a representative server-bound action', () => {
-    const parsed = commandSchema.safeParse({ type: 'move', zone: 'mid-river' })
+    const parsed = commandSchema.safeParse({ type: 'move', zone: 'coldstore-cross' })
     expect(parsed.success).toBe(true)
   })
 
   it('commandSchema rejects an unknown verb (trap: silent accept)', () => {
-    const parsed = commandSchema.safeParse({ type: 'dance', zone: 'mid-river' })
+    const parsed = commandSchema.safeParse({ type: 'dance', zone: 'coldstore-cross' })
     expect(parsed.success).toBe(false)
   })
 })

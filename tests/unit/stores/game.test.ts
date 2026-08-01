@@ -12,7 +12,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestPlayer',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-chaff',
+    zone: 'coldstore-t1-chaff',
     integ: 500,
     maxInteg: 550,
     bw: 200,
@@ -64,7 +64,7 @@ function makeCycleMessage(
     state: {
       phase: overrides.phase ?? 'playing',
       players,
-      zones: overrides.zones ?? { 'mid-t1-chaff': makeZone('mid-t1-chaff') },
+      zones: overrides.zones ?? { 'coldstore-t1-chaff': makeZone('coldstore-t1-chaff') },
       teams: overrides.teams ?? makeTeams(),
     } as CycleStateMessage['state'],
   }
@@ -115,7 +115,7 @@ describe('Game Store', () => {
         cycle: 11,
         state: {
           players: { p1: makePlayer() },
-          zones: { 'mid-t1-chaff': makeZone('mid-t1-chaff') },
+          zones: { 'coldstore-t1-chaff': makeZone('coldstore-t1-chaff') },
         },
       } as never)
 
@@ -133,14 +133,17 @@ describe('Game Store', () => {
           phase: 'playing',
           players: { p1: makePlayer() },
           // zones MAP carries two zones (one fogged-but-present)...
-          zones: { 'mid-river': makeZone('mid-river'), 'top-river': makeZone('top-river') },
+          zones: {
+            'coldstore-cross': makeZone('coldstore-cross'),
+            'seawall-cross': makeZone('seawall-cross'),
+          },
           // ...but only one is actually visible this cycle.
-          visibleZones: ['mid-river'],
+          visibleZones: ['coldstore-cross'],
           teams: makeTeams(),
         },
       } as never)
 
-      expect(store.visibleZoneIds).toEqual(['mid-river'])
+      expect(store.visibleZoneIds).toEqual(['coldstore-cross'])
       // The map still holds both (for per-zone data lookups) — the fog list is
       // the narrower, authoritative set.
       expect(Object.keys(store.visibleZones)).toHaveLength(2)
@@ -159,12 +162,12 @@ describe('Game Store', () => {
         store.playerId = 'p1'
         store.updateFromCycle(
           makeCycleMessage({
-            players: { p1: makePlayer({ zone: 'chaff-fountain' }) },
+            players: { p1: makePlayer({ zone: 'rookery-anchor' }) },
           }),
         )
 
         expect(store.currentZone).not.toBeNull()
-        expect(store.currentZone!.id).toBe('chaff-fountain')
+        expect(store.currentZone!.id).toBe('rookery-anchor')
         expect(store.currentZone!.name).toBe('Rookery Anchor')
       })
 
@@ -227,7 +230,7 @@ describe('Game Store', () => {
 
       it('an item active consumes only the item slot', () => {
         const store = livePlayer()
-        store.markActionSent('use jump_shunt mid-river')
+        store.markActionSent('use jump_shunt coldstore-cross')
 
         expect(store.canUseItem).toBe(false)
         expect(store.canAct).toBe(true)
@@ -243,7 +246,7 @@ describe('Game Store', () => {
 
       it('both slots reopen on the next cycle', () => {
         const store = livePlayer()
-        store.markActionSent('use jump_shunt mid-river')
+        store.markActionSent('use jump_shunt coldstore-cross')
         store.markActionSent('cast r')
         expect(store.canAct).toBe(false)
         expect(store.canUseItem).toBe(false)
@@ -276,7 +279,7 @@ describe('Game Store', () => {
         store.playerId = 'p1'
         store.updateFromCycle(
           makeCycleMessage({
-            players: { p1: makePlayer({ zone: 'chaff-fountain', alive: true }) },
+            players: { p1: makePlayer({ zone: 'rookery-anchor', alive: true }) },
           }),
         )
 
@@ -288,7 +291,7 @@ describe('Game Store', () => {
         store.playerId = 'p1'
         store.updateFromCycle(
           makeCycleMessage({
-            players: { p1: makePlayer({ zone: 'mid-t1-chaff', alive: true }) },
+            players: { p1: makePlayer({ zone: 'coldstore-t1-chaff', alive: true }) },
           }),
         )
 
@@ -300,7 +303,7 @@ describe('Game Store', () => {
         store.playerId = 'p1'
         store.updateFromCycle(
           makeCycleMessage({
-            players: { p1: makePlayer({ zone: 'chaff-fountain', alive: false }) },
+            players: { p1: makePlayer({ zone: 'rookery-anchor', alive: false }) },
           }),
         )
 
@@ -360,21 +363,21 @@ describe('Game Store', () => {
           id: 'e1',
           name: 'Enemy',
           team: 'audit',
-          zone: 'mid-t1-chaff',
+          zone: 'coldstore-t1-chaff',
           alive: true,
         })
         const allyOther = makePlayer({
           id: 'a1',
           name: 'Ally',
           team: 'chaff',
-          zone: 'mid-t1-chaff',
+          zone: 'coldstore-t1-chaff',
           alive: true,
         })
         const farEnemy = makePlayer({
           id: 'e2',
           name: 'FarEnemy',
           team: 'audit',
-          zone: 'bot-t1-audit',
+          zone: 'shallows-t1-audit',
           alive: true,
         })
 
@@ -400,7 +403,7 @@ describe('Game Store', () => {
         const deadEnemy = makePlayer({
           id: 'e1',
           team: 'audit',
-          zone: 'mid-t1-chaff',
+          zone: 'coldstore-t1-chaff',
           alive: false,
         })
 
@@ -428,7 +431,7 @@ describe('Game Store', () => {
           id: 'a1',
           name: 'Ally',
           team: 'chaff',
-          zone: 'mid-t1-chaff',
+          zone: 'coldstore-t1-chaff',
           alive: true,
         })
 
@@ -446,7 +449,12 @@ describe('Game Store', () => {
         const store = useGameStore()
         store.playerId = 'p1'
 
-        const deadAlly = makePlayer({ id: 'a1', team: 'chaff', zone: 'mid-t1-chaff', alive: false })
+        const deadAlly = makePlayer({
+          id: 'a1',
+          team: 'chaff',
+          zone: 'coldstore-t1-chaff',
+          alive: false,
+        })
 
         store.updateFromCycle(
           makeCycleMessage({
@@ -496,8 +504,8 @@ describe('Game Store', () => {
         const p1 = makePlayer()
         const p2 = makePlayer({ id: 'p2', team: 'audit' })
         const zones = {
-          'mid-t1-chaff': makeZone('mid-t1-chaff'),
-          'top-t1-chaff': makeZone('top-t1-chaff'),
+          'coldstore-t1-chaff': makeZone('coldstore-t1-chaff'),
+          'seawall-t1-chaff': makeZone('seawall-t1-chaff'),
         }
         const teams = makeTeams()
 
@@ -513,10 +521,10 @@ describe('Game Store', () => {
 
         const msg = makeCycleMessage()
         ;(msg.state as unknown as Record<string, unknown>).ice = [
-          { team: 'chaff', zone: 'mid-t1-chaff', integ: 1500, maxInteg: 2000, alive: true },
+          { team: 'chaff', zone: 'coldstore-t1-chaff', integ: 1500, maxInteg: 2000, alive: true },
         ]
         ;(msg.state as unknown as Record<string, unknown>).waves = [
-          { id: 'c1', team: 'chaff', zone: 'mid-t1-chaff', integ: 200, type: 'line' },
+          { id: 'c1', team: 'chaff', zone: 'coldstore-t1-chaff', integ: 200, type: 'line' },
         ]
 
         store.updateFromCycle(msg)
@@ -530,15 +538,15 @@ describe('Game Store', () => {
 
         const msg1 = makeCycleMessage({ cycle: 1 })
         ;(msg1.state as unknown as Record<string, unknown>).ice = [
-          { team: 'chaff', zone: 'mid-t1-chaff', integ: 1500, maxInteg: 2000, alive: true },
-          { team: 'audit', zone: 'mid-t1-audit', integ: 2000, maxInteg: 2000, alive: true },
+          { team: 'chaff', zone: 'coldstore-t1-chaff', integ: 1500, maxInteg: 2000, alive: true },
+          { team: 'audit', zone: 'coldstore-t1-audit', integ: 2000, maxInteg: 2000, alive: true },
         ]
 
         store.updateFromCycle(msg1)
 
         expect(store.ice).toHaveLength(2)
-        expect(store.ice[0]!.zone).toBe('mid-t1-chaff')
-        expect(store.ice[1]!.zone).toBe('mid-t1-audit')
+        expect(store.ice[0]!.zone).toBe('coldstore-t1-chaff')
+        expect(store.ice[1]!.zone).toBe('coldstore-t1-audit')
       })
 
       it('updates ice from cycle_state', () => {
@@ -546,7 +554,7 @@ describe('Game Store', () => {
 
         const msg1 = makeCycleMessage({ cycle: 1 })
         ;(msg1.state as unknown as Record<string, unknown>).ice = [
-          { team: 'chaff', zone: 'mid-t1-chaff', integ: 2000, maxInteg: 2000, alive: true },
+          { team: 'chaff', zone: 'coldstore-t1-chaff', integ: 2000, maxInteg: 2000, alive: true },
         ]
 
         store.updateFromCycle(msg1)
@@ -555,7 +563,7 @@ describe('Game Store', () => {
 
         const msg2 = makeCycleMessage({ cycle: 2 })
         ;(msg2.state as unknown as Record<string, unknown>).ice = [
-          { team: 'chaff', zone: 'mid-t1-chaff', integ: 1500, maxInteg: 2000, alive: true },
+          { team: 'chaff', zone: 'coldstore-t1-chaff', integ: 1500, maxInteg: 2000, alive: true },
         ]
 
         store.updateFromCycle(msg2)
@@ -689,7 +697,7 @@ describe('Game Store', () => {
         const store = useGameStore()
         const events: GameEvent[] = [
           { cycle: 1, type: 'kill', payload: { killer: 'p1', victim: 'p2' } },
-          { cycle: 2, type: 'ice_destroy', payload: { zone: 'mid-t1-chaff' } },
+          { cycle: 2, type: 'ice_destroy', payload: { zone: 'coldstore-t1-chaff' } },
         ]
 
         store.addEvents(events)
@@ -884,16 +892,16 @@ describe('Game Store — overhaul state (fog-safe lastSeen / net worth / objecti
   it('records last-seen only for un-fogged players, never overwriting from fog', () => {
     const store = useGameStore()
     store.playerId = 'me'
-    const me = makePlayer({ id: 'me', team: 'chaff', zone: 'mid-river' })
-    const enemyVisible = makePlayer({ id: 'e1', team: 'audit', zone: 'top-river' })
+    const me = makePlayer({ id: 'me', team: 'chaff', zone: 'coldstore-cross' })
+    const enemyVisible = makePlayer({ id: 'e1', team: 'audit', zone: 'seawall-cross' })
     store.updateFromCycle(makeCycleMessage({ cycle: 10, players: { me, e1: enemyVisible } }))
-    expect(store.lastSeen['e1']).toEqual({ zone: 'top-river', cycle: 10 })
+    expect(store.lastSeen['e1']).toEqual({ zone: 'seawall-cross', cycle: 10 })
 
     // e1 now fogged (no zone) — last-seen must stay at the last observed position.
     store.updateFromCycle(
       makeCycleMessage({ cycle: 14, players: { me, e1: fogged('e1', 'audit') } }),
     )
-    expect(store.lastSeen['e1']).toEqual({ zone: 'top-river', cycle: 10 })
+    expect(store.lastSeen['e1']).toEqual({ zone: 'seawall-cross', cycle: 10 })
   })
 
   it('carries an enemy net worth forward while fogged (no crater to zero)', () => {
@@ -937,7 +945,7 @@ describe('Game Store — overhaul state (fog-safe lastSeen / net worth / objecti
     const base = makeCycleMessage({ cycle: 10 })
     const s = base.state as unknown as Record<string, unknown>
     s.tenant = { alive: false, integ: 0, maxInteg: 5000, deathCycle: 10 }
-    s.caches = [{ zone: 'cache-top', type: 'haste', cycle: 10 }]
+    s.caches = [{ zone: 'cache-seawall', type: 'haste', cycle: 10 }]
     s.backup = { zone: 'hollow', cycle: 10, holderId: null }
     store.updateFromCycle(base)
     expect(store.tenant?.alive).toBe(false)

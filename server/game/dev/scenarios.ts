@@ -67,7 +67,7 @@ export function applyScenario(
       const human = humanId ? state.players[humanId] : undefined
       if (!humanId || !human) return state
       const enemy = Object.values(state.players).find((p) => p.team !== human.team)
-      const laneZone = 'mid-river'
+      const laneZone = 'coldstore-cross'
       const players = {
         ...state.players,
         [humanId]: { ...human, zone: laneZone, level: 6, bw: human.maxBw, integ: human.maxInteg },

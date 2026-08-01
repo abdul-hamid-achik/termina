@@ -80,7 +80,7 @@ describe('applyScenario (dev seed scenarios)', () => {
           bw: 100,
           maxBw: 300,
           level: 1,
-          zone: 'chaff-fountain',
+          zone: 'rookery-anchor',
         },
         enemy1: {
           id: 'enemy1',
@@ -91,13 +91,13 @@ describe('applyScenario (dev seed scenarios)', () => {
           bw: 50,
           maxBw: 250,
           level: 1,
-          zone: 'audit-fountain',
+          zone: 'landing-anchor',
         },
       },
     } as unknown as GameState
     const s = applyScenario(base, 'laning_combat', { humanId: 'human1' })
-    expect(s.players.human1!.zone).toBe('mid-river')
-    expect(s.players.enemy1!.zone).toBe('mid-river')
+    expect(s.players.human1!.zone).toBe('coldstore-cross')
+    expect(s.players.enemy1!.zone).toBe('coldstore-cross')
     // levelled + topped off so abilities are unlocked and castable
     expect(s.players.human1!.level).toBe(6)
     expect(s.players.human1!.bw).toBe(s.players.human1!.maxBw)

@@ -72,6 +72,29 @@ describe('zone ids are data, not a parseable encoding', () => {
     expect(offenders, `read the zone record instead:\n${offenders.join('\n')}`).toEqual([])
   })
 
+  /**
+   * A regex is the same coupling wearing a different hat, and it is how the
+   * tutorial's `/fountain|base/.test(zoneId)` survived the first sweep: it
+   * stopped matching the instant the zones became rookery-terminal /
+   * rookery-anchor, which silently advanced the tutorial while the player was
+   * still standing in their base.
+   */
+  it('no source matches a zone id with a regex over its words', () => {
+    const offenders: string[] = []
+    const WORDS = ['anchor', 'base', 'cross', 'jungle', 'silt', 'cache', 'hollow']
+    const re = /\/([a-z|]+)\/\s*\.test\(/g
+    for (const file of files) {
+      const src = stripComments(readFileSync(file, 'utf8'))
+      for (const m of src.matchAll(re)) {
+        const alternation = m[1]!.split('|')
+        if (alternation.some((w) => WORDS.includes(w))) {
+          offenders.push(`${file.slice(ROOT.length)}: /${m[1]}/.test(...)`)
+        }
+      }
+    }
+    expect(offenders, `read the zone's \`type\` instead:\n${offenders.join('\n')}`).toEqual([])
+  })
+
   it('no source assembles a zone id from parts', () => {
     const offenders: string[] = []
     // e.g. `` `${lane}-t${tier}-${team}` `` — an interpolation glued to a tier marker

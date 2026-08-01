@@ -5,13 +5,13 @@ import CommandInput from './CommandInput.vue'
 
 // The autocomplete/validation pulls from the player, visible zones, roster and
 // item table — wire all of them so the suggestions + inline preview are live.
-const player = makePlayer({ zone: 'mid-river', scrip: 1800 })
+const player = makePlayer({ zone: 'coldstore-cross', scrip: 1800 })
 const allPlayers = makeRoster()
 const visibleZones = {
-  'mid-river': makeZone('mid-river'),
-  'top-river': makeZone('top-river'),
-  'bot-river': makeZone('bot-river'),
-  'mid-t1-audit': makeZone('mid-t1-audit'),
+  'coldstore-cross': makeZone('coldstore-cross'),
+  'seawall-cross': makeZone('seawall-cross'),
+  'shallows-cross': makeZone('shallows-cross'),
+  'coldstore-t1-audit': makeZone('coldstore-t1-audit'),
 }
 const TICK = 240
 </script>
@@ -45,7 +45,7 @@ const TICK = 240
           :items="ITEMS"
           :cycle="TICK"
           :can-act="false"
-          pending-command="move top-river"
+          pending-command="move seawall-cross"
         />
       </div>
     </Variant>

@@ -443,7 +443,7 @@ function useTownPortalScroll(
 ): Effect.Effect<GameState, ItemError> {
   let updated = consumeItem(player, slot)
 
-  const fountainZone = player.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
+  const fountainZone = player.team === 'chaff' ? 'rookery-anchor' : 'landing-anchor'
 
   updated = applyBuff(updated, {
     id: 'tp_channeling',
@@ -512,7 +512,7 @@ function useForceStaff(
     // Deterministic disengage: shove the target one zone toward THEIR OWN
     // fountain (the safe direction). Replaces an earlier random push that could
     // fling them DEEPER into danger — and keeps the active replay-deterministic.
-    const homeFountain = targetPlayer.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
+    const homeFountain = targetPlayer.team === 'chaff' ? 'rookery-anchor' : 'landing-anchor'
     const hasZone = (id: string) => id in state.zones
     const pushZone = [...currentZone.adjacentTo].sort(
       (a, b) => getDistance(a, homeFountain, hasZone) - getDistance(b, homeFountain, hasZone),
@@ -573,7 +573,7 @@ function useHurricanePike(
     // the one closest to our OWN fountain. Was a random pick that could fling the
     // caster toward the ENEMY base — and broke replay determinism (same fix as
     // Shove Splice).
-    const homeFountain = player.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
+    const homeFountain = player.team === 'chaff' ? 'rookery-anchor' : 'landing-anchor'
     const hasZone = (id: string) => id in state.zones
     const pushZone = [...safeZones].sort(
       (a, b) => getDistance(a, homeFountain, hasZone) - getDistance(b, homeFountain, hasZone),

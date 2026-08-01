@@ -47,7 +47,7 @@ function makeHero(heroId: string, overrides: Partial<PlayerState> = {}, level = 
     name: 'Player1',
     team: 'chaff',
     heroId,
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: s.maxInteg,
     maxInteg: s.maxInteg,
     bw: s.maxBw,
@@ -338,7 +338,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
         id: 'p1',
         team: 'chaff',
         level: 6,
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         bw: 2000,
         maxBw: 2000,
         talents: { tier10: null, tier15: null, tier20: null, tier25: talent25 },
@@ -349,7 +349,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
         id: 'p2',
         name: 'Enemy',
         team: 'audit',
-        zone: 'top-river',
+        zone: 'seawall-cross',
         bw: 100,
         maxBw: 500,
       })
@@ -382,7 +382,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
         makeGameState({ players: { p1: regexCaster('regex_25_right'), p2: distantTarget() } }),
         castR,
       )
-      expect(result.state.players['p1']!.zone).toBe('mid-river')
+      expect(result.state.players['p1']!.zone).toBe('coldstore-cross')
     })
   })
 
@@ -499,16 +499,16 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
 
   it('teleports the caster directly on a zone-target ultimate (daemon R)', () => {
     const state = makeGameState({
-      players: { p1: makeHero('daemon', { id: 'p1', zone: 'mid-river' }, 6) },
+      players: { p1: makeHero('daemon', { id: 'p1', zone: 'coldstore-cross' }, 6) },
     })
     const result = run(state, [
       {
         playerId: 'p1',
-        command: { type: 'cast', ability: 'r', target: { kind: 'zone', zone: 'audit-base' } },
+        command: { type: 'cast', ability: 'r', target: { kind: 'zone', zone: 'landing-terminal' } },
       },
     ])
     expect(result.rejected).toHaveLength(0)
-    expect(result.state.players['p1']!.zone).toBe('audit-base')
+    expect(result.state.players['p1']!.zone).toBe('landing-terminal')
   })
 
   it('execute (daemon E) kills below the INTEG threshold and refuses above it', () => {
@@ -569,7 +569,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
  * you and no enemy hero present, every AoE was dead weight.
  */
 describe('cast bridge: abilities vs waves and neutrals', () => {
-  const LANE = 'mid-t1-chaff'
+  const LANE = 'coldstore-t1-chaff'
 
   function wave(over: Partial<WaveUnitState> = {}): WaveUnitState {
     return { id: 'c1', team: 'audit', zone: LANE, integ: 400, maxInteg: 400, type: 'line', ...over }
@@ -596,7 +596,7 @@ describe('cast bridge: abilities vs waves and neutrals', () => {
       players: { p1: makeHero('mutex', { id: 'p1', zone: LANE }) },
       waves: [
         wave({ id: 'mine', team: 'chaff' }),
-        wave({ id: 'theirs-elsewhere', zone: 'mid-river' }),
+        wave({ id: 'theirs-elsewhere', zone: 'coldstore-cross' }),
       ],
     })
 
@@ -666,7 +666,7 @@ describe('cast bridge: abilities vs waves and neutrals', () => {
   })
 
   it('clears a silt camp and pays the neutral bounty', () => {
-    const camp = 'silt-chaff-top'
+    const camp = 'silt-chaff-upper'
     const state = makeGameState({
       players: { p1: makeHero('mutex', { id: 'p1', zone: camp }) },
       neutrals: [{ id: 'n1', zone: camp, integ: 100, maxInteg: 250, type: 'stub', alive: true }],
@@ -688,7 +688,7 @@ describe('cast bridge: abilities vs waves and neutrals', () => {
     // cast resolving after the attack phase handed the resolver a pre-attack
     // silt — and the array it returned silently reverted every neutral the
     // attack phase had just damaged.
-    const camp = 'silt-chaff-top'
+    const camp = 'silt-chaff-upper'
     const state = makeGameState({
       players: {
         p1: makeHero('echo', { id: 'p1', name: 'Hitter', zone: camp }),
@@ -774,7 +774,7 @@ describe('basic-attack path: shield, phase shift, fear', () => {
       players: {
         p1: makeHero('echo', {
           id: 'p1',
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           buffs: [{ id: 'feared', stacks: 1, cyclesRemaining: 2, source: 'e1' }],
         }),
       },
@@ -790,20 +790,26 @@ describe('basic-attack path: shield, phase shift, fear', () => {
     ).toBe('Cannot cast while feared')
     // Fear allows fleeing
     expect(
-      validateAction(feared, { playerId: 'p1', command: { type: 'move', zone: 'mid-t1-chaff' } }),
+      validateAction(feared, {
+        playerId: 'p1',
+        command: { type: 'move', zone: 'coldstore-t1-chaff' },
+      }),
     ).toBeNull()
 
     const taunted = makeGameState({
       players: {
         p1: makeHero('echo', {
           id: 'p1',
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           buffs: [{ id: 'taunt', stacks: 1, cyclesRemaining: 2, source: 'e1' }],
         }),
       },
     })
     expect(
-      validateAction(taunted, { playerId: 'p1', command: { type: 'move', zone: 'mid-t1-chaff' } }),
+      validateAction(taunted, {
+        playerId: 'p1',
+        command: { type: 'move', zone: 'coldstore-t1-chaff' },
+      }),
     ).toBe('Cannot move while taunted')
     expect(
       validateAction(taunted, { playerId: 'p1', command: { type: 'cast', ability: 'q' } }),
@@ -827,13 +833,15 @@ describe('slow mechanic (deterministic move-fail)', () => {
       players: {
         p1: makeHero('echo', {
           id: 'p1',
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           buffs: [{ id: 'slow', stacks: 30, cyclesRemaining: 2, source: 'e1' }],
         }),
       },
     })
-    const result = run(state, [{ playerId: 'p1', command: { type: 'move', zone: 'mid-t1-chaff' } }])
-    expect(result.state.players['p1']!.zone).toBe('mid-river')
+    const result = run(state, [
+      { playerId: 'p1', command: { type: 'move', zone: 'coldstore-t1-chaff' } },
+    ])
+    expect(result.state.players['p1']!.zone).toBe('coldstore-cross')
     expect(result.rejected).toHaveLength(1)
     expect(result.rejected[0]!.reason).toMatch(/slow/i)
   })
@@ -845,13 +853,15 @@ describe('slow mechanic (deterministic move-fail)', () => {
       players: {
         p1: makeHero('echo', {
           id: 'p1',
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           buffs: [{ id: 'slow', stacks: 30, cyclesRemaining: 2, source: 'e1' }],
         }),
       },
     })
-    const result = run(state, [{ playerId: 'p1', command: { type: 'move', zone: 'mid-t1-chaff' } }])
-    expect(result.state.players['p1']!.zone).toBe('mid-t1-chaff')
+    const result = run(state, [
+      { playerId: 'p1', command: { type: 'move', zone: 'coldstore-t1-chaff' } },
+    ])
+    expect(result.state.players['p1']!.zone).toBe('coldstore-t1-chaff')
     expect(result.rejected).toHaveLength(0)
   })
 })
@@ -860,12 +870,12 @@ describe('reveal and stealth vision wiring', () => {
   it('stealth hides an enemy from view (fogged) without true sight', () => {
     const state = makeGameState({
       players: {
-        viewer: makeHero('echo', { id: 'viewer', zone: 'mid-river' }),
+        viewer: makeHero('echo', { id: 'viewer', zone: 'coldstore-cross' }),
         enemy: makeHero('daemon', {
           id: 'enemy',
           name: 'Sneak',
           team: 'audit',
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           buffs: [{ id: 'stealth', stacks: 1, cyclesRemaining: 5, source: 'enemy' }],
         }),
       },
@@ -878,12 +888,12 @@ describe('reveal and stealth vision wiring', () => {
   it("a 'revealed' buff from the viewer's team pierces stealth and fog", () => {
     const state = makeGameState({
       players: {
-        viewer: makeHero('echo', { id: 'viewer', zone: 'mid-river' }),
+        viewer: makeHero('echo', { id: 'viewer', zone: 'coldstore-cross' }),
         enemy: makeHero('daemon', {
           id: 'enemy',
           name: 'Sneak',
           team: 'audit',
-          zone: 'audit-base', // not normally visible from mid-river
+          zone: 'landing-terminal', // not normally visible from coldstore-cross
           buffs: [
             { id: 'stealth', stacks: 1, cyclesRemaining: 5, source: 'enemy' },
             { id: 'revealed', stacks: 1, cyclesRemaining: 3, source: 'viewer' },
@@ -894,24 +904,24 @@ describe('reveal and stealth vision wiring', () => {
     const view = filterStateForPlayer(state, 'viewer')
     const seen = view.players['enemy']!
     expect('fogged' in seen).toBe(false)
-    expect(view.visibleZones).toContain('audit-base')
+    expect(view.visibleZones).toContain('landing-terminal')
   })
 
   it("an enemy-sourced 'revealed' buff does not reveal to this viewer", () => {
     const state = makeGameState({
       players: {
-        viewer: makeHero('echo', { id: 'viewer', zone: 'mid-river' }),
+        viewer: makeHero('echo', { id: 'viewer', zone: 'coldstore-cross' }),
         ally2: makeHero('cron', {
           id: 'ally2',
           name: 'AuditAlly',
           team: 'audit',
-          zone: 'top-river',
+          zone: 'seawall-cross',
         }),
         enemy: makeHero('daemon', {
           id: 'enemy',
           name: 'Sneak',
           team: 'audit',
-          zone: 'audit-base',
+          zone: 'landing-terminal',
           buffs: [{ id: 'revealed', stacks: 1, cyclesRemaining: 3, source: 'ally2' }],
         }),
       },
@@ -926,7 +936,7 @@ describe('passive hook (processCycle step 11.5)', () => {
   it('mutex deadlock stacks accrue across ticks while standing still', () => {
     const gameId = `passive_test_${Math.random().toString(36).slice(2, 8)}`
     let state = makeGameState({
-      players: { p1: makeHero('mutex', { id: 'p1', zone: 'mid-river' }) },
+      players: { p1: makeHero('mutex', { id: 'p1', zone: 'coldstore-cross' }) },
     })
 
     // Tick 1: tick_end sets the zone tracker
@@ -941,9 +951,9 @@ describe('passive hook (processCycle step 11.5)', () => {
     expect(getBuffStacks(state.players['p1']!, 'deadlock')).toBe(2)
 
     // Moving resets the stacks (move event from the zone diff)
-    submitAction(gameId, 'p1', { type: 'move', zone: 'mid-t1-chaff' })
+    submitAction(gameId, 'p1', { type: 'move', zone: 'coldstore-t1-chaff' })
     state = Effect.runSync(processCycle(gameId, state)).state
-    expect(state.players['p1']!.zone).toBe('mid-t1-chaff')
+    expect(state.players['p1']!.zone).toBe('coldstore-t1-chaff')
     expect(getBuffStacks(state.players['p1']!, 'deadlock')).toBe(0)
   })
 

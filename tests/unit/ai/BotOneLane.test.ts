@@ -12,7 +12,7 @@ import { zonesForMap } from '~~/shared/constants/maps'
  * Bots on the one-lane (tutorial) map. The map is a strict subset of the full
  * graph, but bot pathfinding (findPath) walks the GLOBAL zone graph — so a bot
  * whose role lane is top/bot/jungle would try to step into a zone this game
- * doesn't have. registerBots({ forceLane: 'mid' }) pins every bot to the one
+ * doesn't have. registerBots({ forceLane: 'coldstore' }) pins every bot to the one
  * surviving lane; this drives the real processCycle → decideBotAction path and
  * proves the bots stay on the map AND still push it. Without forceLane this is
  * exactly the standstill the tutorial entry point must avoid.
@@ -25,7 +25,7 @@ function makeBot(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'bot_alpha',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'chaff-fountain',
+    zone: 'rookery-anchor',
     integ: 550,
     maxInteg: 550,
     bw: 280,
@@ -106,10 +106,10 @@ describe('bots on the one-lane map', () => {
     registerBots(
       GAME_ID,
       Object.values(players).map((b) => ({ playerId: b.id, team: b.team, heroId: b.heroId })),
-      { forceLane: 'mid' },
+      { forceLane: 'coldstore' },
     )
-    expect(getBotLane(GAME_ID, 'bot_alpha')).toBe('mid')
-    expect(getBotLane(GAME_ID, 'bot_bravo')).toBe('mid')
+    expect(getBotLane(GAME_ID, 'bot_alpha')).toBe('coldstore')
+    expect(getBotLane(GAME_ID, 'bot_bravo')).toBe('coldstore')
   })
 
   it('bots never step off the map and still push the lane', () => {
@@ -118,7 +118,7 @@ describe('bots on the one-lane map', () => {
         id,
         name: id,
         team: 'chaff',
-        zone: 'chaff-fountain',
+        zone: 'rookery-anchor',
         heroId: ['echo', 'kernel'][i] ?? 'echo',
       }),
     )
@@ -127,7 +127,7 @@ describe('bots on the one-lane map', () => {
         id,
         name: id,
         team: 'audit',
-        zone: 'audit-fountain',
+        zone: 'landing-anchor',
         heroId: ['regex', 'daemon'][i] ?? 'regex',
       }),
     )
@@ -141,7 +141,7 @@ describe('bots on the one-lane map', () => {
         team: b.team,
         heroId: b.heroId,
       })),
-      { forceLane: 'mid' },
+      { forceLane: 'coldstore' },
     )
 
     let state = oneLaneState(players)
@@ -160,7 +160,7 @@ describe('bots on the one-lane map', () => {
         if (p) expect(validZones.has(p.zone)).toBe(true)
       }
       // A bot trying to walk off the lane would surface as a 'No path'
-      // rejection (auto-path validation) — forceLane='mid' must keep that
+      // rejection (auto-path validation) — forceLane='coldstore' must keep that
       // from ever happening.
       offMapRejections += result.rejectedActions.filter((r) => r.reason.includes('No path')).length
 
@@ -168,7 +168,7 @@ describe('bots on the one-lane map', () => {
       if (
         chaffBots.some((b) => {
           const z = state.players[b.id]?.zone
-          return z === 'mid-river' || z?.endsWith('-audit')
+          return z === 'coldstore-cross' || z?.endsWith('-audit')
         })
       ) {
         crossedFrontier = true

@@ -101,12 +101,12 @@ describe('strategy: tenant', () => {
 
 describe('strategy: caches', () => {
   it('lists live caches with expiry', () => {
-    const r = formatCaches([{ zone: 'cache-top', type: 'haste', cycle: 50 }], 60)
+    const r = formatCaches([{ zone: 'cache-seawall', type: 'haste', cycle: 50 }], 60)
     expect(r.live).toHaveLength(1)
     expect(r.live[0]!.expiresIn).toBe(50 + CACHE_DURATION_CYCLES - 60)
   })
   it('drops expired caches and reports next spawn', () => {
-    const r = formatCaches([{ zone: 'cache-top', type: 'haste', cycle: 0 }], 55)
+    const r = formatCaches([{ zone: 'cache-seawall', type: 'haste', cycle: 0 }], 55)
     expect(r.live).toHaveLength(0)
     expect(r.nextIn).toBe(5) // 55 % 60 -> next at 60
     expect(r.label).toContain('next')
@@ -188,10 +188,10 @@ describe('strategy: sparkline', () => {
 
 describe('strategy: shortZone', () => {
   it('spaces out the id and upper-cases ice tiers', () => {
-    expect(shortZone('mid-t1-chaff')).toBe('Coldstore T1 (CHAFF)')
-    expect(shortZone('top-t2-audit')).toBe('Seawall T2 (AUDIT)')
+    expect(shortZone('coldstore-t1-chaff')).toBe('Coldstore T1 (CHAFF)')
+    expect(shortZone('seawall-t2-audit')).toBe('Seawall T2 (AUDIT)')
   })
   it('leaves a plain zone id readable', () => {
-    expect(shortZone('mid-river')).toBe('Coldstore Crossing')
+    expect(shortZone('coldstore-cross')).toBe('Coldstore Crossing')
   })
 })

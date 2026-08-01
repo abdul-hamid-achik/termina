@@ -13,7 +13,7 @@ function row(overrides: Partial<PlayerScoreRow> = {}): PlayerScoreRow {
     deaths: 2,
     assists: 7,
     scrip: 12450,
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     alive: true,
     ...overrides,
   }

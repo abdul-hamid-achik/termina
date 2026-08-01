@@ -17,23 +17,23 @@ describe('wards', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           items: ['camtap', null, null, null, null, null],
         },
       },
     }))
 
-    game.submit({ type: 'ward', zone: 'mid-river' })
+    game.submit({ type: 'ward', zone: 'coldstore-cross' })
     await game.tick()
 
     // The ward is logged, the charge is spent, and a team ward now sits in the zone.
     expect(
       game.lastEvents.some(
-        (e) => e._tag === 'ward_placed' && e.playerId === HUMAN && e.zone === 'mid-river',
+        (e) => e._tag === 'ward_placed' && e.playerId === HUMAN && e.zone === 'coldstore-cross',
       ),
     ).toBe(true)
     expect((await game.me()).items).not.toContain('camtap')
-    const zoneWards = (await game.state()).zones['mid-river']?.wards ?? []
+    const zoneWards = (await game.state()).zones['coldstore-cross']?.wards ?? []
     expect(zoneWards.some((w) => w.team === me0.team && w.type === 'camtap')).toBe(true)
   })
 
@@ -45,18 +45,18 @@ describe('wards', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
           items: ['camtap', null, null, null, null, null],
         },
       },
     }))
 
-    // audit-base is across the map from mid-river — out of warding reach.
-    game.submit({ type: 'ward', zone: 'audit-base' })
+    // landing-terminal is across the map from coldstore-cross — out of warding reach.
+    game.submit({ type: 'ward', zone: 'landing-terminal' })
     await game.tick()
 
     // No ward placed, the charge is NOT spent, and the player is told why.
-    expect((await game.state()).zones['audit-base']?.wards ?? []).toHaveLength(0)
+    expect((await game.state()).zones['landing-terminal']?.wards ?? []).toHaveLength(0)
     expect((await game.me()).items).toContain('camtap') // not consumed
     expect(
       game.lastRejected.some(

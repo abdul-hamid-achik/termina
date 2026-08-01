@@ -1388,7 +1388,7 @@ function handleRespawns(state: GameState): GameState {
 
   for (const [pid, player] of Object.entries(players)) {
     if (!player.alive && player.respawnCycle !== null && state.cycle >= player.respawnCycle) {
-      const spawnZone = player.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
+      const spawnZone = player.team === 'chaff' ? 'rookery-anchor' : 'landing-anchor'
       players[pid] = {
         ...player,
         alive: true,
@@ -1413,8 +1413,8 @@ function applyFountainHealing(state: GameState): GameState {
     if (!player.alive) continue
 
     const isInFountain =
-      (player.team === 'chaff' && player.zone === 'chaff-fountain') ||
-      (player.team === 'audit' && player.zone === 'audit-fountain')
+      (player.team === 'chaff' && player.zone === 'rookery-anchor') ||
+      (player.team === 'audit' && player.zone === 'landing-anchor')
 
     // Skip healing if player is in combat (soft check — full combat tracking would need a separate system)
     const inCombat = player.buffs.some((b) => b.id === 'inCombat')

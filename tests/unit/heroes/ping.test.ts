@@ -13,7 +13,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestPing',
     team: 'chaff',
     heroId: 'ping',
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: 580,
     maxInteg: 580,
     bw: 310,
@@ -75,8 +75,8 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     },
     players: playerMap,
     zones: {
-      'mid-river': { id: 'mid-river', wards: [] },
-      'top-river': { id: 'top-river', wards: [] },
+      'coldstore-cross': { id: 'coldstore-cross', wards: [] },
+      'seawall-cross': { id: 'seawall-cross', wards: [] },
     },
     waves: [],
     ice: [],
@@ -155,8 +155,8 @@ describe('Ping Hero', () => {
     })
 
     it('fails when target is in a NON-adjacent zone', () => {
-      const player = makePlayer() // mid-river
-      const enemy = makeEnemy({ zone: 'top-river' }) // not adjacent to mid-river
+      const player = makePlayer() // coldstore-cross
+      const enemy = makeEnemy({ zone: 'seawall-cross' }) // not adjacent to coldstore-cross
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(
@@ -177,9 +177,9 @@ describe('Ping Hero', () => {
       const fullDmg = inZone.integ - full.state.players['e1']!.integ
       expect(fullDmg).toBeGreaterThan(0)
 
-      // mid-t1-audit is adjacent to the caster's mid-river → the Q reaches it but
+      // coldstore-t1-audit is adjacent to the caster's coldstore-cross → the Q reaches it but
       // for reduced (60%) damage.
-      const adjacent = makeEnemy({ zone: 'mid-t1-audit' })
+      const adjacent = makeEnemy({ zone: 'coldstore-t1-audit' })
       const adj = Effect.runSync(
         resolveAbility(makeState([makePlayer({ level: 1 }), adjacent]), 'p1', 'q', {
           kind: 'hero',
@@ -267,7 +267,7 @@ describe('Ping Hero', () => {
 
     it('fails when target is in different zone', () => {
       const player = makePlayer()
-      const enemy = makeEnemy({ zone: 'top-river' })
+      const enemy = makeEnemy({ zone: 'seawall-cross' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(

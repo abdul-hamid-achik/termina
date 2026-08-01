@@ -11,23 +11,23 @@ import { ZONES } from './zones'
 /**
  * One-lane map — the mid lane only, for tutorials and fast games. It is a strict,
  * SELF-CONTAINED subgraph of the full 5v5 graph: same 11 zone IDs, but each
- * zone's `adjacentTo` is pruned to only these 11 (so e.g. mid-river no longer
+ * zone's `adjacentTo` is pruned to only these 11 (so e.g. coldstore-cross no longer
  * links to the caches, and the bases no longer link to top/bot). Movement is
  * additionally gated on a game's actual zone set (see validateAction) because
  * the global ZONE_MAP still carries the full edges.
  */
 const ONE_LANE_IDS = new Set<string>([
-  'chaff-base',
-  'chaff-fountain',
-  'mid-t3-chaff',
-  'mid-t2-chaff',
-  'mid-t1-chaff',
-  'mid-river',
-  'mid-t1-audit',
-  'mid-t2-audit',
-  'mid-t3-audit',
-  'audit-base',
-  'audit-fountain',
+  'rookery-terminal',
+  'rookery-anchor',
+  'coldstore-t3-chaff',
+  'coldstore-t2-chaff',
+  'coldstore-t1-chaff',
+  'coldstore-cross',
+  'coldstore-t1-audit',
+  'coldstore-t2-audit',
+  'coldstore-t3-audit',
+  'landing-terminal',
+  'landing-anchor',
 ])
 
 export const ONE_LANE_ZONES: readonly Zone[] = ZONES.filter((z) => ONE_LANE_IDS.has(z.id)).map(
@@ -38,37 +38,37 @@ export const ONE_LANE_ZONES: readonly Zone[] = ZONES.filter((z) => ONE_LANE_IDS.
  * Two-lane map — top + mid lanes (no bot), for quick 3v3. Like one_lane it is a
  * strict, SELF-CONTAINED subgraph: same zone IDs as the full map, but each
  * zone's `adjacentTo` is pruned to only these (bases drop their bot-t3 edge,
- * mid-t2 drops its bot-silt edge, mid-river drops cache-bot, etc.). Keeps the
- * top-side river objectives (cache-top + hollow) so a 3v3 still has caches and
- * Tenant; cache-bot is dropped because it only reaches the removed bot lane.
+ * mid-t2 drops its bot-silt edge, coldstore-cross drops cache-shallows, etc.). Keeps the
+ * top-side river objectives (cache-seawall + hollow) so a 3v3 still has caches and
+ * Tenant; cache-shallows is dropped because it only reaches the removed bot lane.
  */
 const TWO_LANE_IDS = new Set<string>([
   // Bases + fountains
-  'chaff-base',
-  'chaff-fountain',
-  'audit-base',
-  'audit-fountain',
+  'rookery-terminal',
+  'rookery-anchor',
+  'landing-terminal',
+  'landing-anchor',
   // Top lane (chaff → audit)
-  'top-t3-chaff',
-  'top-t2-chaff',
-  'top-t1-chaff',
-  'top-river',
-  'top-t1-audit',
-  'top-t2-audit',
-  'top-t3-audit',
+  'seawall-t3-chaff',
+  'seawall-t2-chaff',
+  'seawall-t1-chaff',
+  'seawall-cross',
+  'seawall-t1-audit',
+  'seawall-t2-audit',
+  'seawall-t3-audit',
   // Mid lane (chaff → audit)
-  'mid-t3-chaff',
-  'mid-t2-chaff',
-  'mid-t1-chaff',
-  'mid-river',
-  'mid-t1-audit',
-  'mid-t2-audit',
-  'mid-t3-audit',
+  'coldstore-t3-chaff',
+  'coldstore-t2-chaff',
+  'coldstore-t1-chaff',
+  'coldstore-cross',
+  'coldstore-t1-audit',
+  'coldstore-t2-audit',
+  'coldstore-t3-audit',
   // Top-side silts (serve both surviving lanes)
-  'silt-chaff-top',
-  'silt-audit-top',
+  'silt-chaff-upper',
+  'silt-audit-upper',
   // Top-side river objectives
-  'cache-top',
+  'cache-seawall',
   'hollow',
 ])
 

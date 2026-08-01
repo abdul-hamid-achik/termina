@@ -23,17 +23,17 @@ const ONE_LANE_ZONE_IDS = new Set(ONE_LANE_ZONES.map((z) => z.id))
 /** Resolve the short zone word a hint uses (`mid`) to a real one-lane zone id. */
 function resolveOneLaneZone(word: string): string | null {
   if (ONE_LANE_ZONE_IDS.has(word)) return word
-  if (word === 'base') return 'chaff-base'
-  if (word === 'fountain') return 'chaff-fountain'
-  // Mirrors the client's `mid` → `mid-river` alias.
-  if (word === 'mid') return 'mid-river'
+  if (word === 'base') return 'rookery-terminal'
+  if (word === 'anchor') return 'rookery-anchor'
+  // Mirrors the client's `mid` → `coldstore-cross` alias.
+  if (word === 'coldstore') return 'coldstore-cross'
   return null
 }
 
 /** Minimal tutorial-mode state for the pure advancement helper. The human's
  *  zone matters for the move step (it holds until they leave base/fountain).
  *  `cycle`/`tutorialStepSince` drive the step deadline. */
-function tutorialState(step: number, humanZone = 'mid-river', cycle = 0): GameState {
+function tutorialState(step: number, humanZone = 'coldstore-cross', cycle = 0): GameState {
   return {
     mode: 'tutorial',
     tutorialStep: step,
@@ -131,12 +131,12 @@ describe('tutorial flow', () => {
 
   describe('hints', () => {
     it('lock message points at the current step (what to do instead)', () => {
-      expect(tutorialLockMessage(0)).toContain('move mid')
+      expect(tutorialLockMessage(0)).toContain('move coldstore-t1-chaff')
       expect(tutorialLockMessage(1)).toContain('attack')
     })
 
     it('tutorialHint returns the current step hint, null once complete', () => {
-      expect(tutorialHint(0)).toContain('move mid')
+      expect(tutorialHint(0)).toContain('move coldstore-t1-chaff')
       expect(tutorialHint(TUTORIAL_STEP_COUNT)).toBeNull()
     })
 
@@ -164,10 +164,10 @@ describe('tutorial flow', () => {
       const target = resolveOneLaneZone(suggested!)
       expect(target, `"${suggested}" is not a one-lane zone`).toBeTruthy()
 
-      // Reachable: the player spawns in chaff-fountain, adjacent ONLY to
-      // chaff-base. Movement auto-paths, so any routed zone is fair game.
+      // Reachable: the player spawns in rookery-anchor, adjacent ONLY to
+      // rookery-terminal. Movement auto-paths, so any routed zone is fair game.
       expect(
-        findPath('chaff-fountain', target!, (id) => ONE_LANE_ZONE_IDS.has(id)).length,
+        findPath('rookery-anchor', target!, (id) => ONE_LANE_ZONE_IDS.has(id)).length,
       ).toBeGreaterThan(0)
 
       // Valid: REGRESSION — the hint used to say `move base`, but the step
@@ -176,7 +176,7 @@ describe('tutorial flow', () => {
       expect(target).not.toMatch(/fountain|base/)
 
       // Safe: REGRESSION — the hint then said `move mid`, which aliases to
-      // mid-river: neutral ground with no ice, bordering the AUDIT T1. Both
+      // coldstore-cross: neutral ground with no ice, bordering the AUDIT T1. Both
       // enemy bots are pinned to mid and arrive there before the first wave
       // wave, so a level-1 player who obeyed the hint was killed in ~12 ticks
       // having done nothing. Send them somewhere their own ice covers.
@@ -201,8 +201,8 @@ describe('tutorial flow', () => {
   describe('advanceTutorialAfterTick', () => {
     it('advances the move step when the human reaches the lane', () => {
       const next = advanceTutorialAfterTick(
-        tutorialState(0, 'mid-river'),
-        [{ playerId: 'p1', command: { type: 'move', zone: 'mid-river' } }],
+        tutorialState(0, 'coldstore-cross'),
+        [{ playerId: 'p1', command: { type: 'move', zone: 'coldstore-cross' } }],
         [],
       )
       expect(next.state.tutorialStep).toBe(1)
@@ -210,15 +210,15 @@ describe('tutorial flow', () => {
 
     it('stamps the step clock on advance so the next step gets a full deadline', () => {
       const next = advanceTutorialAfterTick(
-        tutorialState(0, 'mid-river', 7),
-        [{ playerId: 'p1', command: { type: 'move', zone: 'mid-river' } }],
+        tutorialState(0, 'coldstore-cross', 7),
+        [{ playerId: 'p1', command: { type: 'move', zone: 'coldstore-cross' } }],
         [],
       )
       expect(next.state.tutorialStepSince).toBe(7)
     })
 
     it('holds the move step while the human is still in base/fountain — but says why', () => {
-      for (const zone of ['chaff-base', 'chaff-fountain']) {
+      for (const zone of ['rookery-terminal', 'rookery-anchor']) {
         const state = tutorialState(0, zone)
         const next = advanceTutorialAfterTick(
           state,
@@ -255,7 +255,7 @@ describe('tutorial flow', () => {
       const state = tutorialState(0)
       const next = advanceTutorialAfterTick(
         state,
-        [{ playerId: 'bot_r0_g', command: { type: 'move', zone: 'mid-river' } }],
+        [{ playerId: 'bot_r0_g', command: { type: 'move', zone: 'coldstore-cross' } }],
         [],
       )
       expect(next.state).toBe(state)
@@ -265,7 +265,7 @@ describe('tutorial flow', () => {
       const normal = { mode: 'normal', tutorialStep: undefined } as unknown as GameState
       const next = advanceTutorialAfterTick(
         normal,
-        [{ playerId: 'p1', command: { type: 'move', zone: 'mid-river' } }],
+        [{ playerId: 'p1', command: { type: 'move', zone: 'coldstore-cross' } }],
         [],
       )
       expect(next.state).toBe(normal)
@@ -280,21 +280,21 @@ describe('tutorial flow', () => {
       // nothing legal left to do. The flow could not reach the final step, so
       // tutorial completion never fired for anyone.
       it('auto-advances a step the player cannot satisfy, and explains why', () => {
-        const stuck = tutorialState(2, 'mid-t3-chaff', TUTORIAL_STEP_DEADLINE_CYCLES)
+        const stuck = tutorialState(2, 'coldstore-t3-chaff', TUTORIAL_STEP_DEADLINE_CYCLES)
         const next = advanceTutorialAfterTick(stuck, [], [])
         expect(next.state.tutorialStep).toBe(3)
         expect(next.notice).toContain('Moving on')
       })
 
       it('does not auto-advance before the deadline', () => {
-        const waiting = tutorialState(2, 'mid-t3-chaff', TUTORIAL_STEP_DEADLINE_CYCLES - 1)
+        const waiting = tutorialState(2, 'coldstore-t3-chaff', TUTORIAL_STEP_DEADLINE_CYCLES - 1)
         expect(advanceTutorialAfterTick(waiting, [], []).state.tutorialStep).toBe(2)
       })
 
       it('always reaches free play from a standing start, doing nothing at all', () => {
         // The whole flow, driven only by the clock — this is the invariant that
         // makes tutorial completion (and the returning-player funnel) reachable.
-        let state = tutorialState(0, 'chaff-fountain', 0)
+        let state = tutorialState(0, 'rookery-anchor', 0)
         for (
           let cycle = 1;
           cycle <= TUTORIAL_STEP_DEADLINE_CYCLES * TUTORIAL_STEP_COUNT + 1;

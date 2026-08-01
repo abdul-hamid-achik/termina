@@ -24,7 +24,7 @@ function makePlayer(over: Partial<PlayerState> = {}): PlayerState {
     name: 'You',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-chaff',
+    zone: 'coldstore-t1-chaff',
     integ: 500,
     maxInteg: 500,
     bw: 200,
@@ -55,7 +55,7 @@ function wave(over: Partial<WaveUnitState> = {}): WaveUnitState {
   return {
     id: 'w0',
     team: 'audit',
-    zone: 'mid-t1-chaff',
+    zone: 'coldstore-t1-chaff',
     integ: 100,
     maxInteg: 400,
     type: 'line',
@@ -145,8 +145,8 @@ describe('ActionRow', () => {
   it('renders the move picker and emits move <zoneId> for an adjacent zone', async () => {
     const wrapper = mountRow({
       moveZones: [
-        makeZone('mid-river', 'Coldstore Crossing'),
-        makeZone('cache-top', 'Seawall Cache Drop'),
+        makeZone('coldstore-cross', 'Coldstore Crossing'),
+        makeZone('cache-seawall', 'Seawall Cache Drop'),
       ],
     })
 
@@ -154,8 +154,8 @@ describe('ActionRow', () => {
     await wrapper.find('[data-testid="action-move"]').trigger('click')
     expect(wrapper.find('[data-testid="move-picker"]').exists()).toBe(true)
 
-    await wrapper.find('[data-testid="move-picker-mid-river"]').trigger('click')
-    expect(wrapper.emitted('command')).toContainEqual(['move mid-river'])
+    await wrapper.find('[data-testid="move-picker-coldstore-cross"]').trigger('click')
+    expect(wrapper.emitted('command')).toContainEqual(['move coldstore-cross'])
     expect(wrapper.find('[data-testid="move-picker"]').exists()).toBe(false)
   })
 

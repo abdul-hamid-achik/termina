@@ -16,9 +16,9 @@ const BY_TYPE = computed(() => {
   const groups: Record<string, string[]> = {}
   for (const z of ZONES) {
     const key =
-      z.type === 'fountain' || z.type === 'base'
+      z.type === 'anchor' || z.type === 'base'
         ? 'terminals'
-        : z.type === 'river'
+        : z.type === 'cross'
           ? 'crossings & caches'
           : z.type === 'objective'
             ? 'objectives'
@@ -31,7 +31,7 @@ const BY_TYPE = computed(() => {
 })
 
 // Start the explorer at the Chaff fountain (where a real game begins).
-const selected = ref('chaff-fountain')
+const selected = ref('rookery-anchor')
 const selectedZone = computed(() => ZONE_MAP[selected.value]!)
 const selectedName = computed(() => selectedZone.value.name)
 const adjacent = computed(() => selectedZone.value.adjacentTo)

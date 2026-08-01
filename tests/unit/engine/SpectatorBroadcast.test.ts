@@ -71,7 +71,7 @@ describe('filterStateForSpectator', () => {
           name: 'p1',
           team: 'chaff',
           heroId: 'echo',
-          zone: 'chaff-fountain',
+          zone: 'rookery-anchor',
           integ: 1000,
           maxInteg: 1000,
           bw: 100,

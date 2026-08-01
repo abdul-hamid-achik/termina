@@ -4,7 +4,7 @@ import { SURRENDER_MIN_CYCLE, HARDEN_COOLDOWN_CYCLES } from '~~/shared/constants
 import type { PlayerState, WaveUnitState } from '~~/shared/types/game'
 
 const player = (over: Partial<PlayerState> = {}): PlayerState =>
-  ({ items: [], zone: 'mid-river', team: 'chaff', ...over }) as unknown as PlayerState
+  ({ items: [], zone: 'coldstore-cross', team: 'chaff', ...over }) as unknown as PlayerState
 
 const baseCtx = (over: Partial<SituationalContext> = {}): SituationalContext => ({
   player: player(),
@@ -38,7 +38,7 @@ describe('computeSituationalActions', () => {
 
   it('offers BURN only when a low-INTEG allied wave is in the zone', () => {
     const lowAllyWave = {
-      zone: 'mid-river',
+      zone: 'coldstore-cross',
       team: 'chaff',
       integ: 1,
       type: 'line',
@@ -48,18 +48,20 @@ describe('computeSituationalActions', () => {
   })
 
   it('offers BACKUP only when an unclaimed backup is in the zone', () => {
-    expect(cmds(baseCtx({ backup: { zone: 'mid-river', holderId: null } }))).toContain('backup')
-    expect(cmds(baseCtx({ backup: { zone: 'mid-river', holderId: 'someone' } }))).not.toContain(
+    expect(cmds(baseCtx({ backup: { zone: 'coldstore-cross', holderId: null } }))).toContain(
       'backup',
     )
-    expect(cmds(baseCtx({ backup: { zone: 'top-t1-chaff', holderId: null } }))).not.toContain(
+    expect(
+      cmds(baseCtx({ backup: { zone: 'coldstore-cross', holderId: 'someone' } })),
+    ).not.toContain('backup')
+    expect(cmds(baseCtx({ backup: { zone: 'seawall-t1-chaff', holderId: null } }))).not.toContain(
       'backup',
     )
   })
 
   it('offers CACHE only when a cache is in the zone', () => {
-    expect(cmds(baseCtx({ caches: [{ zone: 'mid-river' }] as never }))).toContain('grab')
-    expect(cmds(baseCtx({ caches: [{ zone: 'top-t1-chaff' }] as never }))).not.toContain('grab')
+    expect(cmds(baseCtx({ caches: [{ zone: 'coldstore-cross' }] as never }))).toContain('grab')
+    expect(cmds(baseCtx({ caches: [{ zone: 'seawall-t1-chaff' }] as never }))).not.toContain('grab')
   })
 
   it('offers FLUSH only while the player carries a BREACHED buff', () => {

@@ -188,15 +188,15 @@ describe('combat', () => {
         ...s,
         players: {
           ...s.players,
-          [HUMAN]: { ...h, zone: 'mid-river' },
-          [ENEMY]: { ...e, zone: 'mid-river', integ: e.maxInteg }, // healthy — survives the chip
+          [HUMAN]: { ...h, zone: 'coldstore-cross' },
+          [ENEMY]: { ...e, zone: 'coldstore-cross', integ: e.maxInteg }, // healthy — survives the chip
           // A second chaff hero co-located with the enemy (distinct id/name so
           // attribution can't confuse it with the human).
           [ALLY]: {
             ...h,
             id: ALLY,
             name: 'Ally',
-            zone: 'mid-river',
+            zone: 'coldstore-cross',
             kills: 0,
             deaths: 0,
             assists: 0,
@@ -310,7 +310,7 @@ describe('combat', () => {
     expect(me.alive).toBe(true)
     expect(me.integ).toBe(me.maxInteg)
     expect(me.respawnCycle).toBeNull()
-    expect(me.zone).toBe(me.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain')
+    expect(me.zone).toBe(me.team === 'chaff' ? 'rookery-anchor' : 'landing-anchor')
   })
 
   it('handleDeaths sets a respawn timer that scales with hero level', async () => {
@@ -367,7 +367,7 @@ describe('combat', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => {
       const me = s.players[HUMAN]!
-      const fountain = me.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
+      const fountain = me.team === 'chaff' ? 'rookery-anchor' : 'landing-anchor'
       return {
         ...s,
         players: { ...s.players, [HUMAN]: { ...me, zone: fountain, integ: 50, bw: 0, buffs: [] } },
@@ -391,7 +391,7 @@ describe('combat', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => {
       const me = s.players[HUMAN]!
-      const fountain = me.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
+      const fountain = me.team === 'chaff' ? 'rookery-anchor' : 'landing-anchor'
       return {
         ...s,
         players: {
@@ -419,7 +419,7 @@ describe('combat', () => {
     await game.patch((s) => {
       const me = s.players[HUMAN]!
       const enemyTeam = me.team === 'chaff' ? 'audit' : 'chaff'
-      const enemyBase = enemyTeam === 'chaff' ? 'chaff-base' : 'audit-base'
+      const enemyBase = enemyTeam === 'chaff' ? 'rookery-terminal' : 'landing-terminal'
       return {
         ...s,
         players: { ...s.players, [HUMAN]: { ...me, zone: enemyBase } },
@@ -451,7 +451,7 @@ describe('combat', () => {
     await game.patch((s) => {
       const me = s.players[HUMAN]!
       const enemyTeam = me.team === 'chaff' ? 'audit' : 'chaff'
-      const enemyBase = enemyTeam === 'chaff' ? 'chaff-base' : 'audit-base'
+      const enemyBase = enemyTeam === 'chaff' ? 'rookery-terminal' : 'landing-terminal'
       return {
         ...s,
         players: { ...s.players, [HUMAN]: { ...me, zone: enemyBase } },
@@ -485,11 +485,11 @@ describe('combat', () => {
     const enemySuffix = me.team === 'chaff' ? 'audit' : 'chaff'
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' } },
     }))
 
-    // The enemy mid-T1 stands in mid-t1-<suffix>, not mid-river — out of reach.
-    game.submit({ type: 'attack', target: { kind: 'ice', zone: `mid-t1-${enemySuffix}` } })
+    // The enemy Coldstore T1 stands in coldstore-t1-<suffix>, not coldstore-cross — out of reach.
+    game.submit({ type: 'attack', target: { kind: 'ice', zone: `coldstore-t1-${enemySuffix}` } })
     await game.tick()
 
     expect(
@@ -501,7 +501,7 @@ describe('combat', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me = await game.me()
     const enemySuffix = me.team === 'chaff' ? 'audit' : 'chaff'
-    const t2Zone = `mid-t2-${enemySuffix}`
+    const t2Zone = `coldstore-t2-${enemySuffix}`
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: t2Zone } },
@@ -510,7 +510,7 @@ describe('combat', () => {
       ice: s.ice.map((t) =>
         t.zone === t2Zone
           ? { ...t, alive: true, invulnerable: false }
-          : t.zone === `mid-t1-${enemySuffix}`
+          : t.zone === `coldstore-t1-${enemySuffix}`
             ? { ...t, alive: true }
             : t,
       ),
@@ -569,7 +569,7 @@ describe('combat', () => {
     expect(me.alive).toBe(true)
     expect(me.respawnCycle).toBeNull()
     expect(me.scrip).toBeLessThan(scripBefore) // paid the buyback cost
-    expect(me.zone).toBe(me.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain')
+    expect(me.zone).toBe(me.team === 'chaff' ? 'rookery-anchor' : 'landing-anchor')
   })
 
   it('buyback is refused with insufficient scrip — the hero stays dead and keeps its gold', async () => {
@@ -646,7 +646,7 @@ describe('combat', () => {
     await game.tick()
     await game.patch((s) => {
       const me = s.players[HUMAN]!
-      const enemyIceZone = me.team === 'chaff' ? 'mid-t1-audit' : 'mid-t1-chaff'
+      const enemyIceZone = me.team === 'chaff' ? 'coldstore-t1-audit' : 'coldstore-t1-chaff'
       return {
         ...s,
         players: { ...s.players, [HUMAN]: { ...me, zone: enemyIceZone, integ: 400 } },
@@ -666,7 +666,7 @@ describe('combat', () => {
     await game.tick() // settle the maxInteg recompute first
     await game.patch((s) => {
       const me = s.players[HUMAN]!
-      const enemyIceZone = me.team === 'chaff' ? 'mid-t1-audit' : 'mid-t1-chaff'
+      const enemyIceZone = me.team === 'chaff' ? 'coldstore-t1-audit' : 'coldstore-t1-chaff'
       return {
         ...s,
         players: { ...s.players, [HUMAN]: { ...me, zone: enemyIceZone, integ: 400 } },
@@ -751,14 +751,14 @@ describe('combat', () => {
       ...s,
       players: {
         ...s.players,
-        [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' },
-        [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-river' }, // co-located at tick start
+        [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' },
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'coldstore-cross' }, // co-located at tick start
       },
     }))
 
     // Both act at once: the enemy juke-steps to an adjacent zone while the human
     // swings. By the attack phase the target has left.
-    game.submit({ type: 'move', zone: 'mid-t1-chaff' }, ENEMY)
+    game.submit({ type: 'move', zone: 'coldstore-t1-chaff' }, ENEMY)
     game.attackHero(ENEMY)
     await game.tick()
 

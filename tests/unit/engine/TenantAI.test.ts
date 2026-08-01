@@ -12,7 +12,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-chaff',
+    zone: 'coldstore-t1-chaff',
     integ: 500,
     maxInteg: 500,
     bw: 200,
@@ -104,7 +104,7 @@ describe('TenantAI', () => {
       const state = makeGameState({
         tenant: { alive: true, integ: 5000, maxInteg: 5000, deathCycle: null },
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', zone: 'coldstore-cross' }),
         },
       })
 

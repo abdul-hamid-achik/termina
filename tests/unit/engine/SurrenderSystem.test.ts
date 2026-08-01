@@ -19,7 +19,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'chaff-fountain',
+    zone: 'rookery-anchor',
     integ: 550,
     maxInteg: 550,
     bw: 280,
@@ -58,7 +58,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
       r1: makePlayer({ id: 'r1', name: 'R1', team: 'chaff' }),
       r2: makePlayer({ id: 'r2', name: 'R2', team: 'chaff' }),
       r3: makePlayer({ id: 'r3', name: 'R3', team: 'chaff' }),
-      d1: makePlayer({ id: 'd1', name: 'D1', team: 'audit', zone: 'audit-fountain' }),
+      d1: makePlayer({ id: 'd1', name: 'D1', team: 'audit', zone: 'landing-anchor' }),
     },
     zones: initializeZoneStates(),
     waves: [],
@@ -183,7 +183,7 @@ describe('SurrenderSystem', () => {
         players: {
           bot_a: makePlayer({ id: 'bot_a', name: 'bot_a', team: 'chaff' }),
           bot_b: makePlayer({ id: 'bot_b', name: 'bot_b', team: 'chaff' }),
-          d1: makePlayer({ id: 'd1', name: 'D1', team: 'audit', zone: 'audit-fountain' }),
+          d1: makePlayer({ id: 'd1', name: 'D1', team: 'audit', zone: 'landing-anchor' }),
         },
       })
       const status = getSurrenderStatus(state, 'chaff')
@@ -221,7 +221,7 @@ describe('SurrenderSystem', () => {
           human: makePlayer({ id: 'human', name: 'Human', team: 'chaff' }),
           bot_alpha: makePlayer({ id: 'bot_alpha', name: 'bot_alpha', team: 'chaff' }),
           bot_beta: makePlayer({ id: 'bot_beta', name: 'bot_beta', team: 'chaff' }),
-          d1: makePlayer({ id: 'd1', name: 'D1', team: 'audit', zone: 'audit-fountain' }),
+          d1: makePlayer({ id: 'd1', name: 'D1', team: 'audit', zone: 'landing-anchor' }),
         },
       })
     }

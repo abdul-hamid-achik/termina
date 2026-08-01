@@ -39,7 +39,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestPlayer',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-chaff',
+    zone: 'coldstore-t1-chaff',
     integ: 500,
     maxInteg: 550,
     bw: 200,
@@ -70,19 +70,47 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
  * A realistic slice of `state.waves` as the client receives it: server order,
  * mixed zones, mixed teams, and one corpse that has not been reaped yet.
  *
- * Zone-local indices for mid-t1-chaff are therefore 0=c0, 1=c1, 2=c2 (dead),
+ * Zone-local indices for coldstore-t1-chaff are therefore 0=c0, 1=c1, 2=c2 (dead),
  * 3=c3, 4=c4 — deliberately offset from the global positions so anything that
  * numbers waves globally, or that renumbers after dropping the corpse, is
  * caught.
  */
 function makeWaves(): WaveUnitState[] {
   return [
-    { id: 'elsewhere', team: 'audit', zone: 'mid-river', integ: 400, maxInteg: 400, type: 'line' },
-    { id: 'c0', team: 'audit', zone: 'mid-t1-chaff', integ: 320, maxInteg: 400, type: 'line' },
-    { id: 'c1', team: 'chaff', zone: 'mid-t1-chaff', integ: 90, maxInteg: 400, type: 'line' },
-    { id: 'c2', team: 'audit', zone: 'mid-t1-chaff', integ: 0, maxInteg: 250, type: 'sweep' },
-    { id: 'c3', team: 'audit', zone: 'mid-t1-chaff', integ: 200, maxInteg: 250, type: 'sweep' },
-    { id: 'c4', team: 'chaff', zone: 'mid-t1-chaff', integ: 380, maxInteg: 400, type: 'line' },
+    {
+      id: 'elsewhere',
+      team: 'audit',
+      zone: 'coldstore-cross',
+      integ: 400,
+      maxInteg: 400,
+      type: 'line',
+    },
+    {
+      id: 'c0',
+      team: 'audit',
+      zone: 'coldstore-t1-chaff',
+      integ: 320,
+      maxInteg: 400,
+      type: 'line',
+    },
+    { id: 'c1', team: 'chaff', zone: 'coldstore-t1-chaff', integ: 90, maxInteg: 400, type: 'line' },
+    { id: 'c2', team: 'audit', zone: 'coldstore-t1-chaff', integ: 0, maxInteg: 250, type: 'sweep' },
+    {
+      id: 'c3',
+      team: 'audit',
+      zone: 'coldstore-t1-chaff',
+      integ: 200,
+      maxInteg: 250,
+      type: 'sweep',
+    },
+    {
+      id: 'c4',
+      team: 'chaff',
+      zone: 'coldstore-t1-chaff',
+      integ: 380,
+      maxInteg: 400,
+      type: 'line',
+    },
   ]
 }
 
@@ -100,7 +128,7 @@ function makeContext(overrides: Partial<GameContext> = {}): GameContext {
         name: 'Enemy',
         heroId: 'daemon',
         team: 'audit',
-        zone: 'mid-t1-chaff',
+        zone: 'coldstore-t1-chaff',
         alive: true,
       }),
     },
@@ -115,10 +143,10 @@ describe('useCommands', () => {
     describe('move command', () => {
       it('parses basic move', () => {
         const { parse } = useCommands()
-        const result = parse('move mid-river')
+        const result = parse('move coldstore-cross')
 
         expect(result.error).toBeNull()
-        expect(result.command).toEqual({ type: 'move', zone: 'mid-river' })
+        expect(result.command).toEqual({ type: 'move', zone: 'coldstore-cross' })
       })
 
       it('returns error without zone arg', () => {
@@ -129,73 +157,88 @@ describe('useCommands', () => {
         expect(result.error).toBe('Usage: move <zone>')
       })
 
-      describe('team-relative base/fountain aliases', () => {
-        it('resolves base/fountain to chaff zones by default (no team)', () => {
+      describe('team-relative terminal/anchor aliases', () => {
+        it('resolves terminal/anchor to chaff zones by default (no team)', () => {
           const { parse } = useCommands()
-          expect(parse('move base').command).toEqual({ type: 'move', zone: 'chaff-base' })
-          expect(parse('move fountain').command).toEqual({
+          expect(parse('move terminal').command).toEqual({ type: 'move', zone: 'rookery-terminal' })
+          expect(parse('move anchor').command).toEqual({
             type: 'move',
-            zone: 'chaff-fountain',
+            zone: 'rookery-anchor',
           })
         })
 
-        it('resolves base/fountain to the chaff player’s own side', () => {
+        it('resolves terminal/anchor to the chaff player’s own side', () => {
           const { parse } = useCommands()
-          expect(parse('move base', 'chaff').command).toEqual({
+          expect(parse('move terminal', 'chaff').command).toEqual({
             type: 'move',
-            zone: 'chaff-base',
+            zone: 'rookery-terminal',
           })
-          expect(parse('move fountain', 'chaff').command).toEqual({
+          expect(parse('move anchor', 'chaff').command).toEqual({
             type: 'move',
-            zone: 'chaff-fountain',
+            zone: 'rookery-anchor',
           })
         })
 
-        it('resolves base/fountain to the audit player’s own side (regression)', () => {
-          // A audit player typing `move base` must NOT walk toward the enemy base.
+        it('resolves terminal/anchor to the audit player’s own side (regression)', () => {
+          // A audit player typing `move terminal` must NOT walk toward the enemy Terminal.
           const { parse } = useCommands()
-          expect(parse('move base', 'audit').command).toEqual({ type: 'move', zone: 'audit-base' })
-          expect(parse('move fountain', 'audit').command).toEqual({
+          expect(parse('move terminal', 'audit').command).toEqual({
             type: 'move',
-            zone: 'audit-fountain',
+            zone: 'landing-terminal',
+          })
+          expect(parse('move anchor', 'audit').command).toEqual({
+            type: 'move',
+            zone: 'landing-anchor',
           })
         })
 
         it('applies team relativity to ward and ping too', () => {
           const { parse } = useCommands()
-          expect(parse('ward base', 'audit').command).toEqual({ type: 'ward', zone: 'audit-base' })
-          expect(parse('ping fountain', 'audit').command).toEqual({
+          expect(parse('ward terminal', 'audit').command).toEqual({
+            type: 'ward',
+            zone: 'landing-terminal',
+          })
+          expect(parse('ping anchor', 'audit').command).toEqual({
             type: 'ping',
-            zone: 'audit-fountain',
+            zone: 'landing-anchor',
           })
         })
 
         it('leaves explicit zone ids and other aliases untouched regardless of team', () => {
           const { parse } = useCommands()
-          expect(parse('move audit-base', 'chaff').command).toEqual({
+          expect(parse('move landing-terminal', 'chaff').command).toEqual({
             type: 'move',
-            zone: 'audit-base',
+            zone: 'landing-terminal',
           })
-          expect(parse('move mid', 'audit').command).toEqual({ type: 'move', zone: 'mid-river' })
+          expect(parse('move coldstore', 'audit').command).toEqual({
+            type: 'move',
+            zone: 'coldstore-cross',
+          })
         })
       })
 
       describe('ambiguous zone words', () => {
-        // REGRESSION: `cache` was aliased to mid-river — a zone with no cache in
+        // REGRESSION: `cache` was aliased to coldstore-cross — a zone with no cache in
         // it — so the command walked players straight past both cache spots.
-        it('names both cache spots instead of resolving `move cache` to mid-river', () => {
+        it('names both cache spots instead of resolving `move cache` to coldstore-cross', () => {
           const { parse } = useCommands()
           const result = parse('move cache')
 
           expect(result.command).toBeNull()
-          expect(result.error).toContain('cache-top')
-          expect(result.error).toContain('cache-bot')
+          expect(result.error).toContain('cache-seawall')
+          expect(result.error).toContain('cache-shallows')
         })
 
-        it('resolves the rt/rb shortcuts to the two cache spots', () => {
+        it('resolves both cache-drop ids', () => {
           const { parse } = useCommands()
-          expect(parse('move rt').command).toEqual({ type: 'move', zone: 'cache-top' })
-          expect(parse('move rb').command).toEqual({ type: 'move', zone: 'cache-bot' })
+          expect(parse('move cache-seawall').command).toEqual({
+            type: 'move',
+            zone: 'cache-seawall',
+          })
+          expect(parse('move cache-shallows').command).toEqual({
+            type: 'move',
+            zone: 'cache-shallows',
+          })
         })
 
         it('reports the ambiguity for ward and ping too', () => {
@@ -206,7 +249,7 @@ describe('useCommands', () => {
 
         it('summarises rather than listing when many zones match', () => {
           const { parse } = useCommands()
-          const result = parse('move t')
+          const result = parse('move s')
 
           expect(result.command).toBeNull()
           expect(result.error).toContain('zones match')
@@ -239,12 +282,12 @@ describe('useCommands', () => {
 
       it('parses attack ice target', () => {
         const { parse } = useCommands()
-        const result = parse('attack ice:mid-t1-chaff')
+        const result = parse('attack ice:coldstore-t1-chaff')
 
         expect(result.error).toBeNull()
         expect(result.command).toEqual({
           type: 'attack',
-          target: { kind: 'ice', zone: 'mid-t1-chaff' },
+          target: { kind: 'ice', zone: 'coldstore-t1-chaff' },
         })
       })
 
@@ -482,10 +525,10 @@ describe('useCommands', () => {
     describe('ward command', () => {
       it('parses ward zone', () => {
         const { parse } = useCommands()
-        const result = parse('ward mid-river')
+        const result = parse('ward coldstore-cross')
 
         expect(result.error).toBeNull()
-        expect(result.command).toEqual({ type: 'ward', zone: 'mid-river' })
+        expect(result.command).toEqual({ type: 'ward', zone: 'coldstore-cross' })
       })
 
       it('returns error without zone', () => {
@@ -617,10 +660,10 @@ describe('useCommands', () => {
     describe('ping command', () => {
       it('parses ping zone', () => {
         const { parse } = useCommands()
-        const result = parse('ping mid-river')
+        const result = parse('ping coldstore-cross')
 
         expect(result.error).toBeNull()
-        expect(result.command).toEqual({ type: 'ping', zone: 'mid-river' })
+        expect(result.command).toEqual({ type: 'ping', zone: 'coldstore-cross' })
       })
 
       it('returns error without zone', () => {
@@ -765,18 +808,18 @@ describe('useCommands', () => {
 
       it('handles extra whitespace in commands', () => {
         const { parse } = useCommands()
-        const result = parse('  move   mid-river  ')
+        const result = parse('  move   coldstore-cross  ')
 
         expect(result.error).toBeNull()
-        expect(result.command).toEqual({ type: 'move', zone: 'mid-river' })
+        expect(result.command).toEqual({ type: 'move', zone: 'coldstore-cross' })
       })
 
       it('normalizes input to lowercase', () => {
         const { parse } = useCommands()
-        const result = parse('MOVE Mid-River')
+        const result = parse('MOVE Coldstore-Cross')
 
         expect(result.error).toBeNull()
-        expect(result.command).toEqual({ type: 'move', zone: 'mid-river' })
+        expect(result.command).toEqual({ type: 'move', zone: 'coldstore-cross' })
       })
     })
   })
@@ -784,10 +827,10 @@ describe('useCommands', () => {
   describe('shortcuts', () => {
     it('expands mv → move', () => {
       const { parse } = useCommands()
-      const result = parse('mv mid-river')
+      const result = parse('mv coldstore-cross')
 
       expect(result.error).toBeNull()
-      expect(result.command).toEqual({ type: 'move', zone: 'mid-river' })
+      expect(result.command).toEqual({ type: 'move', zone: 'coldstore-cross' })
     })
 
     it('expands atk → attack', () => {
@@ -885,11 +928,11 @@ describe('useCommands', () => {
 
     it('parses ice:zone target', () => {
       const { parse } = useCommands()
-      const result = parse('attack ice:top-t1-chaff')
+      const result = parse('attack ice:seawall-t1-chaff')
 
       expect(result.command).toEqual({
         type: 'attack',
-        target: { kind: 'ice', zone: 'top-t1-chaff' },
+        target: { kind: 'ice', zone: 'seawall-t1-chaff' },
       })
     })
 
@@ -971,22 +1014,22 @@ describe('useCommands', () => {
         expect(mv?.description).toBe('→ move')
       })
 
-      it('describes the base alias team-relatively (matches what it resolves to)', () => {
+      it('describes the terminal alias team-relatively (matches what it resolves to)', () => {
         const { autocomplete } = useCommands()
 
         const chaff = autocomplete(
-          'move base',
+          'move terminal',
           makeContext({ player: makePlayer({ team: 'chaff' }) }),
         )
-        expect(chaff.find((s) => s.text === 'base')?.description).toBe('→ Rookery Terminal')
+        expect(chaff.find((s) => s.text === 'terminal')?.description).toBe('→ Rookery Terminal')
 
-        // A audit player's `base` suggestion must point at THEIR base, matching
+        // An AUDIT player's `terminal` suggestion must point at THEIR Terminal, matching
         // how it resolves — not the enemy's.
         const audit = autocomplete(
-          'move base',
+          'move terminal',
           makeContext({ player: makePlayer({ team: 'audit' }) }),
         )
-        expect(audit.find((s) => s.text === 'base')?.description).toBe('→ Landing Terminal')
+        expect(audit.find((s) => s.text === 'terminal')?.description).toBe('→ Landing Terminal')
       })
 
       it('suggests buyback for "buy" prefix', () => {
@@ -1036,60 +1079,60 @@ describe('useCommands', () => {
       it('suggests zones matching partial', () => {
         const { autocomplete } = useCommands()
         const context = makeContext()
-        const suggestions = autocomplete('move mid', context)
+        const suggestions = autocomplete('move coldstore', context)
 
         const texts = suggestions.map((s) => s.text)
-        expect(texts.some((t) => t.includes('mid'))).toBe(true)
+        expect(texts.some((t) => t.includes('coldstore'))).toBe(true)
       })
 
       it('suggests visible zones when available', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
           visibleZones: {
-            'mid-t1-chaff': { id: 'mid-t1-chaff', wards: [] },
-            'mid-river': { id: 'mid-river', wards: [] },
+            'coldstore-t1-chaff': { id: 'coldstore-t1-chaff', wards: [] },
+            'coldstore-cross': { id: 'coldstore-cross', wards: [] },
           },
         })
 
-        const suggestions = autocomplete('move mid', context)
+        const suggestions = autocomplete('move coldstore', context)
         const texts = suggestions.map((s) => s.text)
 
-        expect(texts).toContain('mid-t1-chaff')
-        expect(texts).toContain('mid-river')
+        expect(texts).toContain('coldstore-t1-chaff')
+        expect(texts).toContain('coldstore-cross')
       })
 
-      // REGRESSION: zone order put `mid-t3-chaff` first, so accepting the top
+      // REGRESSION: zone order put `coldstore-t3-chaff` first, so accepting the top
       // suggestion for `move mid` sent the player to their own tier-3 ice.
       it('ranks an exact alias above every prefix match', () => {
         const { autocomplete } = useCommands()
-        const suggestions = autocomplete('move mid', makeContext())
+        const suggestions = autocomplete('move coldstore', makeContext())
 
-        expect(suggestions[0]?.text).toBe('mid')
+        expect(suggestions[0]?.text).toBe('coldstore')
         expect(suggestions[0]?.description).toContain('Coldstore Crossing')
-        expect(suggestions.map((s) => s.text)).toContain('mid-t3-chaff')
+        expect(suggestions.map((s) => s.text)).toContain('coldstore-t3-chaff')
       })
 
       it('does not rank an alias first when its zone is not on this map', () => {
         const { autocomplete } = useCommands()
         // A cut-down map (the one-lane tutorial shape): `top` resolves to
-        // top-river, which does not exist here — the reachable zones win.
+        // seawall-cross, which does not exist here — the reachable zones win.
         const context = makeContext({
           visibleZones: {
-            'top-t1-chaff': { id: 'top-t1-chaff', wards: [] },
-            'top-t2-chaff': { id: 'top-t2-chaff', wards: [] },
+            'seawall-t1-chaff': { id: 'seawall-t1-chaff', wards: [] },
+            'seawall-t2-chaff': { id: 'seawall-t2-chaff', wards: [] },
           },
         })
-        const suggestions = autocomplete('move top', context)
+        const suggestions = autocomplete('move seawall', context)
 
-        expect(suggestions[0]?.text).not.toBe('top')
+        expect(suggestions[0]?.text).not.toBe('seawall')
       })
 
-      it('offers both cache spots and never mid-river for `move cache`', () => {
+      it('offers both cache spots and never coldstore-cross for `move cache`', () => {
         const { autocomplete } = useCommands()
         const suggestions = autocomplete('move cache', makeContext())
 
         expect(suggestions.map((s) => s.text)).toEqual(
-          expect.arrayContaining(['cache-top', 'cache-bot']),
+          expect.arrayContaining(['cache-seawall', 'cache-shallows']),
         )
         expect(
           suggestions.every((s) => !(s.description ?? '').includes('Coldstore Crossing')),
@@ -1153,7 +1196,7 @@ describe('useCommands', () => {
 
       it('offers no waves when the zone is empty', () => {
         const { autocomplete } = useCommands()
-        const context = makeContext({ player: makePlayer({ zone: 'top-t1-chaff' }) })
+        const context = makeContext({ player: makePlayer({ zone: 'seawall-t1-chaff' }) })
         const suggestions = autocomplete('attack wave', context)
 
         expect(suggestions).toEqual([])
@@ -1185,7 +1228,7 @@ describe('useCommands', () => {
           neutrals: [
             {
               id: 'n0',
-              zone: 'silt-audit-top',
+              zone: 'silt-audit-upper',
               integ: 200,
               maxInteg: 200,
               type: 'stub',
@@ -1193,7 +1236,7 @@ describe('useCommands', () => {
             },
             {
               id: 'n1',
-              zone: 'silt-audit-top',
+              zone: 'silt-audit-upper',
               integ: 200,
               maxInteg: 200,
               type: 'stub',
@@ -1201,7 +1244,7 @@ describe('useCommands', () => {
             },
             {
               id: 'n2',
-              zone: 'mid-t1-chaff',
+              zone: 'coldstore-t1-chaff',
               integ: 140,
               maxInteg: 200,
               type: 'warden',
@@ -1209,7 +1252,7 @@ describe('useCommands', () => {
             },
             {
               id: 'n3',
-              zone: 'mid-t1-chaff',
+              zone: 'coldstore-t1-chaff',
               integ: 0,
               maxInteg: 200,
               type: 'warden',
@@ -1318,10 +1361,10 @@ describe('useCommands', () => {
       it('suggests zones for ping', () => {
         const { autocomplete } = useCommands()
         const context = makeContext()
-        const suggestions = autocomplete('ping mid', context)
+        const suggestions = autocomplete('ping cold', context)
 
         const texts = suggestions.map((s) => s.text)
-        expect(texts.some((t) => t.includes('mid'))).toBe(true)
+        expect(texts.some((t) => t.includes('coldstore'))).toBe(true)
       })
     })
 
@@ -1548,37 +1591,37 @@ describe('useCommands', () => {
       it('suggests adjacent zones for ward', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
-          player: makePlayer({ zone: 'mid-t1-chaff' }),
+          player: makePlayer({ zone: 'coldstore-t1-chaff' }),
         })
-        const suggestions = autocomplete('ward mid', context)
+        const suggestions = autocomplete('ward cold', context)
 
         const texts = suggestions.map((s) => s.text)
-        // mid-t1-chaff is adjacent to mid-t2-chaff and mid-river
-        expect(texts.some((t) => t.includes('mid'))).toBe(true)
+        // coldstore-t1-chaff is adjacent to coldstore-t2-chaff and coldstore-cross
+        expect(texts.some((t) => t.includes('coldstore'))).toBe(true)
       })
 
       it('ranks an exact alias first when it resolves to an adjacent zone', () => {
         const { autocomplete } = useCommands()
-        const context = makeContext({ player: makePlayer({ zone: 'mid-t1-chaff' }) })
-        const suggestions = autocomplete('ward mid', context)
+        const context = makeContext({ player: makePlayer({ zone: 'coldstore-t1-chaff' }) })
+        const suggestions = autocomplete('ward coldstore', context)
 
-        expect(suggestions[0]?.text).toBe('mid')
+        expect(suggestions[0]?.text).toBe('coldstore')
         expect(suggestions[0]?.description).toContain('Coldstore Crossing')
       })
 
       it('omits an alias that resolves out of ward range', () => {
         const { autocomplete } = useCommands()
-        // The fountain touches only the base — mid-river is not wardable here.
-        const context = makeContext({ player: makePlayer({ zone: 'chaff-fountain' }) })
-        const suggestions = autocomplete('ward mid', context)
+        // The fountain touches only the base — coldstore-cross is not wardable here.
+        const context = makeContext({ player: makePlayer({ zone: 'rookery-anchor' }) })
+        const suggestions = autocomplete('ward coldstore', context)
 
-        expect(suggestions.map((s) => s.text)).not.toContain('mid')
+        expect(suggestions.map((s) => s.text)).not.toContain('coldstore')
       })
 
       it('falls back to all zones when no player', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({ player: null })
-        const suggestions = autocomplete('ward mid', context)
+        const suggestions = autocomplete('ward cold', context)
 
         expect(suggestions.length).toBeGreaterThan(0)
       })
@@ -1589,10 +1632,10 @@ describe('useCommands', () => {
     it('tracks command history', () => {
       const { history, addToHistory } = useCommands()
 
-      addToHistory('move mid-river')
+      addToHistory('move coldstore-cross')
       addToHistory('attack hero:echo')
 
-      expect(history.value).toEqual(['attack hero:echo', 'move mid-river'])
+      expect(history.value).toEqual(['attack hero:echo', 'move coldstore-cross'])
     })
 
     it('caps history at 50 entries', () => {
@@ -1611,7 +1654,7 @@ describe('useCommands', () => {
       const { historyIndex, addToHistory } = useCommands()
 
       historyIndex.value = 3
-      addToHistory('move top-river')
+      addToHistory('move seawall-cross')
 
       expect(historyIndex.value).toBe(-1)
     })
@@ -1623,7 +1666,7 @@ describe('useCommands', () => {
 describe('validateCommand', () => {
   it('rejects normal actions while dead', () => {
     const ctx = makeContext({ player: makePlayer({ alive: false }) })
-    expect(validateCommand({ type: 'move', zone: 'mid-river' }, ctx)).toMatch(/dead/i)
+    expect(validateCommand({ type: 'move', zone: 'coldstore-cross' }, ctx)).toMatch(/dead/i)
     expect(validateCommand({ type: 'attack', target: { kind: 'self' } }, ctx)).toMatch(/dead/i)
   })
 
@@ -1779,44 +1822,44 @@ describe('validateCommand', () => {
   })
 
   it('passes a valid adjacent move', () => {
-    // mid-t1-chaff is adjacent to mid-river and mid-t2-chaff
-    expect(validateCommand({ type: 'move', zone: 'mid-river' }, makeContext())).toBeNull()
+    // coldstore-t1-chaff is adjacent to coldstore-cross and coldstore-t2-chaff
+    expect(validateCommand({ type: 'move', zone: 'coldstore-cross' }, makeContext())).toBeNull()
   })
 
   it('passes a distant move — auto-path walks it one zone per cycle', () => {
-    expect(validateCommand({ type: 'move', zone: 'audit-fountain' }, makeContext())).toBeNull()
+    expect(validateCommand({ type: 'move', zone: 'landing-anchor' }, makeContext())).toBeNull()
   })
 
   it('rejects a globally-adjacent zone that is not on THIS map (subset/one-lane)', () => {
-    // On the one-lane map chaff-base keeps only mid-t3-chaff + chaff-fountain;
+    // On the one-lane map rookery-terminal keeps only coldstore-t3-chaff + rookery-anchor;
     // the top/bot T3s are globally adjacent but don't exist this game.
     const oneLaneZones: Record<string, ZoneRuntimeState> = {}
     for (const id of [
-      'chaff-fountain',
-      'chaff-base',
-      'mid-t3-chaff',
-      'mid-t2-chaff',
-      'mid-t1-chaff',
-      'mid-river',
-      'mid-t1-audit',
-      'mid-t2-audit',
-      'mid-t3-audit',
-      'audit-base',
-      'audit-fountain',
+      'rookery-anchor',
+      'rookery-terminal',
+      'coldstore-t3-chaff',
+      'coldstore-t2-chaff',
+      'coldstore-t1-chaff',
+      'coldstore-cross',
+      'coldstore-t1-audit',
+      'coldstore-t2-audit',
+      'coldstore-t3-audit',
+      'landing-terminal',
+      'landing-anchor',
     ]) {
       oneLaneZones[id] = { id, wards: [] }
     }
     const ctx = makeContext({
-      player: makePlayer({ zone: 'chaff-base' }),
+      player: makePlayer({ zone: 'rookery-terminal' }),
       visibleZones: oneLaneZones,
     })
 
     // Mirrors the server: off-map (but globally adjacent) is rejected...
-    expect(validateCommand({ type: 'move', zone: 'top-t3-chaff' }, ctx)).toMatch(
+    expect(validateCommand({ type: 'move', zone: 'seawall-t3-chaff' }, ctx)).toMatch(
       /isn.t on this map/i,
     )
     // ...while the on-map adjacent move is allowed.
-    expect(validateCommand({ type: 'move', zone: 'mid-t3-chaff' }, ctx)).toBeNull()
+    expect(validateCommand({ type: 'move', zone: 'coldstore-t3-chaff' }, ctx)).toBeNull()
   })
 
   it('rejects move while rooted', () => {
@@ -1825,7 +1868,7 @@ describe('validateCommand', () => {
         buffs: [{ id: 'root', stacks: 1, cyclesRemaining: 2, source: 'e1' }],
       }),
     })
-    expect(validateCommand({ type: 'move', zone: 'mid-river' }, ctx)).toMatch(/rooted/)
+    expect(validateCommand({ type: 'move', zone: 'coldstore-cross' }, ctx)).toMatch(/rooted/)
   })
 
   // ── Control-gate parity with the server (ActionResolver.validateAction) ──
@@ -1833,7 +1876,7 @@ describe('validateCommand', () => {
 
   it('rejects move while taunted', () => {
     const ctx = makeContext({ player: makePlayer({ buffs: [debuff('taunt')] }) })
-    expect(validateCommand({ type: 'move', zone: 'mid-river' }, ctx)).toMatch(/taunted/)
+    expect(validateCommand({ type: 'move', zone: 'coldstore-cross' }, ctx)).toMatch(/taunted/)
   })
 
   it('rejects attack while feared', () => {
@@ -1852,7 +1895,7 @@ describe('validateCommand', () => {
 
   it('rejects every action while hexed', () => {
     const ctx = makeContext({ player: makePlayer({ buffs: [debuff('hex')] }) })
-    expect(validateCommand({ type: 'move', zone: 'mid-river' }, ctx)).toMatch(/hexed/)
+    expect(validateCommand({ type: 'move', zone: 'coldstore-cross' }, ctx)).toMatch(/hexed/)
     expect(validateCommand({ type: 'cast', ability: 'q' }, ctx)).toMatch(/hexed/)
   })
 
@@ -1863,7 +1906,7 @@ describe('validateCommand', () => {
         buffs: [debuff('stun'), debuff('silence'), debuff('root'), debuff('airgap')],
       }),
     })
-    expect(validateCommand({ type: 'move', zone: 'mid-river' }, ctx)).toBeNull()
+    expect(validateCommand({ type: 'move', zone: 'coldstore-cross' }, ctx)).toBeNull()
     expect(validateCommand({ type: 'cast', ability: 'q' }, ctx)).toBeNull()
   })
 
@@ -1909,7 +1952,7 @@ describe('validateCommand', () => {
   })
 
   it('rejects buy outside a shop zone', () => {
-    // mid-t1-chaff has no shop
+    // coldstore-t1-chaff has no shop
     const items: Record<string, ItemDef> = {
       scrap_lot: { id: 'scrap_lot', name: 'Scrap Lot', cost: 500, stats: {}, consumable: false },
     }
@@ -1923,7 +1966,7 @@ describe('validateCommand', () => {
     }
     const ctx = makeContext({
       player: makePlayer({
-        zone: 'chaff-fountain',
+        zone: 'rookery-anchor',
         scrip: 100,
         items: [null, null, null, null, null, null],
       }),
@@ -1939,7 +1982,7 @@ describe('validateCommand', () => {
       scrap_lot: { id: 'scrap_lot', name: 'Scrap Lot', cost: 500, stats: {}, consumable: false },
     }
     const ctx = makeContext({
-      player: makePlayer({ zone: 'chaff-fountain', scrip: 9999 }),
+      player: makePlayer({ zone: 'rookery-anchor', scrip: 9999 }),
       items,
     })
     expect(validateCommand({ type: 'buy', item: 'scrap_lot' }, ctx)).toMatch(/Already own/)
@@ -1951,7 +1994,7 @@ describe('validateCommand', () => {
     }
     const ctx = makeContext({
       player: makePlayer({
-        zone: 'chaff-fountain',
+        zone: 'rookery-anchor',
         scrip: 9999,
         items: ['a', 'b', 'c', 'd', 'e', 'f'],
       }),
@@ -1969,7 +2012,7 @@ describe('validateCommand', () => {
           name: 'Enemy',
           heroId: 'daemon',
           team: 'audit',
-          zone: 'mid-river',
+          zone: 'coldstore-cross',
         }),
       },
     })
@@ -1998,8 +2041,22 @@ describe('validateCommand', () => {
   it('rejects a neutral index that names a camp in another zone', () => {
     const ctx = makeContext({
       neutrals: [
-        { id: 'n0', zone: 'silt-audit-top', integ: 200, maxInteg: 200, type: 'stub', alive: true },
-        { id: 'n1', zone: 'mid-t1-chaff', integ: 150, maxInteg: 200, type: 'stub', alive: true },
+        {
+          id: 'n0',
+          zone: 'silt-audit-upper',
+          integ: 200,
+          maxInteg: 200,
+          type: 'stub',
+          alive: true,
+        },
+        {
+          id: 'n1',
+          zone: 'coldstore-t1-chaff',
+          integ: 150,
+          maxInteg: 200,
+          type: 'stub',
+          alive: true,
+        },
       ],
     })
     expect(validateCommand({ type: 'attack', target: { kind: 'neutral', index: 0 } }, ctx)).toMatch(
@@ -2013,7 +2070,14 @@ describe('validateCommand', () => {
   it('rejects a neutral index with no camp behind it', () => {
     const ctx = makeContext({
       neutrals: [
-        { id: 'n0', zone: 'mid-t1-chaff', integ: 0, maxInteg: 200, type: 'stub', alive: false },
+        {
+          id: 'n0',
+          zone: 'coldstore-t1-chaff',
+          integ: 0,
+          maxInteg: 200,
+          type: 'stub',
+          alive: false,
+        },
       ],
     })
     expect(validateCommand({ type: 'attack', target: { kind: 'neutral', index: 0 } }, ctx)).toMatch(
@@ -2031,7 +2095,9 @@ describe('validateCommand', () => {
   })
 
   it('rejects ward placement in a non-adjacent zone', () => {
-    expect(validateCommand({ type: 'ward', zone: 'audit-base' }, makeContext())).toMatch(/adjacent/)
+    expect(validateCommand({ type: 'ward', zone: 'landing-terminal' }, makeContext())).toMatch(
+      /adjacent/,
+    )
   })
 
   it('rejects use of an item the player does not own', () => {
@@ -2085,10 +2151,10 @@ describe('pickAbilityTargetString', () => {
   })
 
   it('targets the lowest-INTEG enemy in zone for an offensive hero/unit ability', () => {
-    const caster = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
-    const e1 = makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river', integ: 400 })
-    const e2 = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', integ: 120 })
-    const offZone = makePlayer({ id: 'e3', team: 'audit', zone: 'mid-t1-audit', integ: 10 })
+    const caster = makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' })
+    const e1 = makePlayer({ id: 'e1', team: 'audit', zone: 'coldstore-cross', integ: 400 })
+    const e2 = makePlayer({ id: 'e2', team: 'audit', zone: 'coldstore-cross', integ: 120 })
+    const offZone = makePlayer({ id: 'e3', team: 'audit', zone: 'coldstore-t1-audit', integ: 10 })
     const all = { p1: caster, e1, e2, e3: offZone }
     expect(pickAbilityTargetString(makeAbility('hero', dmg), caster, all)).toEqual({
       target: 'hero:e2',
@@ -2099,7 +2165,7 @@ describe('pickAbilityTargetString', () => {
   })
 
   it('errors (no silent reject) when an offensive ability has no enemy in zone', () => {
-    const caster = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
+    const caster = makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' })
     const result = pickAbilityTargetString(makeAbility('hero', dmg), caster, { p1: caster })
     expect(result).toHaveProperty('error')
   })
@@ -2108,11 +2174,17 @@ describe('pickAbilityTargetString', () => {
     const caster = makePlayer({
       id: 'p1',
       team: 'chaff',
-      zone: 'mid-river',
+      zone: 'coldstore-cross',
       integ: 500,
       maxInteg: 500,
     })
-    const a1 = makePlayer({ id: 'a1', team: 'chaff', zone: 'mid-river', integ: 100, maxInteg: 500 })
+    const a1 = makePlayer({
+      id: 'a1',
+      team: 'chaff',
+      zone: 'coldstore-cross',
+      integ: 100,
+      maxInteg: 500,
+    })
     const all = { p1: caster, a1 }
     // Heal targetType 'hero' but supportive effects -> ally, not enemy
     expect(pickAbilityTargetString(makeAbility('hero', heal), caster, all)).toEqual({
@@ -2121,22 +2193,22 @@ describe('pickAbilityTargetString', () => {
   })
 
   it('falls back to self for a heal/shield ally ability when alone', () => {
-    const caster = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
+    const caster = makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' })
     expect(pickAbilityTargetString(makeAbility('ally', heal), caster, { p1: caster })).toEqual({
       target: 'hero:p1',
     })
   })
 
   it('errors for a pure-buff ally ability when no ally is present', () => {
-    const caster = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
+    const caster = makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' })
     const result = pickAbilityTargetString(makeAbility('ally', buff), caster, { p1: caster })
     expect(result).toHaveProperty('error')
   })
 
   it('targets the current zone for an AoE zone ability', () => {
-    const caster = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
+    const caster = makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' })
     expect(pickAbilityTargetString(makeAbility('zone', dmg), caster, { p1: caster })).toEqual({
-      target: 'zone:mid-river',
+      target: 'zone:coldstore-cross',
     })
   })
 })
@@ -2144,24 +2216,24 @@ describe('pickAbilityTargetString', () => {
 // ── pickAttackTargetString (bare `attack` auto-target) ────────────
 describe('pickAttackTargetString', () => {
   it('targets the lowest-INTEG alive enemy hero in the player’s zone', () => {
-    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
-    const e1 = makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river', integ: 400 })
-    const e2 = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', integ: 90 })
+    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' })
+    const e1 = makePlayer({ id: 'e1', team: 'audit', zone: 'coldstore-cross', integ: 400 })
+    const e2 = makePlayer({ id: 'e2', team: 'audit', zone: 'coldstore-cross', integ: 90 })
     expect(pickAttackTargetString(me, { p1: me, e1, e2 })).toEqual({ target: 'hero:e2' })
   })
 
   it('ignores allies, dead enemies, and enemies in other zones', () => {
-    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
-    const ally = makePlayer({ id: 'a1', team: 'chaff', zone: 'mid-river', integ: 10 })
+    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' })
+    const ally = makePlayer({ id: 'a1', team: 'chaff', zone: 'coldstore-cross', integ: 10 })
     const deadEnemy = makePlayer({
       id: 'e1',
       team: 'audit',
-      zone: 'mid-river',
+      zone: 'coldstore-cross',
       integ: 1,
       alive: false,
     })
-    const offZone = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-t1-audit', integ: 5 })
-    const liveEnemy = makePlayer({ id: 'e3', team: 'audit', zone: 'mid-river', integ: 300 })
+    const offZone = makePlayer({ id: 'e2', team: 'audit', zone: 'coldstore-t1-audit', integ: 5 })
+    const liveEnemy = makePlayer({ id: 'e3', team: 'audit', zone: 'coldstore-cross', integ: 300 })
     const result = pickAttackTargetString(me, {
       p1: me,
       a1: ally,
@@ -2173,7 +2245,7 @@ describe('pickAttackTargetString', () => {
   })
 
   it('errors with a wave/ice hint when no enemy hero is in the zone', () => {
-    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
+    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' })
     const result = pickAttackTargetString(me, { p1: me })
     expect('error' in result && result.error).toMatch(/no enemy hero/i)
     expect('error' in result && result.error).toMatch(/wave/i)
@@ -2194,7 +2266,7 @@ describe('informational readouts', () => {
       kills: 4,
       deaths: 1,
       assists: 6,
-      zone: 'mid-river',
+      zone: 'coldstore-cross',
     })
     const out = formatStatusReadout(me)
     expect(out).toContain('Lv7')
@@ -2206,18 +2278,18 @@ describe('informational readouts', () => {
   })
 
   it('formatMapReadout names your zone and reachable neighbours', () => {
-    const me = makePlayer({ zone: 'chaff-base' })
+    const me = makePlayer({ zone: 'rookery-terminal' })
     const out = formatMapReadout(me)
     expect(out).toContain('Rookery Terminal')
     expect(out).toMatch(/Reachable:/)
-    expect(out).toContain('Rookery Anchor') // chaff-base is adjacent to its fountain
+    expect(out).toContain('Rookery Anchor') // rookery-terminal is adjacent to its fountain
   })
 
   it('formatMapReadout lists only the neighbours this game map actually has', () => {
     // REGRESSION: read straight off the global 32-zone graph, so on the one-lane
     // tutorial map it named the top/bot T3 ice — zones the game does not
     // contain and `move` would reject.
-    const me = makePlayer({ zone: 'chaff-base' })
+    const me = makePlayer({ zone: 'rookery-terminal' })
     const out = formatMapReadout(me, 'one_lane')
     expect(out).toContain('Rookery Anchor')
     expect(out).toContain('Coldstore T3 (CHAFF)')
@@ -2226,16 +2298,24 @@ describe('informational readouts', () => {
   })
 
   it('formatMapReadout falls back cleanly for a zone off the resolved map', () => {
-    const me = makePlayer({ zone: 'cache-top' })
+    const me = makePlayer({ zone: 'cache-seawall' })
     expect(formatMapReadout(me, 'one_lane')).toContain('Reachable: —')
   })
 
   it('formatScanReadout lists visible enemy heroes, ignoring allies/dead/fogged', () => {
-    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
-    const ally = makePlayer({ id: 'a1', team: 'chaff', zone: 'mid-river' })
-    const enemy = makePlayer({ id: 'e1', team: 'audit', heroId: 'daemon', zone: 'mid-t1-audit' })
-    const dead = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', alive: false })
-    const fogged = { ...makePlayer({ id: 'e3', team: 'audit', zone: 'top-river' }), fogged: true }
+    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' })
+    const ally = makePlayer({ id: 'a1', team: 'chaff', zone: 'coldstore-cross' })
+    const enemy = makePlayer({
+      id: 'e1',
+      team: 'audit',
+      heroId: 'daemon',
+      zone: 'coldstore-t1-audit',
+    })
+    const dead = makePlayer({ id: 'e2', team: 'audit', zone: 'coldstore-cross', alive: false })
+    const fogged = {
+      ...makePlayer({ id: 'e3', team: 'audit', zone: 'seawall-cross' }),
+      fogged: true,
+    }
     const out = formatScanReadout(me, { p1: me, a1: ally, e1: enemy, e2: dead, e3: fogged })
     expect(out).toContain('1 enemy hero visible')
     expect(out).toContain('Daemon')
@@ -2243,7 +2323,7 @@ describe('informational readouts', () => {
   })
 
   it('formatScanReadout reports an empty vision cleanly', () => {
-    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
+    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' })
     expect(formatScanReadout(me, { p1: me })).toMatch(/no enemy heroes/i)
   })
 
@@ -2280,14 +2360,14 @@ describe('pickDenyTargetString', () => {
   const allied = (overrides: Partial<WaveUnitState>): WaveUnitState => ({
     id: 'c',
     team: 'chaff' as const,
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: 100,
     type: 'line' as const,
     ...overrides,
   })
 
   it('targets the lowest-INTEG eligible allied wave, by zone index', () => {
-    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
+    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' })
     const waves = [
       allied({ id: 'c0', integ: 180 }), // index 0 — eligible (<=200)
       allied({ id: 'c1', integ: 120 }), // index 1 — eligible, lowest HP
@@ -2297,16 +2377,16 @@ describe('pickDenyTargetString', () => {
   })
 
   it('indexes within the player’s zone only (matches the server convention)', () => {
-    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
+    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' })
     const waves = [
-      allied({ id: 'x', zone: 'top-river', integ: 50 }), // other zone — not counted
-      allied({ id: 'c0', zone: 'mid-river', integ: 150 }), // zone index 0
+      allied({ id: 'x', zone: 'seawall-cross', integ: 50 }), // other zone — not counted
+      allied({ id: 'c0', zone: 'coldstore-cross', integ: 150 }), // zone index 0
     ]
     expect(pickDenyTargetString(me, waves)).toEqual({ target: 'wave:0' })
   })
 
   it('ignores enemy waves and healthy allied waves', () => {
-    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
+    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' })
     const waves = [
       allied({ id: 'e', team: 'audit', integ: 10 }), // enemy — you burn your OWN
       allied({ id: 'healthy', integ: 399 }), // above 50% — not denyable
@@ -2315,7 +2395,7 @@ describe('pickDenyTargetString', () => {
   })
 
   it('respects per-type max INTEG (sweep threshold is lower)', () => {
-    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
+    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' })
     // Sweep max INTEG 250 → threshold 125. A sweep wave at 130 is NOT denyable,
     // but a line wave (max 400, threshold 200) at 130 IS.
     const waves = [
@@ -2328,11 +2408,11 @@ describe('pickDenyTargetString', () => {
 
 // ── pickItemTargetString (bare `use <item>` auto-target) ──────────
 describe('pickItemTargetString', () => {
-  const me = () => makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river', integ: 200 })
+  const me = () => makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross', integ: 200 })
 
   it('enemy → lowest-INTEG enemy hero in the zone', () => {
-    const e1 = makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river', integ: 500 })
-    const e2 = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', integ: 120 })
+    const e1 = makePlayer({ id: 'e1', team: 'audit', zone: 'coldstore-cross', integ: 500 })
+    const e2 = makePlayer({ id: 'e2', team: 'audit', zone: 'coldstore-cross', integ: 120 })
     expect(pickItemTargetString('enemy', me(), { p1: me(), e1, e2 })).toEqual({ target: 'hero:e2' })
   })
 
@@ -2342,7 +2422,7 @@ describe('pickItemTargetString', () => {
   })
 
   it('ally → lowest-INTEG ally, falling back to self', () => {
-    const ally = makePlayer({ id: 'a1', team: 'chaff', zone: 'mid-river', integ: 60 })
+    const ally = makePlayer({ id: 'a1', team: 'chaff', zone: 'coldstore-cross', integ: 60 })
     expect(pickItemTargetString('ally', me(), { p1: me(), a1: ally })).toEqual({
       target: 'hero:a1',
     })
@@ -2352,7 +2432,7 @@ describe('pickItemTargetString', () => {
 
   it('self / zone resolve without needing other players', () => {
     expect(pickItemTargetString('self', me(), {})).toEqual({ target: 'self' })
-    expect(pickItemTargetString('zone', me(), {})).toEqual({ target: 'zone:mid-river' })
+    expect(pickItemTargetString('zone', me(), {})).toEqual({ target: 'zone:coldstore-cross' })
   })
 })
 
@@ -2381,7 +2461,7 @@ describe('item active targetType annotations', () => {
 
 describe('the R3-08 readouts (who / net / look)', () => {
   function me(over: Partial<PlayerState> = {}): PlayerState {
-    return makePlayer({ zone: 'mid-river', ...over })
+    return makePlayer({ zone: 'coldstore-cross', ...over })
   }
 
   it('who lists visible heroes with side, integ and cooldowns, plus fogged last-seen', () => {
@@ -2393,7 +2473,7 @@ describe('the R3-08 readouts (who / net / look)', () => {
         name: 'Enemy1',
         team: 'audit',
         heroId: 'daemon',
-        zone: 'mid-t1-audit',
+        zone: 'coldstore-t1-audit',
         integ: 300,
         maxInteg: 500,
         cooldowns: { q: 2, w: 0, e: 0, r: 0 },
@@ -2403,10 +2483,15 @@ describe('the R3-08 readouts (who / net / look)', () => {
         name: 'Ally1',
         team: 'chaff',
         heroId: 'kernel',
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
       }),
     }
-    const lines = formatContactsReadout(player, all, { e2: { zone: 'top-river', cycle: 100 } }, 140)
+    const lines = formatContactsReadout(
+      player,
+      all,
+      { e2: { zone: 'seawall-cross', cycle: 100 } },
+      140,
+    )
     expect(
       lines.some(
         (l) => l.startsWith('WHO · ✕ Daemon') && l.includes('INTEG 300/500') && l.includes('Q·2c'),
@@ -2452,12 +2537,12 @@ describe('the R3-08 readouts (who / net / look)', () => {
   })
 
   it('look lists hostile waves with their server index and camps', () => {
-    const player = me({ zone: 'mid-river' })
+    const player = me({ zone: 'coldstore-cross' })
     const waves = [
       {
         id: 'w0',
         team: 'audit' as const,
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         integ: 120,
         maxInteg: 400,
         type: 'line' as const,
@@ -2465,7 +2550,7 @@ describe('the R3-08 readouts (who / net / look)', () => {
       {
         id: 'w1',
         team: 'chaff' as const,
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         integ: 400,
         maxInteg: 400,
         type: 'line' as const,
@@ -2473,14 +2558,14 @@ describe('the R3-08 readouts (who / net / look)', () => {
       {
         id: 'w2',
         team: 'audit' as const,
-        zone: 'mid-river',
+        zone: 'coldstore-cross',
         integ: 0,
         maxInteg: 400,
         type: 'line' as const,
       },
     ]
     const lines = formatLookReadout(player, waves, [
-      { id: 'n0', zone: 'mid-river', alive: true, type: 'stub' },
+      { id: 'n0', zone: 'coldstore-cross', alive: true, type: 'stub' },
     ])
     expect(lines[0]).toContain('1 hostile wave')
     expect(lines[0]).toContain('wave:0 120hp')
@@ -2489,7 +2574,7 @@ describe('the R3-08 readouts (who / net / look)', () => {
   })
 
   it('look with nothing in zone prints the empty line', () => {
-    expect(formatLookReadout(me({ zone: 'mid-river' }), [], [])).toEqual([
+    expect(formatLookReadout(me({ zone: 'coldstore-cross' }), [], [])).toEqual([
       'LOOK · nothing standing in Coldstore Crossing',
     ])
   })

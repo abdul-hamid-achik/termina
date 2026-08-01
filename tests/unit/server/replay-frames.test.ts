@@ -286,7 +286,7 @@ describe('GET /api/replay/[gameId]/frames', () => {
           {
             cycle: 1,
             playerId: 'p1',
-            command: { type: 'move', zone: 'mid-river' },
+            command: { type: 'move', zone: 'coldstore-cross' },
             synthesized: true,
           },
         ],
@@ -306,7 +306,7 @@ describe('GET /api/replay/[gameId]/frames', () => {
     expect(submitReplayAction).toHaveBeenCalledWith(
       expect.stringMatching(/^replay_g1_/),
       'p1',
-      { type: 'move', zone: 'mid-river' },
+      { type: 'move', zone: 'coldstore-cross' },
       true,
     )
   })

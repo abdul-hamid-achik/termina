@@ -12,7 +12,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: echo.baseStats.integ,
     maxInteg: echo.baseStats.integ,
     bw: echo.baseStats.bw,

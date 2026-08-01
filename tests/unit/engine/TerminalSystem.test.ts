@@ -20,7 +20,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'audit-base',
+    zone: 'landing-terminal',
     integ: 500,
     maxInteg: 500,
     bw: 200,
@@ -51,7 +51,7 @@ function makeWave(overrides: Partial<WaveUnitState> = {}): WaveUnitState {
   return {
     id: 'c1',
     team: 'chaff',
-    zone: 'audit-base',
+    zone: 'landing-terminal',
     integ: 400,
     type: 'line',
     ...overrides,
@@ -85,7 +85,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
 
 /** State where the named team's mid T3 ice is destroyed. */
 function withDeadT3(state: GameState, team: 'chaff' | 'audit'): GameState {
-  const zone = team === 'chaff' ? 'mid-t3-chaff' : 'mid-t3-audit'
+  const zone = team === 'chaff' ? 'coldstore-t3-chaff' : 'coldstore-t3-audit'
   return {
     ...state,
     ice: state.ice.map((t) => (t.zone === zone ? { ...t, integ: 0, alive: false } : t)),
@@ -110,13 +110,13 @@ describe('TerminalSystem', () => {
     it('round-trips terminal target ids', () => {
       expect(parseTerminalTargetId(terminalTargetId('chaff'))).toBe('chaff')
       expect(parseTerminalTargetId(terminalTargetId('audit'))).toBe('audit')
-      expect(parseTerminalTargetId('ice_mid-t1-chaff')).toBeNull()
+      expect(parseTerminalTargetId('ice_coldstore-t1-chaff')).toBeNull()
       expect(parseTerminalTargetId('p1')).toBeNull()
     })
 
     it('places terminals in their base zones', () => {
-      expect(TERMINAL_ZONES.chaff).toBe('chaff-base')
-      expect(TERMINAL_ZONES.audit).toBe('audit-base')
+      expect(TERMINAL_ZONES.chaff).toBe('rookery-terminal')
+      expect(TERMINAL_ZONES.audit).toBe('landing-terminal')
     })
   })
 
@@ -153,7 +153,7 @@ describe('TerminalSystem', () => {
     it('is not made vulnerable by dead T1/T2 ice', () => {
       const state = makeGameState({
         ice: initializeIce().map((t) =>
-          t.zone === 'mid-t1-audit' || t.zone === 'top-t2-audit'
+          t.zone === 'coldstore-t1-audit' || t.zone === 'seawall-t2-audit'
             ? { ...t, integ: 0, alive: false }
             : t,
         ),
@@ -180,7 +180,7 @@ describe('TerminalSystem', () => {
 
     it('rejects attacks while the Terminal is invulnerable', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'audit-base' }) },
+        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'landing-terminal' }) },
       })
 
       const result = resolveTerminalAttack(state, 'p1', 100)
@@ -191,7 +191,7 @@ describe('TerminalSystem', () => {
 
     it('applies hero damage to the enemy Terminal when vulnerable', () => {
       const state = vulnerableState({
-        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'audit-base' }) },
+        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'landing-terminal' }) },
       })
 
       const result = resolveTerminalAttack(state, 'p1', 100)
@@ -209,7 +209,7 @@ describe('TerminalSystem', () => {
 
     it('resolves wave attackers by wave team', () => {
       const state = vulnerableState({
-        waves: [makeWave({ id: 'c9', team: 'chaff', zone: 'audit-base' })],
+        waves: [makeWave({ id: 'c9', team: 'chaff', zone: 'landing-terminal' })],
       })
 
       const result = resolveTerminalAttack(state, 'c9', 20)
@@ -219,7 +219,7 @@ describe('TerminalSystem', () => {
 
     it('destroys the Terminal at 0 INTEG and emits a dedicated terminal_destroyed event', () => {
       const base = vulnerableState({
-        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'audit-base' }) },
+        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'landing-terminal' }) },
       })
       const state: GameState = {
         ...base,
@@ -239,7 +239,7 @@ describe('TerminalSystem', () => {
 
     it('rejects attacks on an already-destroyed Terminal', () => {
       const base = vulnerableState({
-        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'audit-base' }) },
+        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'landing-terminal' }) },
       })
       const state: GameState = {
         ...base,
@@ -263,7 +263,7 @@ describe('TerminalSystem', () => {
 
     it('audit attackers damage the chaff Terminal', () => {
       const base = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', team: 'audit', zone: 'chaff-base' }) },
+        players: { p1: makePlayer({ id: 'p1', team: 'audit', zone: 'rookery-terminal' }) },
       })
       const state = updateTerminalVulnerability(withDeadT3(base, 'chaff'))
 

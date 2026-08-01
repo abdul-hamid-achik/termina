@@ -18,7 +18,7 @@ function player(over: Partial<PlayerState> = {}): PlayerState {
     name: 'p1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-river',
+    zone: 'coldstore-cross',
     integ: 500,
     maxInteg: 600,
     bw: 100,

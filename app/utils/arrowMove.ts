@@ -4,7 +4,7 @@ import { routeOfZone, hopIndexOf } from '~/components/game/traceModel'
 
 export type ArrowDirection = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight'
 
-const ROUTE_IDS = ['top', 'mid', 'bot'] as const
+const ROUTE_IDS = ['seawall', 'coldstore', 'shallows'] as const
 
 /**
  * 1D arrow movement on the trace (R3-07): with a route-as-depth rail there is
@@ -49,8 +49,8 @@ export function arrowTargetZone(
   if (nextRouteIdx < 0 || nextRouteIdx >= ROUTE_IDS.length) return null
   const otherPath = LANE_ROUTES_CORE[ROUTE_IDS[nextRouteIdx]!]![team]!
   // Lateral hops exist only where BOTH routes share the same tier row —
-  // rivers cross (hop 3) and same-tier towers touch (e.g. top-t1-chaff next to
-  // mid-t1-chaff is NOT adjacent in this topology, so we only allow river).
+  // rivers cross (hop 3) and same-tier towers touch (e.g. seawall-t1-chaff next to
+  // coldstore-t1-chaff is NOT adjacent in this topology, so we only allow river).
   const candidate = otherPath[hop]
   if (!candidate) return null
   return adjacent.includes(candidate) ? candidate : null

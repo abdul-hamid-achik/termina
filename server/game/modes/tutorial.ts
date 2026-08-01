@@ -6,6 +6,7 @@ import {
   TUTORIAL_STEP_DEADLINE_CYCLES,
 } from '~~/shared/constants/tutorial'
 import { HERO_IDS } from '~~/shared/constants/heroes'
+import { ZONE_MAP } from '~~/shared/constants/zones'
 
 /**
  * Tutorial mode — staggered command unlocks (server side).
@@ -80,7 +81,7 @@ export interface TutorialRosterPlayer {
 /**
  * The roster for a tutorial game: a calm 2v2 on the one-lane map — the human
  * plus one ally bot versus two enemy bots, all with distinct heroes. The caller
- * pins the bots to mid via registerBots({ forceLane: 'mid' }). Pure so the shape
+ * pins the bots to mid via registerBots({ forceLane: 'coldstore' }). Pure so the shape
  * is unit-tested without booting the game server.
  */
 export function buildTutorialRoster(
@@ -149,8 +150,14 @@ export function advanceTutorialAfterTick(
   // wave, cast on an enemy) have no targets. Hold the step until the human has
   // actually left their base/fountain into the field — but SAY so, otherwise the
   // player who typed exactly what the hint said sees nothing happen at all.
+  // "Home ground" comes from the zone's TYPE, not from matching words in its id.
+  // The old `/fountain|base/.test(zoneId)` stopped matching the moment the zones
+  // were renamed to rookery-terminal / rookery-anchor, which silently advanced
+  // the tutorial while the player was still standing in their base — exactly the
+  // dead end the step exists to prevent.
+  const zoneType = ZONE_MAP[state.players[actor?.playerId ?? '']?.zone ?? '']?.type
   const stalledInBase =
-    !!actor && taught === 'move' && /fountain|base/.test(state.players[actor.playerId]?.zone ?? '')
+    !!actor && taught === 'move' && (zoneType === 'base' || zoneType === 'anchor')
 
   if (actor && !stalledInBase) return { state: advanceTo(state, step + 1), notice: null }
 
@@ -166,7 +173,8 @@ export function advanceTutorialAfterTick(
   if (stalledInBase) {
     return {
       state,
-      notice: '🎓 Still in your base — keep going with `move mid-t1-chaff` to reach the lane.',
+      notice:
+        '🎓 Still in your base — keep going with `move coldstore-t1-chaff` to reach the lane.',
     }
   }
 

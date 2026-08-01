@@ -123,12 +123,12 @@ describe('Spawner', () => {
       const chaffZones = new Set(waves.filter((c) => c.team === 'chaff').map((c) => c.zone))
       const auditZones = new Set(waves.filter((c) => c.team === 'audit').map((c) => c.zone))
 
-      expect(chaffZones).toContain('top-t3-chaff')
-      expect(chaffZones).toContain('mid-t3-chaff')
-      expect(chaffZones).toContain('bot-t3-chaff')
-      expect(auditZones).toContain('top-t3-audit')
-      expect(auditZones).toContain('mid-t3-audit')
-      expect(auditZones).toContain('bot-t3-audit')
+      expect(chaffZones).toContain('seawall-t3-chaff')
+      expect(chaffZones).toContain('coldstore-t3-chaff')
+      expect(chaffZones).toContain('shallows-t3-chaff')
+      expect(auditZones).toContain('seawall-t3-audit')
+      expect(auditZones).toContain('coldstore-t3-audit')
+      expect(auditZones).toContain('shallows-t3-audit')
     })
 
     it('spawns waves on consecutive wave ticks', () => {
@@ -163,8 +163,8 @@ describe('Spawner', () => {
     it('spawns caches at correct zones', () => {
       const caches = spawnCaches(60)
       const zones = caches.map((r) => r.zone)
-      expect(zones).toContain('cache-top')
-      expect(zones).toContain('cache-bot')
+      expect(zones).toContain('cache-seawall')
+      expect(zones).toContain('cache-shallows')
     })
 
     it('cache types are valid', () => {
@@ -193,15 +193,15 @@ describe('Spawner', () => {
     })
 
     it('does not spawn a cache on an occupied zone (occupancy check)', () => {
-      const active = new Set(['cache-top'])
+      const active = new Set(['cache-seawall'])
       const caches = spawnCaches(60, undefined, active)
-      // cache-top is occupied → only cache-bot should spawn
+      // cache-seawall is occupied → only cache-shallows should spawn
       expect(caches).toHaveLength(1)
-      expect(caches[0]!.zone).toBe('cache-bot')
+      expect(caches[0]!.zone).toBe('cache-shallows')
     })
 
     it('does not spawn caches when all spots are occupied', () => {
-      const active = new Set(['cache-top', 'cache-bot'])
+      const active = new Set(['cache-seawall', 'cache-shallows'])
       const caches = spawnCaches(60, undefined, active)
       expect(caches).toEqual([])
     })
@@ -217,13 +217,13 @@ describe('Spawner', () => {
       return (zoneId: string) => ids.has(zoneId)
     }
 
-    it('one-lane map: spawns only mid-lane waves (no top or bot)', () => {
+    it('one-lane map: spawns only Coldstore waves (no Seawall or Shallows)', () => {
       const hasZone = hasZoneFor(ONE_LANE_MAP_ID)
       const waves = spawnWaveUnits(WAVE_INTERVAL_CYCLES, hasZone)
       // Only mid lane — 3 line + 1 sweep per team = 8 waves.
       expect(waves).toHaveLength((LINE_UNITS_PER_WAVE + SWEEP_UNITS_PER_WAVE) * 2)
       for (const c of waves) {
-        expect(c.zone).toMatch(/^mid-t3-(chaff|audit)$/)
+        expect(c.zone).toMatch(/^coldstore-t3-(chaff|audit)$/)
       }
     })
 
@@ -243,11 +243,11 @@ describe('Spawner', () => {
       }
     })
 
-    it('two-lane map: spawns only cache-top (cache-bot is absent)', () => {
+    it('two-lane map: spawns only cache-seawall (cache-shallows is absent)', () => {
       const hasZone = hasZoneFor(TWO_LANE_MAP_ID)
       const caches = spawnCaches(CACHE_INTERVAL_CYCLES, hasZone)
       expect(caches).toHaveLength(1)
-      expect(caches[0]!.zone).toBe('cache-top')
+      expect(caches[0]!.zone).toBe('cache-seawall')
     })
   })
 

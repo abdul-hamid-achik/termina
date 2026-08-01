@@ -333,13 +333,20 @@ describe('GameScreen commands', () => {
         neutrals: [
           {
             id: 'n0',
-            zone: 'silt-audit-top',
+            zone: 'silt-audit-upper',
             integ: 200,
             maxInteg: 200,
             type: 'stub',
             alive: true,
           },
-          { id: 'n1', zone: 'mid-river', integ: 140, maxInteg: 200, type: 'warden', alive: true },
+          {
+            id: 'n1',
+            zone: 'coldstore-cross',
+            integ: 140,
+            maxInteg: 200,
+            type: 'warden',
+            alive: true,
+          },
         ],
       })
       const wrapper = mountGameScreen()
@@ -375,12 +382,12 @@ describe('GameScreen commands', () => {
     // distance BFS is restricted to known zones, so a gap would silence a line
     // for the wrong reason and hide a regression.
     const CORRIDOR = [
-      'chaff-fountain',
-      'chaff-base',
-      'mid-t3-chaff',
-      'mid-t2-chaff',
-      'mid-t1-chaff',
-      'mid-river',
+      'rookery-anchor',
+      'rookery-terminal',
+      'coldstore-t3-chaff',
+      'coldstore-t2-chaff',
+      'coldstore-t1-chaff',
+      'coldstore-cross',
     ]
 
     /** Seed a cycle with the human standing in `zone`, optionally still walking. */
@@ -403,16 +410,16 @@ describe('GameScreen commands', () => {
     it('announces arrival after a single-hop move', async () => {
       // The server nulls moveTarget on the arriving hop, so a one-zone move had
       // NO feedback at all — the most-used command in the game resolved silently.
-      seedWalkTick('mid-river', 240)
+      seedWalkTick('coldstore-cross', 240)
       const wrapper = mountGameScreen()
 
-      await order(wrapper, 'move mid-t1-chaff')
+      await order(wrapper, 'move coldstore-t1-chaff')
       expect(socketSpies.send).toHaveBeenCalledWith({
         type: 'action',
-        command: { type: 'move', zone: 'mid-t1-chaff' },
+        command: { type: 'move', zone: 'coldstore-t1-chaff' },
       })
 
-      seedWalkTick('mid-t1-chaff', 241)
+      seedWalkTick('coldstore-t1-chaff', 241)
       await wrapper.vm.$nextTick()
 
       expect(feed(wrapper)).toContain('▸ You arrive at Coldstore T1 (CHAFF)')
@@ -420,13 +427,13 @@ describe('GameScreen commands', () => {
     })
 
     it('narrates each hop of an auto-path walk and then the arrival', async () => {
-      seedWalkTick('mid-river', 240)
+      seedWalkTick('coldstore-cross', 240)
       const wrapper = mountGameScreen()
 
-      await order(wrapper, 'move mid-t2-chaff')
+      await order(wrapper, 'move coldstore-t2-chaff')
 
       // Mid-walk: the server still reports the destination.
-      seedWalkTick('mid-t1-chaff', 241, { moveTarget: 'mid-t2-chaff' })
+      seedWalkTick('coldstore-t1-chaff', 241, { moveTarget: 'coldstore-t2-chaff' })
       await wrapper.vm.$nextTick()
       expect(feed(wrapper)).toContain(
         '▸ You reach Coldstore T1 (CHAFF) — 1 more to Coldstore T2 (CHAFF)',
@@ -434,23 +441,23 @@ describe('GameScreen commands', () => {
       expect(feed(wrapper).some((t) => t.includes('You arrive'))).toBe(false)
 
       // Final hop: moveTarget is already null, so only the local order knows.
-      seedWalkTick('mid-t2-chaff', 242)
+      seedWalkTick('coldstore-t2-chaff', 242)
       await wrapper.vm.$nextTick()
       expect(feed(wrapper)).toContain('▸ You arrive at Coldstore T2 (CHAFF)')
       wrapper.unmount()
     })
 
     it('does not narrate the respawn jump as an arrival', async () => {
-      seedWalkTick('mid-river', 240)
+      seedWalkTick('coldstore-cross', 240)
       const wrapper = mountGameScreen()
 
-      await order(wrapper, 'move mid-t2-chaff')
+      await order(wrapper, 'move coldstore-t2-chaff')
 
       // Death cancels the walk server-side; the client must forget it too, or
       // the fountain respawn would read as reaching the abandoned destination.
-      seedWalkTick('mid-river', 241, { alive: false, integ: 0, respawnCycle: 250 })
+      seedWalkTick('coldstore-cross', 241, { alive: false, integ: 0, respawnCycle: 250 })
       await wrapper.vm.$nextTick()
-      seedWalkTick('chaff-fountain', 250)
+      seedWalkTick('rookery-anchor', 250)
       await wrapper.vm.$nextTick()
 
       expect(feed(wrapper).some((t) => t.includes('You arrive'))).toBe(false)
@@ -459,16 +466,16 @@ describe('GameScreen commands', () => {
     })
 
     it('drops the pending walk when a deliberate non-move order replaces it', async () => {
-      seedWalkTick('mid-river', 240)
+      seedWalkTick('coldstore-cross', 240)
       const wrapper = mountGameScreen()
 
-      await order(wrapper, 'move mid-t2-chaff')
+      await order(wrapper, 'move coldstore-t2-chaff')
       // Mirrors GameLoop's KEEPS_AUTOPATH: warding cancels the walk, so a later
       // relocation (a teleport, already narrated on its own) owes no arrival.
-      seedWalkTick('mid-river', 241)
-      await order(wrapper, 'ward mid-river')
+      seedWalkTick('coldstore-cross', 241)
+      await order(wrapper, 'ward coldstore-cross')
 
-      seedWalkTick('mid-t2-chaff', 242)
+      seedWalkTick('coldstore-t2-chaff', 242)
       await wrapper.vm.$nextTick()
 
       expect(feed(wrapper).some((t) => t.includes('You arrive'))).toBe(false)
@@ -477,7 +484,13 @@ describe('GameScreen commands', () => {
   })
   describe('keyboard mode (W1-10)', () => {
     // The mid corridor, so an arrow order passes the pre-flight path check.
-    const CORRIDOR = ['chaff-base', 'mid-t3-chaff', 'mid-t2-chaff', 'mid-t1-chaff', 'mid-river']
+    const CORRIDOR = [
+      'rookery-terminal',
+      'coldstore-t3-chaff',
+      'coldstore-t2-chaff',
+      'coldstore-t1-chaff',
+      'coldstore-cross',
+    ]
 
     function seedAt(zone: string) {
       const store = useGameStore()
@@ -509,7 +522,7 @@ describe('GameScreen commands', () => {
       // The 1D model: ArrowUp is one hop FORWARD along your route (toward the
       // enemy base), ArrowDown one hop back. No substring parsing — a Chaff
       // hero at mid-t3 (hop 0) walks to mid-t2 on ArrowUp.
-      seedAt('mid-t3-chaff')
+      seedAt('coldstore-t3-chaff')
       const wrapper = mountGameScreen()
 
       socketSpies.send.mockClear()
@@ -518,13 +531,13 @@ describe('GameScreen commands', () => {
 
       expect(socketSpies.send).toHaveBeenCalledWith({
         type: 'action',
-        command: { type: 'move', zone: 'mid-t2-chaff' },
+        command: { type: 'move', zone: 'coldstore-t2-chaff' },
       })
       wrapper.unmount()
     })
 
     it('says so when nothing lies that way instead of eating the press', async () => {
-      seedAt('mid-t1-chaff')
+      seedAt('coldstore-t1-chaff')
       const wrapper = mountGameScreen()
 
       socketSpies.send.mockClear()
@@ -566,7 +579,7 @@ describe('GameScreen commands', () => {
     it('toasts a client-side rejection instead of burying it in grey [SYS]', () => {
       // Rejections shared one look with chat, pings and readouts, so the one
       // line the player MUST read was the easiest to scroll past.
-      const store = seedActiveGame() // in mid-river, no shop
+      const store = seedActiveGame() // in coldstore-cross, no shop
       const wrapper = mountGameScreen()
 
       wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'buy scrap_lot')
@@ -602,7 +615,7 @@ describe('GameScreen commands', () => {
       const store = seedActiveGame()
       const wrapper = mountGameScreen()
 
-      // Player is in mid-river, nowhere near a shop zone.
+      // Player is in coldstore-cross, nowhere near a shop zone.
       for (let i = 0; i < 3; i++) {
         wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'buy scrap_lot')
       }
