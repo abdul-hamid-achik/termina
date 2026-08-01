@@ -611,6 +611,42 @@ describe('BotAI - decideBotAction', () => {
       expect(action).toEqual({ type: 'attack', target: { kind: 'wave', index: 1 } })
     })
 
+    it('prefers a unit inside the STRIP window over one with less INTEG', () => {
+      // Unit types spawn with different INTEG, so "lowest absolute" and
+      // "strippable" are not the same unit. wave-1 has MORE INTEG left but is
+      // inside its own strip window, so it converts this swing into scrip;
+      // wave-2 has less INTEG but is above its window and would just take a
+      // normal hit. Sorting on raw INTEG alone picks the wrong one and the bot
+      // farms nothing.
+      const bot = makePlayer({ zone: 'coldstore-t1-chaff', integ: 400, maxInteg: 500, bw: 0 })
+      const waves: WaveUnitState[] = [
+        // 700 spawn INTEG, at 140 → inside its 35% window (245).
+        {
+          id: 'wave-1',
+          team: 'audit',
+          zone: 'coldstore-t1-chaff',
+          integ: 140,
+          maxInteg: 700,
+          type: 'breach',
+        },
+        // 250 spawn INTEG, at 120 → above its 35% window (87).
+        {
+          id: 'wave-2',
+          team: 'audit',
+          zone: 'coldstore-t1-chaff',
+          integ: 120,
+          maxInteg: 250,
+          type: 'sweep',
+        },
+      ]
+      const state = makeGameState({ players: { [bot.id]: bot }, waves })
+      const action = decideBotAction(state, bot, 'coldstore', atDifficulty('unfair', bot.id))
+      expect(action, 'the bot swung at the unit it could not take').toEqual({
+        type: 'attack',
+        target: { kind: 'wave', index: 0 },
+      })
+    })
+
     it('a missed last hit re-aims at the SECOND-lowest wave — never at nothing', () => {
       // The miss must cost the scrip, not the cycle. Returning null on a failed
       // roll was the original standstill bug: bots stopped out-clearing the

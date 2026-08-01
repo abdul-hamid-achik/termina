@@ -63,6 +63,7 @@ import {
   BREACH_COOLDOWN_CYCLES,
   BREACH_BW_COST,
   BURN_HP_THRESHOLD,
+  STRIP_HP_THRESHOLD,
   BURN_SCRIP_RATIO,
   BURN_XP_RATIO,
   NULL_POINTER_CRIT_CHANCE,
@@ -1053,7 +1054,14 @@ function resolveAttackPhase(
 
       const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
       const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
-      const newInteg = Math.max(0, wave.integ - attackDamage)
+
+      // The strip: a unit already down to STRIP_HP_THRESHOLD of its spawn
+      // INTEG goes down to the swing regardless of what the swing was worth.
+      // Same shape as `burn` on the deny side — see STRIP_HP_THRESHOLD for why
+      // this is a threshold and not a damage number.
+      const spawnInteg = wave.maxInteg ?? waveUnitMaxHp(wave.type, 0)
+      const stripped = wave.integ <= spawnInteg * STRIP_HP_THRESHOLD
+      const newInteg = stripped ? 0 : Math.max(0, wave.integ - attackDamage)
 
       waves[waveIdx] = { ...wave, integ: newInteg }
       holdTarget()
@@ -1067,7 +1075,9 @@ function resolveAttackPhase(
         cycle: state.cycle,
         sourceId: action.playerId,
         targetId: wave.id,
-        amount: attackDamage,
+        // A strip takes whatever was left, so the feed shows the real number
+        // rather than an attack stat that had nothing to do with it.
+        amount: stripped ? wave.integ : attackDamage,
         damageType: 'kinetic',
       })
     } else if (cmd.target.kind === 'ice') {

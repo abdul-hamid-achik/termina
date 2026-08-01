@@ -354,6 +354,32 @@ export const BURN_HP_THRESHOLD = 0.5
 export const BURN_SCRIP_RATIO = 0.5
 export const BURN_XP_RATIO = 0.5
 
+// ── Strip System ─────────────────────────────────────────────────
+
+/**
+ * A wave unit at or below this fraction of the INTEG it SPAWNED with is
+ * carrying more than it can defend: attack it and you take the payload
+ * outright, whatever your attack stat says.
+ *
+ * This exists because raw damage could not reach it. A line unit spawns with
+ * 400 INTEG and escalates to 1240 by minute 20, while a hero's basic attack
+ * averages 51 — so at one action per four-second cycle a single unit cost
+ * eight swings early and twenty-four late. Measured over full matches, heroes
+ * were finishing 6% of the units that went down; the rest died wave-on-wave.
+ * Farming paid ~200sc a match against ~1200 from the passive drip, which made
+ * the shop unreachable and the game's central verb worth almost nothing.
+ *
+ * A threshold rather than more damage, because it makes the strip a question
+ * of TIMING — read which unit will be low when the cycle commits — which is
+ * the batch clock's whole premise, and because it leaves wave-on-wave combat
+ * (and therefore lane equilibrium and push timing) completely untouched.
+ *
+ * It mirrors BURN_HP_THRESHOLD, which has always worked exactly this way for
+ * denying your own units. Strip is the tighter window of the two: taking an
+ * enemy's payload should ask more of you than torching your own.
+ */
+export const STRIP_HP_THRESHOLD = 0.35
+
 // ── Assist System ────────────────────────────────────────────────
 
 export const ASSIST_XP_RATIO = 0.5

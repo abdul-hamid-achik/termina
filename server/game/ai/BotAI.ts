@@ -23,6 +23,7 @@ import {
   HARDEN_COOLDOWN_CYCLES,
   SELL_REFUND_RATIO,
   BURN_HP_THRESHOLD,
+  STRIP_HP_THRESHOLD,
   BREACH_BW_COST,
   waveUnitMaxHp,
 } from '~~/shared/constants/balance'
@@ -1552,7 +1553,18 @@ function pickWaveTarget(
   cycle: number,
   config: BotDifficultyConfig,
 ): WaveUnitState {
-  const byHp = [...enemyWaves].sort((a, b) => a.integ - b.integ)
+  // Units already inside the strip window come first: those convert THIS
+  // swing into scrip, whatever the bot's attack stat is. Sorting on raw INTEG
+  // alone is not the same thing — unit types spawn with different INTEG, so
+  // the lowest absolute unit is not necessarily the strippable one. Below the
+  // window it falls back to lowest-first, which is what keeps a bot clearing
+  // the incoming wave instead of standing there waiting for a window
+  // (the standstill BotForwardProgress pins).
+  const strippable = (w: WaveUnitState) =>
+    w.integ <= (w.maxInteg ?? waveUnitMaxHp(w.type, 0)) * STRIP_HP_THRESHOLD
+  const byHp = [...enemyWaves].sort(
+    (a, b) => Number(strippable(b)) - Number(strippable(a)) || a.integ - b.integ,
+  )
   const lowest = byHp[0]!
   if (byHp.length < 2) return lowest
   if (deterministicRoll(`lasthit_${bot.id}`, cycle) < config.lastHitAccuracy) return lowest

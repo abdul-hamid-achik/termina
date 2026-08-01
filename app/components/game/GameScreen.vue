@@ -54,6 +54,10 @@ import { zonesForMap } from '~~/shared/constants/maps'
 import { buildAdjacentZones } from '~/components/game/traceModel'
 import { HEROES } from '~~/shared/constants/heroes'
 import { recommendedItemsForRole } from '~~/shared/constants/itemBuilds'
+import { STRIP_HP_THRESHOLD } from '~~/shared/constants/balance'
+
+/** The strip window as a percentage, for the coach copy. */
+const stripHpPercent = Math.round(STRIP_HP_THRESHOLD * 100)
 import { ITEMS, ITEM_CATEGORIES, DEFAULT_QUICKBUY_ITEMS } from '~~/shared/constants/items'
 import type { ItemCategoryId } from '~~/shared/types/items'
 import { getTalentTree } from '~~/shared/constants/talents'
@@ -211,8 +215,8 @@ onMounted(() => {
         // shop/scoreboard verbs and the ability keys are the real affordances;
         // the button copy below only exists on touch.
         isFinePointer()
-          ? 'Last-hit enemy waves (≈<50% INTEG) for scrip — attack wave:N when a wave is nearly dead.'
-          : 'Last-hit enemy waves (≈<50% INTEG) for scrip — use STRIP on the ActionRow, or attack wave:N.',
+          ? `Strip enemy wave units for scrip: at or below ${stripHpPercent}% of the INTEG they spawned with, attack wave:N takes one outright.`
+          : `Strip enemy wave units for scrip — the ActionRow shows STRIP when one is in the window (below ${stripHpPercent}% of its spawn INTEG), HIT when it is not.`,
         isFinePointer()
           ? 'In the fountain/base press Esc then S for the shop (or type  buy <item>); Q/W/E/R quick-cast.'
           : 'In the fountain/base tap [SHOP] to buy; tap Q/W/E/R below to cast.',

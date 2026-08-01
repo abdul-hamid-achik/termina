@@ -21,6 +21,7 @@ import {
   BUYBACK_COST_PER_LEVEL,
   SURRENDER_MIN_CYCLE,
   BURN_HP_THRESHOLD,
+  STRIP_HP_THRESHOLD,
   waveUnitMaxHp,
 } from '~~/shared/constants/balance'
 
@@ -195,7 +196,7 @@ export function pickItemTargetString(
  * time, so a fixed level-1 max made the burn affordance silently shrink every
  * minute until the client stopped offering a burn the server would have allowed.
  */
-function waveFullHp(c: WaveUnitState): number {
+export function waveFullHp(c: WaveUnitState): number {
   return c.maxInteg ?? waveUnitMaxHp(c.type, 0)
 }
 
@@ -322,9 +323,20 @@ export function formatScanReadout(
   const ownWaves = zoneWaves.filter((c) => c.team === player.team)
   if (hostileWaves.length) {
     here.push(`${hostileWaves.length} hostile wave${hostileWaves.length === 1 ? '' : 's'}`)
+    // A unit inside the strip window goes down to ANY swing, so it is the one
+    // worth aiming at — and the player cannot see that from an INTEG bar alone
+    // (the window is a fraction of what the unit SPAWNED with, and units spawn
+    // bigger as the match runs). Naming it is the difference between the strip
+    // being a skill and being a coincidence. Same service `burn` already gets
+    // for the deny side below.
+    const strippable = hostileWaves.filter((c) => c.integ / waveFullHp(c) <= STRIP_HP_THRESHOLD)
+    if (strippable.length) {
+      here.push(`${strippable.length} ready to strip`)
+    }
     // wave:N is ZONE-local and counts the living waves in your zone, so the
     // index must come from the zone list, not the global array.
-    const weakest = hostileWaves.reduce((a, b) => (a.integ <= b.integ ? a : b))
+    const pool = strippable.length ? strippable : hostileWaves
+    const weakest = pool.reduce((a, b) => (a.integ <= b.integ ? a : b))
     targets.push(`attack wave:${zoneWaves.indexOf(weakest)}`)
   }
   if (ownWaves.length) {

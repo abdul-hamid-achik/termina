@@ -1,5 +1,9 @@
-import { HARDEN_COOLDOWN_CYCLES, SURRENDER_MIN_CYCLE } from '~~/shared/constants/balance'
-import { pickDenyTargetString } from '~/composables/useCommands'
+import {
+  HARDEN_COOLDOWN_CYCLES,
+  SURRENDER_MIN_CYCLE,
+  STRIP_HP_THRESHOLD,
+} from '~~/shared/constants/balance'
+import { pickDenyTargetString, waveFullHp } from '~/composables/useCommands'
 import type {
   PlayerState,
   WaveUnitState,
@@ -29,21 +33,43 @@ export interface SituationalContext {
 }
 
 /**
- * The lowest-INTEG hostile wave in the player's zone as a `wave:<index>` string —
- * the STRIP action (attack the easiest last-hit). Mirrors the server's
+ * The hostile wave in the player's zone worth swinging at, as a
+ * `wave:<index>` string — the STRIP action. Mirrors the server's
  * waveInZoneByIndex ordering (position among ALL waves in the zone, corpses
  * included, so the index matches what `attack wave:<i>` resolves to).
  * Returns null when nothing hostile stands here.
+ *
+ * Units already inside the strip window come first, because those go down to
+ * THIS swing whatever the hero's attack is worth. Lowest-absolute-INTEG is not
+ * the same unit: types spawn with different INTEG and the window is a fraction
+ * of what each one SPAWNED with, so the button used to aim at a unit the
+ * player could not actually take.
  */
 export function stripTargetString(player: PlayerState, waves: WaveUnitState[]): string | null {
   const inZone = waves.filter((c) => c.zone === player.zone)
-  let best: { integ: number; index: number } | null = null
+  let best: { integ: number; index: number; ready: boolean } | null = null
   for (let index = 0; index < inZone.length; index++) {
     const c = inZone[index]!
     if (c.team === player.team || c.integ <= 0) continue
-    if (best === null || c.integ < best.integ) best = { integ: c.integ, index }
+    const ready = c.integ <= waveFullHp(c) * STRIP_HP_THRESHOLD
+    // A strippable unit always beats a non-strippable one, however low the
+    // other is; between two of a kind, take the lower.
+    if (best === null || (ready && !best.ready) || (ready === best.ready && c.integ < best.integ)) {
+      best = { integ: c.integ, index, ready }
+    }
   }
   return best === null ? null : `wave:${best.index}`
+}
+
+/** Whether any hostile wave here is inside the strip window right now. */
+export function hasStrippableWave(player: PlayerState, waves: WaveUnitState[]): boolean {
+  return waves.some(
+    (c) =>
+      c.zone === player.zone &&
+      c.team !== player.team &&
+      c.integ > 0 &&
+      c.integ <= waveFullHp(c) * STRIP_HP_THRESHOLD,
+  )
 }
 
 /**
@@ -62,10 +88,15 @@ export function computeSituationalActions(ctx: SituationalContext): SituationalA
   }
   const strip = stripTargetString(p, ctx.waves)
   if (strip !== null) {
+    // The label carries the one fact that decides the swing: whether this unit
+    // is low enough to take outright, or whether the swing is just chip.
+    const ready = hasStrippableWave(p, ctx.waves)
     out.push({
       cmd: `attack ${strip}`,
-      label: 'STRIP',
-      aria: 'Attack the lowest-INTEG hostile wave',
+      label: ready ? 'STRIP' : 'HIT',
+      aria: ready
+        ? 'Take the payload off a wave unit that is low enough to strip'
+        : 'Chip the weakest hostile wave — none are low enough to strip yet',
     })
   }
   if (!('error' in pickDenyTargetString(p, ctx.waves))) {

@@ -25,6 +25,7 @@ import {
   DRIP_MASK_REGEN_PERCENT,
   REGEN_CACHE_HEAL_PERCENT,
   BURN_HP_THRESHOLD,
+  STRIP_HP_THRESHOLD,
   BURN_SCRIP_RATIO,
   BURN_XP_RATIO,
   WAVE_SCRIP_MIN,
@@ -311,11 +312,18 @@ describe('learn page', () => {
       expect(text).toContain(`${Math.round(REGEN_CACHE_HEAL_PERCENT * 100)}% of both per cycle`)
     })
 
-    it('teaches last-hitting as its own concept, with the burn mirror', () => {
+    it('teaches stripping as its own concept, with the burn mirror', () => {
       const text = mountLearn().text()
-      expect(text).toContain('Last-Hitting & Burning')
+      expect(text).toContain('Stripping & Burning')
       expect(text).toContain('Only the killing blow pays scrip')
       expect(text).toContain(`${LINE_UNIT_HP} INTEG`)
+      // The strip window is the rule a player actually acts on. Asserting the
+      // NUMBER (not just the word) is the point: the page used to teach
+      // "wait until its INTEG is under one of your attacks", which stopped
+      // being true and would have gone on reading plausibly forever.
+      expect(text).toContain(
+        `${Math.round(STRIP_HP_THRESHOLD * 100)}% of the INTEG it spawned with`,
+      )
       expect(text).toContain(`${Math.round(BURN_HP_THRESHOLD * 100)}% INTEG`)
       // Burn reward is derived, not asserted as prose.
       const burnGold = Math.floor(((WAVE_SCRIP_MIN + WAVE_SCRIP_MAX) / 2) * BURN_SCRIP_RATIO)
