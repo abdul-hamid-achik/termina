@@ -2424,3 +2424,103 @@ describe('BotAI — R4-12 breach-then-control', () => {
     }
   })
 })
+
+describe('BotAI - rotation (leaving a quiet route to help one that is not)', () => {
+  /**
+   * A bot's route is assigned once and never revisited, so it farmed the same
+   * three zones for a whole match while a teammate two routes over died 2v1.
+   * That is the most visible way bots read as *not playing the game*: a human
+   * immediately understands that nobody came.
+   *
+   * The guards matter more than the behaviour — a bot that rotates eagerly stops
+   * farming and arrives late everywhere, which is worse than never moving. Each
+   * test below removes exactly one guard.
+   *
+   * NOTE on what to assert. A rotation returns the FIRST HOP of the path, never
+   * the destination — the first version of these tests asserted
+   * `zone !== ALLY_ZONE` and therefore passed no matter what the bot did,
+   * including with the guards deleted. The expected hop is computed here.
+   */
+  // The scene has to make rotation the ONLY explanation for the move, which
+  // took three attempts:
+  //   - bot on its own T1: the rescue's first hop is also the retreat
+  //     direction, so a hurt bot "passed" the guard test by retreating;
+  //   - bot in the Silt: the neighbouring route zone is reachable by the
+  //     jungle/lane branches too, so deleting rotation entirely changed nothing.
+  // From the mid crossing the step toward the teammate is `cache-seawall`, which
+  // is neither the lane advance (coldstore-t1-audit) nor the retreat
+  // (coldstore-t1-chaff). Removing rotation now fails this.
+  const BOT_ZONE = 'coldstore-cross'
+  const ALLY_ZONE = 'seawall-cross'
+  /** First step of the walk from the bot to the teammate under pressure. */
+  const RESCUE_HOP = findPath(BOT_ZONE, ALLY_ZONE)[1]!
+
+  function scene(
+    opts: {
+      botZone?: string
+      botHp?: number
+      level?: number
+      enemies?: number
+      friends?: number
+      waveInBotZone?: boolean
+    } = {},
+  ) {
+    const bot = makePlayer({
+      id: 'bot_rotator',
+      heroId: 'echo',
+      level: opts.level ?? 8,
+      zone: opts.botZone ?? BOT_ZONE,
+      integ: opts.botHp ?? 500,
+      maxInteg: 500,
+    })
+    const players: Record<string, PlayerState> = { [bot.id]: bot }
+    players.ally = makePlayer({ id: 'ally', name: 'ally', level: 8, zone: ALLY_ZONE })
+    for (let i = 1; i < (opts.friends ?? 1); i++) {
+      players[`friend${i}`] = makePlayer({ id: `friend${i}`, name: `f${i}`, zone: ALLY_ZONE })
+    }
+    for (let i = 0; i < (opts.enemies ?? 3); i++) {
+      const id = `foe${i}`
+      players[id] = makePlayer({ id, name: id, team: 'audit', zone: ALLY_ZONE })
+    }
+    const waves = opts.waveInBotZone
+      ? [
+          {
+            id: 'w1',
+            zone: bot.zone,
+            team: 'audit' as const,
+            type: 'melee',
+            integ: 100,
+            maxInteg: 200,
+          },
+        ]
+      : []
+    return { bot, state: makeGameState({ cycle: 200, players, waves: waves as never }) }
+  }
+
+  const medium = (id: string) => atDifficulty('medium', id)
+  const rescued = (bot: PlayerState, state: ReturnType<typeof makeGameState>) =>
+    decideBotAction(state, bot, 'coldstore', medium(bot.id))
+
+  it('takes the first step toward a teammate who is outnumbered', () => {
+    const { bot, state } = scene()
+    expect(rescued(bot, state), 'nobody came').toEqual({ type: 'move', zone: RESCUE_HOP })
+  })
+
+  // NOTE: only the POSITIVE case is covered, and that is deliberate rather than
+  // lazy. Every negative test I wrote for the guards turned out to pass with the
+  // guard deleted, because the bot reaches the same zone by another route:
+  //   - health/level  -> the retreat and lane-progress branches above rotation
+  //                      already turn a hurt or under-levelled bot back;
+  //   - fair fight    -> `cache-seawall` is a cache zone, so tryPickupRune sends
+  //                      the bot there regardless of any teammate;
+  //   - distance      -> the far-away scene is refused by lane logic anyway.
+  // A test that passes with the code deleted is worse than no test: it reports
+  // coverage it does not have. The guards are exercised by `bun run sim`, whose
+  // before/after numbers are in the commit message.
+  //
+  // The floors stay in the code as belt-and-braces.
+  // A hurt or under-levelled bot is already turned back by the retreat and
+  // lane-progress branches ABOVE the rotation call, so a test aimed at those
+  // floors passes identically with the floors deleted. They are kept in the
+  // code as belt-and-braces; the behaviour they guard is enforced earlier.
+})

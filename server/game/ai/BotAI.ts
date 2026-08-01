@@ -1292,6 +1292,85 @@ function tryPickupRune(
   return null
 }
 
+/**
+ * Rotation — leave a quiet route to help one that is not.
+ *
+ * A bot's route is assigned once and never revisited, so it farms the same
+ * three zones for the whole match while a teammate two routes over dies 2v1.
+ * That is the single most visible way bots read as *not playing the game*: a
+ * human immediately understands that nobody came.
+ *
+ * The guards matter more than the behaviour. A bot that rotates eagerly stops
+ * farming, arrives late to every fight, and is worse than one that never moves
+ * — so every one of these has to hold:
+ *
+ *   - the bot's OWN ground is quiet (no enemy heroes, no wave to clear)
+ *   - a teammate is genuinely OUTNUMBERED, not merely fighting
+ *   - the bot can actually arrive (bounded travel)
+ *   - it is healthy enough to matter on arrival
+ *   - and it is rate-limited, so two bots do not ping-pong across the map
+ *     answering each other's calls
+ */
+const ROTATE_MAX_TRAVEL = 3
+const ROTATE_MIN_HP_PERCENT = 55
+const ROTATE_MIN_LEVEL = 4
+/** Cycles a bot must farm before it may answer another call. */
+const ROTATE_COOLDOWN_TICKS = 25
+const lastRotation = new Map<string, number>()
+
+function tryRotate(
+  state: GameState,
+  bot: PlayerState,
+  config: BotDifficultyConfig,
+  gameId: string,
+  hasZone?: (id: string) => boolean,
+): Command | null {
+  if (!config.threatAssessment) return null
+  if (bot.level < ROTATE_MIN_LEVEL) return null
+  if (getHpPercent(bot) < ROTATE_MIN_HP_PERCENT) return null
+
+  // Busy where you are: clearing a wave or in a fight beats walking away.
+  if (getEnemyHeroesInZone(state, bot).length > 0) return null
+  if (state.waves.some((c) => c.zone === bot.zone && c.team !== bot.team && c.integ > 0)) {
+    return null
+  }
+
+  const key = `${gameId}|${bot.id}`
+  const last = lastRotation.get(key)
+  if (last !== undefined && state.cycle - last < ROTATE_COOLDOWN_TICKS) return null
+
+  // Find the teammate in the worst spot that this bot could actually reach.
+  let best: { zone: string; deficit: number; distance: number } | null = null
+  for (const ally of Object.values(state.players)) {
+    if (ally.team !== bot.team || !ally.alive || ally.id === bot.id) continue
+    if (ally.zone === bot.zone) continue
+
+    const enemies = Object.values(state.players).filter(
+      (p) => p.team !== bot.team && p.alive && p.zone === ally.zone,
+    ).length
+    if (enemies === 0) continue
+    const friends = Object.values(state.players).filter(
+      (p) => p.team === bot.team && p.alive && p.zone === ally.zone,
+    ).length
+    const deficit = enemies - friends
+    if (deficit <= 0) continue // a fair fight needs no rescue
+
+    const distance = getDistance(bot.zone, ally.zone, hasZone)
+    if (distance <= 0 || distance > ROTATE_MAX_TRAVEL) continue
+
+    // Worst deficit first; nearer breaks the tie.
+    if (!best || deficit > best.deficit || (deficit === best.deficit && distance < best.distance)) {
+      best = { zone: ally.zone, deficit, distance }
+    }
+  }
+  if (!best) return null
+
+  const path = findPath(bot.zone, best.zone, hasZone)
+  if (path.length <= 1) return null
+  lastRotation.set(key, state.cycle)
+  return { type: 'move', zone: path[1]! }
+}
+
 function tryFarmJungle(
   state: GameState,
   bot: PlayerState,
@@ -1684,6 +1763,12 @@ export function decideBotAction(
   }
   const cacheCmd = tryPickupRune(state, bot, config, hasZone)
   if (cacheCmd) return cacheCmd
+
+  // Nothing to do here — is someone else drowning? (Guards inside; this only
+  // fires from a quiet zone for a healthy bot that can actually arrive.)
+  const rotateCmd = tryRotate(state, bot, config, gameId ?? '', hasZone)
+  if (rotateCmd) return rotateCmd
+
   if (assignedLane === 'silt' || (config.jungleFarming && getHpPercent(bot) > 60)) {
     const jungleCmd = tryFarmJungle(state, bot, config, hasZone)
     if (jungleCmd) return jungleCmd
