@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import StreamLine from '~/components/game/StreamLine.vue'
 import { ref, watch, nextTick, onMounted, computed } from 'vue'
 import HeroPortrait from '~/components/avatars/HeroPortrait.vue'
 import { buildTickStoryView, buildTickRecaps } from '~/utils/combatLog'
@@ -352,9 +353,9 @@ function eventAriaLabel(line: CombatLine): string {
             :size="16"
             class="mr-1 inline-flex align-middle"
           />
-          <span :class="emphasisByType[event.type]" :style="{ color: typeColor(event.type) }">{{
-            event.text
-          }}</span>
+          <span :class="emphasisByType[event.type]" :style="{ color: typeColor(event.type) }">
+            <StreamLine :text="event.text" />
+          </span>
           <HeroPortrait
             v-if="event.type === 'kill' && event.victimHeroId"
             :hero-id="event.victimHeroId"
