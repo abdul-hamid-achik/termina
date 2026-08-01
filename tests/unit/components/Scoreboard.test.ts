@@ -184,12 +184,12 @@ describe('Scoreboard', () => {
   describe('dead players + scrip formatting', () => {
     it('shows a respawn countdown and the dead row style for a dead player', () => {
       const wrapper = mountScoreboard([
-        makePlayer('r1', 'chaff', { alive: false, respawnCycle: 45 }), // tick 30 → 15t
+        makePlayer('r1', 'chaff', { alive: false, respawnCycle: 45 }), // cycle 30 → 15c
         makePlayer('d1', 'audit'),
       ])
       const row = wrapper.get('[data-testid="scoreboard-row-r1"]')
       expect(row.classes()).toContain('scoreboard__player-row--dead')
-      expect(row.text()).toContain('15t')
+      expect(row.text()).toContain('15c')
     })
 
     it('shows DEAD with no countdown when the respawn tick is unknown', () => {

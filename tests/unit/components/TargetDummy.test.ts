@@ -99,8 +99,8 @@ describe('TargetDummy', () => {
       })
       const chips = wrapper.find('[data-testid="target-dummy-statuses"]')
       expect(chips.exists()).toBe(true)
-      expect(chips.text()).toContain('STUNNED · 2t')
-      expect(chips.text()).toContain('SLOW 30% · 3t')
+      expect(chips.text()).toContain('STUNNED · 2c')
+      expect(chips.text()).toContain('SLOW 30% · 3c')
     })
 
     it('hides the status row when there are no controls', () => {

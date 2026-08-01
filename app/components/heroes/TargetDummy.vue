@@ -55,7 +55,7 @@ const barColor = computed(() =>
         :key="i"
         class="border border-gold/60 bg-gold/10 px-1 py-0.5 text-[0.6rem] uppercase tracking-wider text-gold"
       >
-        {{ s.label }} · {{ s.ticksLeft }}t
+        {{ s.label }} · {{ s.ticksLeft }}c
       </span>
     </div>
   </div>

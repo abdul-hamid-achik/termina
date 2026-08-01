@@ -156,7 +156,7 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
         ticksLeft: impact.dotDuration,
       })
       pushLog(
-        `  → ${impact.dotPerTick} dmg/t for ${impact.dotDuration}t (advance ticks to resolve)`,
+        `  → ${impact.dotPerTick} dmg/c for ${impact.dotDuration}c (advance cycles to resolve)`,
       )
     }
     if (impact.heal > 0) pushLog(`  → heals ${impact.heal} (self/ally)`)
@@ -172,7 +172,7 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
       } else {
         statuses.value.push({ kind: c.kind, label: c.label, ticksLeft: c.duration })
       }
-      pushLog(`  → ${c.label} for ${c.duration}t`)
+      pushLog(`  → ${c.label} for ${c.duration}c`)
     }
     checkDummy()
   }

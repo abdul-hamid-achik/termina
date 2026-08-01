@@ -130,11 +130,39 @@ describe('objectives: caches', () => {
     await game.tick()
     expect((await game.me()).buffs.filter((b) => b.id === 'dd')).toHaveLength(1)
 
-    // The cache left the ground on the first pickup, so a second attempt is a
-    // no-op — no second Double Damage buff (the bug this fix closes).
+    // The cache left the ground on the first pickup, so a second attempt is
+    // rejected loudly — no second Double Damage buff, and the cycle is not
+    // silently burned (a bare grab used to no-op with zero feedback).
     game.submit({ type: 'grab' })
     await game.tick()
     expect((await game.me()).buffs.filter((b) => b.id === 'dd')).toHaveLength(1)
+    expect(
+      game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('No cache')),
+    ).toBe(true)
+  })
+
+  it('a grab with no cache in the zone is rejected with feedback', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    // Human stands in a lane with no cache on the ground anywhere nearby.
+    game.submit({ type: 'grab' })
+    await game.tick()
+    expect(
+      game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('No cache')),
+    ).toBe(true)
+  })
+
+  it('backup is rejected away from the Hollow with feedback', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.patch((s) => ({
+      ...s,
+      backup: { zone: 'hollow', cycle: s.cycle, holderId: null },
+    }))
+    // Human is in a lane, not the pit.
+    game.submit({ type: 'backup' })
+    await game.tick()
+    expect(game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('Hollow'))).toBe(
+      true,
+    )
   })
 })
 

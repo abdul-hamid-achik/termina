@@ -15,6 +15,7 @@ const gameId = computed(() => String(route.params.gameId))
 type ConnState = 'connecting' | 'connected' | 'closed' | 'reconnecting' | 'error'
 
 const conn = ref<ConnState>('connecting')
+const authRequired = ref(false)
 const ackedGameId = ref<string | null>(null)
 const lastCycle = ref<number>(0)
 const visibleState = ref<PlayerVisibleState | null>(null)
@@ -33,6 +34,13 @@ async function connect() {
   let ticket = ''
   try {
     const res = await fetch('/api/auth/ws-ticket')
+    if (res.status === 401) {
+      // Anonymous spectator links dead-end at the WS gate; ten reconnects
+      // buy nothing. Stop and ask for a sign-in instead.
+      authRequired.value = true
+      conn.value = 'closed'
+      return
+    }
     if (res.ok) {
       const data = await res.json()
       ticket = (data?.ticket as string) ?? ''
@@ -180,6 +188,20 @@ function gameTime(cycle: number): string {
             [exit]
           </NuxtLink>
         </div>
+      </div>
+
+      <!-- Anonymous visitors have no ticket — tell them instead of spinning -->
+      <div v-if="authRequired" class="border border-audit bloom-audit p-4 text-center">
+        <div class="t-h3 text-audit text-glow-audit">SIGN IN TO SPECTATE</div>
+        <p class="t-caption mt-2 text-text-dim">
+          Live spectating requires a session — anonymous links dead-end at the game server.
+        </p>
+        <NuxtLink
+          :to="`/login?redirect=/spectate/${gameId}`"
+          class="mt-3 inline-block border border-audit px-4 py-2 font-mono text-sm text-audit hover:bg-audit/10"
+        >
+          [SIGN IN]
+        </NuxtLink>
       </div>
 
       <!-- Connection given up (game likely ended) and nothing ever streamed -->

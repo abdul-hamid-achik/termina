@@ -303,9 +303,24 @@ export function validateAction(state: GameState, action: PlayerAction): string |
     case 'help':
     case 'chat':
     case 'ping':
-    case 'backup':
-    case 'grab':
       return null
+    case 'backup': {
+      // Loud rejection instead of a silent no-op: pickupBackup only fires when
+      // the player stands in the Hollow with a Backup on the ground, so a grab
+      // anywhere else must not quietly burn the player's one action.
+      if (!state.backup) return 'No Backup on the ground right now'
+      if (player.zone !== 'hollow') return 'The Backup is in the Hollow — pick it up there'
+      return null
+    }
+    case 'grab': {
+      // Same rule as pickupCache: a cache must be standing in your zone. The
+      // CACHE touch button only shows when one is, but the typed verb needs
+      // the rejection to keep the cycle honest.
+      if (!(state.caches ?? []).some((c) => c.zone === player.zone)) {
+        return 'No cache in this zone to grab'
+      }
+      return null
+    }
     case 'buyback':
       // Validation happens in GameLoop where we have access to buyback system
       return null

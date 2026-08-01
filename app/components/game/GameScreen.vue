@@ -194,10 +194,12 @@ onMounted(() => {
       const intro = [
         'Welcome to TERMINA — the city commits every four seconds. You queue ONE instruction per cycle.',
         'You start in the fountain. Move to a lane: type or tap  move mid-river',
-        'Last-hit enemy waves (≈<50% INTEG) for scrip — use STRIP on the ActionRow, or attack wave:N.',
         // Desktop has no ActionRow (R3-09 hides it on fine pointers), so the
         // shop/scoreboard verbs and the ability keys are the real affordances;
         // the button copy below only exists on touch.
+        isFinePointer()
+          ? 'Last-hit enemy waves (≈<50% INTEG) for scrip — attack wave:N when a wave is nearly dead.'
+          : 'Last-hit enemy waves (≈<50% INTEG) for scrip — use STRIP on the ActionRow, or attack wave:N.',
         isFinePointer()
           ? 'In the fountain/base press Esc then S for the shop (or type  buy <item>); Q/W/E/R quick-cast.'
           : 'In the fountain/base tap [SHOP] to buy; tap Q/W/E/R below to cast.',
@@ -1399,7 +1401,7 @@ function handleActionRowCommand(cmd: string) {
     cmd === 'burn' ||
     cmd === 'ward' ||
     cmd === 'backup' ||
-    cmd === 'cache' ||
+    cmd === 'grab' ||
     cmd === 'harden' ||
     cmd === 'surrender'
   ) {
@@ -1441,26 +1443,27 @@ function handleQuickAction(cmd: string) {
   }
 
   if (cmd === 'ATK') {
-    // Auto-target nearest enemy in zone
-    const enemies = Object.values(gameStore.allPlayers).filter(
-      (e) => e.zone === p.zone && e.team !== p.team && e.alive,
-    )
-    if (enemies.length > 0) {
-      const target = enemies[0]!
-      const targetRef = `hero:${target.heroId ?? target.name}`
-      handleCommand(`attack ${targetRef}`)
-    } else {
-      // Don't fail silently — guide the player. From the fountain/base there's
-      // nothing to fight; everywhere else, point at waves + the explicit syntax.
-      const zoneType = ZONE_MAP[p.zone]?.type
-      const inBase = zoneType === 'fountain' || zoneType === 'base'
-      localEvents.value.push({
-        cycle: gameStore.cycle,
-        text: inBase
-          ? 'No targets here — move to a lane to fight (e.g.  move mid-river ).'
-          : 'No enemies in this zone — last-hit waves via STRIP / attack wave:N, or  attack <target> .',
-        type: 'system',
-      })
+    // Same picker as bare `attack` — the lowest-INTEG enemy hero in the zone.
+    // The two surfaces must not disagree on what "attack" means: ATK used to
+    // take the first enemy in object order, which could swing at a full-INTEG
+    // hero while the nearly-dead one stood ignored.
+    if (p) {
+      const picked = pickAttackTargetString(p, gameStore.allPlayers)
+      if ('error' in picked) {
+        // No hero target — guide instead of failing silently, mirroring the
+        // old ATK fallthrough copy.
+        const zoneType = ZONE_MAP[p.zone]?.type
+        const inBase = zoneType === 'fountain' || zoneType === 'base'
+        localEvents.value.push({
+          cycle: gameStore.cycle,
+          text: inBase
+            ? 'No targets here — move to a lane to fight (e.g.  move mid-river ).'
+            : 'No enemies in this zone — last-hit waves via STRIP / attack wave:N, or  attack <target> .',
+          type: 'system',
+        })
+        return
+      }
+      handleCommand(`attack ${picked.target}`)
     }
     return
   }
@@ -2100,7 +2103,7 @@ function handleReturnToMenu() {
         class="flex items-center gap-2 px-2 pb-1 font-mono t-hud-sm text-self"
         data-testid="walk-strip"
       >
-        <span>WALKING → {{ walkReadout.name }} · {{ walkReadout.ticks }}t</span>
+        <span>WALKING → {{ walkReadout.name }} · {{ walkReadout.ticks }}c</span>
         <button
           class="border border-border px-1.5 py-0.5 text-text-dim hover:text-text-primary active:bg-border"
           data-testid="walk-stop"

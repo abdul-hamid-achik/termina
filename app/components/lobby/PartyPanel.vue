@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 interface PartyMember {
   playerId: string
@@ -95,7 +95,20 @@ async function startCoop() {
   }
 }
 
-onMounted(refresh)
+// Party state lives in server memory with no push channel — a member joining
+// or leaving is invisible until something re-reads /api/party/status. Poll
+// lightly while the panel is mounted so the roster stays honest.
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => {
+  void refresh()
+  pollTimer = setInterval(() => void refresh(), 10_000)
+})
+
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer)
+  pollTimer = null
+})
 </script>
 
 <template>

@@ -247,7 +247,7 @@ const preview = computed(() => {
     const hops = props.player
       ? pathDistance(props.player.zone, command.zone, hasZones ? (id) => !!zones[id] : undefined)
       : 0
-    const eta = hops > 1 ? ` (${hops} ticks)` : ''
+    const eta = hops > 1 ? ` (${hops} cycles)` : ''
     return { type: 'valid' as const, text: `>> Move to ${destZone?.name ?? command.zone}${eta}` }
   }
 

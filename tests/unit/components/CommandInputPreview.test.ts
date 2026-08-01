@@ -77,7 +77,7 @@ describe('CommandInput preview line', () => {
     const wrapper = mountInput(makeShopPlayer({ zone: 'mid-river' }))
     const preview = await previewFor(wrapper, 'move audit-base')
     // mid-river → mid-t1/2/3-audit → audit-base = 4 hops.
-    expect(preview.text()).toContain('>> Move to Landing Terminal (4 ticks)')
+    expect(preview.text()).toContain('>> Move to Landing Terminal (4 cycles)')
     expect(preview.classes()).toContain('text-chaff')
     wrapper.unmount()
   })

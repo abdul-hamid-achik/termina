@@ -1,7 +1,8 @@
 version: 1
 name: nav_lore
 intent: The public /lore page renders the worldbuilding intro (the Grid + the
-  Terminal) and the role-grouped operative roster with at least one hero's lore.
+  Terminal) and the posture-grouped operative roster with at least one hero's
+  lore.
 mode: normal
 metadata:
   feature: lore
@@ -16,10 +17,10 @@ outcomes:
       text:
         contains: Terminal
   - id: roster_groups_render
-    description: the roster shows role groups
+    description: the roster shows posture groups
     verify:
       text:
-        contains: Carries
+        contains: BREACH
   - id: hero_lore_renders
     description: at least one operative's lore card renders (Echo)
     verify:
@@ -32,4 +33,4 @@ steps:
     wait:
       text: TERMINA
       timeoutMs: 10000
-contractHash: sha256:953e8f2cc211d5f343b65eac1b52f0596ee8a264c03794d4eb722c661eecc4e1
+contractHash: sha256:e3c3a39b974b74b6f8c13d7a813f40b085c3d6dbb0249b378bce2645906aa515

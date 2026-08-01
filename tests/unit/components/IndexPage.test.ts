@@ -61,8 +61,12 @@ function mountIndex() {
 describe('index (landing) page', () => {
   it('shows the live hero count from the registry, not a hardcoded 6', () => {
     const text = mountIndex().text()
-    expect(text).toContain(`${HERO_IDS.length} heroes`)
+    expect(text).toContain(`${HERO_IDS.length} operators`)
     expect(text).not.toContain('6 heroes')
+    // The posture pillar teaches the pick-screen vocabulary (B2a).
+    for (const posture of ['BREACH', 'HOLD', 'ROAM', 'HARDLINE']) {
+      expect(text).toContain(posture)
+    }
   })
 
   it('does not advertise the unimplemented scan command', () => {

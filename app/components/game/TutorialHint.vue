@@ -75,7 +75,7 @@ const items = computed(() =>
       {{ hint }}
     </p>
     <p v-else class="min-w-0 text-chaff" data-testid="tutorial-complete">
-      ✓ Tutorial complete — you're in free play. Push mid and destroy the enemy core!
+      ✓ Tutorial complete — you're in free play. Push mid and destroy the enemy Terminal!
     </p>
   </div>
 </template>

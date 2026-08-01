@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { HeroRole } from '~~/shared/types/hero'
 import { HEROES, HERO_IDS } from '~~/shared/constants/heroes'
+import { POSTURE_META, POSTURE_ORDER } from '~~/shared/constants/postures'
 import { ITEMS } from '~~/shared/constants/items'
 import {
   CYCLE_DURATION_MS,
@@ -343,7 +343,7 @@ const concepts = [
   {
     term: 'The Terminal',
     icon: '@',
-    desc: `Each base houses its team's core — the Terminal (${TERMINAL_HP} INTEG). It is invulnerable until at least one of that team's T3 ice falls; once exposed, heroes and waves in the base can attack it.`,
+    desc: `Each base houses its team's Terminal (${TERMINAL_HP} INTEG). It is invulnerable until at least one of that team's T3 ice falls; once exposed, heroes and waves in the base can attack it.`,
   },
   {
     term: 'Levels & XP',
@@ -407,55 +407,18 @@ const concepts = [
   },
 ]
 
-const ROLE_DETAILS: ReadonlyArray<{ role: HeroRole; label: string; icon: string; desc: string }> = [
-  {
-    role: 'carry',
-    label: 'Carry',
-    icon: '>>',
-    desc: 'Scales with items. Weak early, dominant late. Farm waves and buy damage items.',
-  },
-  {
-    role: 'support',
-    label: 'Support',
-    icon: '++',
-    desc: 'Heals and shields allies. Buy wards. Protect your carry in lane.',
-  },
-  {
-    role: 'assassin',
-    label: 'Assassin',
-    icon: '**',
-    desc: 'High burst damage. Stealth and mobility. Pick off isolated targets.',
-  },
-  {
-    role: 'tank',
-    label: 'Tank',
-    icon: '##',
-    desc: 'High INTEG and plate. Taunts enemies. Absorbs damage for the team.',
-  },
-  {
-    role: 'mage',
-    label: 'Mage',
-    icon: '~~',
-    desc: 'Code damage and crowd control. Strong mid-game spike with abilities.',
-  },
-  {
-    role: 'offlaner',
-    label: 'Offlaner',
-    icon: '<>',
-    desc: 'Durable damage dealer. Links to enemies and disrupts formations.',
-  },
-]
-
-// Hero lists per role are read from the live hero registry.
-const heroRoles = ROLE_DETAILS.map((r) => ({
-  role: r.label,
-  icon: r.icon,
-  desc: r.desc,
+// Posture groups — what a player picks ON (B2a). Same source as the pick
+// screen, /heroes and /lore, so the teaching surface can't drift from the
+// roster it teaches.
+const postureGroups = POSTURE_ORDER.map((posture) => ({
+  posture,
+  label: POSTURE_META[posture].label,
+  blurb: POSTURE_META[posture].blurb,
   heroes: Object.values(HEROES)
-    .filter((h) => h.role === r.role)
+    .filter((h) => h.posture === posture)
     .map((h) => h.name)
     .join(', '),
-}))
+})).filter((g) => g.heroes.length > 0)
 </script>
 
 <template>
@@ -708,18 +671,21 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
       </div>
     </TerminalPanel>
 
-    <!-- Hero Roles -->
-    <TerminalPanel title="Hero Roles" title-as="h2">
+    <!-- Postures -->
+    <TerminalPanel title="Postures" title-as="h2">
       <div class="mb-2 border-b border-border pb-2">
-        <span class="text-[0.8rem] text-text-dim">&gt;_ ls /heroes/roles/</span>
+        <span class="text-[0.8rem] text-text-dim">&gt;_ ls /heroes/postures/</span>
       </div>
-      <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        <div v-for="r in heroRoles" :key="r.role" class="border border-border bg-bg-secondary p-2">
+      <div class="grid gap-2 sm:grid-cols-2">
+        <div
+          v-for="r in postureGroups"
+          :key="r.posture"
+          class="border border-border bg-bg-secondary p-2"
+        >
           <div class="mb-1 flex items-center gap-2">
-            <span class="text-[0.85rem] font-bold text-ability">{{ r.icon }}</span>
-            <span class="text-[0.85rem] font-bold text-text-primary">{{ r.role }}</span>
+            <span class="text-[0.85rem] font-bold text-ability">{{ r.label }}</span>
           </div>
-          <p class="text-[0.75rem] text-text-dim">{{ r.desc }}</p>
+          <p class="text-[0.75rem] text-text-dim">{{ r.blurb }}</p>
           <div class="mt-1 text-[0.7rem] text-gold">{{ r.heroes }}</div>
         </div>
       </div>

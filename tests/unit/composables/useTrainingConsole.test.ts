@@ -267,7 +267,7 @@ describe('useTrainingConsole', () => {
       const c = await consoleAtSix()
       c.cast('r')
       expect(c.statuses.value).toEqual([{ kind: 'stun', label: 'STUNNED', ticksLeft: 2 }])
-      expect(c.log.value.some((l) => l.includes('STUNNED for 2t'))).toBe(true)
+      expect(c.log.value.some((l) => l.includes('STUNNED for 2c'))).toBe(true)
     })
 
     it('decays statuses each cycle and announces when they wear off', async () => {

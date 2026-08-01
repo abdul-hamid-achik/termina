@@ -41,7 +41,7 @@ function expandedItemNames(player: ScoreboardEntry): string {
 function respawnCountdown(player: ScoreboardEntry): string {
   if (player.alive || !player.respawnCycle) return ''
   const ticks = player.respawnCycle - props.currentCycle
-  return ticks > 0 ? `${ticks}t` : ''
+  return ticks > 0 ? `${ticks}c` : ''
 }
 
 function teamTotalScrip(team: TeamId): number {

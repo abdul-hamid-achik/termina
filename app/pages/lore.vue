@@ -63,8 +63,8 @@ const roster = POSTURE_ORDER.map((posture) => ({
         on the routes is Quorum's. The traffic is Quorum's. The clock is Quorum's.
       </p>
       <p>
-        Each crew keeps one core alive: its
-        <span class="text-chaff">Terminal</span>. Bring the other crew's Terminal down and the
+        Each crew keeps one
+        <span class="text-chaff">Terminal</span> alive. Bring the other crew's Terminal down and the
         ground is yours.
       </p>
       <p>

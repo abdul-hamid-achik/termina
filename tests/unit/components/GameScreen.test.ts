@@ -511,11 +511,11 @@ describe('GameScreen', () => {
 
       // chaff-base → mid-t3-chaff → mid-t2-chaff → mid-t1-chaff
       expect(wrapper.find('[data-testid="walk-strip"]').text()).toContain(
-        'WALKING → Coldstore T1 (CHAFF) · 3t',
+        'WALKING → Coldstore T1 (CHAFF) · 3c',
       )
       seedMap('mid-t3-chaff', { players: rosterWalking('mid-t3-chaff', 'mid-t1-chaff') })
       await wrapper.vm.$nextTick()
-      expect(wrapper.find('[data-testid="walk-strip"]').text()).toContain('· 2t')
+      expect(wrapper.find('[data-testid="walk-strip"]').text()).toContain('· 2c')
       wrapper.unmount()
     })
 

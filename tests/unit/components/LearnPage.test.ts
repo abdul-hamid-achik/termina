@@ -154,11 +154,17 @@ describe('learn page', () => {
     expect(text).toContain(`hit for ${ICE_ATTACK}`)
   })
 
-  it('lists every hero name under its role, sourced from the hero registry', () => {
+  it('lists every hero name under its posture, sourced from the hero registry', () => {
     const text = mountLearn().text()
+    // The posture panel teaches the pick-screen vocabulary (B2a) — all four
+    // posture labels render, not the old carry/support role taxonomy.
+    for (const posture of ['BREACH', 'HOLD', 'ROAM', 'HARDLINE']) {
+      expect(text).toContain(posture)
+    }
     for (const hero of Object.values(HEROES)) {
       expect(text).toContain(hero.name)
     }
+    expect(text).not.toContain('Hero Roles')
   })
 
   it('uses the real silt zone naming (silt-team-side)', () => {

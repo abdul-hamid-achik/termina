@@ -40,7 +40,7 @@ const commandTicker = [
 const pillars = [
   { n: '01', text: 'You are on a terminal. The terminal is your deck — you type, you do not aim.' },
   { n: '02', text: cycleFrameLine(tickSeconds) },
-  { n: '03', text: `${heroCount} heroes: carries, supports, assassins, tanks, mages, offlaners.` },
+  { n: '03', text: `${heroCount} operators, four postures: BREACH, HOLD, ROAM, HARDLINE.` },
   { n: '04', text: 'No feed off ground you do not hold — ward the routes, or move blind.' },
 ]
 </script>

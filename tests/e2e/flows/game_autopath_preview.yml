@@ -3,8 +3,8 @@ name: game_autopath_preview
 intent: >
   Auto-path movement in the command bar: typing a move order to a DISTANT zone
   previews it as a travel plan with its ETA ("Move to Landing Terminal (9
-  ticks)") instead of rejecting it — the client mirror of the server's
-  walk-one-zone-per-tick rule. Typing never submits, so this exercises the pure
+  cycles)") instead of rejecting it — the client mirror of the server's
+  walk-one-zone-per-cycle rule. Typing never submits, so this exercises the pure
   UI affordance; the walking itself is engine truth covered by `bun run
   test:gameplay`.
 mode: normal
@@ -18,7 +18,7 @@ imports:
   - ../actions/login.yml
 outcomes:
   - id: distant_move_previews_travel_plan
-    description: the preview line names the resolved destination and its tick ETA
+    description: the preview line names the resolved destination and its cycle ETA
       rather than a "too far" rejection
     verify:
       script:
@@ -27,7 +27,7 @@ outcomes:
 
           const t = el ? el.textContent : '';
 
-          return { ok: /Move to Landing Terminal \(\d+ ticks\)/.test(t),
+          return { ok: /Move to Landing Terminal \(\d+ cycles\)/.test(t),
           evidence: 'preview: ' + JSON.stringify(t) };
 steps:
   - use: login
@@ -54,4 +54,4 @@ steps:
     wait:
       selector: '[data-testid="command-preview"]'
       timeoutMs: 10000
-contractHash: sha256:9d906325ee79f808d49c928e5a0e988f33fda2b0191a13e15afc5648d05534e9
+contractHash: sha256:cf2c7471bbab70f5ff6de414ae706aea2d8bfd7647c77308536bb2ca1abf5719
