@@ -267,4 +267,61 @@ describe('tutorial mode', () => {
       expect(verdict.reason).toContain('Too early')
     })
   })
+
+  /**
+   * The dead-end guard.
+   *
+   * Every other completion test in this file reaches the end by patching
+   * `tutorialStep` — which skips the exact thing that was once broken. The
+   * tutorial was, for a while, unfinishable by ANYONE: the flow could never
+   * reach its last step, so completion never fired for a single player. A test
+   * that starts at the end cannot see that.
+   *
+   * This one starts at step 0, never touches `tutorialStep`, and only ticks. It
+   * passes only if a player who does nothing useful still arrives at the end via
+   * the per-step deadline — which is the whole point of the deadline existing.
+   */
+  describe('the tutorial always terminates', () => {
+    it('reaches completion from step 0 on deadlines alone, with nothing patched', async () => {
+      const game = await seedGame('fresh', { mode: 'tutorial' })
+      expect((await game.state()).tutorialStep ?? 0).toBe(0)
+
+      // Enough cycles for every step to time out, plus slack. A player who
+      // typed nothing at all must still finish.
+      const budget = TUTORIAL_STEP_COUNT * (TUTORIAL_STEP_DEADLINE_CYCLES + 2)
+      for (let i = 0; i < budget; i++) {
+        await game.tick()
+        if ((await game.state()).tutorialStep! >= TUTORIAL_STEP_COUNT) break
+      }
+
+      const step = (await game.state()).tutorialStep ?? 0
+      expect(step, `stuck on tutorial step ${step} after ${budget} cycles`).toBeGreaterThanOrEqual(
+        TUTORIAL_STEP_COUNT,
+      )
+    })
+
+    it('never leaves the player with nothing legal to do', async () => {
+      // At EVERY step the gate must permit something. A step that unlocks a verb
+      // the live match makes impossible, with no informational escape hatch, is
+      // the dead end in its other form.
+      const game = await seedGame('fresh', { mode: 'tutorial' })
+      for (let step = 0; step < TUTORIAL_STEP_COUNT; step++) {
+        await game.patch((s) => ({ ...s, tutorialStep: step }))
+        game.submit({ type: 'status' })
+        await game.tick()
+        expect(
+          lockedThisTick(game.lastRejected),
+          `step ${step} refused even a status readout`,
+        ).toBe(false)
+      }
+    })
+
+    it('every step has a hint that names what to do', async () => {
+      for (let step = 0; step < TUTORIAL_STEP_COUNT; step++) {
+        const hint = tutorialHint(step)
+        expect(hint, `step ${step} has no hint`).toBeTruthy()
+        expect(hint!.length, `step ${step} hint is too short to teach anything`).toBeGreaterThan(20)
+      }
+    })
+  })
 })
