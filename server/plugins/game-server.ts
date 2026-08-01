@@ -42,6 +42,7 @@ import {
 import { recordSentState, clearSentState } from '~~/server/game/engine/StateDelta'
 import { getSpectatorsOfGame, clearGameSpectators } from '~~/server/services/SpectatorRegistry'
 import { clearClientInput } from '~~/server/services/LeaverSystem'
+import { clearRejectionEscalation } from '~~/server/game/engine/rejectionEscalation'
 import type { TeamId, GameState, GameMode } from '~~/shared/types/game'
 import type { PlayerEndStats, ServerMessage } from '~~/shared/types/protocol'
 import type { NewMatch, NewMatchPlayer } from '~~/server/db/schema'
@@ -451,6 +452,7 @@ export function stopDevGame(gameId: string): void {
   }
   liveGames.delete(gameId)
   cleanupGame(gameId)
+  clearRejectionEscalation(gameId)
   clearClientInput(gameId)
   // Interrupt the running loop fiber (no-op if already stopped, or if the
   // runtime never came up — the bookkeeping above still has to happen).
@@ -497,6 +499,7 @@ function reapStaleLiveGames(): void {
       // State manager itself is broken — just drop the entry.
     }
     cleanupGame(gameId)
+    clearRejectionEscalation(gameId)
     clearClientInput(gameId)
     liveGames.delete(gameId)
   }
@@ -833,6 +836,7 @@ export default defineNitroPlugin(async (nitroApp) => {
           clearSentState(gId, p.playerId)
         }
         cleanupGame(gId)
+        clearRejectionEscalation(gId)
         clearClientInput(gId)
         clearGameSpectators(gId)
         liveGames.delete(gId)

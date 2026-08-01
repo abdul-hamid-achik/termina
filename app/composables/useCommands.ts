@@ -437,7 +437,7 @@ function parseTarget(raw: string): TargetRef | null {
   }
   if (raw.startsWith('ice:')) return { kind: 'ice', zone: raw.slice(4) }
   if (raw.startsWith('zone:')) return { kind: 'zone', zone: raw.slice(5) }
-  if (raw === 'tenant' || raw === 'rosh') return { kind: 'tenant' }
+  if (raw === 'tenant') return { kind: 'tenant' }
   // If it looks like a hero name without prefix, try hero
   if (isHeroId(raw)) return { kind: 'hero', name: raw }
   return null

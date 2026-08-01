@@ -27,7 +27,7 @@ import { calculateBuybackCost } from '~~/server/game/engine/BuybackSystem'
 /** The full game zone set, as the client actually receives it (state.zones). */
 function allZones(): Record<string, ZoneRuntimeState> {
   const zones: Record<string, ZoneRuntimeState> = {}
-  for (const id of ZONE_IDS) zones[id] = { id, wards: [], waves: [] }
+  for (const id of ZONE_IDS) zones[id] = { id, wards: [] }
   return zones
 }
 
@@ -287,9 +287,9 @@ describe('useCommands', () => {
       })
 
       // Tenant and the silt camps are fully resolved server-side and farmed by
-      // bots every match; without these two branches a human could not express
-      // either intent at all.
-      it('parses attack tenant (and the rosh shorthand)', () => {
+      // bots every match; without this branch a human could not express the
+      // intent at all. The old `rosh` shorthand is gone (no legacy aliases).
+      it('parses attack tenant', () => {
         const { parse } = useCommands()
 
         expect(parse('attack tenant')).toEqual({
@@ -297,8 +297,8 @@ describe('useCommands', () => {
           error: null,
         })
         expect(parse('attack rosh')).toEqual({
-          command: { type: 'attack', target: { kind: 'tenant' } },
-          error: null,
+          command: null,
+          error: expect.stringContaining('Invalid target'),
         })
       })
 
@@ -1046,8 +1046,8 @@ describe('useCommands', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
           visibleZones: {
-            'mid-t1-chaff': { id: 'mid-t1-chaff', wards: [], waves: [] },
-            'mid-river': { id: 'mid-river', wards: [], waves: [] },
+            'mid-t1-chaff': { id: 'mid-t1-chaff', wards: [] },
+            'mid-river': { id: 'mid-river', wards: [] },
           },
         })
 
@@ -1075,8 +1075,8 @@ describe('useCommands', () => {
         // top-river, which does not exist here — the reachable zones win.
         const context = makeContext({
           visibleZones: {
-            'top-t1-chaff': { id: 'top-t1-chaff', wards: [], waves: [] },
-            'top-t2-chaff': { id: 'top-t2-chaff', wards: [], waves: [] },
+            'top-t1-chaff': { id: 'top-t1-chaff', wards: [] },
+            'top-t2-chaff': { id: 'top-t2-chaff', wards: [] },
           },
         })
         const suggestions = autocomplete('move top', context)
@@ -1804,7 +1804,7 @@ describe('validateCommand', () => {
       'audit-base',
       'audit-fountain',
     ]) {
-      oneLaneZones[id] = { id, wards: [], waves: [] }
+      oneLaneZones[id] = { id, wards: [] }
     }
     const ctx = makeContext({
       player: makePlayer({ zone: 'chaff-base' }),

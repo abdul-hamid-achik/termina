@@ -406,6 +406,20 @@ describe('GameScreen', () => {
       expect(dialog.attributes('aria-modal')).toBe('true')
       wrapper.unmount()
     })
+
+    it('desktop chips open the shop and scoreboard (the ActionRow is hidden on fine pointers)', async () => {
+      seedActiveGame()
+      const wrapper = mountGameScreen()
+
+      const shopChip = wrapper.get('[data-testid="desktop-shop-chip"]')
+      await shopChip.trigger('click')
+      expect(wrapper.find('[role="dialog"][aria-label="Item shop"]').exists()).toBe(true)
+
+      const scoreChip = wrapper.get('[data-testid="desktop-score-chip"]')
+      await scoreChip.trigger('click')
+      expect(wrapper.find('[role="dialog"][aria-label="Scoreboard"]').exists()).toBe(true)
+      wrapper.unmount()
+    })
   })
   describe('map affordances (W2-8)', () => {
     /** The mid corridor plus a cache spot, so subset-map pruning is observable. */

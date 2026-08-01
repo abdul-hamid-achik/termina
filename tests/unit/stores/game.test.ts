@@ -45,7 +45,7 @@ function makeTeams(): { chaff: TeamState; audit: TeamState } {
 }
 
 function makeZone(id: string): ZoneRuntimeState {
-  return { id, wards: [], waves: [] }
+  return { id, wards: [] }
 }
 
 function makeCycleMessage(

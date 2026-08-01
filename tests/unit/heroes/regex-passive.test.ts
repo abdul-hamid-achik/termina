@@ -51,7 +51,7 @@ function makeState(players: PlayerState[], cycle: number): GameState {
       audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: map,
-    zones: { 'mid-river': { id: 'mid-river', wards: [], waves: [] } },
+    zones: { 'mid-river': { id: 'mid-river', wards: [] } },
     waves: [],
     neutrals: [],
     ice: [],

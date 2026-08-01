@@ -85,11 +85,22 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
 
   const checkpoints: number[] = [75, 150, 300, 450, 600, 900, 1200] // 5,10,20,30,40,60,80 min
   let totalKills = 0
+  // Tenant contest metrics — the objective's whole point is dropping the
+  // BACKUP; if no bot match ever kills him the numbers need a balance pass.
+  let tenantKills = 0
+  let tenantRespawns = 0
+  let backupPickups = 0
 
   while (state.cycle < maxCycles && state.phase !== 'ended') {
     const result = Effect.runSync(processCycle(gameId, state))
     state = result.state
     totalKills = state.teams.chaff.kills + state.teams.audit.kills
+
+    for (const e of result.events) {
+      if (e._tag === 'tenant_killed') tenantKills++
+      else if (e._tag === 'tenant_respawn') tenantRespawns++
+      else if (e._tag === 'backup_picked') backupPickups++
+    }
 
     if (process.env.SIM_DUMP_ZONES === '1' && state.cycle % 50 === 0) {
       console.log(
@@ -115,7 +126,8 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
           `lvl ${chaff.avgLevel.toFixed(1)}:${audit.avgLevel.toFixed(1)} | ` +
           `ice ${chaff.iceAlive}:${audit.iceAlive} | ` +
           `waves ${chaff.waves}:${audit.waves} | ` +
-          `terminal ${chaff.terminalHp}:${audit.terminalHp}`,
+          `terminal ${chaff.terminalHp}:${audit.terminalHp}` +
+          (state.tenant.alive ? ` | tenant ${state.tenant.integ}/${state.tenant.maxInteg}` : ''),
       )
       if (process.env.SIM_DUMP_ZONES === '1') {
         for (const p of Object.values(state.players)) {
@@ -150,6 +162,9 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
       `deaths ${chaff.deaths + audit.deaths} total | ` +
       `networth ${chaff.netWorth}:${audit.netWorth} | ice ${chaff.iceAlive}:${audit.iceAlive} | ` +
       `waves ${chaff.waves}:${audit.waves} | terminal ${chaff.terminalHp}:${audit.terminalHp}`,
+  )
+  console.log(
+    `  tenant: ${tenantKills} kill(s) · ${tenantRespawns} respawn(s) · ${backupPickups} backup pickup(s)`,
   )
 
   // K/D/A spread per player

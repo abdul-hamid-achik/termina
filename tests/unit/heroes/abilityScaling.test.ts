@@ -72,9 +72,9 @@ function makeState(players: PlayerState[]): GameState {
     },
     players: playerMap,
     zones: {
-      [CASTER_ZONE]: { id: CASTER_ZONE, wards: [], waves: [] },
-      [ADJACENT_ZONE]: { id: ADJACENT_ZONE, wards: [], waves: [] },
-      'top-river': { id: 'top-river', wards: [], waves: [] },
+      [CASTER_ZONE]: { id: CASTER_ZONE, wards: [] },
+      [ADJACENT_ZONE]: { id: ADJACENT_ZONE, wards: [] },
+      'top-river': { id: 'top-river', wards: [] },
     },
     waves: {},
     ice: {},

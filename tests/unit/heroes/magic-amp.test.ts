@@ -69,7 +69,7 @@ function makeState(players: PlayerState[]): GameState {
       audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0 },
     },
     players: playerMap,
-    zones: { 'mid-river': { id: 'mid-river', wards: [], waves: [] } },
+    zones: { 'mid-river': { id: 'mid-river', wards: [] } },
     waves: [],
     ice: [],
     events: [],

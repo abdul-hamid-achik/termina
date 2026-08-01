@@ -592,6 +592,21 @@ describe('GameScreen commands', () => {
       expect(store.announcements).toHaveLength(before)
       wrapper.unmount()
     })
+
+    it('the THIRD identical rejection carries a help pointer (escalation)', () => {
+      const store = seedActiveGame()
+      const wrapper = mountGameScreen()
+
+      // Player is in mid-river, nowhere near a shop zone.
+      for (let i = 0; i < 3; i++) {
+        wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'buy scrap_lot')
+      }
+
+      const last = store.announcements.at(-1)
+      expect(last).toContain('shop zone')
+      expect(last).toContain('help')
+      wrapper.unmount()
+    })
   })
   describe('effects that used to hurt (W2-6)', () => {
     async function hit(wrapper: ReturnType<typeof mountGameScreen>, cycle: number, amount: number) {

@@ -55,8 +55,8 @@ function makeState(players: PlayerState[], traps: TrapState[], overrides: Partia
     },
     players: playerMap,
     zones: {
-      'mid-river': { id: 'mid-river', wards: [], waves: [], traps },
-      'top-river': { id: 'top-river', wards: [], waves: [] },
+      'mid-river': { id: 'mid-river', wards: [], traps },
+      'top-river': { id: 'top-river', wards: [] },
     },
     waves: [],
     ice: [],

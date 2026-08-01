@@ -63,6 +63,7 @@ import {
 import { getPeer } from '~~/server/services/PeerRegistry'
 import { writeSnapshot, SNAPSHOT_EVERY_N_TICKS, type SnapshotMeta } from './StateSnapshot'
 import { appendActions } from './ActionLog'
+import { escalateRejection } from './rejectionEscalation'
 import type { RedisServiceApi } from '~~/server/services/RedisService'
 
 // ── Action queue per game ──────────────────────────────────────
@@ -275,6 +276,11 @@ export function processCycle(
     const rejectedActions: Array<{ playerId: string; reason: string }> = []
     const notices: Array<{ playerId: string; message: string }> = []
 
+    // Third-identical-rejection escalation (tutorial lock messages are
+    // teaching, not failure — excluded inside the helper).
+    const escalate = (playerId: string, reason: string) =>
+      escalateRejection(gameId, currentState.mode, playerId, reason)
+
     // Zone snapshot for the passive hook's synthesized 'move' events (step
     // 11.5) — diffing covers normal moves AND resolver teleports, and
     // correctly excludes slow-cancelled moves.
@@ -367,7 +373,12 @@ export function processCycle(
     const specialResult = processSpecialActions(currentState, actions)
     currentState = specialResult.state
     allEvents.push(...specialResult.events)
-    rejectedActions.push(...specialResult.rejectedActions)
+    rejectedActions.push(
+      ...specialResult.rejectedActions.map((r) => ({
+        ...r,
+        reason: escalate(r.playerId, r.reason),
+      })),
+    )
 
     // 2. Validate actions against current state (filter out already-handled commands)
     const validActions: PlayerAction[] = []
@@ -383,7 +394,10 @@ export function processCycle(
         // would otherwise get "Cannot move while rooted" warnings every cycle
         // for an order they issued long ago. The walk resumes when the
         // disable expires (moveTarget persists).
-        rejectedActions.push({ playerId: action.playerId, reason: error })
+        rejectedActions.push({
+          playerId: action.playerId,
+          reason: escalate(action.playerId, error),
+        })
       }
     }
 
@@ -395,7 +409,9 @@ export function processCycle(
     // Casts/moves that failed inside resolution (mana, bad target, slow)
     // reach onActionRejected player feedback through the same channel as
     // validation failures.
-    rejectedActions.push(...resolved.rejected)
+    rejectedActions.push(
+      ...resolved.rejected.map((r) => ({ ...r, reason: escalate(r.playerId, r.reason) })),
+    )
 
     // 3.4. Advance the tutorial if the human performed the verb this step
     // teaches, or if the step outlasted its deadline (no-op in normal games).

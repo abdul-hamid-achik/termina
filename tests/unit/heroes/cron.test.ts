@@ -87,9 +87,9 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     },
     players: playerMap,
     zones: {
-      'mid-river': { id: 'mid-river', wards: [], waves: [] },
-      'top-river': { id: 'top-river', wards: [], waves: [] },
-      'mid-t1-chaff': { id: 'mid-t1-chaff', wards: [], waves: [] },
+      'mid-river': { id: 'mid-river', wards: [] },
+      'top-river': { id: 'top-river', wards: [] },
+      'mid-t1-chaff': { id: 'mid-t1-chaff', wards: [] },
     },
     waves: [],
     ice: [],

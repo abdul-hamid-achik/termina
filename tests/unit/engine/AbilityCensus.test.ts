@@ -78,7 +78,7 @@ function baseState(heroId: string): GameState {
   for (const p of [caster, efull, elow, eadj, ally]) players[p.id] = p
   const zones: GameState['zones'] = {}
   for (const z of [ZONE, ADJ, 'mid-t1-audit', 'top-river', 'bot-river']) {
-    zones[z] = { id: z, wards: [], waves: [] }
+    zones[z] = { id: z, wards: [] }
   }
   return {
     cycle: 100,

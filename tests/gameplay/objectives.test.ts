@@ -151,6 +151,17 @@ describe('objectives: caches', () => {
     ).toBe(true)
   })
 
+  it('the THIRD identical rejection carries a help pointer (escalation)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    for (let i = 0; i < 3; i++) {
+      game.submit({ type: 'grab' })
+      await game.tick()
+    }
+    const third = game.lastRejected.find((r) => r.playerId === HUMAN)
+    expect(third?.reason).toContain('No cache')
+    expect(third?.reason).toContain('help')
+  })
+
   it('backup is rejected away from the Hollow with feedback', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({

@@ -57,7 +57,6 @@ function makeZone(id: string, overrides: Partial<ZoneRuntimeState> = {}): ZoneRu
   return {
     id,
     wards: [],
-    waves: [],
     ...overrides,
   }
 }

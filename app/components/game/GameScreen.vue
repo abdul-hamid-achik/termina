@@ -76,6 +76,7 @@ import { computeThreat, recommendAction } from '~/utils/tactics'
 import { arrowTargetZone } from '~/utils/arrowMove'
 import { computeSituationalActions } from '~/utils/situationalActions'
 import { routeGameKey } from '~/utils/gameKeys'
+import { escalateRejection, resetRejectionEscalation } from '~/utils/rejectionEscalation'
 import { getAbilityBwCost } from '~~/shared/utils/ability'
 import { isTutorialComplete } from '~~/shared/constants/tutorial'
 
@@ -227,6 +228,7 @@ onUnmounted(() => {
   unsubOnMessage()
   gameSocket.disconnect()
   gameStore.stopTickCountdown()
+  resetRejectionEscalation()
   window.removeEventListener('keydown', onKeyDown)
   window.removeEventListener('keyup', onKeyUp)
   barObserver?.disconnect()
@@ -1264,15 +1266,17 @@ function handleCommand(cmd: string) {
       mode: gameStore.mode,
     })
     if (validationError) {
+      // Third identical rejection reads differently (playability ledger).
+      const escalated = escalateRejection(validationError)
       localEvents.value.push({
         cycle: gameStore.cycle,
-        text: validationError,
+        text: escalated,
         type: 'system',
       })
       // A rejection is the one [SYS] line the player MUST notice — client-side
       // rejects now raise the same amber toast the server path already raises,
       // which keeps grey [SYS] for genuine meta-chatter (chat, pings, readouts).
-      gameStore.addAnnouncement(validationError, 'warning')
+      gameStore.addAnnouncement(escalated, 'warning')
       return
     }
     // If the socket isn't open (reconnecting), the action never reached the
@@ -1928,6 +1932,29 @@ function handleReturnToMenu() {
       <!-- Tutorial banner: current step's hint + the staggered-unlock checklist -->
       <TutorialHint v-if="gameStore.mode === 'tutorial'" :step="gameStore.tutorialStep ?? 0" />
 
+      <!-- Desktop-only shop/scoreboard openers (fine pointer): the ActionRow
+           that carries SHOP/SCORE is display:none there (R3-09), and the
+           keyboard-only paths (Esc then S / hold Tab) were undiscoverable.
+           The prompt keeps focus ownership; these are just visible handles. -->
+      <div class="desktop-overlay-chips" data-testid="desktop-overlay-chips">
+        <button
+          type="button"
+          data-testid="desktop-shop-chip"
+          :aria-pressed="showShop"
+          @click="showShop = !showShop"
+        >
+          [SHOP]
+        </button>
+        <button
+          type="button"
+          data-testid="desktop-score-chip"
+          :aria-pressed="showScoreboard"
+          @click="showScoreboard = true"
+        >
+          [SCORE]
+        </button>
+      </div>
+
       <!-- Action-focus banner (HUD setting B): at-a-glance threat + what to do -->
     </div>
 
@@ -2161,6 +2188,41 @@ function handleReturnToMenu() {
   grid-column: 1 / -1;
   grid-row: 1;
   overflow: hidden;
+  /* The desktop overlay chips sit at the bar's right edge. */
+  display: flex;
+  align-items: center;
+}
+.game-grid__bar > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.desktop-overlay-chips {
+  display: none;
+}
+@media (pointer: fine) {
+  .desktop-overlay-chips {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0 0.5rem;
+  }
+  .desktop-overlay-chips button {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    line-height: 1;
+    padding: 0.35rem 0.5rem;
+    color: var(--color-text-dim);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+    white-space: nowrap;
+  }
+  .desktop-overlay-chips button:hover {
+    color: var(--color-text-primary);
+    border-color: var(--color-border-glow);
+  }
+  .desktop-overlay-chips button[aria-pressed='true'] {
+    color: var(--color-text-primary);
+    border-color: var(--color-ability);
+  }
 }
 .game-grid__war {
   grid-column: 1;

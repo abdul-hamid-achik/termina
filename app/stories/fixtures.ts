@@ -192,7 +192,6 @@ export function makeZone(id: string, overrides: Partial<ZoneRuntimeState> = {}):
   return {
     id,
     wards: [],
-    waves: [],
     ...overrides,
   }
 }

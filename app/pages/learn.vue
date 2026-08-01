@@ -308,7 +308,11 @@ const keybinds: Array<{ key: string; probe: string | null; action: string }> = [
   { key: 'S', probe: 's', action: 'Toggle the shop' },
   { key: 'Q/W/E/R', probe: 'q', action: 'Quick-cast that ability' },
   { key: '1-6', probe: '1', action: 'Use the item in that inventory slot' },
-  { key: 'Arrows', probe: 'ArrowUp', action: 'Move one zone that way on the map' },
+  {
+    key: 'Arrows',
+    probe: 'ArrowUp',
+    action: 'Move one hop along the trace (up = deeper, down = back)',
+  },
   { key: 'Tab', probe: 'Tab', action: 'Hold to show the scoreboard' },
   { key: 'Tab (typing)', probe: null, action: 'Autocomplete the command' },
   { key: 'Up/Down (typing)', probe: null, action: 'Cycle through command history' },

@@ -410,7 +410,6 @@ export function filterStateForPlayer(
       filteredZones[zoneId] = {
         id: zs.id,
         wards: zs.wards.filter((w) => w.team === team), // Only show own wards
-        waves: [], // Don't reveal enemy wave positions in fog
         ...(zs.traps ? { traps: ownTraps } : {}),
       }
     }

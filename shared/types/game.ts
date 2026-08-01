@@ -183,14 +183,6 @@ export type GameMode = 'normal' | 'tutorial'
 export interface ZoneRuntimeState {
   id: string
   wards: WardState[]
-  /**
-   * @deprecated Inert. Every construction site initialises it to `[]` and
-   * nothing has ever written an id into it, so the one consumer (command
-   * autocomplete) silently offered zero waves for the life of the field. Wave
-   * positions live in `GameState.waves`; read that. Slated for removal once
-   * the ~30 fixtures that spell out `waves: []` are swept.
-   */
-  waves: string[]
   // Socket's Listen traps armed in this zone. Optional so existing zone-init
   // sites don't need updating; invisible to enemies (stripped in vision filter).
   traps?: TrapState[]
