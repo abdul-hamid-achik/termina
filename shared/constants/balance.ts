@@ -147,7 +147,7 @@ export const SPELL_LIFESTEAL_PERCENT = 0.3
 
 /**
  * Respawn time in cycles = base + max(0, level - freeLevels) * perLevel
- * Level 1 death = 3 ticks (12s) — roughly a wave wave, so a gank always
+ * Level 1 death = 3 ticks (12s) — roughly a wave, so a gank always
  * costs something. Scales smoothly: lvl 5 ≈ 28s, lvl 10 ≈ 48s, lvl 25 ≈ 108s.
  */
 export const RESPAWN_BASE_CYCLES = 3

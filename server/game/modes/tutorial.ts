@@ -117,7 +117,7 @@ export interface TutorialAdvance {
  * has been active longer than TUTORIAL_STEP_DEADLINE_CYCLES.
  *
  * The deadline is the load-bearing part. Every step's success condition depends
- * on the live match: "attack" wants a wave wave to have arrived, "cast" wants a
+ * on the live match: "attack" wants a wave to have arrived, "cast" wants a
  * legal target (most heroes' Q needs an enemy hero in your zone). Without a
  * deadline a player whose zone never produced a legal target sat on the same
  * step forever — and because tutorial mode gates the *later* commands behind the

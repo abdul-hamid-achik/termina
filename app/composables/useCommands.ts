@@ -376,7 +376,7 @@ export function formatHelpReadout(): string[] {
     '  Team:    chat <team|all> <msg> · ping <zone> · surrender confirm',
     '  Special: grab · backup · harden · buyback · talent <tier> <left|right>',
     '  Shortcuts: q/w/e/r = cast · mv = move · atk = attack · br = breach · b = buy · ss = missing · ? = help',
-    'Goal: push a lane, raze the enemy ice, then destroy their Terminal.',
+    'Goal: push a route, raze the enemy ICE, then destroy their Terminal.',
   ]
 }
 

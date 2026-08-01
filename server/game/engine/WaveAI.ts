@@ -256,7 +256,7 @@ export function applyWaveActions(
         const iceIdx = ice.findIndex((t) => t.zone === action.targetZone && t.alive)
         if (iceIdx >= 0) {
           const target = ice[iceIdx]!
-          // Harden invulnerability blocks the wave wave too, not just heroes —
+          // Harden invulnerability blocks the wave too, not just heroes —
           // otherwise a glyphed ice still gets chewed down by the push. Hero
           // attacks already bounce off (ActionResolver), so mirror that here.
           if (!target.invulnerable) {

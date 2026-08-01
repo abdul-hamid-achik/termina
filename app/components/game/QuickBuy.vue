@@ -83,7 +83,11 @@ const entries = computed<PinnedEntry[]>(() => {
           :aria-label="`Unpin ${entry.def.name}`"
           @click="emit('unpin', entry.id)"
         >
-          x
+          <!-- Bracketed, like the [BUY] beside it. A bare `x` after a price read
+               as a quantity ("Recall Token 50sc x") rather than as a control —
+               and when the item is unaffordable [BUY] is hidden, so the chip was
+               just "name price x". -->
+          [×]
         </button>
       </div>
     </div>

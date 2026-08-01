@@ -5,7 +5,7 @@ import type { TeamId } from '~~/shared/types/game'
  *
  * This is the SINGLE source of truth for lane topology used by:
  *  - `BotAI.ts` — bot lane movement and advancing
- *  - `WaveAI.ts` — wave wave pathing
+ *  - `WaveAI.ts` — wave pathing
  *
  * Each route starts at the team's T3 ice and ends at the enemy base.
  * The `full` variant (used by BotAI) prepends the team's fountain + base so a

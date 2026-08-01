@@ -23,7 +23,7 @@ import type { GameState } from '~~/shared/types/game'
  * - A Redis read failure is 503 (not an empty complete replay).
  *
  * Caveats (deliberate trade-offs for V1):
- * - World-side AI (wave waves, neutrals, tenant, caches) uses Math.random
+ * - World-side AI (waves, neutrals, tenant, caches) uses Math.random
  *   and will diverge from the original game. Player-side evolution (INTEG,
  *   scrip, items, K/D/A, position) follows the recorded action stream and
  *   is the only thing the scrubber UI relies on today.

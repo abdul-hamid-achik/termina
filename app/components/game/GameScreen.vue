@@ -196,7 +196,7 @@ onMounted(() => {
       localStorage.setItem('termina_intro_seen', '1')
       const intro = [
         'Welcome to TERMINA — the city commits every four seconds. You queue ONE instruction per cycle.',
-        'You start in the fountain. Move to a lane: type or tap  move mid-river',
+        'You start in the fountain. Move out onto a route: type or tap  move mid-river',
         // Desktop has no ActionRow (R3-09 hides it on fine pointers), so the
         // shop/scoreboard verbs and the ability keys are the real affordances;
         // the button copy below only exists on touch.
@@ -743,7 +743,10 @@ for (const hero of Object.values(HEROES)) {
 }
 
 function entityLabel(id: unknown): string {
-  if (typeof id !== 'string' || !id) return '?'
+  // 'someone' rather than '?': the label lands mid-sentence in the feed, and a
+  // bare question mark rendered lines like "? terminated ?", which reads as a
+  // broken template rather than as a participant the client could not name.
+  if (typeof id !== 'string' || !id) return 'someone'
   if (id === gameStore.playerId) return 'You'
   const p = gameStore.allPlayers[id]
   if (p) return (p.heroId && HEROES[p.heroId]?.name) || p.name || id
@@ -1507,7 +1510,7 @@ function handleQuickAction(cmd: string) {
         localEvents.value.push({
           cycle: gameStore.cycle,
           text: inBase
-            ? 'No targets here — move to a lane to fight (e.g.  move mid-river ).'
+            ? 'No targets here — move onto a route to fight (e.g.  move mid-river ).'
             : 'No enemies in this zone — last-hit waves via STRIP / attack wave:N, or  attack <target> .',
           type: 'system',
         })

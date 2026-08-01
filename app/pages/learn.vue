@@ -362,12 +362,12 @@ const concepts = [
   {
     term: 'Sustain',
     icon: '+',
-    desc: `There is NO innate regeneration — an INTEG or BW bar you spend stays spent. The only recoveries are: your fountain (${FOUNTAIN_HEAL_PER_CYCLE_PERCENT}% INTEG / ${FOUNTAIN_BW_PER_CYCLE_PERCENT}% BW per cycle, and only while out of combat), Trauma Patch and Charge Tab (consumables you carry), Clot Ring (${ringRegenPercent}% max INTEG per cycle) and Drip Mask (${sobiRegenPercent}% max BW per cycle), and the regeneration cache (${cacheRegenPercent}% of both per cycle). Buy one of those before you plan to hold a lane — otherwise every trade is one-way and the walk home costs you the wave.`,
+    desc: `There is NO innate regeneration — an INTEG or BW bar you spend stays spent. The only recoveries are: your fountain (${FOUNTAIN_HEAL_PER_CYCLE_PERCENT}% INTEG / ${FOUNTAIN_BW_PER_CYCLE_PERCENT}% BW per cycle, and only while out of combat), Trauma Patch and Charge Tab (consumables you carry), Clot Ring (${ringRegenPercent}% max INTEG per cycle) and Drip Mask (${sobiRegenPercent}% max BW per cycle), and the regeneration cache (${cacheRegenPercent}% of both per cycle). Buy one of those before you plan to hold a route — otherwise every trade is one-way and the walk home costs you the wave.`,
   },
   {
     term: 'Last-Hitting & Burning',
     icon: '/',
-    desc: `Only the killing blow pays scrip: chip a wave to 1 INTEG and a lane-mate takes it, you get nothing. A line wave has ${LINE_UNIT_HP} INTEG and your hero hits for 30–70, so wait until its remaining INTEG is under one of your attacks, then take it with attack wave:0 for ${WAVE_SCRIP}sc and ${WAVE_XP} XP (allies in the zone share ${WAVE_XP_SHARED} XP, so standing in lane is never worth zero). Burning is the mirror: once one of YOUR waves drops below ${burnHpPercent}% INTEG, burn wave:0 kills it so the enemy gets nothing — you keep ${burnGold}sc and ${burnXp} XP. Prefer STRIP / BURN on the ActionRow (or look then attack wave:N) over guessing an index: wave:N counts the living waves in your zone, so N shifts every cycle as waves die and waves spawn.`,
+    desc: `Only the killing blow pays scrip: chip a wave to 1 INTEG and someone on your route takes it, you get nothing. A line wave has ${LINE_UNIT_HP} INTEG and your hero hits for 30–70, so wait until its remaining INTEG is under one of your attacks, then take it with attack wave:0 for ${WAVE_SCRIP}sc and ${WAVE_XP} XP (allies in the zone share ${WAVE_XP_SHARED} XP, so standing on the route is never worth zero). Burning is the mirror: once one of YOUR waves drops below ${burnHpPercent}% INTEG, burn wave:0 kills it so the enemy gets nothing — you keep ${burnGold}sc and ${burnXp} XP. Prefer STRIP / BURN on the ActionRow (or look then attack wave:N) over guessing an index: wave:N counts the living waves in your zone, so N shifts every cycle as waves die and waves spawn.`,
   },
   {
     term: 'Death & Respawn',

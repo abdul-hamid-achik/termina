@@ -170,7 +170,7 @@ export interface GameState {
    *  Only meaningful when mode === 'tutorial'; drives command-gating + hints. */
   tutorialStep?: number
   /** Tick the current tutorial step became active. Server-only (not broadcast):
-   *  it exists so a step that the live match makes unsatisfiable — no wave wave
+   *  it exists so a step that the live match makes unsatisfiable — no wave
    *  yet, no enemy hero in range — eventually times out instead of dead-ending
    *  the player. See TUTORIAL_STEP_DEADLINE_CYCLES. */
   tutorialStepSince?: number

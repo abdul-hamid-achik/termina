@@ -1646,7 +1646,7 @@ export function decideBotAction(
     if (advanceZone) return { type: 'move', zone: advanceZone }
   }
 
-  // Clear the wave wave. A failed last-hit roll re-aims at the second-lowest
+  // Clear the wave. A failed last-hit roll re-aims at the second-lowest
   // wave; it must never return null, which is what left production bots idling
   // in lane instead of pushing — one half of the "bots look stuck" report.
   if (enemyWaves.length > 0) {
@@ -1670,7 +1670,7 @@ export function decideBotAction(
   // accelerator. A bot advances freely on its own half of the map; it pushes
   // into enemy territory only with lane support — allied waves in this zone or
   // the next, or an ally hero alongside — so a lone level-1 hero never marches
-  // into the enemy base and feeds. Wave waves spawn continuously, so a bot
+  // into the enemy base and feeds. Waves spawn continuously, so a bot
   // holding at the frontier advances as soon as the next wave reaches it, and
   // the retreat-from-threat check above still pulls hurt/outnumbered bots back.
   // (The old code returned null here whenever the next zone was enemy-side with

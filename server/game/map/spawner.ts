@@ -68,7 +68,7 @@ function spawnWave(
 }
 
 /**
- * Spawn wave waves if the current cycle is a wave cycle. Returns new waves to add.
+ * Spawn waves if the current cycle is a wave cycle. Returns new waves to add.
  * `hasZone` (the game's live zone set) gates lanes to the current map — a subset
  * map like one-lane only has its lanes' spawn zones, so top/bot are skipped.
  * Omitted = full map (all three lanes).

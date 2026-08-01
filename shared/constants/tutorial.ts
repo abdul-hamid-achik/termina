@@ -26,7 +26,7 @@ export interface TutorialStep {
  * How many ticks a player may sit on one step before the tutorial gives up
  * waiting and moves them on. A tutorial that can dead-end is worse than one that
  * teaches a step imperfectly: the step conditions depend on the live match (an
- * enemy hero being in range, a wave wave having arrived), so any of them CAN
+ * enemy hero being in range, a wave having arrived), so any of them CAN
  * be unsatisfiable for a long stretch through no fault of the player.
  *
  * 15 cycles ≈ 60s at the 4s batch clock.
@@ -45,14 +45,14 @@ export const TUTORIAL_FLOW: readonly TutorialStep[] = [
     //
     // Send them to their OWN T1 ice, not `mid` (which aliases to mid-river).
     // The river is neutral, has no ice, and borders the AUDIT T1 — both enemy
-    // bots are pinned to mid, so they reach it before the first wave wave does.
+    // bots are pinned to mid, so they reach it before the first wave does.
     // A level-1 newcomer who followed the old hint arrived alone, ahead of their
     // own waves, and was stunned and killed inside ~12 ticks having landed
     // nothing. Standing behind your own ice is also just what the game wants
     // you to learn.
     hint: '🎓 Walk to your ice — type `move mid-t1-chaff`. You move one zone per cycle, so this takes a few.',
     skipNote:
-      'Movement: `move <zone>` auto-paths one zone per cycle. Stay behind your own ice — the river is contested.',
+      'Movement: `move <zone>` auto-paths one zone per cycle. Stay behind your own ICE — the crossing is contested.',
   },
   {
     teaches: 'attack',
