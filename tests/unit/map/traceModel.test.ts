@@ -105,4 +105,53 @@ describe('traceModel', () => {
     expect(model.currentRoute).toBeNull()
     expect(model.hopIndex).toBe(-1)
   })
+
+  // A fogged enemy arrives as `FoggedPlayer` — KDA + hero + level, and no zone.
+  // GameScreen used to hand every roster entry in with `fogged: false` hardcoded,
+  // so TRACE listed all five enemies as live contacts, most at a blank location.
+  it('excludes contacts with no observed position from the contact list', () => {
+    const model = buildTrace({
+      playerZone: 'mid-river',
+      playerTeam: 'chaff',
+      contacts: [
+        { id: 'seen', name: 'Seen', zone: 'mid-river', team: 'audit', alive: true },
+        { id: 'fog', name: 'Fogged', zone: '', team: 'audit', alive: true, fogged: true },
+      ],
+      terminals: TERMINALS,
+    })
+    expect(model.contacts.map((c) => c.id)).toEqual(['seen'])
+  })
+
+  it('carries each contact team so hostility need not be encoded as hue', () => {
+    const model = buildTrace({
+      playerZone: 'mid-river',
+      playerTeam: 'audit',
+      contacts: [{ id: 'a', name: 'A', zone: 'mid-river', team: 'audit', alive: true }],
+      terminals: TERMINALS,
+    })
+    expect(model.contacts[0]!.team).toBe('audit')
+    expect(model.contacts[0]!.hostile).toBe(false)
+  })
+
+  it('counts how many of each route the team can actually see', () => {
+    const model = buildTrace({
+      playerZone: 'hollow',
+      playerTeam: 'chaff',
+      contacts: [],
+      terminals: TERMINALS,
+      visibleZoneIds: ['top-t1-chaff', 'top-t2-chaff'],
+    })
+    expect(model.routes.find((r) => r.route === 'top')!.seen).toBe(2)
+    expect(model.routes.find((r) => r.route === 'bot')!.seen).toBe(0)
+  })
+
+  it('treats omitted vision as unknown, never as full vision', () => {
+    const model = buildTrace({
+      playerZone: 'hollow',
+      playerTeam: 'chaff',
+      contacts: [],
+      terminals: TERMINALS,
+    })
+    expect(model.routes.every((r) => r.seen === 0)).toBe(true)
+  })
 })

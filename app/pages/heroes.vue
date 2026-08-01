@@ -237,7 +237,12 @@ const {
         @click="selectedId = h.id as HeroId"
       >
         <span class="text-[0.78rem] font-bold">{{ h.name }}</span>
-        <span class="text-[0.58rem] uppercase tracking-wider opacity-70">{{ h.role }}</span>
+        <!-- POSTURE, not role. The filter above these cards is by posture, so
+             labelling each card with its role meant filtering to HOLD produced
+             a grid of cards reading TANK / SUPPORT — the vocabulary you filtered
+             by never appeared on the thing you filtered. Role stays a secondary
+             label on the detail header, where it has context. -->
+        <span class="text-[0.58rem] uppercase tracking-wider opacity-70">{{ h.posture }}</span>
         <span
           v-if="h.difficulty === 'easy'"
           class="text-[0.52rem] uppercase tracking-wider text-chaff"

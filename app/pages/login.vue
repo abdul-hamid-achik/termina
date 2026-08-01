@@ -6,6 +6,23 @@ const authStore = useAuthStore()
 const route = useRoute()
 const { start: startPractice, error: practiceError } = useStartTutorial()
 
+/**
+ * Why the visitor is here. The landing page's primary CTA ("PRACTICE VS BOTS")
+ * bounces anonymous visitors to this page with `?next=practice`, and the page
+ * greeted them with a bare "authenticate to continue" — no mention of the thing
+ * they had just clicked, and no sign it would still happen. The launcher does
+ * resume (see `resumeAfterAuth`); the page just never said so.
+ *
+ * The tab default deliberately stays LOGIN. Defaulting to REGISTER on this
+ * intent helps a first-time visitor by one click and costs a returning player
+ * whose session expired the same click, and both tabs are visible either way.
+ */
+const intentLine = computed(() =>
+  route.query.next === 'practice'
+    ? '>_ sign in and your practice match starts immediately'
+    : '>_ authenticate to continue',
+)
+
 const mode = ref<'login' | 'register'>('login')
 const username = ref('')
 const email = ref('')
@@ -136,7 +153,9 @@ if (route.query.error) {
  ║ ║╣ ╠╦╝║║║║║║║╠═╣
  ╩ ╚═╝╩╚═╩ ╩╩╝╚╝╩ ╩</pre
       >
-      <p class="mb-4 text-center text-[0.85rem] text-text-dim">&gt;_ authenticate to continue</p>
+      <p class="mb-4 text-center text-[0.85rem] text-text-dim" data-testid="login-intent">
+        {{ intentLine }}
+      </p>
 
       <TerminalPanel :title="mode === 'login' ? 'authentication' : 'registration'" title-as="h1">
         <!-- Tab Switcher -->

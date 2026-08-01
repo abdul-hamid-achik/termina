@@ -826,8 +826,13 @@ export const HEROES: Record<string, HeroDef> = {
   },
 
   firewall: {
+    // Every other operator displays its HANDLE, matching the id the player
+    // types (`cast q hero:firewall`). This one displayed 'Ablative Shell' —
+    // which is also the name of a 2800sc item AND of firewall's own block buff,
+    // so "✕ Ablative Shell @ Audit Lower Silt" in TRACE read as a chest plate
+    // walking around, and nothing connected the contact to the id you target.
     id: 'firewall',
-    name: 'Ablative Shell',
+    name: 'Firewall',
     role: 'tank',
     posture: 'HOLD',
     attackType: 'kinetic',

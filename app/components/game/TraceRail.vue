@@ -18,21 +18,58 @@ function teamTextClass(team: TeamId): string {
 
 const currentRouteClass = computed(() => teamTextClass(props.trace.playerTeam))
 
+const activeRoute = computed(() => props.trace.routes.find((r) => r.active))
+
 const currentLine = computed(() => {
-  const active = props.trace.routes.find((r) => r.active)
+  const active = activeRoute.value
   if (!active) return 'off route'
   return `${active.name.toUpperCase()} hop ${active.depth + 1}/${active.total}`
 })
+
+/**
+ * The depth bar. It used to draw `'┄'.repeat(depth) + '├┤' + '┄┄'` — a fixed
+ * two-glyph tail, so the ground still ahead of you was drawn the same at hop
+ * 1/8 as at hop 7/8. Both sides are now real: behind you, and left to go.
+ */
+const depthBar = computed(() => {
+  const active = activeRoute.value
+  if (!active) return ''
+  const behind = Math.max(0, active.depth)
+  const ahead = Math.max(0, active.total - active.depth - 1)
+  return `${'┄'.repeat(behind)}├┤${'┄'.repeat(ahead)}`
+})
+
+/**
+ * What a route line is allowed to claim. Absence of contacts is NOT safety:
+ * a route you hold no vision on reports zero hostiles exactly like a warded,
+ * confirmed-empty one. "no feed" says the line is blind; "clear" is only
+ * spoken for ground the team can actually see.
+ */
+function routeStatus(r: { hostiles: number; seen: number; total: number }): {
+  text: string
+  tone: 'hostile' | 'blind' | 'clear'
+} {
+  if (r.hostiles) return { text: `${r.hostiles} hostile`, tone: 'hostile' }
+  if (r.seen === 0) return { text: 'no feed', tone: 'blind' }
+  if (r.seen < r.total) return { text: `clear ${r.seen}/${r.total}`, tone: 'clear' }
+  return { text: 'clear', tone: 'clear' }
+}
 </script>
 
 <template>
   <div class="flex flex-col gap-1 font-mono t-hud-sm" data-testid="trace-rail">
-    <!-- Your route, as depth -->
+    <!-- Your route, as depth. Its own contact count is shown too: the route you
+         are standing on is the one whose hostiles matter most, and it was the
+         only line that never reported them. -->
     <div class="flex items-baseline gap-2" data-testid="trace-current">
       <span :class="currentRouteClass">▸ {{ currentLine }}</span>
-      <span v-if="trace.currentRoute" class="text-text-dim">
-        {{ '┄'.repeat(Math.max(0, trace.hopIndex)) }}├┤{{ '┄'.repeat(2) }}
-      </span>
+      <span v-if="trace.currentRoute" class="text-text-dim">{{ depthBar }}</span>
+      <span
+        v-if="activeRoute?.hostiles"
+        class="text-warn"
+        :data-testid="`trace-route-${activeRoute.route}-status`"
+        >· {{ activeRoute.hostiles }} hostile</span
+      >
     </div>
 
     <!-- The other routes, one line each -->
@@ -42,9 +79,15 @@ const currentLine = computed(() => {
       class="flex items-baseline gap-2 text-text-dim"
       :data-testid="`trace-route-${r.route}`"
     >
-      <span>{{ r.name }}</span>
-      <span v-if="r.hostiles" class="text-audit">· {{ r.hostiles }} hostile</span>
-      <span v-else>· quiet</span>
+      <span>{{ r.name.toUpperCase() }}</span>
+      <span
+        :class="{
+          'text-warn': routeStatus(r).tone === 'hostile',
+          'text-text-muted italic': routeStatus(r).tone === 'blind',
+        }"
+        :data-testid="`trace-route-${r.route}-status`"
+        >· {{ routeStatus(r).text }}</span
+      >
     </div>
 
     <!-- Contacts -->
@@ -53,7 +96,7 @@ const currentLine = computed(() => {
         v-for="c in trace.contacts"
         :key="c.id"
         class="flex items-baseline gap-1.5"
-        :class="c.hostile ? 'text-audit' : 'text-chaff'"
+        :class="teamTextClass(c.team)"
         :data-testid="`trace-contact-${c.id}`"
       >
         <span>{{ c.hostile ? '✕' : '○' }}</span>

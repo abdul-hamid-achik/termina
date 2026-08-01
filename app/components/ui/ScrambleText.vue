@@ -7,10 +7,16 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
  *
  * Two things make this safe rather than decorative noise:
  *
- * 1. The churning text is `aria-hidden` and the real string is exposed once via
- *    `aria-label`. A screen reader announces "where every command is a kill",
- *    never the garbage. Without that split the effect is an accessibility trap —
- *    the DOM genuinely contains nonsense for most of its runtime.
+ * 1. The churning text is `aria-hidden` and the real string is exposed once in a
+ *    visually-hidden span. A screen reader announces "where every command is a
+ *    kill", never the garbage. Without that split the effect is an accessibility
+ *    trap — the DOM genuinely contains nonsense for most of its runtime.
+ *
+ *    This used to be an `aria-label` on the wrapper `<span>`. That silently did
+ *    nothing: `aria-label` is only honoured on elements with a widget/landmark
+ *    role, and a bare span is `generic`. With both children `aria-hidden` the
+ *    net effect was that every scrambled line — including the landing page's
+ *    headline and subhead — was completely absent from the accessibility tree.
  * 2. Under `prefers-reduced-motion` it renders the final text immediately and
  *    never starts a frame loop, so there is no work and no motion at all.
  *
@@ -109,7 +115,10 @@ const sizer = computed(() => props.text)
 </script>
 
 <template>
-  <span :aria-label="text" class="relative inline-block whitespace-pre font-mono tabular-nums">
+  <span class="relative inline-block whitespace-pre font-mono tabular-nums">
+    <!-- The only copy assistive tech sees. `sr-only` clips rather than hiding,
+         so it stays in the accessibility tree; `invisible` below does not. -->
+    <span class="sr-only">{{ text }}</span>
     <span aria-hidden="true" class="invisible">{{ sizer }}</span>
     <span aria-hidden="true" class="absolute inset-0">{{ rendered }}</span>
   </span>

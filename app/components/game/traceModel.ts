@@ -18,6 +18,10 @@ export interface TraceContact {
   zone: string
   zoneName: string
   hostile: boolean
+  /** The contact's own faction. Hostility is carried by the glyph, not by hue —
+   *  painting every enemy in the AUDIT colour inverted the palette for AUDIT
+   *  players, whose own allies then rendered in the CHAFF colour. */
+  team: TeamId
 }
 
 export interface RouteLine {
@@ -30,6 +34,10 @@ export interface RouteLine {
   total: number
   /** Hostile contacts visible anywhere on the route. */
   hostiles: number
+  /** How many of this route's zones the team currently has vision on. Zero
+   *  means the line is reporting nothing, not reporting safety — the UI must
+   *  not render "quiet" for ground you cannot see. */
+  seen: number
   /** True when this is the player's current route. */
   active: boolean
 }
@@ -84,8 +92,12 @@ export function buildTrace(input: {
     fogged?: boolean
   }>
   terminals: Record<TeamId, TerminalState>
+  /** Zone ids the player's team currently has vision on. Omitted (undefined)
+   *  means "unknown" and every route reports as unseen rather than clear. */
+  visibleZoneIds?: readonly string[]
 }): TraceModel {
   const { playerZone, playerTeam, terminals: terminalByTeam } = input
+  const visible = new Set(input.visibleZoneIds ?? [])
   const currentRoute = routeOfZone(playerZone, playerTeam)
   const hopIndex = hopIndexOf(playerZone, playerTeam)
 
@@ -97,6 +109,7 @@ export function buildTrace(input: {
       zone: c.zone,
       zoneName: ZONE_MAP[c.zone]?.name ?? c.zone,
       hostile: c.team !== playerTeam,
+      team: c.team,
     }))
 
   // The player's own route first, then the other two.
@@ -113,6 +126,7 @@ export function buildTrace(input: {
       depth: route === currentRoute ? hopIndex : 0,
       total: path.length,
       hostiles,
+      seen: path.filter((z) => visible.has(z)).length,
       active: route === currentRoute,
     }
   })

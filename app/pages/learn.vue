@@ -112,12 +112,12 @@ const quickStart = [
   {
     step: '3',
     title: 'Move Out of Fountain',
-    desc: 'You start in your fountain. Type move base (a shortcut that always means YOUR base) to leave, then move toward a lane.',
+    desc: 'You start in your fountain. Type move base (a shortcut that always means YOUR base) to leave, then move out onto a route.',
   },
   {
     step: '4',
     title: 'Farm Waves',
-    desc: `Wave waves spawn every ${WAVE_INTERVAL_CYCLES} cycles. Last-hit them with attack wave:0 to earn ${WAVE_SCRIP}sc and XP.`,
+    desc: `Waves spawn every ${WAVE_INTERVAL_CYCLES} cycles. Last-hit them with attack wave:0 to earn ${WAVE_SCRIP}sc and XP.`,
   },
   {
     step: '5',
@@ -127,7 +127,7 @@ const quickStart = [
   {
     step: '6',
     title: 'Fight & Push',
-    desc: 'Use abilities on enemies and raze a lane to its T3 ice — that exposes the enemy Terminal. Destroy it to win.',
+    desc: 'Use abilities on enemies and raze a route to its T3 ICE — that exposes the enemy Terminal. Destroy it to win.',
   },
 ]
 
@@ -135,7 +135,7 @@ const movementGuide = [
   {
     title: 'How Movement Works',
     items: [
-      'The map is divided into zones (fountain, base, lanes, silt, river)',
+      'The map is divided into zones (fountain, base, routes, silt, crossings)',
       `You walk one zone per cycle (${tickSeconds} seconds) — but you can order a move to ANY zone and your hero auto-paths there, cycle by cycle`,
       'Type move <zone-id> to move (e.g., move chaff-base, move mid-t3-chaff), or tap any zone on the map',
       'Issuing any new action cancels the walk; a new move order redirects it',
@@ -145,8 +145,8 @@ const movementGuide = [
   {
     title: 'Zone Naming Convention',
     items: [
-      'Lanes: top-t1-chaff, mid-t2-audit, bot-t3-chaff (lane-tier-team)',
-      'River: top-river, mid-river, bot-river (neutral crossings)',
+      'Routes: top-t1-chaff, mid-t2-audit, bot-t3-chaff (route-tier-team) — top is SEAWALL, mid is COLDSTORE, bot is SHALLOWS',
+      'Crossings: top-river, mid-river, bot-river (the neutral ground between the two sides)',
       'Silt: silt-chaff-top, silt-audit-bot (silt-team-side)',
       'Base & Fountain: chaff-base, chaff-fountain, audit-base, audit-fountain',
       'Special: hollow, cache-top, cache-bot',

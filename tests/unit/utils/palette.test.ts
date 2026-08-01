@@ -12,7 +12,12 @@ import { describe, it, expect } from 'vitest'
  *      line and a bright one must never read as the same row);
  *  (c) the pairs the combat log renders side by side (damage vs the accent,
  *      healing vs a team line, self vs ability, scrip vs warn) must NOT land
- *      on the SAME ramp step.
+ *      on the SAME ramp step;
+ *  (d) every semantic token clears a real contrast floor against the game
+ *      background. (a)-(c) are all RELATIVE checks — they say the ramp is
+ *      well-spread and the aliases are distinct, and every one of them passed
+ *      while `--color-system` sat at 1.59:1 against `--bg-primary`, i.e. while
+ *      the token was invisible. Separation is not legibility.
  *
  * Reads the shipped CSS rather than a duplicated table, so a future edit to
  * terminal.css is what it actually guards.
@@ -58,6 +63,27 @@ function luminance([r, g, b]: Rgb): number {
   return 0.299 * r + 0.587 * g + 0.114 * b
 }
 
+/** WCAG relative luminance — what "can a human read this" means. */
+function relLuminance([r, g, b]: Rgb): number {
+  const lin = [r, g, b].map((c) => {
+    const s = c / 255
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+  }) as Rgb
+  return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+}
+
+function contrastRatio(a: Rgb, b: Rgb): number {
+  const [hi, lo] = [relLuminance(a), relLuminance(b)].sort((x, y) => y - x) as [number, number]
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+/** Pull a plain `--name: R G B;` from :root (backgrounds are not on the ramp). */
+function rawToken(name: string): Rgb {
+  const m = CSS.match(new RegExp(`--${name}:\\s*(\\d+)\\s+(\\d+)\\s+(\\d+);`))
+  expect(m, `--${name} missing from terminal.css`).toBeTruthy()
+  return [Number(m![1]), Number(m![2]), Number(m![3])]
+}
+
 const RAMP_ORDER = ['p-0', 'p-1', 'p-2', 'p-3', 'p-4', 'p-5', 'p-accent'] as const
 
 describe('the phosphor contract (C3a)', () => {
@@ -100,6 +126,41 @@ describe('the phosphor contract (C3a)', () => {
       expect(aliases[a], `--color-${a} missing`).toBeDefined()
       expect(aliases[b], `--color-${b} missing`).toBeDefined()
       expect(aliases[a], `--color-${a} and --color-${b} share ${aliases[a]}`).not.toBe(aliases[b])
+    }
+  })
+
+  // p-0/p-1 are ground shades (1.1:1 and 1.6:1). They exist to be painted ON,
+  // never painted WITH — a semantic token pointing at either one is invisible.
+  it('no semantic token aliases a ground step', () => {
+    const GROUND = new Set(['p-0', 'p-1'])
+    for (const [name, target] of Object.entries(aliases)) {
+      expect(GROUND.has(target), `--color-${name} aliases ground step ${target}`).toBe(false)
+    }
+  })
+
+  it('every semantic token clears the 3:1 non-text contrast floor', () => {
+    const bg = rawToken('bg-primary')
+    for (const [name, target] of Object.entries(aliases)) {
+      const ratio = contrastRatio(ramp[target]!, bg)
+      expect(
+        ratio,
+        `--color-${name} (${target}) is ${ratio.toFixed(2)}:1 on --bg-primary`,
+      ).toBeGreaterThanOrEqual(3)
+    }
+  })
+
+  // The tokens below paint TEXT, not just borders and bars, so they owe the
+  // stricter 4.5:1 body-text floor rather than the 3:1 UI floor.
+  it('tokens used for body text clear 4.5:1', () => {
+    const bg = rawToken('bg-primary')
+    for (const name of ['chaff', 'audit', 'self', 'ability', 'zone', 'gold', 'healing']) {
+      const target = aliases[name]
+      expect(target, `--color-${name} missing`).toBeDefined()
+      const ratio = contrastRatio(ramp[target!]!, bg)
+      expect(
+        ratio,
+        `--color-${name} (${target}) is ${ratio.toFixed(2)}:1 on --bg-primary`,
+      ).toBeGreaterThanOrEqual(4.5)
     }
   })
 })

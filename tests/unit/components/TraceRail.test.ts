@@ -13,12 +13,14 @@ function mountRail(
   playerZone = 'mid-t2-chaff',
   contacts: Parameters<typeof buildTrace>[0]['contacts'] = [],
   playerTeam: TeamId = 'chaff',
+  visibleZoneIds?: readonly string[],
 ) {
   const trace = buildTrace({
     playerZone,
     playerTeam,
     contacts,
     terminals: TERMINALS,
+    visibleZoneIds,
   })
   return mount(TraceRail, { props: { trace } })
 }
@@ -64,5 +66,54 @@ describe('TraceRail', () => {
   it('reads off-route when the player is off all three routes', () => {
     const wrapper = mountRail('hollow')
     expect(wrapper.get('[data-testid="trace-current"]').text()).toContain('off route')
+  })
+
+  // The contact list used to paint `hostile ? text-audit : text-chaff`, which is
+  // the faction palette used to mean friend/foe. For an AUDIT player that
+  // rendered their own allies in the CHAFF colour and their enemies in their own
+  // colour — inverted, and contradicting the terminals row in the same panel.
+  it('colors a contact by its own faction, for players on either side', () => {
+    const contacts: Parameters<typeof buildTrace>[0]['contacts'] = [
+      { id: 'c1', name: 'ChaffOp', zone: 'mid-river', team: 'chaff', alive: true },
+      { id: 'a1', name: 'AuditOp', zone: 'mid-river', team: 'audit', alive: true },
+    ]
+    for (const team of ['chaff', 'audit'] as TeamId[]) {
+      const wrapper = mountRail('mid-river', contacts, team)
+      expect(wrapper.get('[data-testid="trace-contact-c1"]').classes()).toContain('text-chaff')
+      expect(wrapper.get('[data-testid="trace-contact-a1"]').classes()).toContain('text-audit')
+    }
+  })
+
+  // Absence of contacts is not safety. A route the team holds no vision on
+  // reported "quiet" — identical to a warded, confirmed-empty one.
+  it('says no feed for an unseen route and clear only for seen ground', () => {
+    const blind = mountRail('mid-t2-chaff', [], 'chaff', [])
+    expect(blind.get('[data-testid="trace-route-top-status"]').text()).toContain('no feed')
+    expect(blind.get('[data-testid="trace-route-top-status"]').text()).not.toContain('clear')
+
+    const seen = mountRail('mid-t2-chaff', [], 'chaff', ['top-t1-chaff', 'top-t2-chaff'])
+    expect(seen.get('[data-testid="trace-route-top-status"]').text()).toContain('clear')
+  })
+
+  it('reports hostiles on the route the player is standing on', () => {
+    const wrapper = mountRail(
+      'mid-river',
+      [{ id: 'e1', name: 'Enemy1', zone: 'mid-river', team: 'audit', alive: true }],
+      'chaff',
+      ['mid-river'],
+    )
+    expect(wrapper.get('[data-testid="trace-route-mid-status"]').text()).toContain('1 hostile')
+  })
+
+  // The depth bar drew a fixed two-glyph tail, so the ground still ahead of you
+  // looked identical at hop 1/8 and hop 7/8.
+  it('draws a depth bar whose tail shrinks as the player advances', () => {
+    const tailOf = (zone: string) => {
+      const text = mountRail(zone).get('[data-testid="trace-current"]').text()
+      return text.slice(text.indexOf('├┤') + 2).replace(/[^┄]/g, '').length
+    }
+    const early = tailOf('mid-t3-chaff')
+    const late = tailOf('mid-t2-audit')
+    expect(early).toBeGreaterThan(late)
   })
 })

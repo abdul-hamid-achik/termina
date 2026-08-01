@@ -8,6 +8,8 @@ import ActionRow from '~/components/game/ActionRow.vue'
 import CommandInput from '~/components/game/CommandInput.vue'
 import DamageFloat, { type DamageFloatEntry } from '~/components/game/DamageFloat.vue'
 import GameStateBar from '~/components/game/GameStateBar.vue'
+import StatusLines from '~/components/game/StatusLines.vue'
+import Stream from '~/components/game/Stream.vue'
 import Deck from '~/components/game/Deck.vue'
 import InventoryBar from '~/components/game/InventoryBar.vue'
 import ItemShop from '~/components/game/ItemShop.vue'
@@ -1355,19 +1357,28 @@ const traceModel = computed(() => {
   const p = gameStore.player
   const contacts = Object.values(gameStore.allPlayers)
     .filter((c) => c.id !== p?.id)
-    .map((c) => ({
-      id: c.id,
-      name: (c.heroId && HEROES[c.heroId]?.name) || c.name,
-      zone: c.zone,
-      team: c.team,
-      alive: c.alive,
-      fogged: false,
-    }))
+    .map((c) => {
+      // Fogged enemies arrive as `FoggedPlayer`: KDA + hero + level, and NO
+      // zone. This used to hardcode `fogged: false` and read `c.zone` anyway,
+      // so every enemy on the roster was listed as a contact — most of them at
+      // a blank location — and TRACE claimed vision it did not have. A contact
+      // is something you can currently see; anything else is not a contact.
+      const zone = (c as { zone?: string }).zone
+      return {
+        id: c.id,
+        name: (c.heroId && HEROES[c.heroId]?.name) || c.name,
+        zone: zone ?? '',
+        team: c.team,
+        alive: c.alive,
+        fogged: (c as { fogged?: boolean }).fogged === true || !zone,
+      }
+    })
   return buildTrace({
     playerZone: p?.zone ?? '',
     playerTeam: p?.team ?? 'chaff',
     contacts,
     terminals: terminals.value ?? { chaff: FALLBACK_TERMINAL, audit: FALLBACK_TERMINAL },
+    visibleZoneIds: gameStore.visibleZoneIds,
   })
 })
 

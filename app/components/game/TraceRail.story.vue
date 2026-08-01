@@ -7,9 +7,12 @@ const sample: TraceModel = {
   currentRoute: 'mid',
   hopIndex: 2,
   routes: [
-    { route: 'mid', name: 'Coldstore', depth: 2, total: 5, hostiles: 1, active: true },
-    { route: 'top', name: 'Seawall', depth: 0, total: 5, hostiles: 0, active: false },
-    { route: 'bot', name: 'Shallows', depth: 0, total: 5, hostiles: 2, active: false },
+    { route: 'mid', name: 'Coldstore', depth: 2, total: 5, hostiles: 1, seen: 3, active: true },
+    // Seawall is warded and confirmed empty; Shallows has contacts. Nothing here
+    // is left unseen-with-zero-hostiles by accident — that state renders as
+    // "no feed", and the story should show it deliberately, not by omission.
+    { route: 'top', name: 'Seawall', depth: 0, total: 5, hostiles: 0, seen: 5, active: false },
+    { route: 'bot', name: 'Shallows', depth: 0, total: 5, hostiles: 2, seen: 2, active: false },
   ],
   contacts: [
     {
@@ -18,6 +21,7 @@ const sample: TraceModel = {
       zone: 'mid-river',
       zoneName: 'Coldstore Crossing',
       hostile: true,
+      team: 'audit',
     },
     {
       id: 'a1',
@@ -25,6 +29,7 @@ const sample: TraceModel = {
       zone: 'mid-t1-chaff',
       zoneName: 'Coldstore T1',
       hostile: false,
+      team: 'chaff',
     },
   ],
   terminals: [

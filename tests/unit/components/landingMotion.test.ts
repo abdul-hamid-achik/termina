@@ -29,11 +29,27 @@ describe('ScrambleText', () => {
 
   it('exposes the REAL string to assistive tech, never the churn', () => {
     // The DOM genuinely contains random glyphs for most of this component's
-    // runtime. Without the aria-label/aria-hidden split a screen reader would
-    // read that garbage out loud.
+    // runtime, so every visual copy is aria-hidden and one readable copy is
+    // carried in a visually-hidden span.
+    //
+    // This used to assert `aria-label` on the wrapper. That attribute was
+    // present and did nothing: `aria-label` is ignored on an element with a
+    // generic role, so with both children aria-hidden the component contributed
+    // NOTHING to the accessibility tree — Chrome's tree showed the landing
+    // page's headline and subhead as empty paragraphs. The assertion has to be
+    // "there is readable text", not "the attribute is set".
     const wrapper = mount(ScrambleText, { props: { text: TEXT } })
-    expect(wrapper.attributes('aria-label')).toBe(TEXT)
+
+    const readable = wrapper
+      .findAll('span')
+      .filter((s) => s.attributes('aria-hidden') !== 'true' && s.text() === TEXT)
+    expect(readable.length, 'no non-aria-hidden element carries the real string').toBe(1)
+    // ...and it must be clipped (sr-only), not `visibility: hidden`, which would
+    // take it back out of the accessibility tree.
+    expect(readable[0]!.classes()).toContain('sr-only')
+
     for (const span of wrapper.findAll('span span')) {
+      if (span.classes().includes('sr-only')) continue
       expect(span.attributes('aria-hidden')).toBe('true')
     }
   })
