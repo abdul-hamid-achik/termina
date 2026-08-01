@@ -8,7 +8,7 @@ import ItemCard from '~/components/items/ItemCard.vue'
 import LoadoutSummary from '~/components/items/LoadoutSummary.vue'
 import { useStartTutorial } from '~/composables/useStartTutorial'
 import { useLoadout } from '~/composables/useLoadout'
-import { ROLE_LABELS } from '~~/shared/constants/world'
+import { ROLE_LABELS, ITEM_CLASS_PRIMERS, CITY } from '~~/shared/constants/world'
 
 useHead({ title: 'Items · TERMINA' })
 
@@ -116,6 +116,40 @@ const {
           <span class="text-[0.62rem] text-gold">{{ s.running }}sc total</span>
         </li>
       </ol>
+    </section>
+
+    <!-- The five classes, as a decision rather than a taxonomy. The category
+         blurbs below say what each shelf CONTAINS; a player standing in the shop
+         with 1400sc is asking which shelf their problem is on. -->
+    <section class="flex flex-col gap-2" data-testid="item-class-primer">
+      <div class="flex flex-wrap items-baseline gap-x-3 border-b border-border pb-1">
+        <h2 class="text-[0.9rem] font-bold tracking-wide text-ability">FIVE CLASSES</h2>
+        <p class="text-[0.7rem] text-text-dim">
+          Every piece of cyberware in {{ CITY }} is one of five things. Which one you need depends
+          on how you are losing.
+        </p>
+      </div>
+      <div class="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+        <button
+          v-for="c in ITEM_CATEGORIES"
+          :key="`primer-${c.id}`"
+          type="button"
+          class="flex flex-col gap-1 border border-border bg-bg-secondary/50 p-2.5 text-left transition-colors hover:border-ability"
+          :data-testid="`item-primer-${c.id}`"
+          @click="activeCategory = c.id"
+        >
+          <span class="text-[0.78rem] font-bold uppercase tracking-widest text-ability">{{
+            c.label
+          }}</span>
+          <span class="text-[0.68rem] italic leading-relaxed text-text-muted">{{
+            ITEM_CLASS_PRIMERS[c.id]?.where
+          }}</span>
+          <span class="text-[0.72rem] leading-relaxed text-text-dim">
+            <span class="text-text-primary">Buy when:</span>
+            {{ ITEM_CLASS_PRIMERS[c.id]?.buyWhen }}
+          </span>
+        </button>
+      </div>
     </section>
 
     <!-- Controls: category filter + search -->

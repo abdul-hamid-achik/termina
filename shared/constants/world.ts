@@ -138,3 +138,47 @@ export const ROLE_LABELS = {
   support: 'HANDLER',
   offlaner: 'MERC',
 } as const
+
+/**
+ * What each cyberware class DOES to you, and when you want it.
+ *
+ * `ITEM_CATEGORIES[].blurb` says what a class contains ("carried weapons and
+ * attachments"). That is a shelf label, and a player standing in the shop with
+ * 1400sc is not asking what is on the shelf — they are asking *which shelf is
+ * my problem on right now*. These answer that, and they are the only place the
+ * five classes are explained as a decision rather than as a taxonomy.
+ *
+ * `where` is the fiction: chrome is implanted, hardware is carried, deck is
+ * software, wetware is neural, street is whatever you can fence. That is what
+ * makes the partition feel like a world instead of five tabs.
+ */
+export interface ItemClassPrimer {
+  /** One line of fiction: what this actually is on a body. */
+  where: string
+  /** The problem it solves, in the player's terms. */
+  buyWhen: string
+}
+
+export const ITEM_CLASS_PRIMERS: Record<string, ItemClassPrimer> = {
+  street: {
+    where: 'Bought off a fence, carried in a pocket, gone when you use it.',
+    buyWhen: 'Always. Consumables and sight are what keep a lead from becoming a death.',
+  },
+  chrome: {
+    where: 'Surgically integrated. You do not take it off, and it does not care what hits you.',
+    buyWhen: 'You are dying faster than you are killing — INTEG, plate and mitigation.',
+  },
+  hardware: {
+    where: 'Carried and attached. A rig, a driver, an edge — machinery you point at people.',
+    buyWhen: 'Your basic attack is your damage and it is not landing hard enough.',
+  },
+  deck: {
+    where: 'Software. It runs on the terminal, not on your body.',
+    buyWhen:
+      'Your abilities are your damage — code amp, cooldowns, and the burst that ends a fight.',
+  },
+  wetware: {
+    where: 'Neural and reflex. It changes how fast you decide, not how hard you hit.',
+    buyWhen: 'You need to be somewhere else, or you need someone else to stop moving.',
+  },
+} as const
