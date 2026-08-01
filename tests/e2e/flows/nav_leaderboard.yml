@@ -1,6 +1,9 @@
 version: 1
 name: nav_leaderboard
-intent: The public /leaderboard page renders the top-players table with its
+intent: The public /leaderboard page renders the ladder panel for a signed-in
+  player. The ladder is gated on placement matches, so a fresh account sees the
+  placement explainer rather than the table — the flow asserts the panel and its
+  qualification bar, and accepts either populated state.
 mode: normal
 metadata:
   feature: navigation
@@ -21,27 +24,32 @@ outcomes:
     verify:
       text:
         contains: top players by rating
-  - id: rank_column_header
-    description: the rank (#) column header renders
+  - id: qualification_bar_stated
+    description: the panel states the placement requirement to qualify
     verify:
       text:
-        contains: "#"
-  - id: player_column_header
-    description: the Player column header renders
+        contains: ranked matches to qualify
+  - id: table_headers_when_populated
+    description: >-
+      when the ladder has qualified players the #/Player/Rating headers render;
+      when it does not, the placement explainer takes their place
     verify:
-      text:
-        contains: Player
-  - id: rating_column_header
-    description: the Rating column header renders
-    verify:
-      text:
-        contains: Rating
+      script:
+        run: |
+          const rows = document.querySelectorAll('tbody tr').length;
+          const body = document.body.innerText;
+          const headers = ['#', 'Player', 'Rating'].every((h) => body.includes(h));
+          const explainer = body.includes('placement matches yet');
+          return {
+            ok: rows > 0 ? headers : explainer,
+            evidence: 'rows=' + rows + ' headers=' + headers + ' explainer=' + explainer,
+          };
 steps:
   - use: login
   - id: open_leaderboard
     open: /leaderboard
-  - id: await_table
+  - id: await_panel
     wait:
-      text: Rating
+      text: ranked matches to qualify
       timeoutMs: 10000
-contractHash: sha256:7c03fd46e375fb57dc3816fa20c1852c4a122516448ac85e6e9b7c4fb8a75ac8
+contractHash: sha256:b3a7c735eb74d72aec42ca1fd9fcaa133e41199dcce8dfe7245d310dbe55470d

@@ -2303,7 +2303,9 @@ function handleReturnToMenu() {
   min-height: 0;
 }
 
-/* TRACE is pinned to row 1 so DECK cannot steal the spatial surface. */
+/* TRACE is pinned to row 1 so DECK cannot steal the spatial surface. The panel's
+   own body scrolls (TerminalPanel), so content past the row height is reachable
+   — what the phone breakpoint had wrong was the row's SHARE, not its overflow. */
 .rail-map {
   grid-row: 1;
   overflow: hidden;
@@ -2419,9 +2421,15 @@ function handleReturnToMenu() {
      rail stacks above the Zone + net readout column, each scrolling internally. */
   .game-grid {
     grid-template-columns: 1fr;
+    /* Weights, measured at 390x844 with the command block at its tallest (items
+       + quick buy + a pending talent choice): the rail — TRACE *and* DECK, i.e.
+       where you are, who is in contact, and your own INTEG/BW/abilities — was
+       on 1.1fr and landed at 109px, while the three-line status advisory beside
+       it was on 1fr and took 99px. The rail carries the match state and gets the
+       weight to match; the advisory keeps enough for its wrapped lines. */
     grid-template-rows:
-      auto minmax(0, 1.9fr) minmax(0, 1.1fr)
-      minmax(0, 1fr) auto;
+      auto minmax(0, 1.7fr) minmax(0, 1.9fr)
+      minmax(0, 0.75fr) auto;
     gap: 1px;
   }
   .game-grid__bar {
