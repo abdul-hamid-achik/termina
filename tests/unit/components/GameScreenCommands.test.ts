@@ -539,9 +539,12 @@ describe('GameScreen commands', () => {
 
       const intro = lines(wrapper).join('\n')
       // The bare "press [S]" it used to promise does nothing while the prompt
-      // has focus, which it does by default.
-      expect(intro).toContain('press Esc, then S')
+      // has focus, which it does by default. Under a fine pointer the intro
+      // teaches the real desktop sequence (Esc to release the prompt, then S);
+      // the [SHOP] button copy is touch-only (R3-09).
+      expect(intro).toContain('press Esc then S')
       expect(intro).not.toContain('press [S]')
+      expect(intro).not.toContain('click [SHOP]')
       wrapper.unmount()
     })
 

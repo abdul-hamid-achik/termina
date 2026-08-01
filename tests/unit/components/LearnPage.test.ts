@@ -124,7 +124,7 @@ describe('learn page', () => {
     }
     // Newly documented verbs
     for (const cmd of [
-      'cache',
+      'grab',
       'backup',
       'harden',
       'chat <team|all> <msg>',
@@ -132,6 +132,7 @@ describe('learn page', () => {
       'buyback',
       'surrender confirm',
       'status / map / scan',
+      'who / net / look',
     ]) {
       expect(text).toContain(cmd)
     }

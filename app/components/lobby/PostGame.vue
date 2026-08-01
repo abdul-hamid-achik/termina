@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import type { TeamId, GameMode } from '~~/shared/types/game'
 import type { PlayerEndStats } from '~~/shared/types/protocol'
 import { HEROES } from '~~/shared/constants/heroes'
@@ -219,6 +219,30 @@ const advice = computed((): Advice[] => {
   }
 
   return out.slice(0, 3)
+})
+
+// Tutorial completion lands in the DB server-side, but the session payload
+// (and with it the new-player funnel on the landing page and lobby) is stamped
+// at login — without a refresh, a player who just finished the tutorial keeps
+// being routed to practice for the rest of the session. Re-read the row once
+// and re-stamp the session. Best-effort both ways: a DB hiccup just keeps the
+// funnel as-is, and the store pull is skipped in environments without Pinia.
+onMounted(async () => {
+  if (!finishedTutorial.value || !props.currentPlayerId) return
+  try {
+    if (typeof $fetch !== 'function') return
+    await $fetch('/api/player/me')
+    try {
+      const { useAuthStore } = await import('~/stores/auth')
+      const auth = useAuthStore()
+      await auth.fetchUser()
+    } catch {
+      // Store unavailable (SSR / plain-Vite tests) — the cookie is refreshed
+      // and hydrates on the next page load.
+    }
+  } catch {
+    // Best-effort — the funnel just keeps offering practice.
+  }
 })
 </script>
 

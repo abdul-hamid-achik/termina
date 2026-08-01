@@ -159,7 +159,7 @@ const movementGuide = [
       'Fountain is only adjacent to your base (must go through base first)',
       `You can't move while dead — respawn takes ${RESPAWN_BASE_CYCLES} cycles plus ${RESPAWN_PER_LEVEL_CYCLES} per level after level ${RESPAWN_FREE_LEVELS}`,
       'Team-relative shortcuts: move base / move fountain always go to YOUR side, whichever team you are',
-      'More aliases save typing: move mid → mid-river, move rosh → hollow; unambiguous prefixes work too',
+      'More aliases save typing: move mid → mid-river, move hollow → the Tenant pit; unambiguous prefixes work too',
     ],
   },
 ]
@@ -213,7 +213,7 @@ const commands = [
     example: 'ward mid-river',
     shortcuts: '—',
   },
-  { cmd: 'cache', desc: 'Pick up the cache in your zone', example: 'cache', shortcuts: '—' },
+  { cmd: 'grab', desc: 'Pick up the cache in your zone', example: 'grab', shortcuts: '—' },
   {
     cmd: 'backup',
     desc: 'Pick up the Backup in the Tenant pit',
@@ -255,6 +255,12 @@ const commands = [
     cmd: 'status / map / scan',
     desc: 'Print a quick readout (your stats / reachable zones / visible enemies). Free — costs no cycle',
     example: 'status',
+    shortcuts: '—',
+  },
+  {
+    cmd: 'who / net / look',
+    desc: "More readouts: visible contacts with cooldowns (who) / macro state (net) / your zone's units (look). Free — costs no cycle",
+    example: 'who',
     shortcuts: '—',
   },
 ]

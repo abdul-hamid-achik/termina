@@ -581,7 +581,7 @@ describe('useCommands', () => {
         expect(result.command).toEqual({
           type: 'chat',
           channel: 'team',
-          message: 'hello everyone',
+          message: 'Hello everyone',
         })
       })
 
@@ -2250,7 +2250,18 @@ describe('informational readouts', () => {
   it('formatHelpReadout lists the core verbs and the win condition', () => {
     const lines = formatHelpReadout()
     const all = lines.join('\n')
-    for (const verb of ['move', 'attack', 'cast', 'buy', 'ward', 'status']) {
+    for (const verb of [
+      'move',
+      'attack',
+      'cast',
+      'buy',
+      'ward',
+      'status',
+      'who',
+      'net',
+      'look',
+      'grab',
+    ]) {
       expect(all, `help should mention "${verb}"`).toContain(verb)
     }
     // It explains the objective so a new player knows what to do after the verbs.

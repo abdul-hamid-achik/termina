@@ -58,8 +58,8 @@ describe('computeSituationalActions', () => {
   })
 
   it('offers CACHE only when a cache is in the zone', () => {
-    expect(cmds(baseCtx({ caches: [{ zone: 'mid-river' }] as never }))).toContain('cache')
-    expect(cmds(baseCtx({ caches: [{ zone: 'top-t1-chaff' }] as never }))).not.toContain('cache')
+    expect(cmds(baseCtx({ caches: [{ zone: 'mid-river' }] as never }))).toContain('grab')
+    expect(cmds(baseCtx({ caches: [{ zone: 'top-t1-chaff' }] as never }))).not.toContain('grab')
   })
 
   it('offers FLUSH only while the player carries a BREACHED buff', () => {

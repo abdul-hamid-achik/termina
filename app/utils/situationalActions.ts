@@ -75,7 +75,7 @@ export function computeSituationalActions(ctx: SituationalContext): SituationalA
     out.push({ cmd: 'backup', label: 'BACKUP', aria: 'Pick up the Backup of the Immortal' })
   }
   if (ctx.caches.some((r) => r.zone === p.zone)) {
-    out.push({ cmd: 'cache', label: 'CACHE', aria: 'Grab the cache in your zone' })
+    out.push({ cmd: 'grab', label: 'CACHE', aria: 'Grab the cache in your zone' })
   }
   const teamState = ctx.teams?.[p.team] ?? null
   const glyphReady =

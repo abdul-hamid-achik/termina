@@ -195,7 +195,12 @@ onMounted(() => {
         'Welcome to TERMINA — the city commits every four seconds. You queue ONE instruction per cycle.',
         'You start in the fountain. Move to a lane: type or tap  move mid-river',
         'Last-hit enemy waves (≈<50% INTEG) for scrip — use STRIP on the ActionRow, or attack wave:N.',
-        'In the fountain/base click [SHOP] (or press Esc, then S) to buy; tap Q/W/E/R below to cast.',
+        // Desktop has no ActionRow (R3-09 hides it on fine pointers), so the
+        // shop/scoreboard verbs and the ability keys are the real affordances;
+        // the button copy below only exists on touch.
+        isFinePointer()
+          ? 'In the fountain/base press Esc then S for the shop (or type  buy <item>); Q/W/E/R quick-cast.'
+          : 'In the fountain/base tap [SHOP] to buy; tap Q/W/E/R below to cast.',
         'Destroy the enemy Terminal to win. Good luck!',
       ]
       for (const text of intro)

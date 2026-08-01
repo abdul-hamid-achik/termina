@@ -372,9 +372,9 @@ export function formatHelpReadout(): string[] {
     'HELP · type a verb, e.g. `move mid` or `cast q` (most auto-pick a target):',
     '  Fight:   move <zone> · attack <target> · breach <hero|self> · burn · cast <q|w|e|r>',
     '  Items:   buy <item> · sell <item> · use <item> · ward <zone>',
-    '  Info:    status · map · scan · missing <enemy>',
+    '  Info:    status · map · scan · who · net · look · missing <enemy>',
     '  Team:    chat <team|all> <msg> · ping <zone> · surrender confirm',
-    '  Special: cache · backup · harden · buyback · talent <tier> <left|right>',
+    '  Special: grab · backup · harden · buyback · talent <tier> <left|right>',
     '  Shortcuts: q/w/e/r = cast · mv = move · atk = attack · br = breach · b = buy · ss = missing · ? = help',
     'Goal: push a lane, raze the enemy ice, then destroy their Terminal.',
   ]
@@ -748,7 +748,11 @@ export function useCommands() {
   const historyIndex = ref(-1)
 
   function parse(input: string, team: TeamId = 'chaff'): ParseResult {
-    let trimmed = input.trim().toLowerCase()
+    // `raw` keeps the original case: the parser lowercases for command/target
+    // matching, but chat text is content, not syntax — a lowercased message
+    // read as shouting-less, and player names/copy lose their casing.
+    const raw = input.trim()
+    let trimmed = raw.toLowerCase()
     if (!trimmed) return { command: null, error: null }
 
     // Expand shortcuts
@@ -920,7 +924,9 @@ export function useCommands() {
         const channel = tokens[1] as 'team' | 'all'
         if (!['team', 'all'].includes(channel))
           return { command: null, error: 'Usage: chat <team|all> <message>' }
-        const message = tokens.slice(2).join(' ')
+        // Message comes from the ORIGINAL (case-preserving) input — tokens
+        // only decides where the message starts.
+        const message = raw.split(/\s+/).slice(2).join(' ')
         if (!message) return { command: null, error: 'Usage: chat <team|all> <message>' }
         return { command: { type: 'chat', channel, message }, error: null }
       }
