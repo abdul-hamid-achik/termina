@@ -224,6 +224,7 @@ onMounted(() => {
   awaitingRespawn = gameStore.player != null && !gameStore.isAlive
 
   measureBar()
+  measureStreamBody()
 })
 
 onUnmounted(() => {
@@ -234,6 +235,7 @@ onUnmounted(() => {
   window.removeEventListener('keydown', onKeyDown)
   window.removeEventListener('keyup', onKeyUp)
   barObserver?.disconnect()
+  streamObserver?.disconnect()
 })
 
 // ── HUD lane geometry ─────────────────────────────────────────
@@ -246,9 +248,19 @@ const barEl = ref<HTMLElement | null>(null)
 const hudBarHeight = ref(0)
 let barObserver: ResizeObserver | null = null
 
-const hudBarStyle = computed(() =>
-  hudBarHeight.value > 0 ? { '--hud-bar-h': `${hudBarHeight.value}px` } : {},
-)
+// Clearing the bar is not enough: directly under it sits the STREAM panel's own
+// chrome — its title row and the FEED filter/density controls — and both overlay
+// lanes landed on those instead. Measure where the stream's scrolling body
+// actually starts and hang the lanes off that, so a toast can never sit on the
+// controls. Falls back to the bar-relative offsets when unmeasured.
+const streamWrapEl = ref<HTMLElement | null>(null)
+const streamBodyTop = ref(0)
+let streamObserver: ResizeObserver | null = null
+
+const hudBarStyle = computed(() => ({
+  ...(hudBarHeight.value > 0 ? { '--hud-bar-h': `${hudBarHeight.value}px` } : {}),
+  ...(streamBodyTop.value > 0 ? { '--stream-body-top': `${streamBodyTop.value}px` } : {}),
+}))
 
 function measureBar() {
   const el = barEl.value
@@ -264,6 +276,29 @@ function measureBar() {
     if (h > 0) hudBarHeight.value = h
   })
   barObserver.observe(el)
+}
+
+/** Distance from the grid's top edge to the top of the stream's scrolling body. */
+function readStreamBodyTop() {
+  const wrap = streamWrapEl.value
+  const body = wrap?.querySelector('[data-testid="stream-body"]') as HTMLElement | null
+  const grid = wrap?.closest('.game-grid') as HTMLElement | null
+  if (!body || !grid) return
+  const top = body.getBoundingClientRect().top - grid.getBoundingClientRect().top
+  if (top > 0) streamBodyTop.value = top
+}
+
+function measureStreamBody() {
+  const wrap = streamWrapEl.value
+  if (!wrap) return
+  readStreamBodyTop()
+  if (typeof ResizeObserver === 'undefined') return
+  // The bar above it grows and shrinks (tutorial banner, focus banner, density),
+  // which moves the stream body without resizing it — observe the grid too.
+  streamObserver = new ResizeObserver(() => readStreamBodyTop())
+  streamObserver.observe(wrap)
+  const grid = wrap.closest('.game-grid')
+  if (grid) streamObserver.observe(grid)
 }
 
 function onKeyDown(e: KeyboardEvent) {
@@ -1998,7 +2033,11 @@ function handleReturnToMenu() {
 
     <!-- Center stage: the stream owns the full column. -->
     <TerminalPanel title="STREAM" class="game-grid__log min-h-0">
-      <Stream :events="combatEvents" />
+      <!-- `ref` here reaches Stream's root; the overlay lanes need the scrolling
+           BODY's position, which sits below Stream's own filter row. -->
+      <div ref="streamWrapEl" class="flex h-full min-h-0 flex-col">
+        <Stream :events="combatEvents" />
+      </div>
     </TerminalPanel>
 
     <!-- Right rail: TRACE (route as hop depth) + DECK. One layout — no
@@ -2304,7 +2343,9 @@ function handleReturnToMenu() {
    fallback keeps the old placement if the measurement never arrives. */
 .game-grid__killfeed {
   position: absolute;
-  top: calc(var(--hud-bar-h, 4.25rem) + 2.75rem);
+  /* Below the STREAM's scrolling body when measured (see --stream-body-top),
+     so neither lane can sit on the FEED filter chips. */
+  top: calc(var(--stream-body-top, calc(var(--hud-bar-h, 4.25rem) + 2.75rem)) + 2rem);
   left: 50%;
   transform: translateX(-50%);
   z-index: 25;
@@ -2312,9 +2353,11 @@ function handleReturnToMenu() {
   max-width: 92%;
 }
 
-/* The toast owns the lane directly under the bar; the kill feed sits below it. */
+/* The toast owns the lane directly under the stream's controls; the kill feed
+   sits below it. Both used to be anchored to the bar alone, which put them on
+   top of the STREAM panel's title and FEED filter row. */
 .game-grid :deep(.announcement-toast) {
-  top: calc(var(--hud-bar-h, 4.25rem) + 0.5rem);
+  top: calc(var(--stream-body-top, calc(var(--hud-bar-h, 4.25rem) + 0.5rem)) + 0.25rem);
 }
 
 /* Death is up to 108 seconds long. A 70%-opaque full-bleed scrim that also ate

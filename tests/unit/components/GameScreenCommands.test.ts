@@ -49,12 +49,17 @@ const commandInputFocus = vi.hoisted(() => vi.fn())
 // GameScreen measures the HUD bar to anchor the kill-feed / toast lanes;
 // happy-dom ships no ResizeObserver, so capture the callback and drive it.
 type ResizeCb = (entries: Array<{ contentRect: { height: number } }>) => void
-let resizeCb: ResizeCb | null = null
+// GameScreen builds MORE than one observer (the HUD bar, and the stream body
+// the overlay lanes hang off). A single `resizeCb` slot silently kept whichever
+// was constructed last, so driving "the" observer stopped driving the bar.
+const resizeCbs: ResizeCb[] = []
+/** The HUD-bar observer — the first one GameScreen constructs. */
+const resizeCb = () => resizeCbs[0] ?? null
 vi.stubGlobal(
   'ResizeObserver',
   class {
     constructor(cb: ResizeCb) {
-      resizeCb = cb
+      resizeCbs.push(cb)
     }
     observe() {}
     unobserve() {}
@@ -154,7 +159,7 @@ beforeEach(() => {
   for (const spy of Object.values(socketSpies)) spy.mockClear()
   audio.playSound.mockClear()
   commandInputFocus.mockClear()
-  resizeCb = null
+  resizeCbs.length = 0
   vi.mocked(localStorage.clear).mockClear()
   // Desktop default for R3-09: fine pointer so overlay-close reclaims the prompt.
   vi.stubGlobal(
@@ -689,9 +694,9 @@ describe('GameScreen commands', () => {
       // which lands squarely on the focus banner and the cycle/gold/KDA row.
       seedActiveGame()
       const wrapper = mountGameScreen()
-      expect(resizeCb).toBeTypeOf('function')
+      expect(resizeCb()).toBeTypeOf('function')
 
-      resizeCb!([{ contentRect: { height: 72 } }])
+      resizeCb()!([{ contentRect: { height: 72 } }])
       await wrapper.vm.$nextTick()
 
       expect(wrapper.find('[data-testid="game-screen"]').attributes('style')).toContain(

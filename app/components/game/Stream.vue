@@ -289,6 +289,7 @@ function eventAriaLabel(line: CombatLine): string {
     <div
       ref="logEl"
       class="flex-1 overflow-y-auto py-1 text-[0.8rem] leading-normal"
+      data-testid="stream-body"
       @scroll="handleScroll"
     >
       <div v-for="beat in beats" :key="beat.cycle" class="mb-0.5">
