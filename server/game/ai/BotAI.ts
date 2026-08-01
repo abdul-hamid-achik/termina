@@ -1012,8 +1012,23 @@ const TENANT_START_HP_FRACTION = 0.7
 const TENANT_SNIPE_HP_FRACTION = 0.4
 /** Minimum level to open a fresh Tenant (he hits for TENANT_ATTACK a cycle). */
 const TENANT_START_MIN_LEVEL = 8
-/** Allies (excluding the bot) that must already be near the pit to open. */
+/** Allies (excluding the bot) that must be able to JOIN for the call to be made. */
 const TENANT_START_MIN_ALLIES = 2
+/**
+ * How close the bot MAKING the call has to be.
+ *
+ * Calling and joining are different jobs, and conflating them deadlocked the
+ * objective: the open condition used to require two allies already within two
+ * zones of the pit, but no bot walks toward the pit until its team has
+ * committed, and the team only commits when someone opens. Nobody could go
+ * first, so across 20 simulated matches the Tenant died 0.4 times — a major
+ * objective that essentially never happened.
+ *
+ * Now the CALLER must be near (this radius) while the allies it counts only have
+ * to be able to ARRIVE (TENANT_MAX_TRAVEL_DISTANCE). One bot commits the team,
+ * and the existing 'committed' branch pulls the rest in.
+ */
+const TENANT_CALL_MAX_DISTANCE = 2
 /** How far a bot will travel to join its team's attempt. */
 const TENANT_MAX_TRAVEL_DISTANCE = 3
 /** How long a team's commitment lasts before the attempt is written off. */
@@ -1096,14 +1111,17 @@ function tryTenant(
     if (phase === 'cooling' && !snipe) return null
     if (!snipe && hpFraction < TENANT_START_HP_FRACTION) return null
     if (bot.level < (snipe ? 6 : TENANT_START_MIN_LEVEL)) return null
-    const alliesNear = Object.values(state.players).filter(
+    // The caller has to be at the pit's door, not across the map.
+    if (!snipe && distance > TENANT_CALL_MAX_DISTANCE) return null
+    // The allies only have to be able to GET there — see TENANT_CALL_MAX_DISTANCE.
+    const alliesAbleToJoin = Object.values(state.players).filter(
       (p) =>
         p.team === bot.team &&
         p.alive &&
         p.id !== bot.id &&
-        getDistance(p.zone, 'hollow', hasZone) <= 2,
+        getDistance(p.zone, 'hollow', hasZone) <= TENANT_MAX_TRAVEL_DISTANCE,
     ).length
-    if (alliesNear < (snipe ? 1 : TENANT_START_MIN_ALLIES)) return null
+    if (alliesAbleToJoin < (snipe ? 1 : TENANT_START_MIN_ALLIES)) return null
     tenantAttempts.set(key, state.cycle)
   }
 

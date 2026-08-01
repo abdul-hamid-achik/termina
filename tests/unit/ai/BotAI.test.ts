@@ -2096,6 +2096,52 @@ describe('BotAI - Tenant (start condition, steal window, team cooldown)', () => 
     })
   })
 
+  /**
+   * Calling and joining are different jobs, and conflating them deadlocked the
+   * objective. The open condition used to require allies ALREADY within two
+   * zones of the pit — but no bot walks toward the pit until its team has
+   * committed, and the team only commits when someone opens. Nobody could go
+   * first, so across 20 simulated matches the Tenant died 0.4 times.
+   *
+   * After the split (caller near, allies merely able to arrive) the same 20-match
+   * run kills him 0.65 times. These two tests pin the mechanism.
+   */
+  it('opens the call while the squad is still WALKING, not already at the pit', () => {
+    // Allies two zones out — they can arrive, they are not there yet. Under the
+    // old gate this returned null forever and nobody ever started.
+    const bot = makePlayer({
+      id: 'bot_alpha',
+      heroId: 'echo',
+      level: 8,
+      zone: 'hollow',
+      integ: 500,
+      maxInteg: 500,
+    })
+    const players: Record<string, PlayerState> = { [bot.id]: bot }
+    for (let i = 0; i < 2; i++) {
+      const id = `bot_ally${i}`
+      // Three hops out: able to arrive (TENANT_MAX_TRAVEL_DISTANCE), and OUTSIDE
+      // the old two-zone gate — which is exactly the case that used to deadlock.
+      players[id] = makePlayer({ id, name: id, level: 8, zone: 'coldstore-t1-chaff' })
+    }
+    const state = makeGameState({
+      cycle: 40,
+      players,
+      tenant: { alive: true, integ: ROSH_MAX, maxInteg: ROSH_MAX, deathCycle: null },
+    })
+    expect(decideBotAction(state, bot, 'coldstore', atDifficulty('medium', bot.id))).toEqual(
+      HIT_TENANT,
+    )
+  })
+
+  it('does NOT let a bot across the map make the call', () => {
+    // The caller has to be at the pit's door. Otherwise one bot on the far side
+    // burns the team's one commitment window on a fight it cannot reach.
+    const { bot, state } = pitScene({ botZone: 'landing-anchor' })
+    const action = decideBotAction(state, bot, 'coldstore', atDifficulty('medium', bot.id))
+    expect(action).not.toEqual(HIT_TENANT)
+  })
+
   it('will not open one alone', () => {
     const { bot, state } = pitScene({ allies: 1 })
     expect(decideBotAction(state, bot, 'coldstore', atDifficulty('medium', bot.id))).not.toEqual(
