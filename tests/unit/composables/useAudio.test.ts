@@ -303,4 +303,68 @@ describe('useAudio', () => {
       expect(Math.min(...uniqueStarts())).toBe(0)
     })
   })
+
+  describe('mixing — the clock does not fight the fight', () => {
+    /**
+     * `cycle` fires every four seconds for a whole match and `submit` on every
+     * keystroke. At a fixed level they are correct in a quiet cycle and
+     * exhausting during a five-man fight, competing with the cues that actually
+     * carry information.
+     */
+    function cycleGain(): number {
+      const master = makeGain()
+      mockAudioCtx.createGain.mockReturnValueOnce(master)
+      useAudio().playSound('cycle')
+      return master.gain.value
+    }
+
+    it('plays the clock at full level when nothing is happening', () => {
+      enableAudio()
+      mockAudioCtx.currentTime = 1000
+      const quiet = cycleGain()
+      expect(quiet).toBeGreaterThan(0)
+    })
+
+    it('ducks the clock under a burst of real events', () => {
+      enableAudio()
+      mockAudioCtx.currentTime = 2000
+      const quiet = cycleGain()
+
+      // A fight: several event cues inside the activity window.
+      mockAudioCtx.currentTime = 2001
+      const { playSound } = useAudio()
+      for (let i = 0; i < 5; i++) playSound('damage')
+
+      const loud = cycleGain()
+      expect(loud, 'the clock did not duck during a burst').toBeLessThan(quiet)
+    })
+
+    it('never ducks the clock to silence — it is the beat the HUD is timed to', () => {
+      enableAudio()
+      mockAudioCtx.currentTime = 3000
+      const quiet = cycleGain()
+      mockAudioCtx.currentTime = 3001
+      const { playSound } = useAudio()
+      for (let i = 0; i < 40; i++) playSound('kill')
+      expect(cycleGain()).toBeGreaterThan(quiet * 0.3)
+    })
+
+    it('does not duck the cues that carry the information', () => {
+      enableAudio()
+      mockAudioCtx.currentTime = 4000
+      const { playSound } = useAudio()
+
+      const first = makeGain()
+      mockAudioCtx.createGain.mockReturnValueOnce(first)
+      playSound('kill')
+
+      mockAudioCtx.currentTime = 4001
+      for (let i = 0; i < 6; i++) playSound('damage')
+
+      const later = makeGain()
+      mockAudioCtx.createGain.mockReturnValueOnce(later)
+      playSound('kill')
+      expect(later.gain.value).toBe(first.gain.value)
+    })
+  })
 })

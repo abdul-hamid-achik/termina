@@ -323,6 +323,33 @@ const MAX_STAGGER = 0.25
 const lastStart = new Map<SoundName, number>()
 
 /**
+ * Cues that mark TIME rather than events. They are correct at full level in a
+ * quiet cycle and exhausting during a five-man fight, where they compete with
+ * the sounds that actually carry information.
+ *
+ * `cycle` fires every four seconds for a whole match; `submit` fires on every
+ * keystroke. Neither ever needs to be heard over a kill.
+ */
+const AMBIENT: ReadonlySet<SoundName> = new Set(['cycle', 'submit'])
+
+/** Cues that mean something happened, and so drive the duck. */
+const ACTIVITY_WINDOW = 1.2
+const activity: number[] = []
+
+/**
+ * How far to pull the ambient cues down, from the density of real events in the
+ * last second or so.
+ *
+ * Floors at 0.35 rather than 0 — the cycle tick is the beat the whole HUD is
+ * timed against, and a player who cannot hear it at all has lost the clock.
+ */
+function ambientDuck(now: number): number {
+  while (activity.length && now - activity[0]! > ACTIVITY_WINDOW) activity.shift()
+  if (activity.length <= 1) return 1
+  return Math.max(0.35, 1 - (activity.length - 1) * 0.18)
+}
+
+/**
  * Waveshaper curve for `drive`. `tanh`-ish soft clip: harmonics fold in
  * progressively rather than the sound simply squaring off, so a low value reads
  * as weight and a high one as damage.
@@ -384,8 +411,12 @@ export function useAudio() {
       if (t0 - now > MAX_STAGGER) return
       lastStart.set(name, t0)
 
+      // Event cues set the duck; ambient cues read it.
+      if (!AMBIENT.has(name)) activity.push(t0)
+
       const master = ctx.createGain()
-      master.gain.value = (def.masterGain ?? 1) * settings.audioVolume
+      const duck = AMBIENT.has(name) ? ambientDuck(t0) : 1
+      master.gain.value = (def.masterGain ?? 1) * settings.audioVolume * duck
 
       // Shaping chain: master -> [crush] -> [drive] -> out. Both are optional
       // and both are what separate this palette from an arcade blip.
