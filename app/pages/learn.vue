@@ -159,7 +159,7 @@ const movementGuide = [
       'Fountain is only adjacent to your base (must go through base first)',
       `You can't move while dead — respawn takes ${RESPAWN_BASE_CYCLES} cycles plus ${RESPAWN_PER_LEVEL_CYCLES} per level after level ${RESPAWN_FREE_LEVELS}`,
       'Team-relative shortcuts: move base / move fountain always go to YOUR side, whichever team you are',
-      'More aliases save typing: move mid → coldstore-cross, move hollow → the Tenant pit; unambiguous prefixes work too',
+      'More aliases save typing: move coldstore (or cs) → coldstore-cross, move hollow → the Tenant pit; unambiguous prefixes work too',
     ],
   },
 ]

@@ -369,7 +369,7 @@ export function formatLookReadout(
  */
 export function formatHelpReadout(): string[] {
   return [
-    'HELP · type a verb, e.g. `move mid` or `cast q` (most auto-pick a target):',
+    'HELP · type a verb, e.g. `move coldstore` or `cast q` (most auto-pick a target):',
     '  Fight:   move <zone> · attack <target> · breach <hero|self> · burn · cast <q|w|e|r>',
     '  Items:   buy <item> · sell <item> · use <item> · tap <zone>',
     '  Info:    status · map · scan · who · net · look · missing <enemy>',
@@ -752,6 +752,44 @@ function ambiguousZoneError(zoneInput: string): string | null {
     : `"${zoneInput}" is ambiguous — did you mean ${matches.join(' or ')}?`
 }
 
+/**
+ * A zone word that resolves to nothing at all.
+ *
+ * `resolveZoneAlias` returns its input unchanged when it is neither an id, an
+ * alias, nor an unambiguous prefix — so `move banana` used to parse cleanly into
+ * `{ type: 'move', zone: 'banana' }`, travel to the server, and be rejected
+ * there. The rejection is loud, but the CYCLE IS ALREADY SPENT: on a four-second
+ * clock a typo costs a full turn.
+ *
+ * It bites hardest right after a rename. Every word from the old vocabulary —
+ * `mid`, `top`, `bot`, `base`, `fountain` — resolves to nothing now, and those
+ * are exactly the words a returning player types from muscle memory.
+ */
+function unknownZoneError(zoneInput: string, team: TeamId): string | null {
+  const resolved = resolveZoneAlias(zoneInput, team)
+  if (ZONE_IDS.includes(resolved)) return null
+  // A retired word gets NAMED its replacement. This is not a legacy alias — it
+  // does not resolve and the command still does not run; it just refuses to make
+  // the player guess. These five are the whole old vocabulary, and they are what
+  // muscle memory and every older screenshot will produce.
+  const RETIRED: Record<string, string> = {
+    mid: 'coldstore',
+    top: 'seawall',
+    bot: 'shallows',
+    base: 'terminal',
+    fountain: 'anchor',
+    river: 'cross',
+    ward: 'tap',
+  }
+  const retired = RETIRED[zoneInput]
+  if (retired) return `"${zoneInput}" is the old word — it is \`${retired}\` now.`
+
+  const suggestions = ZONE_IDS.filter((z) => z.includes(zoneInput)).slice(0, 3)
+  return suggestions.length
+    ? `No zone called "${zoneInput}" — did you mean ${suggestions.join(' or ')}?`
+    : `No zone called "${zoneInput}" — type \`map\` for the layout.`
+}
+
 export function useCommands() {
   const history = ref<string[]>([])
   const historyIndex = ref(-1)
@@ -780,6 +818,8 @@ export function useCommands() {
         if (!zone) return { command: null, error: 'Usage: move <zone>' }
         const ambiguous = ambiguousZoneError(zone)
         if (ambiguous) return { command: null, error: ambiguous }
+        const unknown = unknownZoneError(zone, team)
+        if (unknown) return { command: null, error: unknown }
         const resolvedZone = resolveZoneAlias(zone, team)
         return { command: { type: 'move', zone: resolvedZone }, error: null }
       }
@@ -872,6 +912,8 @@ export function useCommands() {
         if (!zone) return { command: null, error: 'Usage: tap <zone>' }
         const ambiguous = ambiguousZoneError(zone)
         if (ambiguous) return { command: null, error: ambiguous }
+        const unknown = unknownZoneError(zone, team)
+        if (unknown) return { command: null, error: unknown }
         const resolvedZone = resolveZoneAlias(zone, team)
         return { command: { type: 'tap', zone: resolvedZone }, error: null }
       }
@@ -945,6 +987,8 @@ export function useCommands() {
         if (!zone) return { command: null, error: 'Usage: ping <zone>' }
         const ambiguous = ambiguousZoneError(zone)
         if (ambiguous) return { command: null, error: ambiguous }
+        const unknown = unknownZoneError(zone, team)
+        if (unknown) return { command: null, error: unknown }
         const resolvedZone = resolveZoneAlias(zone, team)
         return { command: { type: 'ping', zone: resolvedZone }, error: null }
       }

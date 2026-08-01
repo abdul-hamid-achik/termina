@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { seedGame, HUMAN, type Run } from './harness'
-import { useCommands, formatHelpReadout } from '~/composables/useCommands'
+import { useCommands, formatHelpReadout, ZONE_ALIASES } from '~/composables/useCommands'
 import { ZONES } from '~~/shared/constants/zones'
 import type { Command } from '~~/shared/types/commands'
 
@@ -92,6 +92,75 @@ describe('the command surface', () => {
       expect(unknown, `help advertises verbs the parser rejects:\n${unknown.join('\n')}`).toEqual(
         [],
       )
+    })
+
+    /**
+     * The verbs check above passes while the help's own EXAMPLES are dead: the
+     * first line read "e.g. `move mid`" for a day after `mid` stopped being an
+     * alias, so the very first thing `help` taught a new player was a command
+     * that burns their cycle. Examples are held to the same bar as verbs.
+     */
+    it('every backticked example in `help` actually parses', () => {
+      const { parse } = useCommands()
+      const text = formatHelpReadout().join('\n')
+      const examples = [...text.matchAll(/`([^`]+)`/g)]
+        .map((m) => m[1]!.trim())
+        // Skip the syntax sketches (`move <zone>`) — those are grammar, not input.
+        .filter((s) => !s.includes('<') && !s.includes('|') && !s.includes('='))
+
+      expect(examples.length, 'help contains no runnable examples to check').toBeGreaterThan(0)
+
+      const broken: string[] = []
+      for (const example of examples) {
+        const result = parse(example, 'chaff')
+        if (!result.command) broken.push(`${example} -> ${result.error ?? 'no command'}`)
+      }
+      expect(broken, `help shows examples that do not run:\n${broken.join('\n')}`).toEqual([])
+    })
+
+    it('every zone alias is a command a player can actually run', () => {
+      // An alias that resolves but whose `move <alias>` does not parse is the
+      // same trap one layer down.
+      const { parse } = useCommands()
+      const broken: string[] = []
+      for (const word of Object.keys(ZONE_ALIASES)) {
+        const result = parse(`move ${word}`, 'chaff')
+        if (!result.command) broken.push(`move ${word} -> ${result.error ?? 'no command'}`)
+      }
+      expect(broken, `aliases that do not run:\n${broken.join('\n')}`).toEqual([])
+    })
+
+    /**
+     * The parser used to hand ANY word through as a zone: `move banana` parsed
+     * cleanly into `{ type: 'move', zone: 'banana' }`, travelled to the server,
+     * and was rejected there. Loud — but the cycle was already spent, and on a
+     * four-second clock a typo cost a full turn. Worse right after a rename,
+     * because every retired word (`mid`, `top`, `base`, …) lands here and those
+     * are exactly what muscle memory produces.
+     */
+    it('a word that is not a zone is refused before the cycle is spent', () => {
+      const { parse } = useCommands()
+      for (const verb of ['move', 'tap', 'ping']) {
+        const result = parse(`${verb} banana`, 'chaff')
+        expect(result.command, `${verb} shipped a nonsense zone to the server`).toBeNull()
+        expect(result.error, `${verb} refused a nonsense zone without saying so`).toMatch(/\S/)
+      }
+    })
+
+    it('a retired word is named its replacement rather than left to guess', () => {
+      const { parse } = useCommands()
+      // Not aliases — these still do not run. They just teach the new word.
+      for (const [old, now] of [
+        ['mid', 'coldstore'],
+        ['top', 'seawall'],
+        ['bot', 'shallows'],
+        ['base', 'terminal'],
+        ['fountain', 'anchor'],
+      ]) {
+        const result = parse(`move ${old}`, 'chaff')
+        expect(result.command, `\`move ${old}\` still runs — it must not`).toBeNull()
+        expect(result.error, `\`move ${old}\` does not name its replacement`).toContain(now!)
+      }
     })
 
     it('covers every verb in the Command union (this list cannot silently rot)', () => {
