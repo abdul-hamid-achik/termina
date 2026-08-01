@@ -393,7 +393,10 @@ export const SHORTCUTS: Record<string, string> = {
 
 // Zone aliases for easier typing. The three routes are SEAWALL / COLDSTORE /
 // SHALLOWS; a bare route name means its crossing, the contested middle.
-const ZONE_ALIASES: Record<string, string> = {
+/** Exported so the map-vocabulary contract can be asserted against the real
+ *  zone records — a stale alias points a typed word at nothing and burns the
+ *  player's cycle on a server rejection. See tests/gameplay/lexicon.test.ts. */
+export const ZONE_ALIASES: Record<string, string> = {
   // Route shortcuts — a bare route name is its crossing
   coldstore: 'coldstore-cross',
   seawall: 'seawall-cross',
@@ -709,7 +712,7 @@ export function validateCommand(command: Command, context: GameContext): string 
  * to type — the zones themselves have read "Rookery Terminal" and "Landing
  * Anchor" since the world landed.
  */
-function resolveZoneAlias(zoneInput: string, team: TeamId = 'chaff'): string {
+export function resolveZoneAlias(zoneInput: string, team: TeamId = 'chaff'): string {
   // Check if it's already a valid zone ID
   if (ZONE_IDS.includes(zoneInput)) return zoneInput
   // Team-relative "home" shortcuts resolve to YOUR side of the map.

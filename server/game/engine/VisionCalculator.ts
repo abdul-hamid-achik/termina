@@ -6,7 +6,7 @@ import type {
   PlayerVisibleState,
   TeamId,
 } from '~~/shared/types/game'
-import { ZONE_MAP } from '~~/shared/constants/zones'
+import { ZONE_MAP, ZONES } from '~~/shared/constants/zones'
 import { SNIFFER_TRUE_SIGHT_RADIUS, NIGHT_VISION_PENALTY } from '~~/shared/constants/balance'
 
 export type { FoggedPlayer, PlayerVisibleState }
@@ -26,6 +26,17 @@ const INVISIBILITY_BUFF_IDS: ReadonlySet<string> = new Set([
   'smoke', // Blackout Can
   'stealth', // Cipher W + Daemon passive
 ])
+
+/** Each team's base + anchor, derived from the zone records. Home ground is
+ *  always visible; hardcoding the four ids made that depend on the naming. */
+const HOME_ZONES: Record<TeamId, string[]> = {
+  chaff: ZONES.filter((z) => z.team === 'chaff' && (z.type === 'base' || z.type === 'anchor')).map(
+    (z) => z.id,
+  ),
+  audit: ZONES.filter((z) => z.team === 'audit' && (z.type === 'base' || z.type === 'anchor')).map(
+    (z) => z.id,
+  ),
+}
 
 const ADJACENT_CACHE = new Map<string, string[]>()
 
@@ -149,10 +160,11 @@ function calculateVisionUncached(state: GameState, player: PlayerState, team: Te
     addZoneWithAdjacent(visible, player.zone, isNight, team)
   }
 
-  const baseZone = team === 'chaff' ? 'rookery-terminal' : 'landing-terminal'
-  const fountainZone = team === 'chaff' ? 'rookery-anchor' : 'landing-anchor'
-  addZoneWithAdjacent(visible, baseZone, isNight, team)
-  addZoneWithAdjacent(visible, fountainZone, isNight, team)
+  // Home ground is always lit. Resolved from the zone records rather than
+  // hardcoded per team: this pair survived the Aug 1 id sweep only because a
+  // find-and-replace happened to reach it, and a team whose home ids are wrong
+  // here goes permanently blind in its own base with nothing to show for it.
+  for (const zone of HOME_ZONES[team]) addZoneWithAdjacent(visible, zone, isNight, team)
 
   for (const zoneState of Object.values(state.zones)) {
     for (const ward of zoneState.wards) {

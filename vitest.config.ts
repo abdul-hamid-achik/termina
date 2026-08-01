@@ -74,6 +74,10 @@ export default defineConfig({
           name: 'integration',
           include: ['tests/integration/**/*.test.ts'],
           environment: 'node',
+          // These share ONE Postgres database and truncate it between tests, so
+          // two files running at once tear each other's rows out mid-assertion.
+          // It only stayed green by luck: until now a single file touched the DB.
+          fileParallelism: false,
         },
       },
       {
