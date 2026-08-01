@@ -1886,7 +1886,7 @@ export function resolveActions(
   state: GameState
   events: GameEngineEvent[]
   heroAttackers: Map<string, string>
-  /** Actions that failed inside resolution (mana, bad target, slow-cancel). */
+  /** Actions that failed inside resolution (BW, bad target, slow-cancel). */
   rejected: Array<{ playerId: string; reason: string }>
 }> {
   return Effect.sync(() => {
@@ -2326,10 +2326,10 @@ function applyTargetedSpellBlock(
  * The cast bridge — runs the per-hero registry resolver (`resolveAbility`)
  * against a temp GameState assembled from the in-flight resolution buffers,
  * then synthesizes backward-compatible damage/heal events by diffing
- * pre/post INTEG. Resolver failures (mana, target, cooldown) are surfaced via
+ * pre/post INTEG. Resolver failures (BW, target, cooldown) are surfaced via
  * the `rejected` channel instead of being silently dropped.
  *
- * The bridge must NOT deduct mana or set cooldowns itself — the hero
+ * The bridge must NOT deduct BW or set cooldowns itself — the hero
  * resolvers own scaled per-level costs and cooldowns.
  */
 function resolveHeroCast(
@@ -2439,7 +2439,7 @@ function resolveHeroCast(
   const castEvtIdx = events.length
 
   // Intercept Shell / Ablative Shell / Mirror Shell: a single-target ability on a
-  // hero holding a charge fizzles — the caster still pays mana + cooldown, but
+  // hero holding a charge fizzles — the caster still pays BW + cooldown, but
   // the target's effect is reverted and a charge consumed (shared with the
   // targeted-item-active path so Burnout/Scythe/Ethereal/Stasis Shunt block identically).
   if (targetId && abilityDef?.targetType === 'hero') {
@@ -2558,7 +2558,7 @@ function resolveHeroCast(
 
   // Tier-25 exotic — double cast: a chance for the talented ability to fire a
   // second time. Re-runs the hero resolver on the post-first-cast state with the
-  // just-set cooldown cleared (so the echo isn't rejected); mana is paid again,
+  // just-set cooldown cleared (so the echo isn't rejected); BW is paid again,
   // so the echo only happens if the caster can afford both casts. Emits plain
   // damage/heal events from the echo's INTEG diff (no Spite Plate/Overclock recursion
   // on the echo — deliberately simple).

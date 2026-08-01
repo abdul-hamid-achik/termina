@@ -406,7 +406,7 @@ export function processCycle(
     const resolved = yield* resolveActions(currentState, validActions)
     currentState = resolved.state
     allEvents.push(...resolved.events)
-    // Casts/moves that failed inside resolution (mana, bad target, slow)
+    // Casts/moves that failed inside resolution (BW, bad target, slow)
     // reach onActionRejected player feedback through the same channel as
     // validation failures.
     rejectedActions.push(

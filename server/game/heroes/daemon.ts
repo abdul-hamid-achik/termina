@@ -219,7 +219,7 @@ function resolveE(
       )
     }
 
-    // Check INTEG threshold — if above 30%, refund mana and don't set cooldown
+    // Check INTEG threshold — if above 30%, refund BW and don't set cooldown
     const hpPercent = targetPlayer.integ / targetPlayer.maxInteg
     if (hpPercent > E_THRESHOLD) {
       return {

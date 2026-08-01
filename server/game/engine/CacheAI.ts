@@ -139,7 +139,7 @@ export function processCacheBuffs(state: GameState): GameState {
 
     // Cron's Crontab (R): heal + BW regen over time on self + allies; the
     // per-cycle amounts ride in the buff stacks. (Heal was applied but never
-    // processed; the mana half was advertised by the ability but unimplemented.)
+    // processed; the BW half was advertised by the ability but unimplemented.)
     const crontab = player.buffs.find((b) => b.id === 'crontabHeal')
     if (crontab) {
       integ = Math.min(player.maxInteg, integ + crontab.stacks)

@@ -258,7 +258,7 @@ function resolveE(
   })
 }
 
-// R: Catastrophic Backtracking — damage based on missing mana + silence
+// R: Catastrophic Backtracking — damage based on missing BW + silence
 function resolveR(
   state: GameState,
   player: PlayerState,

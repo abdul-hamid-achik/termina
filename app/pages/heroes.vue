@@ -13,7 +13,7 @@ import { useStartTutorial } from '~/composables/useStartTutorial'
 import { useTrainingConsole } from '~/composables/useTrainingConsole'
 import type { ConsoleSlot } from '~/composables/useTrainingConsole'
 
-useHead({ title: 'Heroes · TERMINA' })
+useHead({ title: 'Dry Run · TERMINA' })
 
 const allHeroes = Object.values(HEROES)
 
@@ -148,9 +148,9 @@ const {
 <template>
   <div class="mx-auto mt-4 flex max-w-[980px] flex-col gap-4 pb-10">
     <header class="border-b border-border pb-2">
-      <h1 class="text-lg font-bold tracking-widest text-chaff">&gt;_ HERO TRAINING</h1>
+      <h1 class="text-lg font-bold tracking-widest text-chaff">&gt;_ DRY RUN</h1>
       <p class="mt-1 text-[0.78rem] text-text-dim">
-        A safe dry-run of every kit. Pick an operative, cast its abilities, and watch the real
+        A safe dry-run of every kit. Pick an operator, cast its abilities, and watch the real
         outcomes resolve on the 4-second scheduler — learn the heroes before you queue.
       </p>
     </header>

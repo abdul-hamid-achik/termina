@@ -753,7 +753,7 @@ export function resolveAbility(
  * Generic ability-talent application — runs after the hero resolver succeeds,
  * gated on talent.abilityId === cast slot. Never edits hero files:
  * - cooldownReduction: subtract ticks from the resolver-set cooldown (floor 1)
- * - bwCostReduction: refund a % of the mana the resolver actually spent
+ * - bwCostReduction: refund a % of the BW the resolver actually spent
  * - damageBoost: amplify the cast by an extra % of each enemy's INTEG lost
  *   (post-mitigation approximation, clamped at 0 with alive recomputed)
  * Talents of type 'special'/'ability_boost' carrying only specialEffect
@@ -864,7 +864,7 @@ function applyLatencyPenalty(
 }
 
 /**
- * Arcane cache: refund 40% of the mana a cast spent. Runs in the cast pipeline
+ * Arcane cache: refund 40% of the BW a cast spent. Runs in the cast pipeline
  * (NOT applyAbilityTalents, which short-circuits when no talents are chosen).
  */
 function applyArcaneRefund(result: AbilityResult, caster: PlayerState): AbilityResult {

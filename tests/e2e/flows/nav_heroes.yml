@@ -71,7 +71,7 @@ steps:
     open: /heroes
   - id: wait_for_console
     wait:
-      text: HERO TRAINING
+      text: DRY RUN
       timeoutMs: 10000
   - id: filter_hold
     click:

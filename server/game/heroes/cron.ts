@@ -289,7 +289,7 @@ function resolveR(
 
     // Apply crontabHeal + crontabBw buffs to self and all allies in zone. Both
     // are over-time regen buffs whose per-cycle amount rides in `stacks`; the heal
-    // is processed in processCacheBuffs (CacheAI). The mana half was advertised
+    // is processed in processCacheBuffs (CacheAI). The BW half was advertised
     // (R_BW_PER_CYCLE, the bwPerCycle event payload, the ability description) but
     // never actually applied until the matching crontabBw buff + consumer.
     const allies = getAlliesInZone(state, player)

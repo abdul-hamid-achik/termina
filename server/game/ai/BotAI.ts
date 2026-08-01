@@ -469,8 +469,8 @@ function lacksResourceForCast(bot: PlayerState, slot: AbilitySlot): boolean {
 /**
  * Expected-DPS threat model. Sums the actual damage of off-cooldown abilities
  * (damage/stun/slow/dot/execute effects) plus auto-attack DPS, then adjusts
- * for the level delta and item actives. A 50-mana 300-damage nuke now outscores
- * a 200-mana utility buff — the old `bwCost * 0.3` formula had them reversed.
+ * for the level delta and item actives. A 50-BW 300-damage nuke now outscores
+ * a 200-BW utility buff — the old `bwCost * 0.3` formula had them reversed.
  *
  * Used by `shouldRetreatFromThreat` to decide whether a bot is outmatched in
  * its current zone. The score is intentionally a rough proxy (cooldowns and
@@ -701,7 +701,7 @@ function isSelfCastViable(ability: AbilityDef): boolean {
  * reject any target whose team differs from the caster's, so a bot that aimed
  * one at an enemy would simply burn its one action for the cycle.
  *
- * `skipIfHealthy` is set for heal/shield/buff abilities so we don't waste mana
+ * `skipIfHealthy` is set for heal/shield/buff abilities so we don't waste BW
  * topping off a full-INTEG team; otherwise the cast always lands on a friendly
  * unit as long as one exists.
  *
@@ -764,7 +764,7 @@ export function getAbilityTarget(
 }
 
 /**
- * Total mana to cast a sequence of ability slots for a hero at `playerLevel`.
+ * Total BW to cast a sequence of ability slots for a hero at `playerLevel`.
  * BW regen between casts is ignored on purpose — a conservative "can I finish
  * this combo?" check so a bot never burns its opener on a combo it can't
  * complete. Costs are per-rank for the same reason `canCastAbility` uses them:

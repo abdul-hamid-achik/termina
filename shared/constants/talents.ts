@@ -444,7 +444,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           tier: 25,
           abilityId: 'r',
           castEffect: 'global_ultimate',
-          specialEffect: 'Global Backtracking (R) — silence + mana-burn any hero, anywhere',
+          specialEffect: 'Global Backtracking (R) — silence + BW-burn any hero, anywhere',
         },
       ],
     },
@@ -787,7 +787,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
   // Sentry — a pure support (Mend heal, Barrier shield, Scan Pulse slow, Fortify
   // team-shield). NONE of its abilities deal instant damage, so it carries NO
   // damage_boost talents (the generic +Q-damage was 100% dead here); instead its
-  // tree is cooldown/mana efficiency on the kit + tanky-support stats.
+  // tree is cooldown/BW efficiency on the kit + tanky-support stats.
   sentry: {
     heroId: 'sentry',
     tiers: {
@@ -822,7 +822,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'sentry_15_right',
           name: '-35% Barrier BW',
-          description: 'Refunds 35% of Barrier (W) mana — sustain more shields',
+          description: 'Refunds 35% of Barrier (W) BW — sustain more shields',
           type: 'bw_cost_reduce',
           tier: 15,
           abilityId: 'w',
@@ -1216,7 +1216,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
   // Cron — a clockwork support: Uptime (Q) ally buff, Purge (W) cleanse+shield,
   // Kill Signal (E) kinetic nuke+taunt, Crontab (R) AoE heal/BW regen. Only
   // Kill Signal (E) deals instant cast damage, so it carries the lone damage_boost;
-  // the rest of the tree is cooldown/mana efficiency on the support kit + tanky stats.
+  // the rest of the tree is cooldown/BW efficiency on the support kit + tanky stats.
   cron: {
     heroId: 'cron',
     tiers: {
@@ -1303,7 +1303,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
   // delayed-root trap, a Next Hop (E) reposition, and Full Trace (R) reveal +
   // self damage-amp. Only Probe (Q) deals instant damage at cast, so damage_boost
   // sits on Q ALONE; W is a delayed-root trap, E a self-hop buff, R a reveal +
-  // self-buff (no instant damage) — those tiers use CD/mana/stat instead.
+  // self-buff (no instant damage) — those tiers use CD/BW/stat instead.
   traceroute: {
     heroId: 'traceroute',
     tiers: {
@@ -1477,7 +1477,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
   // ping — a sweep disruptor offlaner built around ICMP Echo (Q) poke, Timeout (W) silence,
   // Tracepath (E) vision/speed, and the Flood (R) AoE DoT ult. Q is the ONLY instant-damage
   // ability, so damage_boost sits on Q alone; W is a silence, E a self-buff, and R a DoT —
-  // none deal instant cast damage, so they're rewarded via cooldown_reduce / mana / stats.
+  // none deal instant cast damage, so they're rewarded via cooldown_reduce / BW / stats.
   ping: {
     heroId: 'ping',
     tiers: {
@@ -1564,7 +1564,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
   // cache — a tank that converts damage taken into cached energy for burst
   // abilities. Q Cache Hit (physical + cached energy) and R Eviction (black AoE)
   // both deal instant damage, so they carry damage_boost; W Flush (shield from
-  // cached energy) and E Invalidate (magical + anti-heal) get cooldown/mana
+  // cached energy) and E Invalidate (magical + anti-heal) get cooldown/BW
   // efficiency. The stat tiers lean into tankiness (HP/plate/MR) to sustain the
   // damage-absorption playstyle.
   cache: {
