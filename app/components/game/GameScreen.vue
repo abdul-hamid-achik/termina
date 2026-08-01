@@ -1254,13 +1254,24 @@ function handleCommand(cmd: string) {
           for (const line of formatLookReadout(me, gameStore.waves, gameStore.neutrals)) {
             localEvents.value.push({ cycle: gameStore.cycle, text: line, type: 'system' })
           }
+        } else if (command.type === 'scan') {
+          // The "what can I do right now" readout — multi-line, and every line
+          // it prints is a command the player can type back verbatim.
+          for (const line of formatScanReadout(me, gameStore.allPlayers, {
+            waves: gameStore.waves,
+            neutrals: gameStore.neutrals,
+            ice: gameStore.ice,
+            visibleZoneIds: gameStore.visibleZoneIds,
+            caches: gameStore.caches,
+            mapId: gameStore.mapId,
+          })) {
+            localEvents.value.push({ cycle: gameStore.cycle, text: line, type: 'system' })
+          }
         } else {
           const text =
             command.type === 'status'
               ? formatStatusReadout(me)
-              : command.type === 'map'
-                ? formatMapReadout(me, gameStore.mapId)
-                : formatScanReadout(me, gameStore.allPlayers)
+              : formatMapReadout(me, gameStore.mapId)
           localEvents.value.push({ cycle: gameStore.cycle, text, type: 'system' })
         }
       }

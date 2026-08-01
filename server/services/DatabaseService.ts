@@ -87,11 +87,18 @@ export interface DatabaseServiceApi {
   readonly joinGuild: (guildId: string, playerId: string) => Effect.Effect<void>
   readonly leaveGuild: (playerId: string) => Effect.Effect<void>
   readonly getPlayerByUsername: (username: string) => Effect.Effect<Player | null>
+  /** Look a player up by email — one address may only belong to one account,
+   *  or "reset my password" becomes ambiguous. */
+  readonly getPlayerByEmail: (email: string) => Effect.Effect<Player | null>
   readonly createLocalPlayer: (
     username: string,
     passwordHash: string,
     email?: string | null,
   ) => Effect.Effect<Player>
+  /** Set (or change) a player's email. Clears the verified stamp: a new address
+   *  is unverified by definition, and carrying the old ✓ across would mean a
+   *  password reset could be sent to an address nobody proved they own. */
+  readonly setPlayerEmail: (playerId: string, email: string) => Effect.Effect<void>
   /** Mark a player's email as verified (sets email_verified_at = now). */
   readonly setEmailVerified: (playerId: string) => Effect.Effect<void>
   readonly linkProvider: (
@@ -558,6 +565,13 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
       await db.update(players).set({ guildId: null }).where(eq(players.id, playerId))
     }),
 
+  getPlayerByEmail: (email) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      const rows = await db.select().from(players).where(eq(players.email, email)).limit(1)
+      return rows[0] ?? null
+    }),
+
   getPlayerByUsername: (username) =>
     Effect.promise(async () => {
       const db = useDb()
@@ -581,6 +595,12 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
         })
         .returning()
       return result[0]!
+    }),
+
+  setPlayerEmail: (playerId, email) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      await db.update(players).set({ email, emailVerifiedAt: null }).where(eq(players.id, playerId))
     }),
 
   setEmailVerified: (playerId) =>

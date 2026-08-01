@@ -67,6 +67,39 @@ async function resendVerification() {
   }
 }
 
+/**
+ * Add or change the address. The page used to state the consequence of having
+ * none ("you can't recover a forgotten password") and stop there, which left
+ * the player informed and stuck.
+ *
+ * A new address is unverified by definition, so the server clears the ✓ and we
+ * immediately offer to send the verification mail — an address nobody proved
+ * they own is not a recovery route.
+ */
+const emailInput = ref('')
+const savingEmail = ref(false)
+const emailValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value.trim()))
+
+async function saveEmail() {
+  if (!emailValid.value || savingEmail.value) return
+  savingEmail.value = true
+  emailMsg.value = null
+  try {
+    await $fetch('/api/player/settings', {
+      method: 'PUT',
+      body: { email: emailInput.value.trim() },
+    })
+    emailInput.value = ''
+    await refreshNuxtData()
+    emailMsg.value = { type: 'ok', text: 'Email saved — send the verification when you are ready.' }
+  } catch (err: unknown) {
+    const fetchErr = err as { data?: { message?: string } }
+    emailMsg.value = { type: 'err', text: fetchErr?.data?.message || 'Could not save that email' }
+  } finally {
+    savingEmail.value = false
+  }
+}
+
 function getProviderUsername(provider: string) {
   return providers.value.find((p) => p.provider === provider)?.providerUsername ?? null
 }
@@ -365,9 +398,43 @@ async function disconnectProvider(provider: string) {
             @click="resendVerification"
           />
         </div>
-        <p v-else class="text-[0.8rem] text-text-dim">
+        <p v-if="!emailStatus?.email" class="text-[0.8rem] text-text-dim">
           No email on file. Without one, you can't recover a forgotten password.
         </p>
+
+        <!-- Always offered: with no address this is how you add one, and with an
+             address it is how you change it. -->
+        <form class="flex flex-col gap-1" @submit.prevent="saveEmail">
+          <label
+            for="settings-email"
+            class="font-mono text-xs uppercase tracking-wider text-text-dim"
+          >
+            {{ emailStatus?.email ? 'Change email' : 'Add an email' }}
+          </label>
+          <div class="flex flex-wrap items-center gap-2">
+            <input
+              id="settings-email"
+              v-model="emailInput"
+              type="email"
+              autocomplete="email"
+              placeholder="you@example.com"
+              class="min-w-[220px] flex-1 border border-border bg-bg-secondary px-2 py-1.5 font-mono text-[0.85rem] text-text-primary outline-none focus:border-ability"
+            />
+            <AsciiButton
+              :label="savingEmail ? 'SAVING...' : 'SAVE EMAIL'"
+              variant="primary"
+              :disabled="!emailValid || savingEmail"
+              type="submit"
+              data-testid="save-email-btn"
+            />
+          </div>
+          <span
+            v-if="emailInput && !emailValid"
+            class="text-[0.72rem] text-audit"
+            data-testid="email-format-error"
+            >enter a valid email address</span
+          >
+        </form>
         <span
           v-if="emailMsg"
           role="status"

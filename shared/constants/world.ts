@@ -106,3 +106,35 @@ export const CAMP_LABELS: Record<NeutralCamp, string> = {
   orphan: 'ORPHAN',
   zombie: 'ZOMBIE',
 }
+
+/**
+ * Player-facing labels for the six internal `HeroRole` keys.
+ *
+ * `role` is machinery: BotManager's route priority and itemBuilds'
+ * ROLE_BUILD_ORDERS consume it, which is the only reason it survives. It was
+ * still reaching players as carry / mage / assassin / tank / support / offlaner
+ * on the /items build tabs — six words from a different game, sitting above a
+ * list of cyberware.
+ *
+ * POSTURE stays the axis a player picks on. These are only ever a *job* label on
+ * a recommended build, in the street/deck register the items already use:
+ *
+ *   TRIGGER    you are the damage, and you need to live long enough to deal it
+ *   NETRUNNER  code damage and spell amp — the deck build
+ *   GHOST      in, kill, out; burst and mobility
+ *   BRICK      you soak; plate, INTEG and the ground you stand on
+ *   HANDLER    you keep the crew alive and lit
+ *   MERC       you work alone on ground nobody is helping you hold
+ *
+ * Deliberately avoids FIXER and BREACHER: `fixer` is a rank tier and `breach` is
+ * a posture, and a third vocabulary reusing either would be worse than the words
+ * it replaced.
+ */
+export const ROLE_LABELS = {
+  carry: 'TRIGGER',
+  mage: 'NETRUNNER',
+  assassin: 'GHOST',
+  tank: 'BRICK',
+  support: 'HANDLER',
+  offlaner: 'MERC',
+} as const

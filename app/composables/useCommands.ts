@@ -268,23 +268,127 @@ export function formatMapReadout(player: PlayerState, mapId?: string): string {
   return `MAP · You are @ ${zoneName(player.zone)}. Reachable: ${reachable}`
 }
 
-/** Enemy heroes currently in your vision, for the `scan` command. */
+/**
+ * `scan` — the "what can I do right now" readout.
+ *
+ * The other three readouts each answer a different question: `look` is what is
+ * standing in your zone, `who` is the contact sheet, `map` is the layout. None
+ * of them answered the one a player actually asks on a four-second clock —
+ * *what are my options this cycle* — so it had to be assembled by eye from
+ * three sources while the timer ran.
+ *
+ * Scan used to list visible enemy heroes, which is a subset of `who`. It now
+ * answers the real question, and every line it prints is a command you can type
+ * verbatim: no translating a name back into a target string.
+ *
+ * It never claims safety for ground it cannot see. An adjacent zone with no
+ * vision reads `?`, not "clear" — the same rule TRACE follows.
+ */
 export function formatScanReadout(
   player: PlayerState,
   allPlayers: Record<string, PlayerState>,
-): string {
-  const visible = Object.values(allPlayers).filter(
+  opts: {
+    waves?: WaveUnitState[]
+    neutrals?: { id: string; zone: string; alive: boolean; type: string }[]
+    ice?: { zone: string; team: string; alive: boolean; integ: number; maxInteg: number }[]
+    visibleZoneIds?: readonly string[]
+    caches?: { zone: string; type?: string }[]
+    mapId?: string
+  } = {},
+): string[] {
+  const { waves = [], neutrals = [], ice = [], caches = [] } = opts
+  const seen = new Set(opts.visibleZoneIds ?? [])
+  const lines: string[] = [`SCAN · ${zoneName(player.zone)}`]
+
+  // ── HERE: everything standing in your zone, with the command to hit it ──
+  const here: string[] = []
+  const targets: string[] = []
+
+  const enemyHeroes = Object.values(allPlayers).filter(
     (p) =>
       p.team !== player.team &&
       p.alive &&
       !(p as { fogged?: boolean }).fogged &&
+      p.zone === player.zone,
+  )
+  for (const e of enemyHeroes) {
+    const name = HEROES[e.heroId ?? '']?.name ?? e.name
+    here.push(`✕ ${name} ${Math.floor(e.integ)}/${e.maxInteg}`)
+    targets.push(`attack hero:${e.heroId ?? e.id}`)
+  }
+
+  const zoneWaves = waves.filter((c) => c.zone === player.zone && c.integ > 0)
+  const hostileWaves = zoneWaves.filter((c) => c.team !== player.team)
+  const ownWaves = zoneWaves.filter((c) => c.team === player.team)
+  if (hostileWaves.length) {
+    here.push(`${hostileWaves.length} hostile wave${hostileWaves.length === 1 ? '' : 's'}`)
+    // wave:N is ZONE-local and counts the living waves in your zone, so the
+    // index must come from the zone list, not the global array.
+    const weakest = hostileWaves.reduce((a, b) => (a.integ <= b.integ ? a : b))
+    targets.push(`attack wave:${zoneWaves.indexOf(weakest)}`)
+  }
+  if (ownWaves.length) {
+    const burnable = ownWaves.filter((c) => c.integ / waveFullHp(c) <= BURN_HP_THRESHOLD)
+    here.push(`${ownWaves.length} of yours`)
+    if (burnable.length) targets.push(`burn wave:${zoneWaves.indexOf(burnable[0]!)}`)
+  }
+
+  const zoneIce = ice.find((t) => t.zone === player.zone && t.alive && t.team !== player.team)
+  if (zoneIce) {
+    here.push(`enemy ICE ${Math.floor(zoneIce.integ)}/${zoneIce.maxInteg}`)
+    targets.push(`attack ice:${zoneIce.zone}`)
+  }
+
+  const camps = neutrals.filter((n) => n.zone === player.zone && n.alive)
+  if (camps.length) {
+    here.push(`camp: ${camps.map((c) => c.type).join(', ')}`)
+    targets.push('attack neutral:0')
+  }
+
+  const cacheHere = caches.find((c) => c.zone === player.zone)
+  if (cacheHere) {
+    here.push(`cache${cacheHere.type ? ` (${cacheHere.type})` : ''}`)
+    targets.push('grab')
+  }
+
+  lines.push(`  HERE    ${here.length ? here.join(' · ') : 'nothing standing here'}`)
+  if (targets.length) lines.push(`  ATTACK  ${targets.join(' · ')}`)
+
+  // ── MOVE: where one cycle can take you, and what is waiting ──
+  const zone = zonesForMap(opts.mapId).find((z) => z.id === player.zone)
+  const adjacent = zone?.adjacentTo ?? []
+  if (adjacent.length) {
+    const moves = adjacent.map((id) => {
+      if (!seen.has(id)) return `${id} ?`
+      const hostiles = Object.values(allPlayers).filter(
+        (p) =>
+          p.team !== player.team && p.alive && !(p as { fogged?: boolean }).fogged && p.zone === id,
+      ).length
+      return hostiles ? `${id} ⚠${hostiles}` : id
+    })
+    lines.push(`  MOVE    ${moves.join(' · ')}`)
+    lines.push(`          ⚠ = hostiles seen · ? = no feed, you are walking in blind`)
+  }
+
+  // ── NEAR: hostiles you can see but not yet reach ──
+  const nearby = Object.values(allPlayers).filter(
+    (p) =>
+      p.team !== player.team &&
+      p.alive &&
+      !(p as { fogged?: boolean }).fogged &&
+      p.zone !== player.zone &&
       typeof p.zone === 'string',
   )
-  if (visible.length === 0) return 'SCAN · no enemy heroes in your vision'
-  const list = visible
-    .map((e) => `${HEROES[e.heroId ?? '']?.name ?? e.name} @ ${zoneName(e.zone)}`)
-    .join(', ')
-  return `SCAN · ${visible.length} enemy hero${visible.length === 1 ? '' : 'es'} visible: ${list}`
+  if (nearby.length) {
+    lines.push(
+      `  NEAR    ` +
+        nearby
+          .map((e) => `${HEROES[e.heroId ?? '']?.name ?? e.name} @ ${zoneName(e.zone)}`)
+          .join(' · '),
+    )
+  }
+
+  return lines
 }
 
 /** `who` — the contacts sheet: every visible hero, hostile and friendly, with

@@ -23,6 +23,7 @@ import type { ItemDef } from '~~/shared/types/items'
 import type { AbilityDef, AbilityEffect } from '~~/shared/types/hero'
 import { ZONE_IDS } from '~~/shared/constants/zones'
 import { calculateBuybackCost } from '~~/server/game/engine/BuybackSystem'
+import { ZONE_MAP } from '~~/shared/constants/zones'
 
 /** The full game zone set, as the client actually receives it (state.zones). */
 function allZones(): Record<string, ZoneRuntimeState> {
@@ -2302,29 +2303,76 @@ describe('informational readouts', () => {
     expect(formatMapReadout(me, 'one_lane')).toContain('Reachable: —')
   })
 
-  it('formatScanReadout lists visible enemy heroes, ignoring allies/dead/fogged', () => {
-    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' })
-    const ally = makePlayer({ id: 'a1', team: 'chaff', zone: 'coldstore-cross' })
-    const enemy = makePlayer({
-      id: 'e1',
-      team: 'audit',
-      heroId: 'daemon',
-      zone: 'coldstore-t1-audit',
-    })
-    const dead = makePlayer({ id: 'e2', team: 'audit', zone: 'coldstore-cross', alive: false })
-    const fogged = {
-      ...makePlayer({ id: 'e3', team: 'audit', zone: 'seawall-cross' }),
-      fogged: true,
-    }
-    const out = formatScanReadout(me, { p1: me, a1: ally, e1: enemy, e2: dead, e3: fogged })
-    expect(out).toContain('1 enemy hero visible')
-    expect(out).toContain('Daemon')
-    expect(out).not.toContain('a1')
-  })
+  /**
+   * `scan` is the "what can I do right now" readout: what is in your zone, the
+   * commands that hit it, where one cycle can take you. It used to list visible
+   * enemy heroes, which is a subset of `who` — so the question a player actually
+   * asks on a four-second clock had no answer at all.
+   */
+  describe('formatScanReadout', () => {
+    const me = () => makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-t1-chaff' })
 
-  it('formatScanReadout reports an empty vision cleanly', () => {
-    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' })
-    expect(formatScanReadout(me, { p1: me })).toMatch(/no enemy heroes/i)
+    it('names the zone and reports an empty one honestly', () => {
+      const out = formatScanReadout(me(), { p1: me() }).join('\n')
+      expect(out).toContain('Coldstore T1')
+      expect(out).toMatch(/nothing standing here/i)
+    })
+
+    it('lists an enemy in your zone WITH the command that attacks it', () => {
+      const enemy = makePlayer({
+        id: 'e1',
+        team: 'audit',
+        heroId: 'daemon',
+        zone: 'coldstore-t1-chaff',
+      })
+      const out = formatScanReadout(me(), { p1: me(), e1: enemy }).join('\n')
+      expect(out).toContain('Daemon')
+      // The point of the readout: a command you can type back verbatim.
+      expect(out).toContain('attack hero:daemon')
+    })
+
+    it('ignores allies, the dead, and the fogged', () => {
+      const ally = makePlayer({ id: 'a1', team: 'chaff', zone: 'coldstore-t1-chaff' })
+      const dead = makePlayer({
+        id: 'e2',
+        team: 'audit',
+        zone: 'coldstore-t1-chaff',
+        alive: false,
+      })
+      const fogged = {
+        ...makePlayer({ id: 'e3', team: 'audit', zone: 'seawall-cross' }),
+        fogged: true,
+      }
+      const out = formatScanReadout(me(), { p1: me(), a1: ally, e2: dead, e3: fogged }).join('\n')
+      expect(out).not.toContain('a1')
+      expect(out).not.toContain('e2')
+      expect(out).not.toContain('e3')
+    })
+
+    it('offers every adjacent zone as a move', () => {
+      const out = formatScanReadout(me(), { p1: me() }, { visibleZoneIds: [] }).join('\n')
+      const zone = ZONE_MAP['coldstore-t1-chaff']!
+      for (const adj of zone.adjacentTo) expect(out).toContain(adj)
+    })
+
+    // The same rule TRACE follows: absence of contacts is not safety.
+    it('marks an unseen neighbour as blind, never as clear', () => {
+      const out = formatScanReadout(me(), { p1: me() }, { visibleZoneIds: [] }).join('\n')
+      expect(out).toContain('?')
+      expect(out).toMatch(/no feed/i)
+    })
+
+    it('flags a neighbour where hostiles are actually visible', () => {
+      const zone = ZONE_MAP['coldstore-t1-chaff']!
+      const neighbour = zone.adjacentTo[0]!
+      const enemy = makePlayer({ id: 'e1', team: 'audit', heroId: 'daemon', zone: neighbour })
+      const out = formatScanReadout(
+        me(),
+        { p1: me(), e1: enemy },
+        { visibleZoneIds: [neighbour] },
+      ).join('\n')
+      expect(out).toContain(`${neighbour} ⚠1`)
+    })
   })
 
   it('formatHelpReadout lists the core verbs and the win condition', () => {

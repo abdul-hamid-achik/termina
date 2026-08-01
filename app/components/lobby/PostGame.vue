@@ -247,405 +247,433 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col gap-4 bg-bg-primary p-4" data-testid="post-game">
-    <div
-      class="anim-fade-in-up border-2 p-6 text-center"
-      :class="winner === 'chaff' ? 'border-chaff bloom-chaff' : 'border-audit bloom-audit'"
-    >
-      <div class="t-caption mb-2 text-text-muted">
-        {{
-          isTutorial
-            ? finishedTutorial
-              ? '// tutorial complete'
-              : '// practice ended'
-            : '// match concluded'
-        }}
-      </div>
-      <span
-        class="t-display tracking-[0.2em] anim-glow-pulse"
-        :class="winner === 'chaff' ? 'text-chaff' : 'text-audit'"
+  <!-- The game layout is `h-dvh; overflow: hidden`, so nothing on this screen can
+       scroll the page. With a `min-h-screen` root the content simply grew past
+       the fold and took the action buttons with it: after a long match the only
+       way out — PLAY AGAIN / MAIN MENU — was unreachable.
+
+       Fixed height, one internal scroller, and the actions pinned as a footer.
+       That keeps the no-page-scroll feel while guaranteeing the two things a
+       player needs after a match are always on screen. -->
+  <div class="flex h-full flex-col overflow-hidden bg-bg-primary" data-testid="post-game">
+    <div class="flex flex-1 flex-col gap-4 overflow-y-auto p-4" data-testid="post-game-scroll">
+      <div
+        class="anim-fade-in-up border-2 p-6 text-center"
+        :class="winner === 'chaff' ? 'border-chaff bloom-chaff' : 'border-audit bloom-audit'"
       >
-        <template v-if="isTutorial">{{
-          finishedTutorial ? 'PRACTICE COMPLETE' : 'PRACTICE ENDED'
-        }}</template>
-        <template v-else>{{ winner === 'chaff' ? 'CHAFF VICTORY' : 'AUDIT VICTORY' }}</template>
-      </span>
-      <p v-if="isTutorial" class="mt-3 text-sm text-text-dim" data-testid="tutorial-wrapup">
-        {{
-          finishedTutorial
-            ? "You've got the basics — move, last-hit, cast, and buy. Ready for a real match?"
-            : 'Practice ended early — the drills are still there whenever you want them.'
-        }}
-      </p>
-    </div>
-
-    <!-- Match MVP — the standout performer across both teams -->
-    <div
-      v-if="mvp"
-      class="anim-fade-in-up flex items-center justify-center gap-3 border p-3"
-      :class="mvp.team === 'chaff' ? 'border-chaff/60' : 'border-audit/60'"
-      data-testid="post-game-mvp"
-    >
-      <span class="t-h1 text-gold text-glow-gold" aria-hidden="true">★</span>
-      <div class="flex flex-col">
-        <span class="t-caption uppercase tracking-wider text-gold">Match MVP</span>
+        <div class="t-caption mb-2 text-text-muted">
+          {{
+            isTutorial
+              ? finishedTutorial
+                ? '// tutorial complete'
+                : '// practice ended'
+              : '// match concluded'
+          }}
+        </div>
         <span
-          class="t-h2"
-          :class="mvp.team === 'chaff' ? 'text-chaff' : 'text-audit'"
-          data-testid="mvp-name"
-          >{{ mvp.name }}
-          <span class="text-text-dim">({{ HEROES[mvp.heroId]?.name ?? mvp.heroId }})</span></span
+          class="t-display tracking-[0.2em] anim-glow-pulse"
+          :class="winner === 'chaff' ? 'text-chaff' : 'text-audit'"
         >
-        <span class="t-caption t-mono-num text-text-dim">
-          {{ mvp.kills }}/{{ mvp.deaths }}/{{ mvp.assists }} ·
-          {{ mvp.heroDamage.toLocaleString() }} hero dmg
+          <template v-if="isTutorial">{{
+            finishedTutorial ? 'PRACTICE COMPLETE' : 'PRACTICE ENDED'
+          }}</template>
+          <template v-else>{{ winner === 'chaff' ? 'CHAFF VICTORY' : 'AUDIT VICTORY' }}</template>
         </span>
+        <p v-if="isTutorial" class="mt-3 text-sm text-text-dim" data-testid="tutorial-wrapup">
+          {{
+            finishedTutorial
+              ? "You've got the basics — move, last-hit, cast, and buy. Ready for a real match?"
+              : 'Practice ended early — the drills are still there whenever you want them.'
+          }}
+        </p>
+      </div>
+
+      <!-- Match MVP — the standout performer across both teams -->
+      <div
+        v-if="mvp"
+        class="anim-fade-in-up flex items-center justify-center gap-3 border p-3"
+        :class="mvp.team === 'chaff' ? 'border-chaff/60' : 'border-audit/60'"
+        data-testid="post-game-mvp"
+      >
+        <span class="t-h1 text-gold text-glow-gold" aria-hidden="true">★</span>
+        <div class="flex flex-col">
+          <span class="t-caption uppercase tracking-wider text-gold">Match MVP</span>
+          <span
+            class="t-h2"
+            :class="mvp.team === 'chaff' ? 'text-chaff' : 'text-audit'"
+            data-testid="mvp-name"
+            >{{ mvp.name }}
+            <span class="text-text-dim">({{ HEROES[mvp.heroId]?.name ?? mvp.heroId }})</span></span
+          >
+          <span class="t-caption t-mono-num text-text-dim">
+            {{ mvp.kills }}/{{ mvp.deaths }}/{{ mvp.assists }} ·
+            {{ mvp.heroDamage.toLocaleString() }} hero dmg
+          </span>
+        </div>
+      </div>
+
+      <div v-if="myStats">
+        <TerminalPanel title="Your Performance">
+          <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-6">
+            <div class="flex flex-col gap-1">
+              <span class="t-caption uppercase">K/D/A</span>
+              <span class="t-h1 t-mono-num">
+                <span class="text-chaff text-glow-chaff">{{ myStats.kills }}</span>
+                <span class="mx-0.5 text-text-muted">/</span>
+                <span class="text-audit text-glow-audit">{{ myStats.deaths }}</span>
+                <span class="mx-0.5 text-text-muted">/</span>
+                <span class="text-text-dim">{{ myStats.assists }}</span>
+              </span>
+            </div>
+            <div class="flex flex-col gap-1" data-testid="my-cs">
+              <span class="t-caption uppercase" title="Last hits / burns">CS</span>
+              <span class="t-h1 t-mono-num">
+                <span class="text-text-primary text-glow-sm">{{ myStats.lastHits ?? 0 }}</span>
+                <span class="mx-0.5 text-text-muted">/</span>
+                <span class="text-text-dim">{{ myStats.burns ?? 0 }}</span>
+              </span>
+              <span v-if="csPerMinute !== null" class="t-caption t-mono-num text-text-muted">
+                {{ csPerMinute.toFixed(1) }}/min
+              </span>
+            </div>
+            <div class="flex flex-col gap-1" data-testid="my-net-worth">
+              <span
+                class="t-caption uppercase"
+                title="Unspent scrip plus everything you bought with it"
+              >
+                Net Worth
+              </span>
+              <span class="t-h1 text-gold text-glow-gold t-mono-num">{{
+                myNetWorth.toLocaleString()
+              }}</span>
+            </div>
+            <div class="flex flex-col gap-1">
+              <span class="t-caption uppercase">Hero Damage</span>
+              <span class="t-h1 text-text-primary text-glow-sm t-mono-num">{{
+                myStats.heroDamage.toLocaleString()
+              }}</span>
+            </div>
+            <div class="flex flex-col gap-1">
+              <span class="t-caption uppercase">Ice Damage</span>
+              <span class="t-h1 text-text-primary text-glow-sm t-mono-num">{{
+                myStats.iceDamage.toLocaleString()
+              }}</span>
+            </div>
+            <div v-if="mmrChange !== undefined" class="flex flex-col gap-1">
+              <span class="t-caption uppercase">MMR</span>
+              <!-- Bot games (practice / bot-filled) are unranked — no MMR moved. -->
+              <span
+                v-if="ranked === false"
+                class="t-h1 text-text-dim"
+                title="This match contained bots and did not affect MMR"
+              >
+                UNRANKED
+              </span>
+              <span
+                v-else
+                class="t-h1 t-mono-num"
+                :class="
+                  mmrChange >= 0 ? 'text-chaff text-glow-chaff' : 'text-audit text-glow-audit'
+                "
+              >
+                {{ mmrChange >= 0 ? '+' : '' }}{{ mmrChange }}
+              </span>
+            </div>
+          </div>
+        </TerminalPanel>
+      </div>
+
+      <div v-if="advice.length > 0" data-testid="what-to-work-on">
+        <TerminalPanel title="What To Work On">
+          <ul class="flex flex-col gap-2">
+            <li
+              v-for="a in advice"
+              :key="a.id"
+              class="border-l-2 border-gold/60 pl-3"
+              :data-advice="a.id"
+            >
+              <div class="text-sm text-text-primary">
+                {{ a.observation }} —
+                <span class="text-text-dim">{{ a.detail }}</span>
+              </div>
+              <div class="t-caption mt-0.5 text-text-muted">
+                try:
+                <code class="ml-1 bg-bg-secondary px-1 text-ability">{{ a.command }}</code>
+              </div>
+            </li>
+          </ul>
+          <div class="mt-3 flex flex-wrap items-center gap-3">
+            <NuxtLink
+              to="/learn"
+              class="inline-flex items-center border border-border px-2 py-1 font-mono text-xs text-text-dim transition-colors hover:border-ability hover:text-ability"
+            >
+              [READ THE BASICS]
+            </NuxtLink>
+            <AsciiButton
+              v-if="!isTutorial"
+              label="PRACTICE THIS"
+              variant="ghost"
+              :disabled="startingPractice"
+              data-testid="practice-this-btn"
+              @click="startPractice"
+            />
+          </div>
+          <p v-if="practiceError" class="mt-2 text-xs text-audit" data-testid="practice-error">
+            {{ practiceError }}
+          </p>
+        </TerminalPanel>
+      </div>
+
+      <div>
+        <TerminalPanel title="Scoreboard">
+          <div class="t-h3 pb-1 pt-1.5 text-chaff text-glow-chaff">CHAFF</div>
+          <div class="mb-3 overflow-x-auto">
+            <table class="w-full border-collapse text-xs">
+              <caption class="sr-only">
+                Chaff team final scoreboard
+              </caption>
+              <thead>
+                <tr>
+                  <th
+                    scope="col"
+                    class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                  >
+                    Hero
+                  </th>
+                  <th
+                    scope="col"
+                    class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                  >
+                    Player
+                  </th>
+                  <th
+                    scope="col"
+                    class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                  >
+                    K
+                  </th>
+                  <th
+                    scope="col"
+                    class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                  >
+                    D
+                  </th>
+                  <th
+                    scope="col"
+                    class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                  >
+                    A
+                  </th>
+                  <th
+                    scope="col"
+                    class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                    title="Wave last hits / burns"
+                  >
+                    CS
+                  </th>
+                  <th
+                    scope="col"
+                    class="hidden border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim md:table-cell"
+                  >
+                    DMG
+                  </th>
+                  <th
+                    scope="col"
+                    class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                    title="Unspent scrip plus everything bought with it"
+                  >
+                    Net Worth
+                  </th>
+                  <th
+                    scope="col"
+                    class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                  >
+                    Items
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="p in chaffPlayers"
+                  :key="p.id"
+                  class="anim-fade-in-up"
+                  :class="{
+                    'bg-ability/10 font-bold shadow-inset-ability': p.isCurrentPlayer,
+                  }"
+                >
+                  <td
+                    class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-ability"
+                  >
+                    {{ HEROES[p.heroId]?.name ?? p.heroId }}
+                  </td>
+                  <th
+                    scope="row"
+                    class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-left font-normal"
+                  >
+                    {{ p.name }}
+                  </th>
+                  <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-chaff">
+                    {{ p.kills }}
+                  </td>
+                  <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-audit">
+                    {{ p.deaths }}
+                  </td>
+                  <td
+                    class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-text-dim"
+                  >
+                    {{ p.assists }}
+                  </td>
+                  <td
+                    class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-text-dim"
+                  >
+                    {{ p.lastHits }}<span class="text-text-muted">/{{ p.burns }}</span>
+                  </td>
+                  <td
+                    class="hidden whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 md:table-cell"
+                  >
+                    {{ p.heroDamage.toLocaleString() }}
+                  </td>
+                  <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-gold">
+                    {{ p.netWorth.toLocaleString() }}
+                  </td>
+                  <td class="border-b border-border/50 px-1.5 py-0.5 text-[0.65rem] text-text-dim">
+                    <span v-for="(item, i) in p.items.slice(0, 6)" :key="i">
+                      {{ item ? (ITEMS[item]?.name ?? item) : '-' }}{{ i < 5 ? ' ' : '' }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="t-h3 pb-1 pt-1.5 text-audit text-glow-audit">AUDIT</div>
+          <div class="overflow-x-auto">
+            <table class="w-full border-collapse text-xs">
+              <caption class="sr-only">
+                Audit team final scoreboard
+              </caption>
+              <thead>
+                <tr>
+                  <th
+                    scope="col"
+                    class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                  >
+                    Hero
+                  </th>
+                  <th
+                    scope="col"
+                    class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                  >
+                    Player
+                  </th>
+                  <th
+                    scope="col"
+                    class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                  >
+                    K
+                  </th>
+                  <th
+                    scope="col"
+                    class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                  >
+                    D
+                  </th>
+                  <th
+                    scope="col"
+                    class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                  >
+                    A
+                  </th>
+                  <th
+                    scope="col"
+                    class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                    title="Wave last hits / burns"
+                  >
+                    CS
+                  </th>
+                  <th
+                    scope="col"
+                    class="hidden border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim md:table-cell"
+                  >
+                    DMG
+                  </th>
+                  <th
+                    scope="col"
+                    class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                    title="Unspent scrip plus everything bought with it"
+                  >
+                    Net Worth
+                  </th>
+                  <th
+                    scope="col"
+                    class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                  >
+                    Items
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="p in auditPlayers"
+                  :key="p.id"
+                  class="anim-fade-in-up"
+                  :class="{
+                    'bg-ability/10 font-bold shadow-inset-ability': p.isCurrentPlayer,
+                  }"
+                >
+                  <td
+                    class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-ability"
+                  >
+                    {{ HEROES[p.heroId]?.name ?? p.heroId }}
+                  </td>
+                  <th
+                    scope="row"
+                    class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-left font-normal"
+                  >
+                    {{ p.name }}
+                  </th>
+                  <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-chaff">
+                    {{ p.kills }}
+                  </td>
+                  <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-audit">
+                    {{ p.deaths }}
+                  </td>
+                  <td
+                    class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-text-dim"
+                  >
+                    {{ p.assists }}
+                  </td>
+                  <td
+                    class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-text-dim"
+                  >
+                    {{ p.lastHits }}<span class="text-text-muted">/{{ p.burns }}</span>
+                  </td>
+                  <td
+                    class="hidden whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 md:table-cell"
+                  >
+                    {{ p.heroDamage.toLocaleString() }}
+                  </td>
+                  <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-gold">
+                    {{ p.netWorth.toLocaleString() }}
+                  </td>
+                  <td class="border-b border-border/50 px-1.5 py-0.5 text-[0.65rem] text-text-dim">
+                    <span v-for="(item, i) in p.items.slice(0, 6)" :key="i">
+                      {{ item ? (ITEMS[item]?.name ?? item) : '-' }}{{ i < 5 ? ' ' : '' }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </TerminalPanel>
       </div>
     </div>
 
-    <div v-if="myStats">
-      <TerminalPanel title="Your Performance">
-        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-6">
-          <div class="flex flex-col gap-1">
-            <span class="t-caption uppercase">K/D/A</span>
-            <span class="t-h1 t-mono-num">
-              <span class="text-chaff text-glow-chaff">{{ myStats.kills }}</span>
-              <span class="mx-0.5 text-text-muted">/</span>
-              <span class="text-audit text-glow-audit">{{ myStats.deaths }}</span>
-              <span class="mx-0.5 text-text-muted">/</span>
-              <span class="text-text-dim">{{ myStats.assists }}</span>
-            </span>
-          </div>
-          <div class="flex flex-col gap-1" data-testid="my-cs">
-            <span class="t-caption uppercase" title="Last hits / burns">CS</span>
-            <span class="t-h1 t-mono-num">
-              <span class="text-text-primary text-glow-sm">{{ myStats.lastHits ?? 0 }}</span>
-              <span class="mx-0.5 text-text-muted">/</span>
-              <span class="text-text-dim">{{ myStats.burns ?? 0 }}</span>
-            </span>
-            <span v-if="csPerMinute !== null" class="t-caption t-mono-num text-text-muted">
-              {{ csPerMinute.toFixed(1) }}/min
-            </span>
-          </div>
-          <div class="flex flex-col gap-1" data-testid="my-net-worth">
-            <span
-              class="t-caption uppercase"
-              title="Unspent scrip plus everything you bought with it"
-            >
-              Net Worth
-            </span>
-            <span class="t-h1 text-gold text-glow-gold t-mono-num">{{
-              myNetWorth.toLocaleString()
-            }}</span>
-          </div>
-          <div class="flex flex-col gap-1">
-            <span class="t-caption uppercase">Hero Damage</span>
-            <span class="t-h1 text-text-primary text-glow-sm t-mono-num">{{
-              myStats.heroDamage.toLocaleString()
-            }}</span>
-          </div>
-          <div class="flex flex-col gap-1">
-            <span class="t-caption uppercase">Ice Damage</span>
-            <span class="t-h1 text-text-primary text-glow-sm t-mono-num">{{
-              myStats.iceDamage.toLocaleString()
-            }}</span>
-          </div>
-          <div v-if="mmrChange !== undefined" class="flex flex-col gap-1">
-            <span class="t-caption uppercase">MMR</span>
-            <!-- Bot games (practice / bot-filled) are unranked — no MMR moved. -->
-            <span
-              v-if="ranked === false"
-              class="t-h1 text-text-dim"
-              title="This match contained bots and did not affect MMR"
-            >
-              UNRANKED
-            </span>
-            <span
-              v-else
-              class="t-h1 t-mono-num"
-              :class="mmrChange >= 0 ? 'text-chaff text-glow-chaff' : 'text-audit text-glow-audit'"
-            >
-              {{ mmrChange >= 0 ? '+' : '' }}{{ mmrChange }}
-            </span>
-          </div>
-        </div>
-      </TerminalPanel>
-    </div>
-
-    <div v-if="advice.length > 0" data-testid="what-to-work-on">
-      <TerminalPanel title="What To Work On">
-        <ul class="flex flex-col gap-2">
-          <li
-            v-for="a in advice"
-            :key="a.id"
-            class="border-l-2 border-gold/60 pl-3"
-            :data-advice="a.id"
-          >
-            <div class="text-sm text-text-primary">
-              {{ a.observation }} —
-              <span class="text-text-dim">{{ a.detail }}</span>
-            </div>
-            <div class="t-caption mt-0.5 text-text-muted">
-              try:
-              <code class="ml-1 bg-bg-secondary px-1 text-ability">{{ a.command }}</code>
-            </div>
-          </li>
-        </ul>
-        <div class="mt-3 flex flex-wrap items-center gap-3">
-          <NuxtLink
-            to="/learn"
-            class="inline-flex items-center border border-border px-2 py-1 font-mono text-xs text-text-dim transition-colors hover:border-ability hover:text-ability"
-          >
-            [READ THE BASICS]
-          </NuxtLink>
-          <AsciiButton
-            v-if="!isTutorial"
-            label="PRACTICE THIS"
-            variant="ghost"
-            :disabled="startingPractice"
-            data-testid="practice-this-btn"
-            @click="startPractice"
-          />
-        </div>
-        <p v-if="practiceError" class="mt-2 text-xs text-audit" data-testid="practice-error">
-          {{ practiceError }}
-        </p>
-      </TerminalPanel>
-    </div>
-
-    <div>
-      <TerminalPanel title="Scoreboard">
-        <div class="t-h3 pb-1 pt-1.5 text-chaff text-glow-chaff">CHAFF</div>
-        <div class="mb-3 overflow-x-auto">
-          <table class="w-full border-collapse text-xs">
-            <caption class="sr-only">
-              Chaff team final scoreboard
-            </caption>
-            <thead>
-              <tr>
-                <th
-                  scope="col"
-                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                >
-                  Hero
-                </th>
-                <th
-                  scope="col"
-                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                >
-                  Player
-                </th>
-                <th
-                  scope="col"
-                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                >
-                  K
-                </th>
-                <th
-                  scope="col"
-                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                >
-                  D
-                </th>
-                <th
-                  scope="col"
-                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                >
-                  A
-                </th>
-                <th
-                  scope="col"
-                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                  title="Wave last hits / burns"
-                >
-                  CS
-                </th>
-                <th
-                  scope="col"
-                  class="hidden border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim md:table-cell"
-                >
-                  DMG
-                </th>
-                <th
-                  scope="col"
-                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                  title="Unspent scrip plus everything bought with it"
-                >
-                  Net Worth
-                </th>
-                <th
-                  scope="col"
-                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                >
-                  Items
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="p in chaffPlayers"
-                :key="p.id"
-                class="anim-fade-in-up"
-                :class="{
-                  'bg-ability/10 font-bold shadow-inset-ability': p.isCurrentPlayer,
-                }"
-              >
-                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-ability">
-                  {{ HEROES[p.heroId]?.name ?? p.heroId }}
-                </td>
-                <th
-                  scope="row"
-                  class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-left font-normal"
-                >
-                  {{ p.name }}
-                </th>
-                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-chaff">
-                  {{ p.kills }}
-                </td>
-                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-audit">
-                  {{ p.deaths }}
-                </td>
-                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-text-dim">
-                  {{ p.assists }}
-                </td>
-                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-text-dim">
-                  {{ p.lastHits }}<span class="text-text-muted">/{{ p.burns }}</span>
-                </td>
-                <td
-                  class="hidden whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 md:table-cell"
-                >
-                  {{ p.heroDamage.toLocaleString() }}
-                </td>
-                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-gold">
-                  {{ p.netWorth.toLocaleString() }}
-                </td>
-                <td class="border-b border-border/50 px-1.5 py-0.5 text-[0.65rem] text-text-dim">
-                  <span v-for="(item, i) in p.items.slice(0, 6)" :key="i">
-                    {{ item ? (ITEMS[item]?.name ?? item) : '-' }}{{ i < 5 ? ' ' : '' }}
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="t-h3 pb-1 pt-1.5 text-audit text-glow-audit">AUDIT</div>
-        <div class="overflow-x-auto">
-          <table class="w-full border-collapse text-xs">
-            <caption class="sr-only">
-              Audit team final scoreboard
-            </caption>
-            <thead>
-              <tr>
-                <th
-                  scope="col"
-                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                >
-                  Hero
-                </th>
-                <th
-                  scope="col"
-                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                >
-                  Player
-                </th>
-                <th
-                  scope="col"
-                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                >
-                  K
-                </th>
-                <th
-                  scope="col"
-                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                >
-                  D
-                </th>
-                <th
-                  scope="col"
-                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                >
-                  A
-                </th>
-                <th
-                  scope="col"
-                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                  title="Wave last hits / burns"
-                >
-                  CS
-                </th>
-                <th
-                  scope="col"
-                  class="hidden border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim md:table-cell"
-                >
-                  DMG
-                </th>
-                <th
-                  scope="col"
-                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                  title="Unspent scrip plus everything bought with it"
-                >
-                  Net Worth
-                </th>
-                <th
-                  scope="col"
-                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                >
-                  Items
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="p in auditPlayers"
-                :key="p.id"
-                class="anim-fade-in-up"
-                :class="{
-                  'bg-ability/10 font-bold shadow-inset-ability': p.isCurrentPlayer,
-                }"
-              >
-                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-ability">
-                  {{ HEROES[p.heroId]?.name ?? p.heroId }}
-                </td>
-                <th
-                  scope="row"
-                  class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-left font-normal"
-                >
-                  {{ p.name }}
-                </th>
-                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-chaff">
-                  {{ p.kills }}
-                </td>
-                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-audit">
-                  {{ p.deaths }}
-                </td>
-                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-text-dim">
-                  {{ p.assists }}
-                </td>
-                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-text-dim">
-                  {{ p.lastHits }}<span class="text-text-muted">/{{ p.burns }}</span>
-                </td>
-                <td
-                  class="hidden whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 md:table-cell"
-                >
-                  {{ p.heroDamage.toLocaleString() }}
-                </td>
-                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-gold">
-                  {{ p.netWorth.toLocaleString() }}
-                </td>
-                <td class="border-b border-border/50 px-1.5 py-0.5 text-[0.65rem] text-text-dim">
-                  <span v-for="(item, i) in p.items.slice(0, 6)" :key="i">
-                    {{ item ? (ITEMS[item]?.name ?? item) : '-' }}{{ i < 5 ? ' ' : '' }}
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </TerminalPanel>
-    </div>
-
-    <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
+    <!-- Pinned: never scrolls away, so there is always a way out of this screen. -->
+    <div
+      class="flex shrink-0 flex-wrap items-center justify-center gap-3 border-t border-border bg-bg-primary px-4 py-3"
+      data-testid="post-game-actions"
+    >
       <AsciiButton
         :label="isTutorial ? 'FIND A REAL MATCH' : 'PLAY AGAIN'"
         variant="primary"

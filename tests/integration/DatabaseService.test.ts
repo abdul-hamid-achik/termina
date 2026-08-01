@@ -321,4 +321,41 @@ describe('DatabaseService (real Postgres)', () => {
       expect(row?.passwordHash).toBe('new_hash')
     })
   })
+
+  describe('setPlayerEmail', () => {
+    /**
+     * The settings page told a player with no address "Without one, you can't
+     * recover a forgotten password" and offered no way to add one — informed and
+     * stuck, which is the same failure as a rejection with no reason.
+     */
+    it('sets an address on an account that had none', async () => {
+      await seedPlayer()
+      expect((await run((s) => s.getPlayer('p1')))?.email).toBeNull()
+      await run((s) => s.setPlayerEmail('p1', 'ops@terminamoba.com'))
+      expect((await run((s) => s.getPlayer('p1')))?.email).toBe('ops@terminamoba.com')
+    })
+
+    it('clears the verified stamp when the address changes', async () => {
+      await seedPlayer()
+      await run((s) => s.setPlayerEmail('p1', 'first@example.com'))
+      await run((s) => s.setEmailVerified('p1'))
+      expect((await run((s) => s.getPlayer('p1')))?.emailVerifiedAt).not.toBeNull()
+
+      // Carrying the ✓ across would mean a password reset could be sent to an
+      // address nobody has proved they own.
+      await run((s) => s.setPlayerEmail('p1', 'second@example.com'))
+      const after = await run((s) => s.getPlayer('p1'))
+      expect(after?.email).toBe('second@example.com')
+      expect(after?.emailVerifiedAt).toBeNull()
+    })
+
+    it('getPlayerByEmail finds the owner, so one address cannot span two accounts', async () => {
+      await seedPlayer()
+      await run((s) => s.createPlayer({ id: 'p2', username: 'u2', mmr: 1000 } as never))
+      await run((s) => s.setPlayerEmail('p1', 'shared@example.com'))
+
+      expect((await run((s) => s.getPlayerByEmail('shared@example.com')))?.id).toBe('p1')
+      expect(await run((s) => s.getPlayerByEmail('nobody@example.com'))).toBeNull()
+    })
+  })
 })

@@ -8,6 +8,7 @@ import ItemCard from '~/components/items/ItemCard.vue'
 import LoadoutSummary from '~/components/items/LoadoutSummary.vue'
 import { useStartTutorial } from '~/composables/useStartTutorial'
 import { useLoadout } from '~/composables/useLoadout'
+import { ROLE_LABELS } from '~~/shared/constants/world'
 
 useHead({ title: 'Items · TERMINA' })
 
@@ -98,7 +99,7 @@ const {
           :data-testid="`build-role-${r}`"
           @click="buildRole = r"
         >
-          {{ r }}
+          {{ ROLE_LABELS[r] }}
         </button>
       </div>
 

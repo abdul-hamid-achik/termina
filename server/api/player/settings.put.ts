@@ -8,7 +8,11 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Authentication required' })
   }
 
-  const body = await readBody<{ username?: string; selectedAvatar?: string | null }>(event)
+  const body = await readBody<{
+    username?: string
+    selectedAvatar?: string | null
+    email?: string
+  }>(event)
 
   const runtime = getGameRuntime()
   if (!runtime) {
@@ -16,6 +20,28 @@ export default defineEventHandler(async (event) => {
   }
 
   const playerId = session.user.id as string
+
+  // Validate and set the email.
+  //
+  // The settings page told a player with no address "Without one, you can't
+  // recover a forgotten password" and then offered no way to add one — a
+  // dead-end message, which is the same failure as a rejection with no reason.
+  if (body?.email !== undefined) {
+    const email = body.email.trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw createError({ statusCode: 400, message: 'Enter a valid email address' })
+    }
+    if (email.length > 254) {
+      throw createError({ statusCode: 400, message: 'That email address is too long' })
+    }
+    // One address, one account: shared addresses make "reset my password" mean
+    // two different accounts.
+    const existing = await Effect.runPromise(runtime.dbService.getPlayerByEmail(email))
+    if (existing && existing.id !== playerId) {
+      throw createError({ statusCode: 409, message: 'That email is already on another account' })
+    }
+    await Effect.runPromise(runtime.dbService.setPlayerEmail(playerId, email))
+  }
 
   // Validate and update username
   if (body?.username !== undefined) {
