@@ -17,7 +17,7 @@ useHead({ title: 'Dry Run · TERMINA' })
 
 const allHeroes = Object.values(HEROES)
 
-// Deep-link support: /heroes?hero=daemon preselects that hero (e.g. from a lore
+// Deep-link support: /cast?hero=daemon preselects that hero (e.g. from a lore
 // card's TRAIN link), so reading a hero's story flows straight into its kit.
 // Falls back to echo for a missing/unknown id.
 const route = useRoute()

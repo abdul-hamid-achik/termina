@@ -249,7 +249,7 @@ const {
             data-testid="start-tutorial"
             @click="startTutorial"
           />
-          <NuxtLink to="/heroes" class="no-underline">
+          <NuxtLink to="/cast" class="no-underline">
             <AsciiButton label="MEET THE HEROES" variant="ghost" />
           </NuxtLink>
         </footer>

@@ -5,7 +5,7 @@ export type PostureFilter = 'all' | HeroPosture
 export type PlaystyleFilter = 'all' | PlaystyleTag
 
 /**
- * Whether a hero passes the /heroes roster filters — posture AND playstyle,
+ * Whether a hero passes the /cast roster filters — posture AND playstyle,
  * each with an 'all' pass-through. Two independent axes: posture is what a
  * player picks on (B2a), playstyle is how its kit plays (heroPlaystyleTags).
  * Pure so the filtering is unit-tested while the page only wires the controls.

@@ -3,7 +3,7 @@ import type { HeroPosture } from '~~/shared/types/hero'
 /**
  * Display metadata for each posture — the player-facing axis (B2a). What a
  * player picks ON. `role` stays in shared/types/hero.ts for BotManager and
- * itemBuilds; this is the label the draft, the /heroes console and the /lore
+ * itemBuilds; this is the label the draft, the /cast console and the /lore
  * roster lead with.
  */
 export const POSTURE_META: Record<HeroPosture, { label: string; blurb: string }> = {

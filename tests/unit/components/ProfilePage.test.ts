@@ -130,7 +130,7 @@ describe('profile page', () => {
 
   it('links each most-played hero to its training console', async () => {
     const wrapper = await mountProfile()
-    expect(wrapper.find('a[href="/heroes?hero=echo"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="/cast?hero=echo"]').exists()).toBe(true)
   })
 
   it('formats recent matches: friendly mode + perspective result', async () => {

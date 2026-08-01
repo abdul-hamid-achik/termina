@@ -172,7 +172,7 @@ const pillars = [
 
     <!-- ── Where to go ──────────────────────────────────────────── -->
     <section class="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 px-8 text-[0.8rem]">
-      <NuxtLink to="/heroes" class="text-ability no-underline transition-colors hover:text-chaff">
+      <NuxtLink to="/cast" class="text-ability no-underline transition-colors hover:text-chaff">
         &gt; meet the heroes
       </NuxtLink>
       <NuxtLink to="/items" class="text-text-dim no-underline transition-colors hover:text-ability">

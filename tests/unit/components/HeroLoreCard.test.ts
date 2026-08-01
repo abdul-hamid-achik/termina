@@ -84,7 +84,7 @@ describe('HeroLoreCard', () => {
 
   it('links TRAIN to the hero console deep-linked to this hero', () => {
     const wrapper = mountCard({ id: 'daemon', name: 'Daemon', role: 'assassin', posture: 'BREACH' })
-    const link = wrapper.find('a[href="/heroes?hero=daemon"]')
+    const link = wrapper.find('a[href="/cast?hero=daemon"]')
     expect(link.exists()).toBe(true)
     expect(link.text()).toContain('TRAIN')
     expect(link.text()).toContain('DAEMON')

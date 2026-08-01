@@ -57,9 +57,9 @@ defineProps<{
       why the handle: {{ handleRationale }}
     </p>
     <!-- Funnel: read the bio → train this exact hero's kit (deep-links the
-         /heroes console to this operative via ?hero=). -->
+         /cast console to this operator via ?hero=). -->
     <NuxtLink
-      :to="`/heroes?hero=${hero.id}`"
+      :to="`/cast?hero=${hero.id}`"
       class="mt-auto pt-1 text-[0.7rem] text-ability no-underline hover:text-chaff"
       :aria-label="`Train ${hero.name} in the hero console`"
     >

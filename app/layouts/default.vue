@@ -7,7 +7,7 @@ const authStore = useAuthStore()
 const publicNavLinks = [
   { label: 'PLAY', to: '/lobby' },
   { label: 'LEARN', to: '/learn' },
-  { label: 'CAST', to: '/heroes' },
+  { label: 'CAST', to: '/cast' },
   { label: 'ITEMS', to: '/items' },
   { label: 'LORE', to: '/lore' },
   { label: 'LEADERBOARD', to: '/leaderboard' },

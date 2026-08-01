@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import HeroesPage from '~~/app/pages/heroes.vue'
+import CastPage from '~~/app/pages/cast.vue'
 import { HEROES } from '~~/shared/constants/heroes'
 import { getTalentTree, talentUnlockLevel } from '~~/shared/constants/talents'
 import { ULTIMATE_UNLOCK_LEVEL } from '~~/shared/constants/balance'
@@ -32,7 +32,7 @@ afterEach(() => {
 })
 
 function mountHeroes() {
-  return mount(HeroesPage, {
+  return mount(CastPage, {
     global: {
       stubs: {
         NuxtLink: { template: '<a><slot /></a>' },

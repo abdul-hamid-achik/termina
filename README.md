@@ -7,7 +7,7 @@ or queue for ranked when you're ready. Built for players who love MOBA depth but
 want it **accessible and at their own pace** — every command is one keystroke,
 every cycle is a decision.
 
-**▶ Play it live: [www.terminamoba.com](https://www.terminamoba.com)** — or learn first: [meet the heroes](https://www.terminamoba.com/heroes) · [browse items](https://www.terminamoba.com/items) · [learn the commands](https://www.terminamoba.com/learn) · [read the lore](https://www.terminamoba.com/lore)
+**▶ Play it live: [www.terminamoba.com](https://www.terminamoba.com)** — or learn first: [meet the cast](https://www.terminamoba.com/cast) · [browse items](https://www.terminamoba.com/items) · [learn the commands](https://www.terminamoba.com/learn) · [read the lore](https://www.terminamoba.com/lore)
 
 ## 🎮 Features
 

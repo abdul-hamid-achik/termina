@@ -1,13 +1,13 @@
 version: 1
-name: heroes_to_lore_funnel
-intent: The funnel runs both ways — from the /heroes console (deep-linked to
+name: cast_to_lore_funnel
+intent: The funnel runs both ways — from the /cast console (deep-linked to
   Daemon), the "> LORE" link carries you to /lore anchored at that hero's lore
   card.
 mode: normal
 metadata:
-  feature: heroes
+  feature: cast
   tags:
-    - heroes
+    - cast
     - lore
     - public
     - funnel
@@ -24,7 +24,7 @@ outcomes:
         contains: Daemon
 steps:
   - id: open_console_for_daemon
-    open: /heroes?hero=daemon
+    open: /cast?hero=daemon
   - id: wait_for_console
     wait:
       text: DRY RUN
@@ -37,4 +37,4 @@ steps:
     wait:
       text: TERMINA
       timeoutMs: 10000
-contractHash: sha256:42fbe05f3e22887afe40556a328cd66582e5f42a1ab8ca8a60d645509fd2d035
+contractHash: sha256:5cdccad0b6521b709433639f5c280056855a7540d8f64cf934c51ff42613c516

@@ -412,7 +412,7 @@ const concepts = [
 ]
 
 // Posture groups — what a player picks ON (B2a). Same source as the pick
-// screen, /heroes and /lore, so the teaching surface can't drift from the
+// screen, /cast and /lore, so the teaching surface can't drift from the
 // roster it teaches.
 const postureGroups = POSTURE_ORDER.map((posture) => ({
   posture,
@@ -678,7 +678,7 @@ const postureGroups = POSTURE_ORDER.map((posture) => ({
     <!-- Postures -->
     <TerminalPanel title="Postures" title-as="h2">
       <div class="mb-2 border-b border-border pb-2">
-        <span class="text-[0.8rem] text-text-dim">&gt;_ ls /heroes/postures/</span>
+        <span class="text-[0.8rem] text-text-dim">&gt;_ ls /cast/postures/</span>
       </div>
       <div class="grid gap-2 sm:grid-cols-2">
         <div

@@ -120,7 +120,7 @@ export interface HeroDef {
   passive: AbilityDef
   abilities: { q: AbilityDef; w: AbilityDef; e: AbilityDef; r: AbilityDef }
   /**
-   * Authored pick guidance, surfaced on /heroes as a difficulty badge and a
+   * Authored pick guidance, surfaced on /cast as a difficulty badge and a
    * "How to play" block. Required rather than optional: a roster where some
    * cards carry guidance and some don't reads as a bug, and a required field
    * makes a new hero without guidance a compile error instead of a blank card.

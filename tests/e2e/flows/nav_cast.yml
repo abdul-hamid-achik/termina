@@ -1,13 +1,13 @@
 version: 1
-name: nav_heroes
-intent: The public /heroes training console renders a hero's kit + the cast
+name: nav_cast
+intent: The public /cast training console renders a hero's kit + the cast
   console, and casting the Q ability (clicking the Q slot) prints the resolved
   outcome to the terminal log.
 mode: normal
 metadata:
-  feature: heroes
+  feature: cast
   tags:
-    - heroes
+    - cast
     - public
     - training
 outcomes:
@@ -67,8 +67,8 @@ outcomes:
             evidence: picks.length + ' heroes shown; all carry Mobility: ' + allMobility,
           };
 steps:
-  - id: open_heroes
-    open: /heroes
+  - id: open_cast
+    open: /cast
   - id: wait_for_console
     wait:
       text: DRY RUN
@@ -107,4 +107,4 @@ steps:
     wait:
       text: combo landed
       timeoutMs: 10000
-contractHash: sha256:649325ddf85e8a2b1242d93f90dd08d5577d4708fcff4d83339da749bea61882
+contractHash: sha256:5bc5d2be4c94b5daff04e3f10f1524f2af6c1bf42b10f9afa69169824c964833

@@ -57,7 +57,7 @@ function maxBwAt(hero: HeroDef, level: number): number {
 }
 
 /**
- * The /heroes training-console state machine: a safe, offline dry-run of a kit
+ * The /cast training-console state machine: a safe, offline dry-run of a kit
  * (real ability data, cooldowns + bw on the 4s scheduler) resolved against a
  * practice dummy. Extracted from the page so the cast / advance-cycle / DoT /
  * respawn rules are unit-tested — mirroring useLoadout. `hero` and the selected

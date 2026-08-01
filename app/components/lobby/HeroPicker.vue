@@ -165,7 +165,7 @@ watch(
 
 const selectedHeroDef = computed(() => (selectedHero.value ? HEROES[selectedHero.value] : null))
 // Kit-identity tags (Burst/Control/…) for the selected hero — same at-a-glance
-// summary the /heroes console + /lore cards show, brought to the draft.
+// summary the /cast console + /lore cards show, brought to the draft.
 const selectedPlaystyle = computed(() =>
   selectedHeroDef.value ? heroPlaystyleTags(selectedHeroDef.value) : [],
 )
