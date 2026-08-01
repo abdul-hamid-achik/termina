@@ -124,13 +124,20 @@ export function canAttackIce(ice: IceState[], zoneId: string): boolean {
   const tier = zone?.tier ?? getIceTier(zoneId)
   if (tier <= 1) return true // T1 can always be attacked
 
-  // Determine the lane and team from the explicit zone fields (fall back to id parse for safety)
-  const lane =
-    zone?.lane ?? (zoneId.startsWith('top-') ? 'top' : zoneId.startsWith('mid-') ? 'mid' : 'bot')
+  // Route and team come from the zone RECORD, and the preceding zone is looked
+  // up by its fields rather than assembled from them. The old code parsed the id
+  // (`startsWith('top-')`) and then rebuilt one (`${lane}-t${tier}-${team}`),
+  // which silently encoded the id scheme into the ICE-exposure rule: any rename
+  // would have made every T2/T3 permanently attackable — no type error, no
+  // failing test, just a game that no longer has a tower order.
+  const lane = zone?.lane
   const team = target.team
   const precedingTier = tier - 1
-  const precedingZoneId = `${lane}-t${precedingTier}-${team}`
+  const precedingZone = ZONES.find(
+    (z) => z.lane === lane && z.tier === precedingTier && z.team === team,
+  )
+  if (!lane || !precedingZone) return true
 
-  const precedingIce = ice.find((t) => t.zone === precedingZoneId)
+  const precedingIce = ice.find((t) => t.zone === precedingZone.id)
   return !precedingIce || !precedingIce.alive
 }

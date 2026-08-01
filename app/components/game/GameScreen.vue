@@ -1078,11 +1078,10 @@ const buybackInfo = computed(() => {
   }
 })
 
+/** Tier from the zone RECORD — the server's `zones.ts` reads it the same way.
+ *  Substring-matching the id ('t1'/'t2'/'t3') tied this to the id scheme. */
 function getIceTier(zoneId: string): number {
-  if (zoneId.includes('t1')) return 1
-  if (zoneId.includes('t2')) return 2
-  if (zoneId.includes('t3')) return 3
-  return 1
+  return ZONE_MAP[zoneId]?.tier ?? 1
 }
 
 // ── Command handling ───────────────────────────────────────────

@@ -13,6 +13,7 @@
  */
 import type { TerminalState, GameState, TeamId } from '~~/shared/types/game'
 import { TERMINAL_HP } from '~~/shared/constants/balance'
+import { ZONE_MAP } from '~~/shared/constants/zones'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import { scaledTerminalHp } from './fastGame'
 
@@ -54,9 +55,11 @@ export function ensureTerminals(state: GameState): GameState {
   return { ...state, terminals: initializeTerminals() }
 }
 
-/** A team's Terminal is vulnerable once any of its own T3 ice is dead. */
+/** A team's Terminal is vulnerable once any of its own T3 ice is dead.
+ *  Tier comes from the zone record — matching '-t3-' inside the id made the
+ *  win condition itself depend on how zones happen to be named. */
 export function isTerminalVulnerable(state: GameState, team: TeamId): boolean {
-  return state.ice.some((t) => t.team === team && !t.alive && t.zone.includes('-t3-'))
+  return state.ice.some((t) => t.team === team && !t.alive && ZONE_MAP[t.zone]?.tier === 3)
 }
 
 /**

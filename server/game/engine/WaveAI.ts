@@ -9,6 +9,7 @@ import { resolveKineticHit } from './CombatResolver'
 import { awardZoneXp } from './XpDistributor'
 import { resolveTerminalAttack } from './TerminalSystem'
 import { LANE_ROUTES_CORE } from '~~/shared/constants/lanes'
+import { ZONE_MAP } from '~~/shared/constants/zones'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 /** The enemy base zone for a wave team — the end of every lane route. */
@@ -20,13 +21,16 @@ const ENEMY_BASE: Record<TeamId, string> = {
 /** Lane routes: ordered zone sequences from each base toward the enemy base. */
 const LANE_ROUTES = LANE_ROUTES_CORE
 
-/** Determine which lane a wave is on based on its zone. */
+/**
+ * Determine which route a wave is on, from the zone RECORD.
+ *
+ * This used to read the id: `=== 'chaff-base'`, `.includes('fountain')`, then
+ * `startsWith('top-'|'mid-'|'bot-')`. Only route zones carry a `lane`, so bases,
+ * anchors, the Silt and the Hollow fall out as null on their own — and a zone-id
+ * rename can no longer strand every wave at spawn.
+ */
 function getWaveLane(zone: string): string | null {
-  if (zone === 'chaff-base' || zone === 'audit-base' || zone.includes('fountain')) return null
-  if (zone.startsWith('top-')) return 'top'
-  if (zone.startsWith('mid-')) return 'mid'
-  if (zone.startsWith('bot-')) return 'bot'
-  return null
+  return ZONE_MAP[zone]?.lane ?? null
 }
 
 /** Get the next zone for a wave along its lane route. */
