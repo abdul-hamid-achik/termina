@@ -13,9 +13,18 @@ export type Density = 'comfortable' | 'compact'
 
 export interface HudSettings {
   density: Density
+  /**
+   * The situational coach in the STREAM (see app/utils/coach.ts).
+   *
+   * Defaults ON. It exists to get a newcomer from "I can type" to "I can
+   * decide", and it retires each lesson the moment the player demonstrates it —
+   * so for someone who already knows the game it goes quiet on its own within a
+   * match or two rather than needing to be switched off.
+   */
+  coach: boolean
 }
 
-const DEFAULT_HUD: HudSettings = { density: 'comfortable' }
+const DEFAULT_HUD: HudSettings = { density: 'comfortable', coach: true }
 
 function getStorage(): Storage | null {
   if (import.meta.server) return null
@@ -56,6 +65,7 @@ export const useSettingsStore = defineStore('settings', () => {
       if (data.hud && typeof data.hud === 'object') {
         const h = data.hud
         if (h.density === 'comfortable' || h.density === 'compact') hud.value.density = h.density
+        if (typeof h.coach === 'boolean') hud.value.coach = h.coach
       }
     } catch {
       /* ignore corrupt data */

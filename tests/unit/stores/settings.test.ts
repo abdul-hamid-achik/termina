@@ -43,7 +43,7 @@ describe('Settings Store', () => {
         audioEnabled: true,
         audioVolume: 0.5,
         quickCastEnabled: false,
-        hud: { density: 'comfortable' },
+        hud: { density: 'comfortable', coach: true },
       })
     })
 
@@ -59,7 +59,7 @@ describe('Settings Store', () => {
         audioEnabled: false,
         audioVolume: 0.8,
         quickCastEnabled: true,
-        hud: { density: 'comfortable' },
+        hud: { density: 'comfortable', coach: true },
       })
     })
   })
@@ -152,7 +152,7 @@ describe('Settings Store', () => {
   describe('HUD settings (post-R3: density is the only field)', () => {
     it('defaults to comfortable density', () => {
       const store = useSettingsStore()
-      expect(store.hud).toEqual({ density: 'comfortable' })
+      expect(store.hud).toEqual({ density: 'comfortable', coach: true })
     })
 
     it('setHud toggles density', () => {
@@ -172,7 +172,7 @@ describe('Settings Store', () => {
       const reloaded = useSettingsStore()
       reloaded.load()
 
-      expect(reloaded.hud).toEqual({ density: 'compact' })
+      expect(reloaded.hud).toEqual({ density: 'compact', coach: true })
     })
 
     it('a legacy pre-R3 blob (layoutMode/focusBanner/teamPalette/rosterExpanded) loads without throwing and yields the default density', () => {
@@ -195,7 +195,7 @@ describe('Settings Store', () => {
       store.load()
 
       // Only density is honoured; every retired key is ignored, not crash-worthy.
-      expect(store.hud).toEqual({ density: 'compact' })
+      expect(store.hud).toEqual({ density: 'compact', coach: true })
     })
 
     it('keeps HUD defaults when an old payload has no hud key', () => {
@@ -205,7 +205,7 @@ describe('Settings Store', () => {
       store.load()
 
       expect(store.audioEnabled).toBe(false)
-      expect(store.hud).toEqual({ density: 'comfortable' })
+      expect(store.hud).toEqual({ density: 'comfortable', coach: true })
     })
 
     it('ignores a corrupt density value inside a hud blob', () => {

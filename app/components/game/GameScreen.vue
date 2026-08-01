@@ -79,6 +79,16 @@ import { arrowTargetZone } from '~/utils/arrowMove'
 import { computeSituationalActions } from '~/utils/situationalActions'
 import { routeGameKey } from '~/utils/gameKeys'
 import { escalateRejection, resetRejectionEscalation } from '~/utils/rejectionEscalation'
+import {
+  evaluateCoach,
+  newlyLearned,
+  COACH_TIP_IDS,
+  type CoachInput,
+  type CoachLearned,
+  type CoachHistory,
+  type CoachTipId,
+} from '~/utils/coach'
+import { LANE_ROUTES_CORE } from '~~/shared/constants/lanes'
 import { getAbilityBwCost } from '~~/shared/utils/ability'
 import { isTutorialComplete } from '~~/shared/constants/tutorial'
 
@@ -620,6 +630,7 @@ watch(
           if (e.payload.playerId === pid) {
             playSound('scrip')
             pushDamageFloat(Number(e.payload.scripAwarded), 'scrip')
+            coachLastHits.value++
           }
           break
         case 'neutral_killed':
@@ -666,6 +677,9 @@ watch(
           break
         }
         case 'ability_used':
+          // Counted from the ENGINE's event, not from the click: a cast that the
+          // server rejected did not teach the player anything.
+          if (e.payload.playerId === pid) coachCasts.value++
           // The caster's cast cue now fires immediately on send (handleCommand),
           // so here we only react when WE are the target of an enemy ability.
           if (e.payload.targetId === pid && e.payload.playerId !== pid) {
@@ -1429,6 +1443,104 @@ const traceModel = computed(() => {
     visibleZoneIds: gameStore.visibleZoneIds,
   })
 })
+
+// ── The coach ─────────────────────────────────────────────────
+// Situational teaching in the STREAM (see app/utils/coach.ts for why it lives
+// in the feed rather than over it). Everything here is bookkeeping; every
+// DECISION is in the pure module, which is where it is tested.
+const coachLastHits = ref(0)
+const coachCasts = ref(0)
+const coachHistory = ref<CoachHistory>({})
+
+/** What this player has already proved they know, across matches. */
+const coachLearned = ref<CoachLearned>({})
+if (import.meta.client) {
+  try {
+    const raw = localStorage.getItem('termina:coach')
+    if (raw) {
+      const parsed: unknown = JSON.parse(raw)
+      if (parsed && typeof parsed === 'object') {
+        // Only keep ids the current catalogue still has — a renamed tip must not
+        // stay retired forever under its old key.
+        for (const id of COACH_TIP_IDS) {
+          if ((parsed as Record<string, unknown>)[id] === true) coachLearned.value[id] = true
+        }
+      }
+    }
+  } catch {
+    /* private mode — the coach simply starts fresh */
+  }
+}
+
+function rememberLearned(ids: CoachTipId[]) {
+  if (!ids.length) return
+  for (const id of ids) coachLearned.value[id] = true
+  if (import.meta.client) {
+    try {
+      localStorage.setItem('termina:coach', JSON.stringify(coachLearned.value))
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/** The live snapshot the pure evaluator reasons over. */
+const coachInput = computed<CoachInput | null>(() => {
+  const p = gameStore.player
+  if (!p) return null
+  const zone = ZONE_MAP[p.zone]
+  const active = traceModel.value.routes.find((r) => r.active)
+  const zoneWaves = gameStore.waves.filter((c) => c.zone === p.zone && c.integ > 0)
+  const enemyIce = gameStore.ice.find((t) => t.zone === p.zone && t.alive && t.team !== p.team)
+  return {
+    cycle: gameStore.cycle,
+    alive: gameStore.isAlive,
+    hpFraction: p.maxInteg > 0 ? p.integ / p.maxInteg : 0,
+    scrip: p.scrip,
+    level: p.level,
+    lastHits: coachLastHits.value,
+    items: p.items ?? [],
+    inShopZone: zone?.shop === true,
+    onRoute: !!active,
+    hopIndex: active?.depth ?? -1,
+    hopTotal: active?.total ?? 0,
+    enemiesHere: rigEnemyCount.value,
+    alliesHere: Math.max(0, rigAllyHeadcount.value - 1),
+    strippableWaves: zoneWaves.filter(
+      (c) => c.team !== p.team && c.integ / (c.maxInteg || c.integ) <= 0.5,
+    ).length,
+    attackableIce: !!enemyIce,
+    castsMade: coachCasts.value,
+    routeVision: active
+      ? (LANE_ROUTES_CORE[active.route]?.[p.team] ?? []).filter((z) =>
+          gameStore.visibleZoneIds.includes(z),
+        ).length
+      : 0,
+    routeTotal: active?.total ?? 0,
+  }
+})
+
+// One evaluation per cycle. The coach is off by default for anyone who has
+// finished the tutorial — it exists to get a newcomer to competence, not to
+// narrate a veteran's match.
+watch(
+  () => gameStore.cycle,
+  (cycle) => {
+    if (!settings.hud.coach) return
+    const snapshot = coachInput.value
+    if (!snapshot) return
+
+    rememberLearned(newlyLearned(snapshot, coachLearned.value))
+
+    const tip = evaluateCoach(snapshot, coachLearned.value, coachHistory.value)
+    if (!tip) return
+    coachHistory.value = { ...coachHistory.value, [tip.id]: cycle }
+    localEvents.value.push({ cycle, text: tip.text, type: 'system' })
+    if (tip.command) {
+      localEvents.value.push({ cycle, text: `        try:  ${tip.command}`, type: 'system' })
+    }
+  },
+)
 
 // ── [MOVE] picker ────────────────────────────────────────────
 // The same one-tap-to-move list the trace era's picker draws, reachable from the
