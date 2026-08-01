@@ -67,9 +67,13 @@ export const OBJECTIVE_LABELS = {
   },
 } as const
 
+/** Display labels for the two surveillance devices, keyed by the values the
+ *  engine actually emits (`WardState.type` / `WardPlacedEvent.wardType`). These
+ *  used to be keyed `observer`/`sentry` — the Dota ward names — so every lookup
+ *  missed and the feed printed the raw id. */
 export const WARD_LABELS = {
-  observer: 'CAMTAP',
-  sentry: 'SNIFFER',
+  camtap: 'CAMTAP',
+  sniffer: 'SNIFFER',
 } as const
 
 export const ACTION_LABELS = {

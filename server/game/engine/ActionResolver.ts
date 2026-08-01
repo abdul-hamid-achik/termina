@@ -291,7 +291,7 @@ export function validateAction(state: GameState, action: PlayerAction): string |
       if (cdBuff && cdBuff.cyclesRemaining > 0) return 'Item on cooldown'
       return null
     }
-    case 'ward': {
+    case 'tap': {
       if (!areAdjacent(player.zone, cmd.zone) && player.zone !== cmd.zone) {
         return 'Ward zone must be current or adjacent'
       }
@@ -1849,9 +1849,9 @@ function resolvePostShopPhases(
   }
 
   // Ward placement
-  const wardActions = validActions.filter((a) => a.command.type === 'ward')
+  const wardActions = validActions.filter((a) => a.command.type === 'tap')
   for (const action of wardActions) {
-    const cmd = action.command as { type: 'ward'; zone: string }
+    const cmd = action.command as { type: 'tap'; zone: string }
     const player = players[action.playerId]
     if (player) {
       const wardSlot = player.items.findIndex((i) => i === 'camtap' || i === 'sniffer')

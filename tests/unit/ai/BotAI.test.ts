@@ -1760,7 +1760,7 @@ describe('BotAI - warding', () => {
   it('wards the strategic zone the bot is standing in', () => {
     const bot = makePlayer({ zone: 'cache-seawall', items: inv('camtap') })
     expect(tryPlaceWard(makeGameState({ players: { [bot.id]: bot } }), bot)).toEqual({
-      type: 'ward',
+      type: 'tap',
       zone: 'cache-seawall',
     })
   })
@@ -1768,7 +1768,7 @@ describe('BotAI - warding', () => {
   it('wards an adjacent strategic zone (seawall-cross → cache-seawall)', () => {
     const bot = makePlayer({ zone: 'seawall-cross', items: inv('camtap') })
     expect(tryPlaceWard(makeGameState({ players: { [bot.id]: bot } }), bot)).toEqual({
-      type: 'ward',
+      type: 'tap',
       zone: 'cache-seawall',
     })
   })
@@ -1827,7 +1827,7 @@ describe('BotAI - warding', () => {
     const bot = makePlayer({ heroId: 'sentry', zone: 'cache-seawall', items: inv('camtap') })
     const state = makeGameState({ players: { [bot.id]: bot } })
     expect(decideBotAction(state, bot, 'coldstore')).toEqual({
-      type: 'ward',
+      type: 'tap',
       zone: 'cache-seawall',
     })
   })

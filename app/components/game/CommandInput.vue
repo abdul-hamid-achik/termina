@@ -121,7 +121,7 @@ const suggestions = computed<Suggestion[]>(() => {
             { text: 'buy', description: 'Buy an item' },
             { text: 'sell', description: 'Sell an item' },
             { text: 'use', description: 'Use an active item' },
-            { text: 'ward', description: 'Place a ward' },
+            { text: 'tap', description: 'Place a camtap or sniffer' },
             { text: 'scan', description: 'Scan nearby zone' },
             { text: 'status', description: 'Show hero status' },
             { text: 'map', description: 'Show map overview' },
@@ -188,7 +188,7 @@ const preview = computed(() => {
     'use',
     'buy',
     'sell',
-    'ward',
+    'tap',
     'scan',
     'status',
     'map',
@@ -222,7 +222,7 @@ const preview = computed(() => {
       buy: '-- buy: specify an item',
       sell: '-- sell: specify an item',
       use: '-- use: an active item (offensive ones auto-hit the nearest enemy)',
-      ward: '-- ward: specify a zone',
+      tap: '-- tap: specify a zone',
       chat: '-- chat: specify channel (team/all)',
       ping: '-- ping: specify a zone',
       surrender: "-- surrender: type 'surrender confirm' to vote yes",
@@ -280,8 +280,8 @@ const preview = computed(() => {
     return { type: 'valid' as const, text: `>> Use ${item?.name ?? command.item}` }
   }
 
-  if (command.type === 'ward') {
-    return { type: 'valid' as const, text: `>> Place ward in ${command.zone}` }
+  if (command.type === 'tap') {
+    return { type: 'valid' as const, text: `>> Place a tap in ${command.zone}` }
   }
 
   if (command.type === 'buyback') {

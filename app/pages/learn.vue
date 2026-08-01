@@ -208,9 +208,9 @@ const commands = [
     shortcuts: '—',
   },
   {
-    cmd: 'ward <zone>',
-    desc: 'Place a vision ward (current or adjacent zone)',
-    example: 'ward coldstore-cross',
+    cmd: 'tap <zone>',
+    desc: 'Place a camtap or sniffer (current or adjacent zone)',
+    example: 'tap coldstore-cross',
     shortcuts: '—',
   },
   { cmd: 'grab', desc: 'Pick up the cache in your zone', example: 'grab', shortcuts: '—' },
@@ -332,7 +332,7 @@ const concepts = [
   {
     term: 'No Feed',
     icon: '?',
-    desc: 'You have no feed on ground you do not hold. You see your own zone and the zones next to it, your allies, your ice, and anywhere you have a ward. Enemies outside that are not on your screen at all.',
+    desc: 'You have no feed on ground you do not hold. You see your own zone and the zones next to it, your allies, your ice, and anywhere you have a camtap. Enemies outside that are not on your screen at all.',
   },
   {
     term: 'Wave Waves',
@@ -377,7 +377,7 @@ const concepts = [
   {
     term: 'Wards',
     icon: 'o',
-    desc: `CAMTAPs (${wardCost}sc) grant vision of a zone for ${CAMTAP_DURATION_CYCLES} cycles. Max ${WARD_LIMIT_PER_TEAM} active per team. Place with: ward <zone>. Essential for map control.`,
+    desc: `CAMTAPs (${wardCost}sc) grant vision of a zone for ${CAMTAP_DURATION_CYCLES} cycles. Max ${WARD_LIMIT_PER_TEAM} active per team. Place with: tap <zone>. Essential for map control.`,
   },
   {
     term: 'Tenant & Caches',
@@ -641,7 +641,7 @@ const postureGroups = POSTURE_ORDER.map((posture) => ({
       <p class="mb-2 border-b border-border pb-2 text-[0.75rem] leading-relaxed text-text-dim">
         The command prompt takes focus first, and while it has focus it keeps every keystroke —
         that's what lets you type <span class="text-ability">sell</span>,
-        <span class="text-ability">ward</span> or <span class="text-ability">surrender</span>. Press
+        <span class="text-ability">tap</span> or <span class="text-ability">surrender</span>. Press
         <span class="text-ability">Esc</span> on an empty prompt to hand the keyboard to the game:
         the prompt harden changes from <span class="text-ability">&gt;_</span> to
         <span class="text-ability">[KEYS]</span> and the keys below become live. Click the prompt to

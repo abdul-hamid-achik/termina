@@ -113,7 +113,7 @@ describe('AntiCheat', () => {
         },
       })
 
-      const command: Command = { type: 'ward', zone: 'landing-anchor' }
+      const command: Command = { type: 'tap', zone: 'landing-anchor' }
       const violation = validateVision(state, 'p1', command)
       expect(violation).not.toBeNull()
       expect(violation?.violationType).toBe('VISION_BYPASS')
@@ -336,7 +336,7 @@ describe('AntiCheat', () => {
 
       // Generate 3 high violations for p2 (vision bypass)
       for (let i = 0; i < 3; i++) {
-        runAntiCheatChecks(state, 'p2', { type: 'ward', zone: 'landing-anchor' })
+        runAntiCheatChecks(state, 'p2', { type: 'tap', zone: 'landing-anchor' })
       }
 
       // Generate 1 low violation for p3

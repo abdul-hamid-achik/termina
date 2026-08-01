@@ -31,9 +31,9 @@ describe('computeSituationalActions', () => {
   })
 
   it('offers WARD only when carrying a ward item', () => {
-    expect(cmds(baseCtx({ player: player({ items: ['camtap'] }) }))).toContain('ward')
-    expect(cmds(baseCtx({ player: player({ items: ['sniffer'] }) }))).toContain('ward')
-    expect(cmds(baseCtx({ player: player({ items: ['blink_dagger'] }) }))).not.toContain('ward')
+    expect(cmds(baseCtx({ player: player({ items: ['camtap'] }) }))).toContain('tap')
+    expect(cmds(baseCtx({ player: player({ items: ['sniffer'] }) }))).toContain('tap')
+    expect(cmds(baseCtx({ player: player({ items: ['blink_dagger'] }) }))).not.toContain('tap')
   })
 
   it('offers BURN only when a low-INTEG allied wave is in the zone', () => {

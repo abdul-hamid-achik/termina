@@ -78,7 +78,7 @@ describe('world lexicon', () => {
     expect(STRUCTURE_LABELS.terminal).toBe('Terminal')
     expect(OBJECTIVE_LABELS.tenant).toBe('THE TENANT')
     expect(OBJECTIVE_LABELS.backup).toBe('BACKUP')
-    expect(WARD_LABELS).toEqual({ observer: 'CAMTAP', sentry: 'SNIFFER' })
+    expect(WARD_LABELS).toEqual({ camtap: 'CAMTAP', sniffer: 'SNIFFER' })
     expect(ACTION_LABELS).toEqual({ harden: 'HARDEN', burn: 'BURN' })
     expect(CURRENCY.label).toBe('scrip')
   })

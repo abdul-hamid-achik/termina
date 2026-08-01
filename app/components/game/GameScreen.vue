@@ -1451,7 +1451,7 @@ function handleActionRowCommand(cmd: string) {
   if (
     cmd.startsWith('attack ') ||
     cmd === 'burn' ||
-    cmd === 'ward' ||
+    cmd === 'tap' ||
     cmd === 'backup' ||
     cmd === 'grab' ||
     cmd === 'harden' ||
@@ -1552,7 +1552,7 @@ const situationalActions = computed(() =>
 function runSituational(cmd: string) {
   const p = gameStore.player
   if (!p) return
-  if (cmd === 'ward') handleCommand(`ward ${p.zone}`)
+  if (cmd === 'tap') handleCommand(`tap ${p.zone}`)
   else if (cmd === 'surrender') handleCommand('surrender confirm')
   else handleCommand(cmd) // burn / backup / cache / harden — bare commands (auto-resolved)
 }

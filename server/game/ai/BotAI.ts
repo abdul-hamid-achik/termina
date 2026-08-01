@@ -959,7 +959,7 @@ export function tryPlaceWard(state: GameState, bot: PlayerState): Command | null
   for (const zone of STRATEGIC_WARD_ZONES) {
     if (zone !== bot.zone && !areAdjacent(bot.zone, zone)) continue
     if (teamHasWardInZone(state, zone, bot.team)) continue
-    return { type: 'ward', zone }
+    return { type: 'tap', zone }
   }
   return null
 }
@@ -1000,7 +1000,7 @@ function tryPlaceSentryWard(state: GameState, bot: PlayerState): Command | null 
     const hasSentry = (state.zones[zone]?.wards ?? []).some(
       (w) => w.team === bot.team && w.type === 'sniffer',
     )
-    if (!hasSentry) return { type: 'ward', zone }
+    if (!hasSentry) return { type: 'tap', zone }
   }
   return null
 }

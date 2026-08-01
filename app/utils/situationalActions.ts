@@ -58,7 +58,7 @@ export function computeSituationalActions(ctx: SituationalContext): SituationalA
   const out: SituationalAction[] = []
 
   if (p.items.some((i) => i === 'camtap' || i === 'sniffer')) {
-    out.push({ cmd: 'ward', label: 'WARD', aria: `Place a ward in ${p.zone}` })
+    out.push({ cmd: 'tap', label: 'TAP', aria: `Place a camtap in ${p.zone}` })
   }
   const strip = stripTargetString(p, ctx.waves)
   if (strip !== null) {

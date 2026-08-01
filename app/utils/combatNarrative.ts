@@ -16,6 +16,7 @@
 import type { GameEvent } from '~~/shared/types/game'
 import { isStructureTarget, teamLabel, type CombatLine, type Salience } from './combatLog'
 import { buffLabel } from './buffs'
+import { WARD_LABELS } from '~~/shared/constants/world'
 
 export interface NarrativeContext {
   /** The local player's id (for salience). */
@@ -304,7 +305,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
     case 'ward_placed':
       return {
         cycle,
-        text: `${label(p.playerId)} planted a ${str(p.wardType)} ward in ${zname(p.zone)}`,
+        text: `${label(p.playerId)} planted a ${WARD_LABELS[p.wardType as keyof typeof WARD_LABELS] ?? str(p.wardType)} in ${zname(p.zone)}`,
         type: 'system',
         salience: actorSalience(p.playerId, ctx),
       }

@@ -29,7 +29,7 @@ const commandTicker = [
   'attack wave:0',
   'cast q hero:daemon',
   'buy edge_kit',
-  'ward coldstore-cross',
+  'tap coldstore-cross',
   'burn wave:1',
   'attack tenant',
   'cast r',
@@ -41,7 +41,7 @@ const pillars = [
   { n: '01', text: 'You are on a terminal. The terminal is your deck — you type, you do not aim.' },
   { n: '02', text: cycleFrameLine(tickSeconds) },
   { n: '03', text: `${heroCount} operators, four postures: BREACH, HOLD, ROAM, HARDLINE.` },
-  { n: '04', text: 'No feed off ground you do not hold — ward the routes, or move blind.' },
+  { n: '04', text: 'No feed off ground you do not hold — tap the routes, or move blind.' },
 ]
 </script>
 

@@ -15,7 +15,7 @@ export type Command =
   | { type: 'use'; item: string; target?: TargetRef | string }
   | { type: 'buy'; item: string }
   | { type: 'sell'; item: string }
-  | { type: 'ward'; zone: string }
+  | { type: 'tap'; zone: string }
   | { type: 'backup' }
   | { type: 'grab' }
   | { type: 'scan' }

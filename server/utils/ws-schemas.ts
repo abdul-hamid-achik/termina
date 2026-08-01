@@ -34,7 +34,7 @@ export const commandSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('buy'), item: shortId }),
   z.object({ type: z.literal('sell'), item: shortId }),
-  z.object({ type: z.literal('ward'), zone: zoneId }),
+  z.object({ type: z.literal('tap'), zone: zoneId }),
   z.object({ type: z.literal('backup') }),
   z.object({ type: z.literal('grab') }),
   // Trap #9: scan/who/net/look/status/map/help are CLIENT_ONLY (local readouts

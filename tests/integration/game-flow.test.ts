@@ -478,22 +478,22 @@ describe('Game Flow Integration', () => {
     })
 
     it('updates vision when wards are placed', async () => {
-      const gameId = uid('ward')
-      const sm = await startGame(gameId, makePlayers('ward', 1))
+      const gameId = uid('tap')
+      const sm = await startGame(gameId, makePlayers('tap', 1))
 
       const before = await Effect.runPromise(sm.getState(gameId))
-      const viewBefore = filterStateForPlayer(before, 'ward_r0')
+      const viewBefore = filterStateForPlayer(before, 'tap_r0')
       expect(viewBefore.visibleZones).not.toContain('coldstore-t2-audit')
 
       // Walk the warder deep into audit territory carrying an observer ward
       await arrange(sm, gameId, (s) =>
-        setPlayer(s, 'ward_r0', {
+        setPlayer(s, 'tap_r0', {
           zone: 'coldstore-t1-audit',
           items: ['camtap', null, null, null, null, null],
         }),
       )
 
-      submitAction(gameId, 'ward_r0', { type: 'ward', zone: 'coldstore-t2-audit' })
+      submitAction(gameId, 'tap_r0', { type: 'tap', zone: 'coldstore-t2-audit' })
       const result = await runTick(sm, gameId)
 
       expect(
@@ -503,12 +503,12 @@ describe('Game Flow Integration', () => {
       expect(wards).toHaveLength(1)
       expect(wards[0]).toMatchObject({ team: 'chaff', type: 'camtap' })
       // The ward was consumed from the inventory
-      expect(result.state.players['ward_r0']!.items.filter(Boolean)).toHaveLength(0)
+      expect(result.state.players['tap_r0']!.items.filter(Boolean)).toHaveLength(0)
 
       // Send the warder home — the warded zone stays visible to the team
       // purely through the ward (no hero, ice, or ally anywhere near it)
-      const homeState = setPlayer(result.state, 'ward_r0', { zone: 'rookery-anchor' })
-      const viewAfter = filterStateForPlayer(homeState, 'ward_r0')
+      const homeState = setPlayer(result.state, 'tap_r0', { zone: 'rookery-anchor' })
+      const viewAfter = filterStateForPlayer(homeState, 'tap_r0')
       expect(viewAfter.visibleZones).toContain('coldstore-t2-audit')
     })
   })

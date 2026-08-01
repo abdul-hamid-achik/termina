@@ -189,7 +189,7 @@ describe('Balance Constants', () => {
       expect(SNIFFER_DURATION_CYCLES).toBeGreaterThan(0)
     })
 
-    it('ward limit per team is reasonable', () => {
+    it('tap limit per team is reasonable', () => {
       expect(WARD_LIMIT_PER_TEAM).toBeGreaterThanOrEqual(1)
       expect(WARD_LIMIT_PER_TEAM).toBeLessThanOrEqual(10)
     })

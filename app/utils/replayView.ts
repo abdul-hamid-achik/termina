@@ -33,7 +33,7 @@ export function formatReplayCommand(cmd: ReplayCommand): string {
     case 'select_talent':
       return `talent tier${String(cmd['tier'] ?? '?')}`
     case 'place_ward':
-      return `ward ${String(cmd['kind'] ?? '?')} @ ${String(cmd['zone'] ?? '?')}`
+      return `tap ${String(cmd['kind'] ?? '?')} @ ${String(cmd['zone'] ?? '?')}`
     default:
       return cmd.type
   }

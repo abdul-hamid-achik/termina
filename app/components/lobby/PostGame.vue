@@ -212,7 +212,7 @@ const advice = computed((): Advice[] => {
     out.push({
       id: 'next',
       observation: 'Clean game — nothing obvious to fix',
-      command: 'ward coldstore-cross',
+      command: 'tap coldstore-cross',
       detail:
         'Next step up is map control: a camtap on the crossing shows you the enemy before they arrive, which is what turns good farm into won fights.',
     })

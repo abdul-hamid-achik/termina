@@ -192,10 +192,10 @@ describe('useCommands', () => {
           })
         })
 
-        it('applies team relativity to ward and ping too', () => {
+        it('applies team relativity to tap and ping too', () => {
           const { parse } = useCommands()
-          expect(parse('ward terminal', 'audit').command).toEqual({
-            type: 'ward',
+          expect(parse('tap terminal', 'audit').command).toEqual({
+            type: 'tap',
             zone: 'landing-terminal',
           })
           expect(parse('ping anchor', 'audit').command).toEqual({
@@ -241,9 +241,9 @@ describe('useCommands', () => {
           })
         })
 
-        it('reports the ambiguity for ward and ping too', () => {
+        it('reports the ambiguity for tap and ping too', () => {
           const { parse } = useCommands()
-          expect(parse('ward cache').error).toContain('ambiguous')
+          expect(parse('tap cache').error).toContain('ambiguous')
           expect(parse('ping cache').error).toContain('ambiguous')
         })
 
@@ -522,21 +522,21 @@ describe('useCommands', () => {
       })
     })
 
-    describe('ward command', () => {
-      it('parses ward zone', () => {
+    describe('tap command', () => {
+      it('parses tap zone', () => {
         const { parse } = useCommands()
-        const result = parse('ward coldstore-cross')
+        const result = parse('tap coldstore-cross')
 
         expect(result.error).toBeNull()
-        expect(result.command).toEqual({ type: 'ward', zone: 'coldstore-cross' })
+        expect(result.command).toEqual({ type: 'tap', zone: 'coldstore-cross' })
       })
 
       it('returns error without zone', () => {
         const { parse } = useCommands()
-        const result = parse('ward')
+        const result = parse('tap')
 
         expect(result.command).toBeNull()
-        expect(result.error).toContain('Usage: ward')
+        expect(result.error).toContain('Usage: tap')
       })
     })
 
@@ -1587,13 +1587,13 @@ describe('useCommands', () => {
       })
     })
 
-    describe('ward zone completion', () => {
-      it('suggests adjacent zones for ward', () => {
+    describe('tap zone completion', () => {
+      it('suggests adjacent zones for tap', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
           player: makePlayer({ zone: 'coldstore-t1-chaff' }),
         })
-        const suggestions = autocomplete('ward cold', context)
+        const suggestions = autocomplete('tap cold', context)
 
         const texts = suggestions.map((s) => s.text)
         // coldstore-t1-chaff is adjacent to coldstore-t2-chaff and coldstore-cross
@@ -1603,7 +1603,7 @@ describe('useCommands', () => {
       it('ranks an exact alias first when it resolves to an adjacent zone', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({ player: makePlayer({ zone: 'coldstore-t1-chaff' }) })
-        const suggestions = autocomplete('ward coldstore', context)
+        const suggestions = autocomplete('tap coldstore', context)
 
         expect(suggestions[0]?.text).toBe('coldstore')
         expect(suggestions[0]?.description).toContain('Coldstore Crossing')
@@ -1613,7 +1613,7 @@ describe('useCommands', () => {
         const { autocomplete } = useCommands()
         // The fountain touches only the base — coldstore-cross is not wardable here.
         const context = makeContext({ player: makePlayer({ zone: 'rookery-anchor' }) })
-        const suggestions = autocomplete('ward coldstore', context)
+        const suggestions = autocomplete('tap coldstore', context)
 
         expect(suggestions.map((s) => s.text)).not.toContain('coldstore')
       })
@@ -1621,7 +1621,7 @@ describe('useCommands', () => {
       it('falls back to all zones when no player', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({ player: null })
-        const suggestions = autocomplete('ward cold', context)
+        const suggestions = autocomplete('tap cold', context)
 
         expect(suggestions.length).toBeGreaterThan(0)
       })
@@ -2095,7 +2095,7 @@ describe('validateCommand', () => {
   })
 
   it('rejects ward placement in a non-adjacent zone', () => {
-    expect(validateCommand({ type: 'ward', zone: 'landing-terminal' }, makeContext())).toMatch(
+    expect(validateCommand({ type: 'tap', zone: 'landing-terminal' }, makeContext())).toMatch(
       /adjacent/,
     )
   })
@@ -2335,7 +2335,7 @@ describe('informational readouts', () => {
       'attack',
       'cast',
       'buy',
-      'ward',
+      'tap',
       'status',
       'who',
       'net',

@@ -118,7 +118,7 @@ describe('learn page', () => {
       'use <item>',
       'buy <item>',
       'sell <item>',
-      'ward <zone>',
+      'tap <zone>',
     ]) {
       expect(text).toContain(cmd)
     }

@@ -74,7 +74,7 @@ export function validateVision(
   }
 
   // Check ward placement (prevent placing wards in invisible areas)
-  if (command.type === 'ward') {
+  if (command.type === 'tap') {
     const wardZone = command.zone
     if (!areAdjacent(player.zone, wardZone) && player.zone !== wardZone) {
       return createViolation(

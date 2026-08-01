@@ -28,7 +28,7 @@ describe('hero-id collision guard (the ablative_shell law)', () => {
   it('no objective/command word is a hero handle (grab, not cache)', () => {
     // The pickup verb is `grab` BECAUSE `cache` is a hero handle — if anyone
     // reintroduces `cache` (or another handle) as a command word this fails.
-    const commandWords = ['grab', 'ward', 'backup', 'harden', 'buyback', 'surrender', 'burn']
+    const commandWords = ['grab', 'tap', 'backup', 'harden', 'buyback', 'surrender', 'burn']
     for (const word of commandWords) {
       expect(heroes.has(word), `command word "${word}" collides with a hero handle`).toBe(false)
     }

@@ -458,7 +458,7 @@ describe('ActionResolver', () => {
       })
 
       const actions: PlayerAction[] = [
-        { playerId: 'p1', command: { type: 'ward', zone: 'coldstore-cross' } },
+        { playerId: 'p1', command: { type: 'tap', zone: 'coldstore-cross' } },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
@@ -479,7 +479,7 @@ describe('ActionResolver', () => {
       })
 
       const actions: PlayerAction[] = [
-        { playerId: 'p1', command: { type: 'ward', zone: 'coldstore-cross' } },
+        { playerId: 'p1', command: { type: 'tap', zone: 'coldstore-cross' } },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
@@ -502,7 +502,7 @@ describe('ActionResolver', () => {
       })
 
       const actions: PlayerAction[] = [
-        { playerId: 'p1', command: { type: 'ward', zone: 'coldstore-cross' } },
+        { playerId: 'p1', command: { type: 'tap', zone: 'coldstore-cross' } },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
@@ -536,13 +536,13 @@ describe('ActionResolver', () => {
 
       const observerResult = Effect.runSync(
         resolveActions({ ...observerState, cycle }, [
-          { playerId: 'p1', command: { type: 'ward', zone: 'coldstore-cross' } },
+          { playerId: 'p1', command: { type: 'tap', zone: 'coldstore-cross' } },
         ]),
       )
 
       const sentryResult = Effect.runSync(
         resolveActions({ ...sentryState, cycle }, [
-          { playerId: 'p1', command: { type: 'ward', zone: 'coldstore-cross' } },
+          { playerId: 'p1', command: { type: 'tap', zone: 'coldstore-cross' } },
         ]),
       )
 

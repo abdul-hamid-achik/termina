@@ -23,7 +23,7 @@ describe('wards', () => {
       },
     }))
 
-    game.submit({ type: 'ward', zone: 'coldstore-cross' })
+    game.submit({ type: 'tap', zone: 'coldstore-cross' })
     await game.tick()
 
     // The ward is logged, the charge is spent, and a team ward now sits in the zone.
@@ -52,7 +52,7 @@ describe('wards', () => {
     }))
 
     // landing-terminal is across the map from coldstore-cross — out of warding reach.
-    game.submit({ type: 'ward', zone: 'landing-terminal' })
+    game.submit({ type: 'tap', zone: 'landing-terminal' })
     await game.tick()
 
     // No ward placed, the charge is NOT spent, and the player is told why.

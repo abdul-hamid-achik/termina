@@ -41,7 +41,7 @@ describe('formatReplayCommand', () => {
     expect(formatReplayCommand({ type: 'surrender', vote: 'yes' })).toBe('surrender (yes)')
     expect(formatReplayCommand({ type: 'select_talent', tier: 2 })).toBe('talent tier2')
     expect(formatReplayCommand({ type: 'place_ward', kind: 'observer', zone: 'top_jungle' })).toBe(
-      'ward observer @ top_jungle',
+      'tap observer @ top_jungle',
     )
   })
 

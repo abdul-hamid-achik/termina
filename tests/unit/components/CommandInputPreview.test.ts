@@ -129,10 +129,10 @@ describe('CommandInput preview line', () => {
     wrapper.unmount()
   })
 
-  it('renders a ward preview for the current zone', async () => {
+  it('renders a tap preview for the current zone', async () => {
     const wrapper = mountInput(makeShopPlayer({ zone: 'coldstore-cross' }))
-    const preview = await previewFor(wrapper, 'ward coldstore-cross')
-    expect(preview.text()).toContain('>> Place ward in coldstore-cross')
+    const preview = await previewFor(wrapper, 'tap coldstore-cross')
+    expect(preview.text()).toContain('>> Place a tap in coldstore-cross')
     wrapper.unmount()
   })
 

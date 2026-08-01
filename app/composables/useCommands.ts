@@ -371,7 +371,7 @@ export function formatHelpReadout(): string[] {
   return [
     'HELP · type a verb, e.g. `move mid` or `cast q` (most auto-pick a target):',
     '  Fight:   move <zone> · attack <target> · breach <hero|self> · burn · cast <q|w|e|r>',
-    '  Items:   buy <item> · sell <item> · use <item> · ward <zone>',
+    '  Items:   buy <item> · sell <item> · use <item> · tap <zone>',
     '  Info:    status · map · scan · who · net · look · missing <enemy>',
     '  Team:    chat <team|all> <msg> · ping <zone> · surrender confirm',
     '  Special: grab · backup · harden · buyback · talent <tier> <left|right>',
@@ -672,7 +672,7 @@ export function validateCommand(command: Command, context: GameContext): string 
       }
       return null
     }
-    case 'ward': {
+    case 'tap': {
       const zone = ZONE_MAP[player.zone]
       if (!zone) return null
       if (command.zone !== player.zone && !zone.adjacentTo.includes(command.zone)) {
@@ -864,13 +864,13 @@ export function useCommands() {
         return { command: { type: 'sell', item }, error: null }
       }
 
-      case 'ward': {
+      case 'tap': {
         const zone = tokens[1]
-        if (!zone) return { command: null, error: 'Usage: ward <zone>' }
+        if (!zone) return { command: null, error: 'Usage: tap <zone>' }
         const ambiguous = ambiguousZoneError(zone)
         if (ambiguous) return { command: null, error: ambiguous }
         const resolvedZone = resolveZoneAlias(zone, team)
-        return { command: { type: 'ward', zone: resolvedZone }, error: null }
+        return { command: { type: 'tap', zone: resolvedZone }, error: null }
       }
 
       case 'talent': {
@@ -993,7 +993,7 @@ export function useCommands() {
         'use',
         'buy',
         'sell',
-        'ward',
+        'tap',
         'backup',
         'grab',
         'scan',
@@ -1097,7 +1097,7 @@ export function useCommands() {
       return _suggestActiveItems(parts.slice(1).join(' '), context)
     }
 
-    if (baseCmd === 'ward') {
+    if (baseCmd === 'tap') {
       return _suggestAdjacentZones(parts.slice(1).join(' '), context)
     }
 

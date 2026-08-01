@@ -129,7 +129,7 @@ const STATIC_ARIA: Record<string, string> = {
       </button>
     </div>
 
-    <!-- Situational verbs — only when legal, so ward/strip/burn/backup/cache/
+    <!-- Situational verbs — only when legal, so tap/strip/burn/backup/cache/
          harden/surrender are touch-usable and discoverable. -->
     <div
       v-if="situational.length"

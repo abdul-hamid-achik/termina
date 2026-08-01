@@ -473,7 +473,7 @@ describe('GameScreen commands', () => {
       // Mirrors GameLoop's KEEPS_AUTOPATH: warding cancels the walk, so a later
       // relocation (a teleport, already narrated on its own) owes no arrival.
       seedWalkTick('coldstore-cross', 241)
-      await order(wrapper, 'ward coldstore-cross')
+      await order(wrapper, 'tap coldstore-cross')
 
       seedWalkTick('coldstore-t2-chaff', 242)
       await wrapper.vm.$nextTick()

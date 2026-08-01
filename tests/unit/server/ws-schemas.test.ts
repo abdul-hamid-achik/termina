@@ -223,13 +223,13 @@ describe('commandSchema', () => {
     })
   })
 
-  describe('ward', () => {
+  describe('tap', () => {
     it('accepts a valid ward placement', () => {
-      ok(commandSchema, { type: 'ward', zone: 'cross' })
+      ok(commandSchema, { type: 'tap', zone: 'cross' })
     })
     it('rejects empty or oversized zone', () => {
-      bad(commandSchema, { type: 'ward', zone: '' })
-      bad(commandSchema, { type: 'ward', zone: str(65) })
+      bad(commandSchema, { type: 'tap', zone: '' })
+      bad(commandSchema, { type: 'tap', zone: str(65) })
     })
   })
 

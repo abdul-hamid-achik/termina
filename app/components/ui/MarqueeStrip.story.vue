@@ -6,7 +6,7 @@ const commands = [
   'attack wave:0',
   'cast q hero:daemon',
   'buy edge_kit',
-  'ward coldstore-cross',
+  'tap coldstore-cross',
   'attack tenant',
 ]
 const short = ['alpha', 'beta', 'gamma']

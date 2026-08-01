@@ -171,7 +171,7 @@ describe('CommandInput', () => {
       ['buy', 'specify an item'],
       ['sell', 'specify an item'],
       ['use', 'active item'],
-      ['ward', 'specify a zone'],
+      ['tap', 'specify a zone'],
       ['chat', 'specify channel'],
       ['ping', 'specify a zone'],
       ['surrender', 'surrender confirm'],
@@ -268,7 +268,7 @@ describe('CommandInput', () => {
    * REGRESSION: the Enter path used to re-fill the input with a completion that
    * was byte-identical to what was already typed, so `cast q` — the tutorial's
    * literal instruction — could never be submitted; and when the typed text was
-   * itself a suggestion it accepted a longer neighbour instead (`w` → `ward`,
+   * itself a suggestion it accepted a longer neighbour instead (`w` → `tap`,
    * `r` → `cache`), hijacking two ability shortcuts including the ultimate.
    *
    * These drive the component the way a player does — `input.setValue()` and a
@@ -304,7 +304,7 @@ describe('CommandInput', () => {
       expect(wrapper.emitted('submit')?.[0]).toEqual(['surrender confirm'])
     })
 
-    it('submits `w` as the W shortcut, not the `ward` suggestion above it', async () => {
+    it('submits `w` as the W shortcut, not the `tap` suggestion above it', async () => {
       const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
       const input = await typeAndEnter(wrapper, 'w')
       expect(wrapper.emitted('submit')?.[0]).toEqual(['w'])
@@ -317,7 +317,7 @@ describe('CommandInput', () => {
       expect(wrapper.emitted('submit')?.[0]).toEqual(['r'])
     })
 
-    it('previews `w` as the cast it performs, not as a half-typed `ward`', async () => {
+    it('previews `w` as the cast it performs, not as a half-typed `tap`', async () => {
       const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
       await wrapper.find('input').setValue('w')
       expect(wrapper.get('[data-testid="command-preview"]').text()).toContain('Cast W')
@@ -429,7 +429,7 @@ describe('CommandInput', () => {
   describe('unchanged deliberate behaviour', () => {
     // Both of these are load-bearing, not oversights: the refocus is a
     // pre-typing affordance, and swallowing single letters on an empty prompt
-    // would make `sell`, `ward`, `scan` and `surrender` untypable.
+    // would make `sell`, `tap`, `scan` and `surrender` untypable.
     it('refocuses the prompt after a successful send', async () => {
       const wrapper = mount(CommandInput, { props: { canAct: true }, attachTo: document.body })
       const input = wrapper.find('input')
@@ -450,7 +450,7 @@ describe('CommandInput', () => {
       const input = wrapper.find('input').element
 
       // `s` (shop), `w`/`r` (abilities) and `1` (item slot) must still type:
-      // `sell`, `ward`, `cache` and `1` as an argument all start with them.
+      // `sell`, `tap`, `cache` and `1` as an argument all start with them.
       for (const key of ['s', 'w', 'r', '1']) {
         const event = new KeyboardEvent('keydown', { key, cancelable: true, bubbles: true })
         input.dispatchEvent(event)

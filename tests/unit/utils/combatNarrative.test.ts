@@ -227,11 +227,14 @@ describe('eventToLine: previously-orphaned events get real text', () => {
           playerId: 'me',
           zone: 'coldstore-cross',
           team: 'chaff',
-          wardType: 'observer',
+          wardType: 'camtap',
         }),
         ctx,
       )!.text,
-    ).toContain('ward')
+      // The device's display label, not the raw wardType — WARD_LABELS was keyed
+      // observer/sentry while the engine emits camtap/sniffer, so every lookup
+      // missed and the feed printed the raw id.
+    ).toContain('CAMTAP')
   })
   it('confirms item buys and sells with the scrip delta', () => {
     const buy = eventToLine(
@@ -653,7 +656,7 @@ describe('narration drift guard', () => {
     waveType: 'line',
     neutralType: 'stub',
     cacheType: 'haste',
-    wardType: 'observer',
+    wardType: 'camtap',
     damageType: 'kinetic',
     integ: 100,
     maxInteg: 200,

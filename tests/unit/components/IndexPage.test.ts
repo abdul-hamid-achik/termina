@@ -74,10 +74,10 @@ describe('index (landing) page', () => {
     expect(text).not.toContain('scan')
   })
 
-  it('teaches no feed and warding', () => {
+  it('teaches no feed and tapping the routes', () => {
     // Reworded freely over time; assert the concept is present, not the phrasing.
     expect(mountIndex().text().toLowerCase()).toMatch(/no feed/)
-    expect(mountIndex().text().toLowerCase()).toMatch(/ward/)
+    expect(mountIndex().text().toLowerCase()).toMatch(/\btap/)
   })
 
   it('names every hero in the roster ticker, straight from the registry', () => {
