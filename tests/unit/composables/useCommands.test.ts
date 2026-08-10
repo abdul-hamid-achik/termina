@@ -346,7 +346,7 @@ describe('useCommands', () => {
         })
       })
 
-      it('parses attack neutral:<index> as a global neutrals index', () => {
+      it('parses attack neutral:<index> as a zone-local neutrals index', () => {
         const { parse } = useCommands()
         const result = parse('attack neutral:3')
 
@@ -1220,10 +1220,10 @@ describe('useCommands', () => {
         expect(suggestions).toEqual([])
       })
 
-      // The offered index must be the position in the whole neutrals array.
-      // Re-indexing the in-zone survivors would send the attack at the camp
-      // sitting at that position in some other silt.
-      it('suggests in-zone neutrals by their global index', () => {
+      // The offered index is ZONE-local (mirrors wave suggestions): it counts
+      // camps within the player's own zone only, in server order — a camp in
+      // a different silt does not occupy a slot in this numbering.
+      it('suggests in-zone neutrals by their zone-local index', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
           neutrals: [
@@ -1263,7 +1263,11 @@ describe('useCommands', () => {
         })
         const suggestions = autocomplete('attack neutral', context)
 
-        expect(suggestions.map((s) => s.text)).toEqual(['neutral:2'])
+        // n2/n3 are the two camps in the player's zone (coldstore-t1-chaff),
+        // at zone-local positions 0 and 1; n3 is dead and skipped, leaving
+        // only n2 at index 0. n0/n1 (a different silt) never enter this
+        // zone's numbering.
+        expect(suggestions.map((s) => s.text)).toEqual(['neutral:0'])
         expect(suggestions[0]!.description).toContain('warden')
       })
 
@@ -2039,7 +2043,7 @@ describe('validateCommand', () => {
     expect(validateCommand({ type: 'attack', target: { kind: 'tenant' } }, ctx)).toBeNull()
   })
 
-  it('rejects a neutral index that names a camp in another zone', () => {
+  it('resolves the neutral index zone-locally — a camp in another zone occupies no slot', () => {
     const ctx = makeContext({
       neutrals: [
         {
@@ -2052,7 +2056,7 @@ describe('validateCommand', () => {
         },
         {
           id: 'n1',
-          zone: 'coldstore-t1-chaff',
+          zone: 'coldstore-t1-chaff', // the default player's zone (see makePlayer)
           integ: 150,
           maxInteg: 200,
           type: 'stub',
@@ -2060,12 +2064,15 @@ describe('validateCommand', () => {
         },
       ],
     })
-    expect(validateCommand({ type: 'attack', target: { kind: 'neutral', index: 0 } }, ctx)).toMatch(
-      /not in your zone/,
-    )
+    // n0 sits in another zone and is skipped entirely when counting — index 0
+    // lands on n1, the only camp in the player's own zone, and is allowed.
     expect(
-      validateCommand({ type: 'attack', target: { kind: 'neutral', index: 1 } }, ctx),
+      validateCommand({ type: 'attack', target: { kind: 'neutral', index: 0 } }, ctx),
     ).toBeNull()
+    // There is no second camp in-zone, so index 1 is simply out of range.
+    expect(validateCommand({ type: 'attack', target: { kind: 'neutral', index: 1 } }, ctx)).toMatch(
+      /No neutral wave at index 1/,
+    )
   })
 
   it('rejects a neutral index with no camp behind it', () => {

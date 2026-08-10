@@ -92,19 +92,26 @@ export function distributePassiveScrip(state: GameState): GameState {
   return { ...state, players: updatedPlayers }
 }
 
+/** The full strip payload for one wave unit. Exported so the shared-strip path
+ * in ActionResolver splits exactly the number awardLastHit pays whole. */
+export function waveStripScrip(waveType: 'line' | 'sweep' | 'breach'): number {
+  return waveType === 'breach' ? BREACH_UNIT_SCRIP : WAVE_SCRIP
+}
+
 /** Award scrip for a last-hit on a wave. Line/Sweep: WAVE_SCRIP (fixed, no
- * RNG), Breach: BREACH_UNIT_SCRIP. */
+ * RNG), Breach: BREACH_UNIT_SCRIP. `amount` overrides the payload when a strip
+ * is shared by several same-cycle lethal swings and each claimant takes a
+ * split share. */
 export function awardLastHit(
   state: GameState,
   playerId: string,
   waveType: 'line' | 'sweep' | 'breach',
+  amount?: number,
 ): GameState {
   const player = state.players[playerId]
   if (!player) return state
 
-  const scrip = waveType === 'breach' ? BREACH_UNIT_SCRIP : WAVE_SCRIP
-
-  return updatePlayerGold(state, playerId, scrip)
+  return updatePlayerGold(state, playerId, amount ?? waveStripScrip(waveType))
 }
 
 // (Removed `awardDeny` — dead duplicate: resolveActions computes burn scrip

@@ -322,6 +322,108 @@ describe('VisionCalculator', () => {
       expect(filtered.waves.find((c) => c.id === 'c2')).toBeDefined()
     })
 
+    // Fog-of-war parity for Silt dwellers: neutrals used to be broadcast in
+    // full regardless of vision (`state.neutrals ?? []`, with a stale "public
+    // info" comment). They must now respect fog exactly like waves.
+    it('should not reveal neutrals in fogged zones', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'rookery-anchor' }),
+        },
+        neutrals: [
+          {
+            id: 'n1',
+            zone: 'landing-anchor',
+            integ: 200,
+            maxInteg: 200,
+            type: 'stub',
+            alive: true,
+          },
+          {
+            id: 'n2',
+            zone: 'rookery-terminal',
+            integ: 200,
+            maxInteg: 200,
+            type: 'stub',
+            alive: true,
+          },
+        ],
+      })
+
+      const filtered = filterStateForPlayer(state, 'p1')
+      // n1 in landing-anchor (enemy territory, not visible) should be hidden
+      expect(filtered.neutrals.find((n) => n.id === 'n1')).toBeUndefined()
+      // n2 in rookery-terminal (own base, always lit) should be visible
+      expect(filtered.neutrals.find((n) => n.id === 'n2')).toBeDefined()
+    })
+
+    it('shows a neutral standing in the player’s own zone and in an adjacent visible zone', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-cross' }),
+        },
+        neutrals: [
+          // Own zone — always visible.
+          {
+            id: 'n-own',
+            zone: 'coldstore-cross',
+            integ: 200,
+            maxInteg: 200,
+            type: 'stub',
+            alive: true,
+          },
+          // coldstore-t1-chaff is adjacent to coldstore-cross (see the
+          // 'should include current zone and adjacent zones' test above).
+          {
+            id: 'n-adjacent',
+            zone: 'coldstore-t1-chaff',
+            integ: 200,
+            maxInteg: 200,
+            type: 'watchdog',
+            alive: true,
+          },
+        ],
+      })
+
+      const filtered = filterStateForPlayer(state, 'p1')
+      expect(filtered.neutrals.find((n) => n.id === 'n-own')).toBeDefined()
+      expect(filtered.neutrals.find((n) => n.id === 'n-adjacent')).toBeDefined()
+    })
+
+    it('reveals a fogged neutral camp through camtap/sniffer ward vision, mirroring waves', () => {
+      const zones = initializeZoneStates()
+      zones['landing-terminal']!.wards.push({
+        team: 'chaff',
+        placedTick: 0,
+        expiryTick: 100,
+        type: 'camtap',
+      })
+
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'rookery-anchor' }),
+        },
+        zones,
+        waves: [{ id: 'c1', team: 'audit', zone: 'landing-terminal', integ: 400, type: 'line' }],
+        neutrals: [
+          {
+            id: 'n1',
+            zone: 'landing-terminal',
+            integ: 200,
+            maxInteg: 200,
+            type: 'warden',
+            alive: true,
+          },
+        ],
+      })
+
+      const filtered = filterStateForPlayer(state, 'p1')
+      // The ward lights the zone for both — a wave and a neutral camp behave
+      // identically under the same vision set.
+      expect(filtered.waves.find((c) => c.id === 'c1')).toBeDefined()
+      expect(filtered.neutrals.find((n) => n.id === 'n1')).toBeDefined()
+    })
+
     it('should not reveal enemy wards in fogged zones', () => {
       const zones = initializeZoneStates()
       zones['landing-terminal']!.wards.push({

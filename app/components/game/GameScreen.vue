@@ -1047,14 +1047,15 @@ const zoneWaves = computed(() =>
   gameStore.waves.filter((c) => c.zone === playerZone.value).map((c, index) => ({ ...c, index })),
 )
 
-// Neutrals in the player's zone, tagged with their GLOBAL index. Unlike waves
-// the server resolves `attack neutral:<index>` against the whole neutrals array
-// (it reaches the client unfiltered), so the index must be taken before the
-// zone filter — re-indexing the survivors would attack a different camp.
+// Neutrals in the player's zone, tagged with their zone-local index (Nth camp
+// in this zone) — same convention as zoneWaves above: neutrals are now
+// vision-filtered before broadcast, so the index must come from position
+// within the zone, not the (fog-filtered) global array.
 const zoneNeutrals = computed(() =>
   gameStore.neutrals
+    .filter((n) => n.zone === playerZone.value)
     .map((n, index) => ({ ...n, index }))
-    .filter((n) => n.zone === playerZone.value && n.alive),
+    .filter((n) => n.alive),
 )
 
 /** Tenant, but only where he can actually be fought (and only while alive). */

@@ -45,7 +45,7 @@ import { HEROES } from '~~/shared/constants/heroes'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import { applyBuff, isBreached, hasBuff, isHardControlBuffId } from '~~/server/game/heroes/_base'
 import { buyItem, sellItem, useItem } from '~~/server/game/items/shop'
-import { awardLastHit, awardIceKill } from './ScripDistributor'
+import { awardLastHit, awardIceKill, waveStripScrip } from './ScripDistributor'
 import { pickupBackup } from './TenantAI'
 import { pickupCache } from './CacheAI'
 import { resolveTerminalAttack, TERMINAL_ZONES } from './TerminalSystem'
@@ -150,6 +150,29 @@ function waveInZoneByIndex(
     const c = waves[i]!
     if (c.zone !== zone) continue
     if (seen === index) return { wave: c, globalIdx: i }
+    seen++
+  }
+  return null
+}
+
+/**
+ * Resolve a zone-local neutral index to the camp and its global array index —
+ * mirrors `waveInZoneByIndex` for the same reason. `state.neutrals` is now
+ * vision-filtered before broadcast (Silt camps respect fog like waves), so a
+ * client-side GLOBAL index would name a different camp than the one it
+ * showed. Filtering preserves order, so "Nth camp in this zone" is identical
+ * for client and server.
+ */
+function neutralInZoneByIndex(
+  neutrals: SiltDwellerState[],
+  zone: string,
+  index: number,
+): { neutral: SiltDwellerState; globalIdx: number } | null {
+  let seen = 0
+  for (let i = 0; i < neutrals.length; i++) {
+    const n = neutrals[i]!
+    if (n.zone !== zone) continue
+    if (seen === index) return { neutral: n, globalIdx: i }
     seen++
   }
   return null
@@ -616,14 +639,21 @@ function resolveDenyPhase(
   const burns = validActions.filter((a) => a.command.type === 'burn')
   let playerUpdates: PlayerUpdates = {}
 
+  // Burns resolve against the waves as they stood when the phase OPENED — the
+  // batch clock is canon, so two same-cycle burns on one unit are simultaneous
+  // and share the deny payload, instead of arrival order paying the first in
+  // full and eating the second's cycle in silence.
+  const wavesAtPhaseStart = [...waves]
+  const burnGroups = new Map<string, { wave: WaveUnitState; burnerIds: string[] }>()
+
   for (const action of burns) {
     const cmd = action.command as { type: 'burn'; target: { kind: 'wave'; index: number } }
     const denier = players[action.playerId]
     if (!denier || !denier.alive) continue
 
-    const resolved = waveInZoneByIndex(waves, denier.zone, cmd.target.index)
+    const resolved = waveInZoneByIndex(wavesAtPhaseStart, denier.zone, cmd.target.index)
     if (!resolved) continue
-    const { wave, globalIdx: waveIdx } = resolved
+    const { wave } = resolved
     if (wave.integ <= 0) continue
 
     if (wave.team !== denier.team) continue
@@ -634,23 +664,43 @@ function resolveDenyPhase(
     // right. Fall back to the cycle-0 base for fixtures that omit maxInteg.
     if (wave.integ > (wave.maxInteg ?? waveUnitMaxHp(wave.type, 0)) * BURN_HP_THRESHOLD) continue
 
-    waves[waveIdx] = { ...wave, integ: 0 }
+    const group = burnGroups.get(wave.id) ?? { wave, burnerIds: [] }
+    group.burnerIds.push(action.playerId)
+    burnGroups.set(wave.id, group)
+  }
 
-    const burnGold = Math.floor(((WAVE_SCRIP_MIN + WAVE_SCRIP_MAX) / 2) * BURN_SCRIP_RATIO)
-    playerUpdates[action.playerId] = {
-      ...playerUpdates[action.playerId],
-      scrip: denier.scrip + burnGold,
-      xp: denier.xp + Math.floor(WAVE_XP * BURN_XP_RATIO),
+  // Groups and burners iterate sorted so the outcome — including remainder
+  // pennies — is identical under any permutation of the cycle's actions.
+  for (const [waveId, group] of [...burnGroups.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const liveIdx = waves.findIndex((w) => w.id === waveId)
+    const live = waves[liveIdx]
+    if (live) {
+      waves[liveIdx] = { ...live, integ: 0 }
     }
 
-    events.push({
-      _tag: 'wave_burn',
-      cycle,
-      playerId: action.playerId,
-      waveId: wave.id,
-      waveType: wave.type,
-      scripAwarded: burnGold,
-    })
+    const burners = [...group.burnerIds].sort()
+    const burnGold = Math.floor(((WAVE_SCRIP_MIN + WAVE_SCRIP_MAX) / 2) * BURN_SCRIP_RATIO)
+    const burnXp = Math.floor(WAVE_XP * BURN_XP_RATIO)
+    for (const [i, playerId] of burners.entries()) {
+      const denier = players[playerId]
+      if (!denier) continue
+      const scripShare =
+        Math.floor(burnGold / burners.length) + (i < burnGold % burners.length ? 1 : 0)
+      playerUpdates[playerId] = {
+        ...playerUpdates[playerId],
+        scrip: denier.scrip + scripShare,
+        xp: denier.xp + Math.floor(burnXp / burners.length),
+      }
+
+      events.push({
+        _tag: 'wave_burn',
+        cycle,
+        playerId,
+        waveId,
+        waveType: group.wave.type,
+        scripAwarded: scripShare,
+      })
+    }
   }
   return { players: applyPlayerUpdates(players, playerUpdates), waves }
 }
@@ -709,6 +759,18 @@ function resolveAttackPhase(
       entry.enemy = true // audit has cuirass in this zone
     }
   }
+
+  // THE BATCH CLOCK IS CANON: every wave swing in a cycle resolves against the
+  // waves as they stood when the phase OPENED, never against what an earlier
+  // iteration of this loop already applied — arrival order within a cycle must
+  // not decide who collects a strip. Wave entries are replaced immutably, so a
+  // shallow copy pins the phase-start refs; swings batch here and land after
+  // the loop, once per unit.
+  const wavesAtPhaseStart = [...waves]
+  const waveAttackGroups = new Map<
+    string,
+    { wave: WaveUnitState; attackers: Array<{ playerId: string; damage: number }> }
+  >()
 
   for (const action of attacks) {
     const cmd = action.command as { type: 'attack'; target: TargetRef }
@@ -1024,12 +1086,12 @@ function resolveAttackPhase(
         })
       }
     } else if (cmd.target.kind === 'wave') {
-      const resolved = waveInZoneByIndex(waves, attacker.zone, cmd.target.index)
+      const resolved = waveInZoneByIndex(wavesAtPhaseStart, attacker.zone, cmd.target.index)
       if (!resolved) {
         // Count the same index space waveInZoneByIndex walks (every wave in
         // the zone, dead-but-unreaped included) so the quoted range is the one
         // the player can actually type this cycle.
-        const wavesInZone = waves.filter((c) => c.zone === attacker.zone).length
+        const wavesInZone = wavesAtPhaseStart.filter((c) => c.zone === attacker.zone).length
         miss(
           wavesInZone === 0
             ? 'No waves in this zone to attack'
@@ -1039,7 +1101,7 @@ function resolveAttackPhase(
         )
         continue
       }
-      const { wave, globalIdx: waveIdx } = resolved
+      const { wave } = resolved
       if (wave.integ <= 0) {
         miss('That wave is already dead')
         continue
@@ -1055,31 +1117,12 @@ function resolveAttackPhase(
       const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
       const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
 
-      // The strip: a unit already down to STRIP_HP_THRESHOLD of its spawn
-      // INTEG goes down to the swing regardless of what the swing was worth.
-      // Same shape as `burn` on the deny side — see STRIP_HP_THRESHOLD for why
-      // this is a threshold and not a damage number.
-      const spawnInteg = wave.maxInteg ?? waveUnitMaxHp(wave.type, 0)
-      const stripped = wave.integ <= spawnInteg * STRIP_HP_THRESHOLD
-      const newInteg = stripped ? 0 : Math.max(0, wave.integ - attackDamage)
-
-      waves[waveIdx] = { ...wave, integ: newInteg }
-      holdTarget()
-
-      if (newInteg <= 0) {
-        waveKills.push({ playerId: action.playerId, waveId: wave.id, waveType: wave.type })
-      }
-
-      events.push({
-        _tag: 'damage',
-        cycle: state.cycle,
-        sourceId: action.playerId,
-        targetId: wave.id,
-        // A strip takes whatever was left, so the feed shows the real number
-        // rather than an attack stat that had nothing to do with it.
-        amount: stripped ? wave.integ : attackDamage,
-        damageType: 'kinetic',
-      })
+      // Swings batch per unit and land after this loop against the snapshot.
+      // holdTarget() is deliberately absent — waves never hold (last-hitting
+      // is a timing decision, see holdTarget).
+      const group = waveAttackGroups.get(wave.id) ?? { wave, attackers: [] }
+      group.attackers.push({ playerId: action.playerId, damage: attackDamage })
+      waveAttackGroups.set(wave.id, group)
     } else if (cmd.target.kind === 'ice') {
       const targetZone = cmd.target.zone
       let iceTarget = ice.find((t) => t.zone === targetZone && t.alive)
@@ -1155,18 +1198,17 @@ function resolveAttackPhase(
         damageType: 'kinetic',
       })
     } else if (cmd.target.kind === 'neutral') {
-      const neutralIdx = cmd.target.index
-      const neutral = neutrals[neutralIdx]
-      if (!neutral) {
+      // Zone-local index, mirroring the 'wave' branch above: neutrals are now
+      // vision-filtered before broadcast (fog parity with waves), so a global
+      // array index would name a different camp than the one the client saw.
+      const resolved = neutralInZoneByIndex(neutrals, attacker.zone, cmd.target.index)
+      if (!resolved) {
         miss('No neutral wave at that index')
         continue
       }
+      const { neutral, globalIdx: neutralIdx } = resolved
       if (!neutral.alive) {
         miss('That neutral is already dead')
-        continue
-      }
-      if (neutral.zone !== attacker.zone) {
-        miss('Target is not in your zone')
         continue
       }
 
@@ -1225,6 +1267,58 @@ function resolveAttackPhase(
       // for an attack but no branch above handles — without this they fall off
       // the end of the chain and eat the cycle in silence.
       miss(`You cannot attack a ${cmd.target.kind}`)
+    }
+  }
+
+  // Resolve the batched wave swings once per unit against the phase-start
+  // snapshot. Who gets the strip when several land the same cycle:
+  //   - inside the strip window every swing is lethal — all of them claim;
+  //   - otherwise any single swing >= remaining INTEG claims (ties share);
+  //   - a unit downed only by the cycle's combined damage credits every hand.
+  // The payload split itself happens where waveKills is paid out. Groups and
+  // attackers iterate sorted so events, kills and remainder pennies are
+  // identical under any permutation of the same cycle's actions.
+  for (const [waveId, group] of [...waveAttackGroups.entries()].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    const wave = group.wave
+    const attackers = [...group.attackers].sort((a, b) => a.playerId.localeCompare(b.playerId))
+    // The strip: a unit already down to STRIP_HP_THRESHOLD of its spawn
+    // INTEG goes down to the swing regardless of what the swing was worth.
+    // Same shape as `burn` on the deny side — see STRIP_HP_THRESHOLD for why
+    // this is a threshold and not a damage number.
+    const spawnInteg = wave.maxInteg ?? waveUnitMaxHp(wave.type, 0)
+    const windowOpen = wave.integ <= spawnInteg * STRIP_HP_THRESHOLD
+    const totalDamage = attackers.reduce((sum, a) => sum + a.damage, 0)
+    const lethal = windowOpen ? attackers : attackers.filter((a) => a.damage >= wave.integ)
+    const goesDown = windowOpen || totalDamage >= wave.integ
+    const strippers = lethal.length > 0 ? lethal : goesDown ? attackers : []
+    const newInteg = goesDown ? 0 : wave.integ - totalDamage
+
+    const liveIdx = waves.findIndex((w) => w.id === waveId)
+    const live = waves[liveIdx]
+    if (live) {
+      waves[liveIdx] = { ...live, integ: newInteg }
+    }
+
+    for (const [i, a] of attackers.entries()) {
+      events.push({
+        _tag: 'damage',
+        cycle: state.cycle,
+        sourceId: a.playerId,
+        targetId: wave.id,
+        // A strip takes whatever was left, so the feed shows the real number
+        // (each claimant's split of it) rather than an attack stat that had
+        // nothing to do with it.
+        amount: windowOpen
+          ? Math.floor(wave.integ / attackers.length) + (i < wave.integ % attackers.length ? 1 : 0)
+          : a.damage,
+        damageType: 'kinetic',
+      })
+    }
+
+    for (const s of strippers) {
+      waveKills.push({ playerId: s.playerId, waveId, waveType: wave.type })
     }
   }
 
@@ -1765,33 +1859,56 @@ function resolvePostShopPhases(
     }
   }
 
-  // Wave last-hit scrip + XP
+  // Wave last-hit scrip + XP. Kills are grouped per unit: a strip that several
+  // same-cycle swings were lethal for is ONE down shared by its claimants —
+  // the payload and the last-hit XP split evenly (remainder pennies to the
+  // sorted-first claimants), and the zone share pays once, excluding every
+  // claimant. Sorted iteration keeps the outcome identical under any
+  // permutation of the cycle's actions.
+  const killsByWave = new Map<
+    string,
+    { waveType: 'line' | 'sweep' | 'breach'; playerIds: string[] }
+  >()
   for (const kill of waveKills) {
-    const tempState: GameState = { ...state, players, waves, ice }
-    const scripBefore = players[kill.playerId]?.scrip ?? 0
-    const awarded = awardLastHit(tempState, kill.playerId, kill.waveType)
-    players = { ...awarded.players }
-    const killer = players[kill.playerId]
-    if (killer) {
-      players = { ...players, [kill.playerId]: { ...killer, xp: killer.xp + WAVE_XP } }
+    const entry = killsByWave.get(kill.waveId) ?? { waveType: kill.waveType, playerIds: [] }
+    if (!entry.playerIds.includes(kill.playerId)) entry.playerIds.push(kill.playerId)
+    killsByWave.set(kill.waveId, entry)
+  }
+  for (const [waveId, { waveType, playerIds }] of [...killsByWave.entries()].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    const claimants = [...playerIds].sort()
+    const payload = waveStripScrip(waveType)
+    const xpShare = Math.floor(WAVE_XP / claimants.length)
+    for (const [i, playerId] of claimants.entries()) {
+      const scripShare =
+        Math.floor(payload / claimants.length) + (i < payload % claimants.length ? 1 : 0)
+      const tempState: GameState = { ...state, players, waves, ice }
+      players = { ...awardLastHit(tempState, playerId, waveType, scripShare).players }
+      const killer = players[playerId]
+      if (!killer) continue
+      players = { ...players, [playerId]: { ...killer, xp: killer.xp + xpShare } }
       // The reward line the feed shows ("last-hit +38g") — this event existed in
       // the protocol but was never emitted, so the player's own farming was the
       // one thing the combat log stayed silent about.
       events.push({
         _tag: 'wave_strip',
         cycle: state.cycle,
-        playerId: kill.playerId,
-        waveId: kill.waveId,
-        waveType: kill.waveType,
-        scripAwarded: killer.scrip - scripBefore,
+        playerId,
+        waveId,
+        waveType,
+        scripAwarded: scripShare,
       })
-      // Lane-mates standing here share a fraction. XP used to come exclusively
-      // from last-hits, so a laner who mistimed their attacks earned literally
-      // nothing and fell five levels behind. The last-hitter still keeps the
-      // full WAVE_XP above, so timing is rewarded — presence just stops being
-      // worth zero. The mirror of this for wave-on-wave deaths lives in
-      // WaveAI, and that is the path most waves actually die on.
-      players = awardZoneXp(players, killer.zone, killer.team, WAVE_XP_SHARED, kill.playerId)
+    }
+    // Lane-mates standing here share a fraction. XP used to come exclusively
+    // from last-hits, so a laner who mistimed their attacks earned literally
+    // nothing and fell five levels behind. Claimants keep their split of
+    // WAVE_XP above, so timing is rewarded — presence just stops being worth
+    // zero. The mirror of this for wave-on-wave deaths lives in WaveAI, and
+    // that is the path most waves actually die on.
+    const anchor = claimants.map((id) => players[id]).find((p) => p !== undefined)
+    if (anchor) {
+      players = awardZoneXp(players, anchor.zone, anchor.team, WAVE_XP_SHARED, claimants)
     }
   }
 

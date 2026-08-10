@@ -35,8 +35,11 @@ export interface GameContext {
   visibleZones: Record<string, ZoneRuntimeState>
   allPlayers: Record<string, PlayerState>
   items?: Record<string, ItemDef>
-  /** The whole global neutrals array, in server order — `attack neutral:<i>`
-   *  is resolved against that index, so it must not be pre-filtered here. */
+  /** The vision-filtered neutrals array, in server order. `neutral:<i>` is
+   *  ZONE-local (mirrors `wave:<i>`) — the index is derived by counting
+   *  camps within the player's zone in server order — so this must arrive
+   *  unsorted and not further filtered by zone here. Absent camps (fogged)
+   *  simply aren't in the array. */
   neutrals?: SiltDwellerState[]
   /** The Tenant's state — lets the pre-flight refuse `attack tenant` when he is
    *  already down (the server rejects with 'Tenant is already dead'). */
@@ -216,6 +219,21 @@ function wavesInZoneWithIndex(
 }
 
 /**
+ * The neutral camps standing in a zone, paired with the index `neutral:<i>`
+ * resolves to. Mirrors `wavesInZoneWithIndex` / the server's
+ * `neutralInZoneByIndex`: the index counts every camp in the zone in server
+ * order. Neutrals are now vision-filtered like waves before broadcast, so a
+ * fogged camp elsewhere in the array simply never appears here — it does not
+ * shift the numbering of the camps that are visible.
+ */
+function neutralsInZoneWithIndex(
+  neutrals: SiltDwellerState[],
+  zone: string,
+): Array<{ neutral: SiltDwellerState; index: number }> {
+  return neutrals.filter((n) => n.zone === zone).map((neutral, index) => ({ neutral, index }))
+}
+
+/**
  * Pick a default target for a bare `burn`: the lowest-INTEG ALLIED wave in your
  * zone that's eligible to burn (at/below the burn INTEG threshold). Returns the
  * server's `wave:<index>` form, where the index is the wave's position among
@@ -351,10 +369,16 @@ export function formatScanReadout(
     targets.push(`attack ice:${zoneIce.zone}`)
   }
 
-  const camps = neutrals.filter((n) => n.zone === player.zone && n.alive)
+  // neutral:N is ZONE-local (mirrors wave:N above) and counts every camp in
+  // your zone in server order, so the index must come from the zone list,
+  // not a bare 0 — the first camp in the zone is not always at position 0
+  // of an unfiltered array, and after fog filtering it need not even be the
+  // first entry overall.
+  const campsInZone = neutrals.filter((n) => n.zone === player.zone)
+  const camps = campsInZone.filter((n) => n.alive)
   if (camps.length) {
     here.push(`camp: ${camps.map((c) => c.type).join(', ')}`)
-    targets.push('attack neutral:0')
+    targets.push(`attack neutral:${campsInZone.indexOf(camps[0]!)}`)
   }
 
   const cacheHere = caches.find((c) => c.zone === player.zone)
@@ -545,9 +569,10 @@ function parseTarget(raw: string): TargetRef | null {
     const idx = Number.parseInt(raw.slice(5), 10)
     if (!Number.isNaN(idx)) return { kind: 'wave', index: idx }
   }
-  // Unlike `wave:<i>` (zone-local), the index here is the position in the
-  // GLOBAL neutrals array — that is what the server resolves it against, and
-  // the array reaches the client unfiltered (neutrals are public info).
+  // Like `wave:<i>`, this is ZONE-local: it counts camps within the player's
+  // zone (see neutralsInZoneWithIndex), mirroring the server's
+  // neutralInZoneByIndex. Neutrals are now vision-filtered before broadcast,
+  // same as waves, so a global array index would name a different camp.
   if (raw.startsWith('neutral:')) {
     const idx = Number.parseInt(raw.slice(8), 10)
     if (!Number.isNaN(idx)) return { kind: 'neutral', index: idx }
@@ -698,11 +723,15 @@ export function validateCommand(command: Command, context: GameContext): string 
         return 'Tenant is already dead'
       }
       // Only checkable when the caller supplied the neutrals array; without it
-      // the server still enforces both rules, we just can't warn ahead of time.
+      // the server still enforces this, we just can't warn ahead of time.
+      // Zone-local index (mirrors the server's neutralInZoneByIndex, same as
+      // 'wave' targets) — a camp in another zone is simply not in this list,
+      // so it surfaces as "no camp at that index" rather than a separate
+      // wrong-zone message.
       if (t.kind === 'neutral' && context.neutrals) {
-        const neutral = context.neutrals[t.index]
+        const inZone = context.neutrals.filter((n) => n.zone === player.zone)
+        const neutral = inZone[t.index]
         if (!neutral || !neutral.alive) return `No neutral wave at index ${t.index}`
-        if (neutral.zone !== player.zone) return 'That neutral camp is not in your zone'
       }
       if (t.kind === 'terminal') {
         const enemyBase = player.team === 'chaff' ? 'landing-terminal' : 'rookery-terminal'
@@ -1456,14 +1485,15 @@ export function useCommands() {
       }
     }
 
-    // Suggest neutral camps standing in this zone. The offered index is the
-    // GLOBAL array position, not the position among the in-zone survivors —
-    // filtering first and re-indexing would point the attack at another camp.
+    // Suggest neutral camps standing in this zone, zone-local index — mirrors
+    // the wave suggestion loop above (see neutralsInZoneWithIndex).
     if (context.neutrals) {
-      for (let i = 0; i < context.neutrals.length; i++) {
-        const n = context.neutrals[i]!
-        if (!n.alive || n.zone !== context.player.zone) continue
-        const ref = `neutral:${i}`
+      for (const { neutral: n, index } of neutralsInZoneWithIndex(
+        context.neutrals,
+        context.player.zone,
+      )) {
+        if (!n.alive) continue
+        const ref = `neutral:${index}`
         if (ref.includes(partial)) {
           suggestions.push({
             text: ref,

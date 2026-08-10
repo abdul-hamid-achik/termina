@@ -311,10 +311,11 @@ describe('GameScreen commands', () => {
     })
   })
   describe('silt dweller + Tenant targeting (W1-2)', () => {
-    // `attack neutral:<i>` resolves against the WHOLE neutrals array server-side
-    // (it reaches the client unfiltered), unlike the zone-local wave index. With
-    // the zone panel gone (R3-08), targeting goes through the command path: the
-    // client pre-flight refuses an out-of-zone camp, the server is the backstop.
+    // `attack neutral:<i>` is ZONE-local — same convention as `wave:<i>` — since
+    // neutrals are now vision-filtered before broadcast (fog parity with waves).
+    // With the zone panel gone (R3-08), targeting goes through the command path:
+    // the client pre-flight refuses an out-of-range camp, the server is the
+    // backstop.
     it('sends attack tenant through the command path from the pit', async () => {
       seedActiveGame({ players: rosterAt('hollow') })
       const wrapper = mountGameScreen()
@@ -328,7 +329,10 @@ describe('GameScreen commands', () => {
       wrapper.unmount()
     })
 
-    it('refuses attack neutral:<i> that names a camp outside the zone before it costs a tick', async () => {
+    it('refuses attack neutral:<i> that is out of range for the zone before it costs a tick', async () => {
+      // p1 (the human) is at 'coldstore-cross' by default (see makeRoster). n0
+      // sits in a different silt and never occupies a slot in THIS zone's
+      // numbering; n1 is the only camp in the player's own zone, at index 0.
       seedActiveGame({
         neutrals: [
           {
@@ -352,13 +356,14 @@ describe('GameScreen commands', () => {
       const wrapper = mountGameScreen()
 
       socketSpies.send.mockClear()
-      await order(wrapper, 'attack neutral:0')
+      // Index 1 has no camp behind it in this zone — only n1 (index 0) is here.
+      await order(wrapper, 'attack neutral:1')
       expect(socketSpies.send).not.toHaveBeenCalled()
 
-      await order(wrapper, 'attack neutral:1')
+      await order(wrapper, 'attack neutral:0')
       expect(socketSpies.send).toHaveBeenCalledWith({
         type: 'action',
-        command: { type: 'attack', target: { kind: 'neutral', index: 1 } },
+        command: { type: 'attack', target: { kind: 'neutral', index: 0 } },
       })
       wrapper.unmount()
     })

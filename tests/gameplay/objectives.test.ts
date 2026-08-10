@@ -239,9 +239,14 @@ describe('objectives: silt dwellers', () => {
     const n = (await game.state()).neutrals.find((x) => x.id === 'camp0')
     expect(n?.alive).toBe(true)
     expect(n?.integ).toBe(100) // untouched from a different zone
-    // ...with feedback instead of a silent drop.
+    // ...with feedback instead of a silent drop. The index is zone-local
+    // (mirrors `wave:<i>`), so a camp in another zone occupies no slot in the
+    // attacker's zone at all — it surfaces as "no camp at that index", not a
+    // separate wrong-zone message.
     expect(
-      game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('not in your zone')),
+      game.lastRejected.some(
+        (r) => r.playerId === HUMAN && r.reason.includes('No neutral wave at that index'),
+      ),
     ).toBe(true)
   })
 })

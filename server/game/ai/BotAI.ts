@@ -1498,7 +1498,11 @@ function tryFarmJungle(
   const neutralsHere = getNeutralsInZone(state, bot.zone)
   if (neutralsHere.length > 0) {
     const target = neutralsHere.reduce((a, b) => (a.integ < b.integ ? a : b))
-    const neutralIdx = state.neutrals.indexOf(target)
+    // Neutral targets use zone-local indices (Nth camp in the attacker's
+    // zone), mirroring the wave-target convention above — state.neutrals is
+    // now vision-filtered before broadcast, so a global index would name a
+    // different camp on the client than the bot resolved here.
+    const neutralIdx = state.neutrals.filter((n) => n.zone === bot.zone).indexOf(target)
     return { type: 'attack', target: { kind: 'neutral', index: neutralIdx } }
   }
   const closestJungle = getClosestJungleZoneWithNeutrals(bot, state, hasZone)

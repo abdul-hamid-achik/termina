@@ -430,6 +430,12 @@ export function filterStateForPlayer(
   // Filter waves: only show waves in visible zones
   const filteredWaves = state.waves.filter((c) => visible.has(c.zone))
 
+  // Filter neutrals: Silt dwellers respect fog exactly like waves — only
+  // camps in a currently-visible zone are reported. A camp's presence,
+  // health, and type are combat-relevant intel the enemy team should not
+  // get for free.
+  const filteredNeutrals = (state.neutrals ?? []).filter((n) => visible.has(n.zone))
+
   // Filter events: only show events relevant to visible zones or the player's team
   const filteredEvents = state.events.filter((e) => {
     // Always show team-relevant events
@@ -448,7 +454,7 @@ export function filterStateForPlayer(
     players: filteredPlayers,
     zones: filteredZones,
     waves: filteredWaves,
-    neutrals: state.neutrals ?? [], // Neutrals are visible in their zones (public info)
+    neutrals: filteredNeutrals, // Fogged like waves: only visible-zone camps are reported
     ice: state.ice, // ICE are always visible (global info)
     terminals: state.terminals, // Terminals are always visible (global info)
     caches: state.caches ?? [],

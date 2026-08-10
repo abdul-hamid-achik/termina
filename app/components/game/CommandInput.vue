@@ -37,8 +37,9 @@ const props = withDefaults(
      */
     mode?: GameMode
     /**
-     * The GLOBAL neutrals array (not zone-filtered) — `neutral:<index>` is a
-     * global index. Deliberately has no default: validateCommand treats a
+     * The vision-filtered neutrals array — `neutral:<index>` is ZONE-local
+     * (mirrors `wave:<index>`), counted within the player's zone by
+     * validateCommand. Deliberately has no default: validateCommand treats a
      * PRESENT array as ground truth, and an empty one would make an unbound
      * instance reject every legal neutral target.
      */
