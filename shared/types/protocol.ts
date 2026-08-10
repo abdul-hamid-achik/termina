@@ -198,6 +198,34 @@ export interface SpectatorAckMessage {
   gameId: string
 }
 
+/**
+ * Sent instead of (or in addition to, on later cycles) a `spectator_tick` when
+ * a newly-subscribed spectator has no MATURE frame to show yet — i.e. the game
+ * is younger than the global broadcast delay (see
+ * shared/constants/balance.ts SPECTATOR_BROADCAST_DELAY_MS). Tells the client
+ * how long until the first frame arrives so the UI can show a countdown
+ * instead of sitting on "waiting for first cycle" indefinitely.
+ */
+export interface SpectatorDelayedMessage {
+  type: 'spectator_delayed'
+  gameId: string
+  /** Milliseconds until the first mature frame is expected to arrive. */
+  etaMs: number
+}
+
+/**
+ * The final message a spectator receives for a game: delivered only after
+ * every already-buffered `spectator_tick` frame has drained through the same
+ * broadcast delay, so a spectator can never learn the result before players
+ * genuinely could have. No stats — spectators aren't ranked participants;
+ * the winner is enough to close out the view.
+ */
+export interface SpectatorGameOverMessage {
+  type: 'spectator_game_over'
+  gameId: string
+  winner: TeamId
+}
+
 /** Broadcast to the surviving players when someone drops their connection. */
 export interface PlayerDisconnectMessage {
   type: 'player_disconnect'
@@ -242,6 +270,8 @@ export type ServerMessage =
   | GameNotFoundMessage
   | SpectatorCycleMessage
   | SpectatorAckMessage
+  | SpectatorDelayedMessage
+  | SpectatorGameOverMessage
   | PlayerDisconnectMessage
   | PlayerReconnectMessage
   | LobbyCancelledMessage

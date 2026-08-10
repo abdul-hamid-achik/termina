@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { HEROES } from '~~/shared/constants/heroes'
+import { SPECTATOR_BROADCAST_DELAY_MS } from '~~/shared/constants/balance'
 import { reconnectDelay } from '~/utils/reconnect'
 import { parseSpectatorMessage } from '~/utils/spectatorMessage'
 import { formatTickClock } from '~/utils/gameClock'
@@ -20,6 +21,13 @@ const ackedGameId = ref<string | null>(null)
 const lastCycle = ref<number>(0)
 const visibleState = ref<PlayerVisibleState | null>(null)
 const errorMessage = ref<string | null>(null)
+// The live feed is broadcast-delayed (owner decision — the fogless spectator
+// stream would otherwise be a real-time maphack). `delayEtaSeconds` is only
+// set before the first frame arrives, so it clears itself once streaming
+// starts.
+const delayEtaSeconds = ref<number | null>(null)
+const gameOverWinner = ref<string | null>(null)
+const broadcastDelaySeconds = Math.round(SPECTATOR_BROADCAST_DELAY_MS / 1000)
 
 let ws: WebSocket | null = null
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
@@ -65,9 +73,14 @@ async function connect() {
     const msg = parseSpectatorMessage(ev.data)
     if (msg.type === 'ack') {
       ackedGameId.value = msg.gameId
+    } else if (msg.type === 'delayed') {
+      delayEtaSeconds.value = Math.ceil(msg.etaMs / 1000)
     } else if (msg.type === 'cycle') {
+      delayEtaSeconds.value = null
       lastCycle.value = msg.cycle
       visibleState.value = msg.state
+    } else if (msg.type === 'game_over') {
+      gameOverWinner.value = msg.winner
     } else if (msg.type === 'error') {
       errorMessage.value = msg.message
     }
@@ -219,7 +232,10 @@ function gameTime(cycle: number): string {
 
       <!-- Status when no state yet -->
       <div v-else-if="!visibleState && !errorMessage" class="border border-border p-4 t-caption">
-        &gt;_ waiting for first cycle from game server...
+        <template v-if="delayEtaSeconds !== null">
+          &gt;_ stream delayed — first frame in ~{{ delayEtaSeconds }}s
+        </template>
+        <template v-else> &gt;_ waiting for first cycle from game server... </template>
         <div v-if="ackedGameId" class="mt-1">subscription confirmed for {{ ackedGameId }}</div>
       </div>
 
@@ -228,7 +244,20 @@ function gameTime(cycle: number): string {
         <div class="t-caption mt-1">{{ errorMessage }}</div>
       </div>
 
+      <!-- Delivered once the live channel drains its buffered frames — the
+           real-time outcome is never shown before this. -->
+      <div v-if="gameOverWinner" class="border border-chaff bloom-chaff p-4 text-center">
+        <div class="t-h3 text-chaff text-glow-chaff">
+          GAME OVER — {{ gameOverWinner.toUpperCase() }} WINS
+        </div>
+      </div>
+
       <template v-if="visibleState">
+        <!-- Reminder the feed is not real-time, even once frames are flowing. -->
+        <div class="t-caption text-text-dim" data-testid="spectator-delay-notice">
+          &gt;_ stream delayed {{ broadcastDelaySeconds }}s
+        </div>
+
         <!-- Score banner -->
         <div class="grid grid-cols-3 items-stretch border border-border bg-bg-panel">
           <div

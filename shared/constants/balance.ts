@@ -5,6 +5,29 @@ import type { WaveUnitState, CacheState } from '../types/game'
 export const CYCLE_DURATION_MS = 4000
 export const ACTION_WINDOW_MS = 3500
 
+/**
+ * Global spectator broadcast delay (ms). The live spectator stream is fogless
+ * (see VisionCalculator.filterStateForSpectator) — an account watching a game
+ * it isn't playing in sees the FULL map in real time, which is a maphack if
+ * that account (or anyone it talks to) has any channel back to a player in
+ * the match. Delaying every watcher's feed by this much closes that channel:
+ * nothing a spectator sees can reach a live player before the play itself
+ * would have. NOT player-tunable — one global constant, no per-viewer knob.
+ */
+export const SPECTATOR_BROADCAST_DELAY_MS = 150_000 // 2.5 minutes
+
+/**
+ * Hard cap on buffered (not-yet-mature) spectator frames per watched game — a
+ * safety valve against unbounded growth if a game's delivery timer ever stalls
+ * (it shouldn't in normal operation: frames drain every flush tick as soon as
+ * they age past SPECTATOR_BROADCAST_DELAY_MS). At the nominal 4s cycle, at
+ * most `ceil(150_000 / 4_000) = 38` frames are ever in flight; this adds
+ * headroom for jitter/backlog before the valve kicks in and the oldest frames
+ * get dropped (with a warning log) instead of growing forever.
+ */
+export const SPECTATOR_BUFFER_MAX_FRAMES =
+  Math.ceil(SPECTATOR_BROADCAST_DELAY_MS / CYCLE_DURATION_MS) + 16
+
 // ── Gold ─────────────────────────────────────────────────────────
 
 export const PASSIVE_SCRIP_PER_CYCLE = 4

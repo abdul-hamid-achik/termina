@@ -16,6 +16,22 @@ describe('parseSpectatorMessage', () => {
     ).toEqual({ type: 'cycle', cycle: 42, state })
   })
 
+  it('parses a spectator_delayed as an eta', () => {
+    expect(
+      parseSpectatorMessage(
+        JSON.stringify({ type: 'spectator_delayed', gameId: 'g1', etaMs: 42_000 }),
+      ),
+    ).toEqual({ type: 'delayed', etaMs: 42_000 })
+  })
+
+  it('parses a spectator_game_over as a winner', () => {
+    expect(
+      parseSpectatorMessage(
+        JSON.stringify({ type: 'spectator_game_over', gameId: 'g1', winner: 'chaff' }),
+      ),
+    ).toEqual({ type: 'game_over', winner: 'chaff' })
+  })
+
   it('formats an error as "code: message"', () => {
     expect(
       parseSpectatorMessage(

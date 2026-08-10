@@ -42,6 +42,12 @@ import {
 } from '~~/server/game/engine/VisionCalculator'
 import { recordSentState, clearSentState } from '~~/server/game/engine/StateDelta'
 import { getSpectatorsOfGame, clearGameSpectators } from '~~/server/services/SpectatorRegistry'
+import {
+  hasSpectatorBuffer,
+  enqueueSpectatorFrame,
+  enqueueGameOverFrame,
+  stopSpectatorDelayBuffer,
+} from '~~/server/services/SpectatorDelayBuffer'
 import { clearClientInput } from '~~/server/services/LeaverSystem'
 import { clearRejectionEscalation } from '~~/server/game/engine/rejectionEscalation'
 import type { TeamId, GameState, GameMode } from '~~/shared/types/game'
@@ -456,6 +462,11 @@ export function stopDevGame(gameId: string): void {
   cleanupGame(gameId)
   clearRejectionEscalation(gameId)
   clearClientInput(gameId)
+  // Same reasoning as the reaper below: the dev game is being torn down
+  // directly (no onGameOver), so there's no natural drain — force the
+  // spectator delay buffer closed rather than leak its timer.
+  stopSpectatorDelayBuffer(gameId)
+  clearGameSpectators(gameId)
   // Interrupt the running loop fiber (no-op if already stopped, or if the
   // runtime never came up — the bookkeeping above still has to happen).
   void _runtime?.managedRuntime.runPromise(stopGameLoop(gameId)).catch(() => {})
@@ -503,6 +514,12 @@ function reapStaleLiveGames(): void {
     cleanupGame(gameId)
     clearRejectionEscalation(gameId)
     clearClientInput(gameId)
+    // The loop fiber is presumed dead — no game-over frame will ever come to
+    // drain the delay buffer naturally, so force it closed instead of leaking
+    // its timer forever. Also drop any spectator registrations directly since
+    // there's no deferred drain to do it for us.
+    stopSpectatorDelayBuffer(gameId)
+    clearGameSpectators(gameId)
     liveGames.delete(gameId)
   }
 }
@@ -600,21 +617,25 @@ export default defineNitroPlugin(async (nitroApp) => {
       },
 
       onSpectatorTick: (gId, fullState) => {
-        const watchers = getSpectatorsOfGame(gId)
-        if (watchers.length === 0) return
+        // Cheap early-out: skip filtering/serializing entirely for the common
+        // case of a game nobody has ever spectated. Once a buffer exists for
+        // this game (someone was watching at some point), keep feeding it even
+        // through a temporary zero-watcher gap so a returning spectator still
+        // has continuity — the buffer/timer only tear down on game-over drain
+        // or explicit reaper cleanup, never on "watchers hit zero".
+        if (getSpectatorsOfGame(gId).length === 0 && !hasSpectatorBuffer(gId)) return
         const fogless = filterStateForSpectator(fullState)
         const payload = JSON.stringify({
           type: 'spectator_tick',
           cycle: fogless.cycle,
           state: fogless,
         })
-        for (const watcher of watchers) {
-          try {
-            watcher.send(payload)
-          } catch (err) {
-            gameLog.warn('Spectator send failed', { gameId: gId, error: String(err) })
-          }
-        }
+        // Broadcast delay (owner decision): frames are buffered here and only
+        // fanned out to current watchers once they've aged past
+        // SPECTATOR_BROADCAST_DELAY_MS — see SpectatorDelayBuffer for why (the
+        // live spectator feed is fogless, a delay is what stops it being a
+        // real-time maphack).
+        enqueueSpectatorFrame(gId, fogless.cycle, payload)
       },
 
       onActionRejected: (gId, playerId, reason) => {
@@ -854,7 +875,21 @@ export default defineNitroPlugin(async (nitroApp) => {
         cleanupGame(gId)
         clearRejectionEscalation(gId)
         clearClientInput(gId)
-        clearGameSpectators(gId)
+        // Spectators must not learn the result before the broadcast delay a
+        // live player's own view would have taken. Queue the game-over frame
+        // behind whatever's still buffered (drains at the same per-frame
+        // delay); once it's actually delivered, SpectatorDelayBuffer drops
+        // every remaining spectator registration itself. If nobody ever
+        // watched this game there's nothing to drain — clean up immediately.
+        if (hasSpectatorBuffer(gId)) {
+          enqueueGameOverFrame(
+            gId,
+            finalState.cycle,
+            JSON.stringify({ type: 'spectator_game_over', gameId: gId, winner }),
+          )
+        } else {
+          clearGameSpectators(gId)
+        }
         liveGames.delete(gId)
         // Leave the snapshot + action log behind so PostGame can show a replay
         // link. The Redis TTL (8h) cleans them up; the resume-on-boot path

@@ -28,6 +28,7 @@ import {
   sendToPeer,
 } from '~~/server/services/PeerRegistry'
 import { addSpectator, removeSpectator } from '~~/server/services/SpectatorRegistry'
+import { getSpectateJoinInfo } from '~~/server/services/SpectatorDelayBuffer'
 import { checkRateLimit, checkScopedRateLimit, resetRateLimit } from '~~/server/utils/RateLimiter'
 
 vi.mock('~~/server/plugins/game-server', () => ({
@@ -58,6 +59,9 @@ vi.mock('~~/server/services/PeerRegistry', () => ({
 vi.mock('~~/server/services/SpectatorRegistry', () => ({
   addSpectator: vi.fn(),
   removeSpectator: vi.fn(),
+}))
+vi.mock('~~/server/services/SpectatorDelayBuffer', () => ({
+  getSpectateJoinInfo: vi.fn(() => ({ type: 'delayed', etaMs: 150_000 })),
 }))
 vi.mock('~~/server/utils/RateLimiter', () => ({
   checkRateLimit: vi.fn(),
@@ -806,6 +810,13 @@ describe('ws route — chat / ping_map fan-out', () => {
 })
 
 describe('ws route — spectator gating', () => {
+  // clearAllMocks (global beforeEach) wipes call history but NOT a mock's
+  // configured return value, so pin a default per test here rather than
+  // relying on the factory default surviving whichever test ran last.
+  beforeEach(() => {
+    vi.mocked(getSpectateJoinInfo).mockReturnValue({ type: 'delayed', etaMs: 150_000 })
+  })
+
   it('forbids spectating a game the player is participating in', () => {
     vi.mocked(getPlayerGame).mockReturnValue('game_1')
     const peer = openAuthedPeer('p_spec0')
@@ -823,7 +834,33 @@ describe('ws route — spectator gating', () => {
       'game_1',
       expect.objectContaining({ send: expect.any(Function) }),
     )
-    expect(lastMessage(peer)).toMatchObject({ type: 'spectator_ack', gameId: 'game_1' })
+    const msgs = sentMessages(peer)
+    expect(msgs).toContainEqual({ type: 'spectator_ack', gameId: 'game_1' })
+  })
+
+  it('tells a freshly-joined spectator the stream is delayed when nothing has matured yet', () => {
+    vi.mocked(getPlayerGame).mockReturnValue('game_other')
+    vi.mocked(getSpectateJoinInfo).mockReturnValue({ type: 'delayed', etaMs: 150_000 })
+    const peer = openAuthedPeer('p_spec_delayed')
+    sendMsg(peer, { type: 'spectate', gameId: 'game_1' })
+    expect(lastMessage(peer)).toEqual({
+      type: 'spectator_delayed',
+      gameId: 'game_1',
+      etaMs: 150_000,
+    })
+  })
+
+  it('hands a freshly-joined spectator the latest mature frame verbatim when one exists', () => {
+    vi.mocked(getPlayerGame).mockReturnValue('game_other')
+    const maturePayload = JSON.stringify({ type: 'spectator_tick', cycle: 7, state: {} })
+    vi.mocked(getSpectateJoinInfo).mockReturnValue({
+      type: 'mature',
+      cycle: 7,
+      payload: maturePayload,
+    })
+    const peer = openAuthedPeer('p_spec_mature')
+    sendMsg(peer, { type: 'spectate', gameId: 'game_1' })
+    expect(lastMessage(peer)).toEqual({ type: 'spectator_tick', cycle: 7, state: {} })
   })
 
   it('unsubscribes on unspectate', () => {

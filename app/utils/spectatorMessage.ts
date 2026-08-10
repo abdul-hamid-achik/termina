@@ -4,6 +4,8 @@ import type { PlayerVisibleState } from '~~/shared/types/game'
 export type SpectatorMessage =
   | { type: 'ack'; gameId: string }
   | { type: 'cycle'; cycle: number; state: PlayerVisibleState }
+  | { type: 'delayed'; etaMs: number }
+  | { type: 'game_over'; winner: string }
   | { type: 'error'; message: string }
   | { type: 'ignore' }
 
@@ -31,6 +33,10 @@ export function parseSpectatorMessage(raw: unknown): SpectatorMessage {
         cycle: Number(msg.cycle ?? 0),
         state: msg.state as PlayerVisibleState,
       }
+    case 'spectator_delayed':
+      return { type: 'delayed', etaMs: Number(msg.etaMs ?? 0) }
+    case 'spectator_game_over':
+      return { type: 'game_over', winner: String(msg.winner ?? '') }
     case 'error':
       return { type: 'error', message: `${msg.code ?? 'error'}: ${msg.message ?? ''}` }
     default:

@@ -23,6 +23,7 @@ import {
   sendToPeer,
 } from '~~/server/services/PeerRegistry'
 import { addSpectator, removeSpectator } from '~~/server/services/SpectatorRegistry'
+import { getSpectateJoinInfo } from '~~/server/services/SpectatorDelayBuffer'
 import { wsLog } from '~~/server/utils/log'
 import { testHooksEnabled } from '~~/server/utils/testHooks'
 import { verifyWsTicket } from '~~/server/utils/ws-ticket'
@@ -783,6 +784,25 @@ export default defineWebSocketHandler({
           send: (data) => peer.send(data),
         })
         peer.send(JSON.stringify({ type: 'spectator_ack', gameId: parsed.gameId }))
+
+        // The live feed is delayed (SpectatorDelayBuffer) — hand the new
+        // watcher whatever's already mature right away instead of leaving
+        // them staring at nothing for up to the full delay window. If nothing
+        // has matured yet (a fresh game, or nobody's watched it long enough),
+        // tell them how long until the first frame lands.
+        const joinInfo = getSpectateJoinInfo(parsed.gameId)
+        if (joinInfo.type === 'mature') {
+          peer.send(joinInfo.payload)
+        } else {
+          peer.send(
+            JSON.stringify({
+              type: 'spectator_delayed',
+              gameId: parsed.gameId,
+              etaMs: joinInfo.etaMs,
+            }),
+          )
+        }
+
         wsLog.info('Spectator subscribed', { playerId: ctx.playerId, gameId: parsed.gameId })
         break
       }
