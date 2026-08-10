@@ -36,6 +36,7 @@ describe('server auth middleware', () => {
       '/',
       '/api/health',
       '/api/ready',
+      '/api/admin/rotate-season',
       '/api/player/alice',
       '/api/match/m1',
       '/api/replay/g1/frames',

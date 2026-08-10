@@ -7,6 +7,9 @@ const PUBLIC_EXACT_PATHS = new Set([
   '/api/match/history',
   '/api/health',
   '/api/ready',
+  // This endpoint performs its own x-admin-key check and must reach its
+  // handler so the disabled/unconfigured contract can return 403.
+  '/api/admin/rotate-season',
   '/__nuxt_error',
   '/favicon.ico',
 ])
