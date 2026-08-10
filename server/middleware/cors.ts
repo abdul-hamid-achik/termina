@@ -22,13 +22,19 @@ export default defineEventHandler((event) => {
 
   // Allow-list: when NUXT_CORS_ALLOWED_ORIGINS is set (comma-separated), only
   // those origins get credentialed CORS — a disallowed cross-origin request
-  // receives no ACAO header, so the browser blocks it. Empty (dev / same-origin
-  // DO) falls back to echoing the request origin.
+  // receives no ACAO header, so the browser blocks it. Empty is safe-by-default:
+  // only a same-origin request may receive credentialed CORS.
   const allowed = ((useRuntimeConfig().corsAllowedOrigins as string | undefined) ?? '')
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean)
-  if (allowed.length > 0 && !allowed.includes(origin)) return
+  if (allowed.length > 0) {
+    if (!allowed.includes(origin)) return
+  } else {
+    const protocol = getHeader(event, 'x-forwarded-proto') ?? 'http'
+    const host = getHeader(event, 'host')
+    if (!host || origin !== `${protocol}://${host}`) return
+  }
 
   setHeader(event, 'access-control-allow-origin', origin)
   setHeader(event, 'access-control-allow-credentials', 'true')

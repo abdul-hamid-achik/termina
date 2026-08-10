@@ -23,6 +23,20 @@ import {
   type Guild,
 } from '~~/server/db/schema'
 
+export type MatchPersistenceResult = 'inserted' | 'already_exists' | 'failed'
+
+/** The complete set of durable ladder/profile mutations for one player in a match. */
+export interface MatchDerivedPlayerStats {
+  playerId: string
+  heroId: string
+  won: boolean
+  ranked: boolean
+  mmrChange: number
+  kills: number
+  deaths: number
+  assists: number
+}
+
 /** Public-safe subset of a player — NEVER includes email / passwordHash / provider ids. */
 export type PublicMatchPlayer = Pick<
   Player,
@@ -48,8 +62,16 @@ export interface DatabaseServiceApi {
   ) => Effect.Effect<Player | null>
   readonly createPlayer: (data: NewPlayer) => Effect.Effect<Player>
   readonly updatePlayerMMR: (id: string, mmr: number) => Effect.Effect<void>
-  /** Persist a match, returning false only after all retry attempts fail. */
-  readonly recordMatch: (match: NewMatch, players: NewMatchPlayer[]) => Effect.Effect<boolean>
+  /** Persist a match, distinguishing a new row from an idempotent retry. */
+  readonly recordMatch: (
+    match: NewMatch,
+    players: NewMatchPlayer[],
+  ) => Effect.Effect<MatchPersistenceResult>
+  /** Apply MMR/W-L/hero stats exactly once, atomically with the match claim. */
+  readonly applyMatchDerivedStats: (
+    matchId: string,
+    players: MatchDerivedPlayerStats[],
+  ) => Effect.Effect<boolean>
   readonly getMatchHistory: (playerId: string, limit?: number) => Effect.Effect<MatchHistoryEntry[]>
   readonly getMatch: (id: string) => Effect.Effect<MatchWithPlayers | null>
   readonly getLeaderboard: (limit?: number) => Effect.Effect<Player[]>
@@ -260,7 +282,7 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
               Effect.annotateLogs({ matchId: match.id }),
             )
           }
-          return true
+          return result.value.idempotent ? ('already_exists' as const) : ('inserted' as const)
         }
         lastErr = result.err
         if (attempt < MAX_RETRIES) {
@@ -276,14 +298,106 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
       yield* Effect.logError('Match persist failed after all retries').pipe(
         Effect.annotateLogs({ matchId: match.id, error: String(lastErr) }),
       )
-      return false
+      return 'failed'
+    }),
+
+  applyMatchDerivedStats: (matchId, playerData) =>
+    Effect.gen(function* () {
+      const MAX_RETRIES = 3
+      const BASE_DELAY_MS = 500
+      let lastErr: unknown
+
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        const result = yield* Effect.tryPromise(async () => {
+          const db = useDb()
+
+          // The claim and every derived mutation share one transaction. If a
+          // duplicate game-over callback arrives, the UPDATE returns no row and
+          // none of the counters run. If any mutation fails, Postgres rolls the
+          // claim back so this retry can safely finish the result.
+          return db.transaction(async (tx) => {
+            const claimed = await tx
+              .update(matches)
+              .set({ derivedStatsApplied: true })
+              .where(and(eq(matches.id, matchId), eq(matches.derivedStatsApplied, false)))
+              .returning({ id: matches.id })
+
+            if (claimed.length === 0) return false
+
+            for (const stats of playerData) {
+              await tx
+                .update(players)
+                .set({
+                  gamesPlayed: sql`${players.gamesPlayed} + 1`,
+                  wins: sql`${players.wins} + ${stats.won ? 1 : 0}`,
+                })
+                .where(eq(players.id, stats.playerId))
+
+              if (stats.ranked) {
+                await tx
+                  .update(players)
+                  .set({
+                    mmr: sql`GREATEST(0, ${players.mmr} + ${stats.mmrChange})`,
+                    seasonMmr: sql`GREATEST(0, ${players.seasonMmr} + ${stats.mmrChange})`,
+                    seasonGamesPlayed: sql`${players.seasonGamesPlayed} + 1`,
+                    seasonWins: sql`${players.seasonWins} + ${stats.won ? 1 : 0}`,
+                  })
+                  .where(eq(players.id, stats.playerId))
+              }
+
+              await tx
+                .insert(heroStats)
+                .values({
+                  playerId: stats.playerId,
+                  heroId: stats.heroId,
+                  gamesPlayed: 1,
+                  wins: stats.won ? 1 : 0,
+                  totalKills: stats.kills,
+                  totalDeaths: stats.deaths,
+                  totalAssists: stats.assists,
+                })
+                .onConflictDoUpdate({
+                  target: [heroStats.playerId, heroStats.heroId],
+                  set: {
+                    gamesPlayed: sql`${heroStats.gamesPlayed} + 1`,
+                    wins: sql`${heroStats.wins} + ${stats.won ? 1 : 0}`,
+                    totalKills: sql`${heroStats.totalKills} + ${stats.kills}`,
+                    totalDeaths: sql`${heroStats.totalDeaths} + ${stats.deaths}`,
+                    totalAssists: sql`${heroStats.totalAssists} + ${stats.assists}`,
+                  },
+                })
+            }
+
+            return true
+          })
+        }).pipe(
+          Effect.map((value) => ({ ok: true as const, value })),
+          Effect.catchAll((err) => Effect.succeed({ ok: false as const, err })),
+        )
+
+        if (result.ok) return result.value
+
+        lastErr = result.err
+        if (attempt < MAX_RETRIES) {
+          const delay = BASE_DELAY_MS * 2 ** attempt
+          yield* Effect.logWarning('Derived match stats failed — retrying').pipe(
+            Effect.annotateLogs({ matchId, attempt: attempt + 1, delay }),
+          )
+          yield* Effect.sleep(`${delay} millis`)
+        }
+      }
+
+      yield* Effect.logError('Derived match stats failed after all retries').pipe(
+        Effect.annotateLogs({ matchId, error: String(lastErr) }),
+      )
+      return yield* Effect.die(lastErr)
     }),
 
   getMatchHistory: (playerId, limit = 20) =>
     Effect.promise(async () => {
       const db = useDb()
       const results = await db
-        .select({ match: matches, team: matchPlayers.team })
+        .select({ match: matches, stats: matchPlayers })
         .from(matchPlayers)
         .innerJoin(matches, eq(matchPlayers.matchId, matches.id))
         .where(eq(matchPlayers.playerId, playerId))
@@ -292,7 +406,24 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
 
       // Carry the queried player's team so the UI can show Victory/Defeat from
       // their perspective (not just which side won).
-      return results.map((r) => ({ ...r.match, team: r.team }))
+      return results.map((r) => ({
+        ...r.match,
+        team: r.stats.team,
+        playerStats: {
+          kills: r.stats.kills,
+          deaths: r.stats.deaths,
+          assists: r.stats.assists,
+          finalScrip: r.stats.finalScrip,
+          netWorth: r.stats.netWorth,
+          damageDealt: r.stats.damageDealt,
+          iceDamageDealt: r.stats.iceDamageDealt,
+          lastHits: r.stats.lastHits,
+          burns: r.stats.burns,
+          finalItems: r.stats.finalItems ?? [],
+          finalLevel: r.stats.finalLevel,
+          mmrChange: r.stats.mmrChange,
+        },
+      }))
     }),
 
   getMatch: (id) =>

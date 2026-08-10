@@ -98,6 +98,10 @@ export const matches = pgTable(
     durationCycles: integer('duration_ticks'),
     // The season this match was played in (null for pre-seasons history).
     seasonNumber: integer('season_number'),
+    // Derived ladder/profile stats are applied in the same transaction as this
+    // claim. This makes a retried game-over callback safe: one callback wins
+    // the claim, later callbacks observe true and do no work.
+    derivedStatsApplied: boolean('derived_stats_applied').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     endedAt: timestamp('ended_at', { withTimezone: true }),
   },
@@ -156,8 +160,16 @@ export const matchPlayers = pgTable(
     kills: integer('kills').notNull().default(0),
     deaths: integer('deaths').notNull().default(0),
     assists: integer('assists').notNull().default(0),
+    /** @deprecated Legacy field; use finalScrip/netWorth for the scrip economy. */
     goldEarned: integer('gold_earned').notNull().default(0),
+    // End-of-match economy/combat/farm values used by the public history view.
+    finalScrip: integer('final_scrip').notNull().default(0),
+    netWorth: integer('net_worth').notNull().default(0),
     damageDealt: integer('damage_dealt').notNull().default(0),
+    iceDamageDealt: integer('ice_damage_dealt').notNull().default(0),
+    lastHits: integer('last_hits').notNull().default(0),
+    burns: integer('burns').notNull().default(0),
+    /** @deprecated Healing is not tracked by the engine yet. */
     healingDone: integer('healing_done').notNull().default(0),
     finalItems: jsonb('final_items').$type<string[]>().default([]),
     finalLevel: integer('final_level').notNull().default(1),
@@ -166,6 +178,7 @@ export const matchPlayers = pgTable(
   (table) => [
     index('match_players_match_id_idx').on(table.matchId),
     index('match_players_player_id_idx').on(table.playerId),
+    uniqueIndex('match_players_match_player_unique').on(table.matchId, table.playerId),
   ],
 )
 
@@ -209,10 +222,28 @@ export type Player = typeof players.$inferSelect
 export type NewPlayer = typeof players.$inferInsert
 export type Match = typeof matches.$inferSelect
 export type NewMatch = typeof matches.$inferInsert
-/** A match plus the queried player's team in it (returned by getMatchHistory). */
-export type MatchHistoryEntry = Match & { team: 'chaff' | 'audit' }
 export type MatchPlayer = typeof matchPlayers.$inferSelect
 export type NewMatchPlayer = typeof matchPlayers.$inferInsert
+export type MatchHistoryPlayerStats = Pick<
+  MatchPlayer,
+  | 'kills'
+  | 'deaths'
+  | 'assists'
+  | 'finalScrip'
+  | 'netWorth'
+  | 'damageDealt'
+  | 'iceDamageDealt'
+  | 'lastHits'
+  | 'burns'
+  | 'finalItems'
+  | 'finalLevel'
+  | 'mmrChange'
+>
+/** A match plus the queried player's team and end-of-match stats. */
+export type MatchHistoryEntry = Match & {
+  team: 'chaff' | 'audit'
+  playerStats: MatchHistoryPlayerStats
+}
 export type HeroStat = typeof heroStats.$inferSelect
 export type NewHeroStat = typeof heroStats.$inferInsert
 export type PlayerProvider = typeof playerProviders.$inferSelect

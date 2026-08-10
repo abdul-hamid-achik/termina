@@ -30,7 +30,7 @@ vi.stubGlobal('setResponseStatus', (event: H3Event, code: number) => {
 
 /** Minimal H3Event stub with stub-accessible fields. */
 function makeEventFull(method: string, path: string, origin?: string) {
-  const headers: Record<string, string> = { method: method }
+  const headers: Record<string, string> = { method: method, host: 'api.example.com' }
   if (origin) headers.origin = origin
   return {
     method,
@@ -71,6 +71,9 @@ describe('CORS middleware', () => {
   it('sets CORS headers for /api/ routes with an Origin', () => {
     const origin = 'https://app.example.com'
     const event = makeEventFull('GET', '/api/health', origin)
+    ;(event as unknown as { __headers: Record<string, string> }).__headers.host = 'app.example.com'
+    ;(event as unknown as { __headers: Record<string, string> }).__headers['x-forwarded-proto'] =
+      'https'
     corsHandler(event)
 
     expect(capturedResHeaders['access-control-allow-origin']).toBe(origin)
@@ -81,15 +84,22 @@ describe('CORS middleware', () => {
     expect(capturedResHeaders['access-control-max-age']).toBe('86400')
   })
 
-  it('echoes the exact request Origin (not a wildcard)', () => {
+  it('allows a same-origin request without a configured allow-list', () => {
     const origin = 'https://termina.vercel.app'
     const event = makeEventFull('GET', '/api/queue/status', origin)
+    ;(event as unknown as { __headers: Record<string, string> }).__headers.host =
+      'termina.vercel.app'
+    ;(event as unknown as { __headers: Record<string, string> }).__headers['x-forwarded-proto'] =
+      'https'
     corsHandler(event)
     expect(capturedResHeaders['access-control-allow-origin']).toBe(origin)
   })
 
   it('short-circuits OPTIONS preflight with 204', () => {
     const event = makeEventFull('OPTIONS', '/api/queue/join', 'https://app.example.com')
+    ;(event as unknown as { __headers: Record<string, string> }).__headers.host = 'app.example.com'
+    ;(event as unknown as { __headers: Record<string, string> }).__headers['x-forwarded-proto'] =
+      'https'
     const result = corsHandler(event)
 
     expect(capturedStatus).toBe(204)
@@ -98,12 +108,18 @@ describe('CORS middleware', () => {
 
   it('sets headers for deeply nested /api/ paths', () => {
     const event = makeEventFull('POST', '/api/auth/register', 'https://app.example.com')
+    ;(event as unknown as { __headers: Record<string, string> }).__headers.host = 'app.example.com'
+    ;(event as unknown as { __headers: Record<string, string> }).__headers['x-forwarded-proto'] =
+      'https'
     corsHandler(event)
     expect(capturedResHeaders['access-control-allow-origin']).toBeDefined()
   })
 
   it('does not short-circuit non-OPTIONS requests', () => {
     const event = makeEventFull('GET', '/api/health', 'https://app.example.com')
+    ;(event as unknown as { __headers: Record<string, string> }).__headers.host = 'app.example.com'
+    ;(event as unknown as { __headers: Record<string, string> }).__headers['x-forwarded-proto'] =
+      'https'
     const result = corsHandler(event)
     expect(result).toBeUndefined()
     expect(capturedStatus).toBe(200)
@@ -124,10 +140,10 @@ describe('CORS middleware', () => {
     expect(capturedResHeaders['access-control-allow-origin']).toBeUndefined()
   })
 
-  it('falls back to echoing the origin when the allow-list is empty', () => {
+  it('rejects a cross-origin request when the allow-list is empty', () => {
     runtimeCorsAllowed = ''
     const event = makeEventFull('GET', '/api/health', 'https://anything.example.com')
     corsHandler(event)
-    expect(capturedResHeaders['access-control-allow-origin']).toBe('https://anything.example.com')
+    expect(capturedResHeaders['access-control-allow-origin']).toBeUndefined()
   })
 })

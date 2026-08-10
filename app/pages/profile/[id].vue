@@ -47,6 +47,19 @@ interface MatchSummary {
   team: 'chaff' | 'audit' | null
   durationCycles: number | null
   createdAt: string | null
+  playerStats?: {
+    kills: number
+    deaths: number
+    assists: number
+    finalScrip: number
+    netWorth: number
+    damageDealt: number
+    iceDamageDealt: number
+    lastHits: number
+    burns: number
+    finalLevel: number
+    mmrChange: number
+  }
 }
 
 const { data: profileData, status: profileStatus } = await useFetch(
@@ -94,6 +107,10 @@ function formatDuration(ticks: number | null): string {
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '--'
   return new Date(dateStr).toLocaleDateString()
+}
+
+function formatStat(value: number | null | undefined): string {
+  return value == null ? '--' : value.toLocaleString()
 }
 </script>
 
@@ -270,6 +287,12 @@ function formatDate(dateStr: string | null): string {
                 scope="col"
                 class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
               >
+                Stats
+              </th>
+              <th
+                scope="col"
+                class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
+              >
                 Watch
               </th>
             </tr>
@@ -297,6 +320,18 @@ function formatDate(dateStr: string | null): string {
               </td>
               <td class="border-b border-border/50 px-1.5 py-1 text-text-dim">
                 {{ formatDate(m.createdAt) }}
+              </td>
+              <td class="border-b border-border/50 px-1.5 py-1">
+                <div v-if="m.playerStats" class="flex flex-col whitespace-nowrap">
+                  <span class="font-bold text-text-primary">
+                    {{ m.playerStats.kills }}/{{ m.playerStats.deaths }}/{{ m.playerStats.assists }}
+                  </span>
+                  <span class="text-[0.65rem] text-text-dim">
+                    CS {{ m.playerStats.lastHits }} · B {{ m.playerStats.burns }} · NW
+                    {{ formatStat(m.playerStats.netWorth) }}
+                  </span>
+                </div>
+                <span v-else class="text-text-muted">--</span>
               </td>
               <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-1">
                 <NuxtLink

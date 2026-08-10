@@ -105,7 +105,18 @@ describe('DatabaseService (real Postgres)', () => {
 
     it('records a match (+ players) and reports persistence success', async () => {
       const persisted = await seedMatch('m1')
-      expect(persisted).toBe(true)
+      expect(persisted).toBe('inserted')
+    })
+    it('returns an idempotent result when the same match is recorded twice', async () => {
+      await seedMatch('m1')
+      const retried = await run((s) =>
+        s.recordMatch(
+          { id: 'm1', mode: 'ranked_5v5' } as never,
+          [{ matchId: 'm1', playerId: 'p1', team: 'chaff', heroId: 'echo' }] as never,
+        ),
+      )
+      expect(retried).toBe('already_exists')
+      expect(await run((s) => s.getMatchHistory('p1'))).toHaveLength(1)
     })
     it('getMatch returns the match with its players; null when missing', async () => {
       await seedMatch('m1')
@@ -139,6 +150,13 @@ describe('DatabaseService (real Postgres)', () => {
       expect(hist).toHaveLength(3)
       // each entry carries the queried player's team (for Victory/Defeat display)
       expect(hist[0]!.team).toBe('chaff')
+      expect(hist[0]!.playerStats).toMatchObject({
+        kills: 0,
+        finalScrip: 0,
+        netWorth: 0,
+        lastHits: 0,
+        burns: 0,
+      })
       expect(await run((s) => s.getMatchHistory('p1', 2))).toHaveLength(2)
       expect(await run((s) => s.getMatchHistory('ghost'))).toHaveLength(0)
     })
@@ -157,6 +175,86 @@ describe('DatabaseService (real Postgres)', () => {
       const hist = await run((s) => s.getMatchHistory('p1'))
       expect(hist.map((h) => h.team).sort()).toEqual(['audit', 'chaff'])
       expect(hist.map((h) => h.winner).sort()).toEqual(['audit', 'chaff'])
+    })
+  })
+
+  describe('applyMatchDerivedStats', () => {
+    it('applies ladder/profile stats once inside the match claim', async () => {
+      await seedPlayer()
+      await run((s) =>
+        s.recordMatch({ id: 'derived-1', mode: 'ranked_5v5' } as never, [
+          { matchId: 'derived-1', playerId: 'p1', team: 'chaff', heroId: 'echo' } as never,
+        ]),
+      )
+
+      const stats = {
+        playerId: 'p1',
+        heroId: 'echo',
+        won: true,
+        ranked: true,
+        mmrChange: 25,
+        kills: 3,
+        deaths: 1,
+        assists: 5,
+      }
+      expect(await run((s) => s.applyMatchDerivedStats('derived-1', [stats]))).toBe(true)
+      expect(await run((s) => s.applyMatchDerivedStats('derived-1', [stats]))).toBe(false)
+
+      const player = await run((s) => s.getPlayer('p1'))
+      expect(player).toMatchObject({
+        mmr: 1025,
+        seasonMmr: 1025,
+        gamesPlayed: 1,
+        wins: 1,
+        seasonGamesPlayed: 1,
+        seasonWins: 1,
+      })
+      expect(await run((s) => s.getHeroStats('p1'))).toMatchObject([
+        expect.objectContaining({
+          heroId: 'echo',
+          gamesPlayed: 1,
+          wins: 1,
+          totalKills: 3,
+          totalDeaths: 1,
+          totalAssists: 5,
+        }),
+      ])
+      expect((await run((s) => s.getMatch('derived-1')))?.derivedStatsApplied).toBe(true)
+    })
+
+    it('keeps casual games out of both MMR ladders while recording W-L', async () => {
+      await seedPlayer()
+      await run((s) =>
+        s.recordMatch({ id: 'derived-casual', mode: 'casual_5v5' } as never, [
+          { matchId: 'derived-casual', playerId: 'p1', team: 'chaff', heroId: 'echo' } as never,
+        ]),
+      )
+
+      expect(
+        await run((s) =>
+          s.applyMatchDerivedStats('derived-casual', [
+            {
+              playerId: 'p1',
+              heroId: 'echo',
+              won: false,
+              ranked: false,
+              mmrChange: -25,
+              kills: 0,
+              deaths: 2,
+              assists: 1,
+            },
+          ]),
+        ),
+      ).toBe(true)
+
+      expect(await run((s) => s.getPlayer('p1'))).toMatchObject({
+        mmr: 1000,
+        seasonMmr: 1000,
+        gamesPlayed: 1,
+        wins: 0,
+        seasonGamesPlayed: 0,
+        seasonWins: 0,
+      })
     })
   })
 

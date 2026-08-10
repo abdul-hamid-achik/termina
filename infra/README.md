@@ -90,13 +90,14 @@ section below.
    AND `NUXT_SESSION_COOKIE_DOMAIN=.terminamoba.com` on **both** sides — the
    client then calls `api.terminamoba.com` directly with credentials and a
    shared-domain cookie; the CORS allowlist below becomes load-bearing.)_
-9. **Lock down CORS** (only load-bearing in the cross-origin fallback): set
-   `NUXT_CORS_ALLOWED_ORIGINS` (on the DO side) to the Vercel origin — until
-   then the API echoes any origin. Harmless to set under the proxy model.
+9. **Configure CORS** (only load-bearing in the cross-origin fallback): set
+   `NUXT_CORS_ALLOWED_ORIGINS` (on the DO side) to the Vercel origin. With no
+   list, credentialed CORS is same-origin only and arbitrary origins are blocked.
 10. **Alerts**: set a team notification email in the DO console (alerts are
     pre-declared — see [Alerts](#alerts)).
 11. **Smoke test**: `curl https://<app>/api/health` → `{"status":"ok",…}`, then
-    connect a client and confirm a game starts and ticks.
+    connect a client and confirm a game starts and cycles. The load balancer
+    probes `/api/ready`; `/api/health` remains the always-200 liveness endpoint.
 
 **Before heavy traffic — open hardening items:**
 

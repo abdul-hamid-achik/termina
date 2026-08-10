@@ -179,7 +179,7 @@ const app = new digitalocean.App('termina-ws', {
           tag: imageTag,
         },
         healthCheck: {
-          httpPath: '/api/health',
+          httpPath: '/api/ready',
           initialDelaySeconds: 15,
           periodSeconds: 30,
           timeoutSeconds: 5,

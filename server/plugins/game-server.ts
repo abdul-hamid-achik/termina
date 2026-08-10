@@ -9,6 +9,7 @@ import {
   DatabaseService,
   DatabaseServiceLive,
   type DatabaseServiceApi,
+  type MatchDerivedPlayerStats,
 } from '~~/server/services/DatabaseService'
 import {
   WebSocketService,
@@ -64,7 +65,8 @@ import {
   getGamePlayers,
 } from '~~/server/services/PeerRegistry'
 import { cleanupLobby } from '~~/server/game/matchmaking/lobby'
-import { calculateMmrChange, applyMmrChange, teamAverageMmr } from '~~/server/game/matchmaking/elo'
+import { claimGameReady } from '~~/server/game/matchmaking/gameReadyClaim'
+import { calculateMmrChange, teamAverageMmr } from '~~/server/game/matchmaking/elo'
 import { HEROES } from '~~/shared/constants/heroes'
 import { registerAllHeroes } from '~~/server/game/heroes'
 
@@ -629,6 +631,21 @@ export default defineNitroPlugin(async (nitroApp) => {
         sendToGamePeer(gId, playerId, { type: 'announcement', message, level: 'info' })
       },
 
+      onGameDegraded: (gId, consecutiveFailures) => {
+        gameLog.error('Game loop degraded after repeated cycle failures', {
+          gameId: gId,
+          consecutiveFailures,
+        })
+        for (const p of players) {
+          if (isBot(p.playerId)) continue
+          sendToGamePeer(gId, p.playerId, {
+            type: 'announcement',
+            message: 'ENGINE DEGRADED — cycle processing is delayed while the server retries.',
+            level: 'warning',
+          })
+        }
+      },
+
       onTutorialCompleted: (_gId, playerId) => {
         if (isBot(playerId)) return
         // Persist best-effort: a DB hiccup must never block the game loop. The
@@ -764,6 +781,7 @@ export default defineNitroPlugin(async (nitroApp) => {
             }
             const matchPlayerRecords: NewMatchPlayer[] = realPlayers.map((p) => {
               const ps = finalState.players[p.playerId]
+              const end = endStats[p.playerId]
               const mmrChange = mmrChanges.get(p.playerId) ?? 0
               return {
                 matchId: gId,
@@ -773,9 +791,12 @@ export default defineNitroPlugin(async (nitroApp) => {
                 kills: ps?.kills ?? 0,
                 deaths: ps?.deaths ?? 0,
                 assists: ps?.assists ?? 0,
-                goldEarned: ps?.scrip ?? 0,
-                damageDealt: ps?.damageDealt ?? 0,
-                healingDone: 0,
+                finalScrip: end?.scrip ?? 0,
+                netWorth: end?.netWorth ?? 0,
+                damageDealt: end?.heroDamage ?? 0,
+                iceDamageDealt: end?.iceDamage ?? 0,
+                lastHits: end?.lastHits ?? 0,
+                burns: end?.burns ?? 0,
                 finalItems: (ps?.items ?? []).filter((i): i is string => i !== null),
                 finalLevel: ps?.level ?? 1,
                 mmrChange,
@@ -786,38 +807,33 @@ export default defineNitroPlugin(async (nitroApp) => {
               Effect.gen(function* () {
                 const matchPersisted = yield* db.recordMatch(matchRecord, matchPlayerRecords)
                 if (!shouldApplyDerivedMatchStats(matchPersisted)) {
-                  gameLog.error('Match was not persisted; skipping derived stats', { gameId: gId })
+                  gameLog.error('Match was not persisted; skipping derived stats', {
+                    gameId: gId,
+                    result: matchPersisted,
+                  })
                   return
                 }
 
-                for (const p of realPlayers) {
-                  const isWinner = p.team === winner
+                const derivedPlayers: MatchDerivedPlayerStats[] = realPlayers.map((p) => {
                   const ps = finalState.players[p.playerId]
-
-                  // MMR only moves for ranked (no-bot) games — bot games record
-                  // history/stats but leave the competitive ladder untouched.
-                  if (isRanked) {
-                    const mmrChange = mmrChanges.get(p.playerId) ?? 0
-                    const newMmr = applyMmrChange(p.mmr, mmrChange)
-                    yield* db.updatePlayerMMR(p.playerId, newMmr)
-                    // Mirror the change onto the seasonal ladder + seasonal W/L.
-                    yield* db.applySeasonMmrChange(p.playerId, mmrChange)
-                    yield* db.incrementSeasonGamesPlayed(p.playerId)
-                    if (isWinner) {
-                      yield* db.incrementSeasonWins(p.playerId)
-                    }
-                  }
-                  yield* db.incrementGamesPlayed(p.playerId)
-                  if (isWinner) {
-                    yield* db.incrementWins(p.playerId)
-                  }
-                  yield* db.updateHeroStats(p.playerId, p.heroId, {
-                    won: isWinner,
+                  return {
+                    playerId: p.playerId,
+                    heroId: p.heroId,
+                    won: p.team === winner,
+                    ranked: isRanked,
+                    mmrChange: mmrChanges.get(p.playerId) ?? 0,
                     kills: ps?.kills ?? 0,
                     deaths: ps?.deaths ?? 0,
                     assists: ps?.assists ?? 0,
-                  })
-                }
+                  }
+                })
+
+                const derivedApplied = yield* db.applyMatchDerivedStats(gId, derivedPlayers)
+                gameLog.info('Match derived stats settled', {
+                  gameId: gId,
+                  record: matchPersisted,
+                  applied: derivedApplied,
+                })
               }),
             )
           } catch (err) {
@@ -858,7 +874,33 @@ export default defineNitroPlugin(async (nitroApp) => {
           players: { playerId: string; team: TeamId; heroId: string; mmr: number }[]
         }
 
-        const gameId = `game_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+        if (
+          !gameData.lobbyId ||
+          !Array.isArray(gameData.players) ||
+          gameData.players.length === 0
+        ) {
+          gameLog.error('Ignoring malformed game_ready event', { message })
+          return
+        }
+
+        // Redis Pub/Sub delivers a message to every subscribed app instance.
+        // Claim the lobby before creating any local state so a scale-out event
+        // cannot create one independent game per instance. The TTL is long
+        // enough to cover a match while still allowing a stale claim to heal.
+        const claimed = await managedRuntime.runPromise(
+          claimGameReady(redis, gameData.lobbyId, String(process.pid)),
+        )
+        if (!claimed) {
+          gameLog.info('Skipping already-claimed game_ready event', {
+            lobbyId: gameData.lobbyId,
+          })
+          return
+        }
+
+        // A lobby id is globally unique and now owns the game id. This makes
+        // logs, snapshots and any future durable owner record converge on one
+        // identity instead of generating a new id per subscriber.
+        const gameId = `game_${gameData.lobbyId}`
         // The lobby stamps the queue mode + derived mapId onto game_ready. The
         // mapId drives which zone set the game uses (5v5 → 3 lanes, 3v3 → 2,
         // 1v1 → 1); fall back to deriving it from mode, then to the full map.

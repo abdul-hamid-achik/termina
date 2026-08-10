@@ -65,6 +65,12 @@ import { writeSnapshot, SNAPSHOT_EVERY_N_TICKS, type SnapshotMeta } from './Stat
 import { appendActions } from './ActionLog'
 import { escalateRejection } from './rejectionEscalation'
 import type { RedisServiceApi } from '~~/server/services/RedisService'
+import {
+  clearGameLoopHealth,
+  recordTickFailure,
+  recordTickSuccess,
+  TICK_FAILURE_NOTICE_THRESHOLD,
+} from './GameLoopHealth'
 
 // ── Action queue per game ──────────────────────────────────────
 
@@ -673,6 +679,9 @@ export interface GameCallbacks {
    * stop routing returning players to practice. Skipped if not set.
    */
   onTutorialCompleted?: (gameId: string, playerId: string) => void
+  /** Fires once after repeated cycle failures so the server can surface a
+   * degraded match to players and operations instead of silently freezing. */
+  onGameDegraded?: (gameId: string, consecutiveFailures: number) => void
   /**
    * Fires once per cycle with the unfiltered (fogless) state. Optional —
    * implemented by the plugin to broadcast to spectators. Skipped if not set.
@@ -851,6 +860,10 @@ function buildGameLoop(
       callbacks.onEvents(gameId, events)
     }
 
+    // A complete cycle reached the broadcast boundary successfully. Clearing
+    // the failure streak here means one healthy cycle closes the incident.
+    recordTickSuccess(gameId)
+
     // Check win — phase is set to 'ended' by processCycle (ice or surrender)
     if (newState.phase === 'ended') {
       const winner = newState.winner ?? checkWinCondition(newState)
@@ -871,7 +884,22 @@ function buildGameLoop(
   }).pipe(
     // Recover from individual tick failures so the loop keeps running
     Effect.catchAll((error) => {
-      engineLog.error('Tick error (recovering)', { gameId, error: String(error) })
+      const health = recordTickFailure(gameId)
+      engineLog.error('Tick error (recovering)', {
+        gameId,
+        error: String(error),
+        consecutiveFailures: health.consecutiveFailures,
+      })
+      if (health.consecutiveFailures === TICK_FAILURE_NOTICE_THRESHOLD) {
+        try {
+          callbacks.onGameDegraded?.(gameId, health.consecutiveFailures)
+        } catch (callbackError) {
+          engineLog.warn('Game degraded callback failed', {
+            gameId,
+            error: String(callbackError),
+          })
+        }
+      }
       return Effect.void
     }),
   )
@@ -897,6 +925,7 @@ function buildGameLoop(
         activeGames.delete(gameId)
         recentHeroDamage.delete(gameId)
         gameFarm.delete(gameId)
+        clearGameLoopHealth(gameId)
       }),
     ),
   )
