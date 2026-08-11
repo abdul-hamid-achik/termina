@@ -1,5 +1,6 @@
 import { start } from 'workflow/api'
 import { tickSpike, tickSpikeAbsolute, tickSpikeAligned } from '~~/server/workflows/tickSpike'
+import { tickGameSpike } from '~~/server/workflows/tickGameSpike'
 
 /**
  * SPIKE trigger, GET variant: preview deployments sit behind Vercel
@@ -17,8 +18,20 @@ export default defineEventHandler(async (event) => {
   }
   const ticks = Math.min(600, Math.max(2, Number(q.ticks ?? 150)))
   const label = String(q.label ?? 'spike')
-  // ?mode=aligned → variant 3 (ship design); ?mode=absolute → variant 2;
+  // ?mode=game → SPIKE 3 (full pipeline: Neon state + processCycle + Ably);
+  // ?mode=aligned → variant 3 timing; ?mode=absolute → variant 2;
   // default = naive relative (variant 1).
+  if (q.mode === 'game') {
+    const gameId = `spike3_${label}`
+    await start(tickGameSpike, [gameId, ticks])
+    return {
+      started: true,
+      mode: 'game',
+      gameId,
+      maxTicks: ticks,
+      note: `bot 2v2 plays itself — summary lands as [gameSpike:${gameId}] SUMMARY`,
+    }
+  }
   const workflow =
     q.mode === 'aligned' ? tickSpikeAligned : q.mode === 'absolute' ? tickSpikeAbsolute : tickSpike
   await start(workflow, [label, ticks])

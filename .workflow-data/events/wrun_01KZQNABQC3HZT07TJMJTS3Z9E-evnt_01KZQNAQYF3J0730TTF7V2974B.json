@@ -1,0 +1,13 @@
+{
+  "eventType": "run_completed",
+  "specVersion": 3,
+  "eventData": {
+    "output": {
+      "__type": "Uint8Array",
+      "data": "ZGV2bFt7ImdhbWVJZCI6MSwidGlja3MiOjIsImZpbmFsQ3ljbGUiOjIsImVuZGVkIjozLCJwNTAiOjQsInA5NSI6OSwibWF4VG90YWwiOjE0LCJhbGlnblA5NSI6MTUsInRvdGFsV2l0aGluQnVkZ2V0IjoxNn0sInNwaWtlM19sb2NhbCIsMyxmYWxzZSx7ImxvYWQiOjUsImN5Y2xlIjo2LCJzYXZlIjoyLCJwdWJsaXNoIjo3LCJ0b3RhbCI6OH0sNCw2LDAsMTQseyJsb2FkIjoxMCwiY3ljbGUiOjExLCJzYXZlIjoxMiwicHVibGlzaCI6MTMsInRvdGFsIjoxNH0sOSwxMSw1LDIsMjIsMSx0cnVlXQ=="
+    }
+  },
+  "runId": "wrun_01KZQNABQC3HZT07TJMJTS3Z9E",
+  "eventId": "evnt_01KZQNAQYF3J0730TTF7V2974B",
+  "createdAt": "2026-08-11T05:39:37.551Z"
+}
