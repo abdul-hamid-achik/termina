@@ -11,6 +11,8 @@
  * halves of the same Ably account, no shared code needed.
  */
 
+import { createHmac, randomBytes } from 'node:crypto'
+
 /** 1 hour — matches Ably's own default TokenRequest TTL. */
 export const ABLY_TOKEN_TTL_MS = 60 * 60 * 1000
 
@@ -41,41 +43,42 @@ export interface MintAblyTokenRequestOptions {
   apiKey: string
   playerId: string
   ttlMs?: number
-  /** Injectable for tests; defaults to the global fetch. */
-  fetchImpl?: typeof fetch
+  /** Injectable for tests; default Date.now(). */
+  now?: number
+  /** Injectable for tests; default crypto-random. */
+  nonce?: string
+}
+
+export interface AblyTokenRequest {
+  keyName: string
+  ttl: number
+  capability: string
+  clientId: string
+  timestamp: number
+  nonce: string
+  mac: string
 }
 
 /**
- * Mint a scoped Ably TokenRequest for `playerId` via Ably's REST API
- * (POST /keys/{keyName}/requests, Basic-authed with the full API key) and
- * return the JSON body as-is — it's handed straight to the client SDK's
- * authCallback, unmodified.
+ * Mint a scoped Ably TokenRequest for `playerId` — SIGNED LOCALLY with
+ * HMAC-SHA256 per Ably's TokenRequest spec (no network call; the previous
+ * implementation POSTed to a /keys/{keyName}/requests endpoint that does not
+ * exist and 404'd in production). The returned object is handed straight to
+ * the client SDK's authCallback; the SDK exchanges it with Ably itself.
+ *
+ * Sign text per spec: keyName, ttl, capability, clientId, timestamp, nonce —
+ * newline-joined WITH a trailing newline — HMAC'd with the key secret.
  */
-export async function mintAblyTokenRequest(options: MintAblyTokenRequestOptions): Promise<unknown> {
-  const { apiKey, playerId, ttlMs = ABLY_TOKEN_TTL_MS, fetchImpl = fetch } = options
-  const { keyName } = parseAblyApiKey(apiKey)
-  const capability = buildAblyCapability(playerId)
+export function mintAblyTokenRequest(options: MintAblyTokenRequestOptions): AblyTokenRequest {
+  const { apiKey, playerId, ttlMs = ABLY_TOKEN_TTL_MS } = options
+  const { keyName, keySecret } = parseAblyApiKey(apiKey)
+  const capability = JSON.stringify(buildAblyCapability(playerId))
+  const timestamp = options.now ?? Date.now()
+  const nonce = options.nonce ?? randomBytes(16).toString('hex')
 
-  const requestBody = {
-    keyName,
-    capability: JSON.stringify(capability),
-    clientId: playerId,
-    ttl: ttlMs,
-    timestamp: Date.now(),
-  }
+  const signText =
+    [keyName, String(ttlMs), capability, playerId, String(timestamp), nonce].join('\n') + '\n'
+  const mac = createHmac('sha256', keySecret).update(signText).digest('base64')
 
-  const res = await fetchImpl(`https://rest.ably.io/keys/${encodeURIComponent(keyName)}/requests`, {
-    method: 'POST',
-    headers: {
-      authorization: `Basic ${Buffer.from(apiKey).toString('base64')}`,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(requestBody),
-  })
-
-  if (!res.ok) {
-    throw new Error(`Ably token mint failed (${res.status})`)
-  }
-
-  return res.json()
+  return { keyName, ttl: ttlMs, capability, clientId: playerId, timestamp, nonce, mac }
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import {
   ABLY_TOKEN_TTL_MS,
   buildAblyCapability,
@@ -48,68 +48,45 @@ describe('parseAblyApiKey', () => {
 })
 
 describe('mintAblyTokenRequest', () => {
-  function fakeFetch(status: number, body: unknown) {
-    return vi.fn().mockResolvedValue({
-      ok: status >= 200 && status < 300,
-      status,
-      json: async () => body,
-    })
-  }
+  const KEY = 'app1.key1:secret1'
 
-  it('POSTs to /keys/{keyName}/requests with Basic auth of the FULL key', async () => {
-    const fetchImpl = fakeFetch(200, { id: 'tok1' })
-    await mintAblyTokenRequest({ apiKey: 'app1.key1:secret1', playerId: 'p1', fetchImpl })
-
-    expect(fetchImpl).toHaveBeenCalledTimes(1)
-    const [url, init] = fetchImpl.mock.calls[0]!
-    expect(url).toBe('https://rest.ably.io/keys/app1.key1/requests')
-    expect(init.method).toBe('POST')
-    expect(init.headers.authorization).toBe(
-      `Basic ${Buffer.from('app1.key1:secret1').toString('base64')}`,
-    )
-  })
-
-  it('sends capability scoped to the requesting player, clientId, and a 1h TTL by default', async () => {
-    const fetchImpl = fakeFetch(200, { id: 'tok1' })
-    await mintAblyTokenRequest({ apiKey: 'app1.key1:secret1', playerId: 'p42', fetchImpl })
-
-    const [, init] = fetchImpl.mock.calls[0]!
-    const sentBody = JSON.parse(init.body)
-    expect(sentBody.clientId).toBe('p42')
-    expect(sentBody.ttl).toBe(ABLY_TOKEN_TTL_MS)
-    expect(sentBody.keyName).toBe('app1.key1')
-    expect(JSON.parse(sentBody.capability)).toEqual({
-      'game:*:p:p42': ['subscribe'],
-      'game:*:team:*': ['subscribe'],
-    })
-  })
-
-  it('honors an explicit ttlMs override', async () => {
-    const fetchImpl = fakeFetch(200, { id: 'tok1' })
-    await mintAblyTokenRequest({
-      apiKey: 'app1.key1:secret1',
+  it('signs a local TokenRequest — correct HMAC over the spec sign-text', async () => {
+    const { createHmac } = await import('node:crypto')
+    const tr = mintAblyTokenRequest({
+      apiKey: KEY,
       playerId: 'p1',
-      ttlMs: 5_000,
-      fetchImpl,
+      now: 1234567,
+      nonce: 'nonce16nonce16aa',
     })
-    const [, init] = fetchImpl.mock.calls[0]!
-    expect(JSON.parse(init.body).ttl).toBe(5_000)
+    const capability = JSON.stringify(buildAblyCapability('p1'))
+    const signText =
+      ['app1.key1', String(tr.ttl), capability, 'p1', '1234567', 'nonce16nonce16aa'].join('\n') +
+      '\n'
+    const expectedMac = createHmac('sha256', 'secret1').update(signText).digest('base64')
+    expect(tr.mac).toBe(expectedMac)
+    expect(tr.keyName).toBe('app1.key1')
+    expect(tr.clientId).toBe('p1')
+    expect(tr.timestamp).toBe(1234567)
   })
 
-  it('returns the response JSON as-is for the client authCallback', async () => {
-    const fetchImpl = fakeFetch(200, { id: 'tok1', mac: 'xyz' })
-    const result = await mintAblyTokenRequest({
-      apiKey: 'app1.key1:secret1',
-      playerId: 'p1',
-      fetchImpl,
-    })
-    expect(result).toEqual({ id: 'tok1', mac: 'xyz' })
+  it('scopes capability to the requesting player with a 1h TTL by default', () => {
+    const tr = mintAblyTokenRequest({ apiKey: KEY, playerId: 'p42' })
+    expect(tr.ttl).toBe(ABLY_TOKEN_TTL_MS)
+    const cap = JSON.parse(tr.capability) as Record<string, string[]>
+    expect(cap['game:*:p:p42']).toEqual(['subscribe'])
+    expect(cap['game:*:team:*']).toEqual(['subscribe'])
+    expect(Object.keys(cap)).toHaveLength(2)
   })
 
-  it('throws when Ably responds with a non-2xx status', async () => {
-    const fetchImpl = fakeFetch(401, { error: 'bad key' })
-    await expect(
-      mintAblyTokenRequest({ apiKey: 'app1.key1:secret1', playerId: 'p1', fetchImpl }),
-    ).rejects.toThrow(/401/)
+  it('honors an explicit ttlMs override', () => {
+    const tr = mintAblyTokenRequest({ apiKey: KEY, playerId: 'p1', ttlMs: 5000 })
+    expect(tr.ttl).toBe(5000)
+  })
+
+  it('mints a fresh crypto nonce per request (no reuse)', () => {
+    const a = mintAblyTokenRequest({ apiKey: KEY, playerId: 'p1' })
+    const b = mintAblyTokenRequest({ apiKey: KEY, playerId: 'p1' })
+    expect(a.nonce).not.toBe(b.nonce)
+    expect(a.nonce.length).toBeGreaterThanOrEqual(16)
   })
 })
