@@ -13,8 +13,6 @@ const props = defineProps<{
   /** Local player INTEG fraction (0..1). */
   hpFraction: number
   alive: boolean
-  /** Net lead text (e.g. "CHF +1.2k" or "even"). */
-  netLead: string
   cycle: number
   /** Epoch ms when the current cycle window commits, or null before the first
    *  cycle_state has arrived. */
@@ -103,9 +101,8 @@ const remainingSeconds = computed(() => {
       <span class="min-w-0 flex-1 break-words text-chaff" data-testid="status-hop">{{
         hopLine
       }}</span>
-      <span class="max-w-full shrink-0 break-words text-right text-gold" data-testid="status-net"
-        >NET {{ netLead }}</span
-      >
+      <!-- NET lives in GameStateBar (the always-on macro row) — repeating it
+           here read as a bug in the first playtest. -->
     </div>
     <div class="flex min-w-0 justify-between gap-2 text-text-dim">
       <span class="min-w-0 break-words tabular-nums" data-testid="status-clock"

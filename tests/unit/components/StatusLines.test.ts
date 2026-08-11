@@ -30,7 +30,6 @@ function mountLines(over: Partial<Parameters<typeof mount>[0]> = {}) {
       trace,
       hpFraction: 0.8,
       alive: true,
-      netLead: 'CHF +1.2k',
       cycle: 240,
       nextCommitAt: Date.now() + 3000,
       orderCommitted: false,
@@ -59,8 +58,8 @@ describe('StatusLines', () => {
     expect(hop).toContain('CLEAR')
   })
 
-  it('renders the net lead', () => {
-    expect(mountLines().get('[data-testid="status-net"]').text()).toContain('CHF +1.2k')
+  it('does NOT render a net lead — that lives in GameStateBar only (dupe fix)', () => {
+    expect(mountLines().find('[data-testid="status-net"]').exists()).toBe(false)
   })
 
   it('reads off route when the player is off all three routes', () => {
@@ -75,7 +74,6 @@ describe('StatusLines', () => {
         trace,
         hpFraction: 1,
         alive: true,
-        netLead: 'even',
         cycle: 240,
         nextCommitAt: Date.now() + 3000,
         orderCommitted: false,

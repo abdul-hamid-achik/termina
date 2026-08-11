@@ -148,7 +148,7 @@ function formatStats(def: ItemDef): string[] {
       <!-- Tooltip (hover on fine pointers, first tap on coarse pointers) -->
       <div
         v-if="isOpen(slotKey(slot.index)) && slot.def"
-        class="absolute bottom-full left-1/2 z-50 mb-1.5 w-48 -translate-x-1/2 cursor-default border border-border bg-bg-secondary p-2 text-[0.7rem] shadow-lg"
+        class="absolute bottom-full left-0 z-50 mb-1.5 w-48 cursor-default border border-border bg-bg-secondary p-2 text-[0.7rem] shadow-lg"
         :data-testid="`inventory-tooltip-${slot.index}`"
         @click.stop
       >

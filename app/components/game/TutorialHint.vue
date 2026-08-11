@@ -70,11 +70,10 @@ const items = computed(() =>
       </span>
     </div>
 
-    <!-- Current hint, or the completion message. -->
-    <p v-if="!complete && hint" class="min-w-0 text-text-primary" data-testid="tutorial-hint-text">
-      {{ hint }}
-    </p>
-    <p v-else class="min-w-0 text-chaff" data-testid="tutorial-complete">
+    <!-- The step's teaching TEXT rides in the STREAM as a [TUTORIAL] line
+         (see GameScreen's tutorialStep watcher) — the banner keeps only the
+         fixed checklist, so it never covers the top bar. -->
+    <p v-if="complete" class="min-w-0 text-chaff" data-testid="tutorial-complete">
       ✓ Practice complete — wrapping up.
     </p>
   </div>

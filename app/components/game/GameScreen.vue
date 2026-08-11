@@ -95,7 +95,7 @@ import {
 } from '~/utils/coach'
 import { LANE_ROUTES_CORE } from '~~/shared/constants/lanes'
 import { getAbilityBwCost } from '~~/shared/utils/ability'
-import { isTutorialComplete } from '~~/shared/constants/tutorial'
+import { isTutorialComplete, tutorialHint } from '~~/shared/constants/tutorial'
 
 const gameStore = useGameStore()
 const settings = useSettingsStore()
@@ -1568,6 +1568,26 @@ watch(
   },
 )
 
+// ── Tutorial hints ride IN the feed ──────────────────────────
+// Owner call from the first playtest: the banner keeps only the fixed
+// progress checklist; the step's teaching TEXT lands in the STREAM as a
+// [TUTORIAL] line when the step changes — same in-world channel the
+// [COACH] uses, and it stops the banner from covering the top bar.
+watch(
+  () => gameStore.tutorialStep,
+  (step, prev) => {
+    if (gameStore.mode !== 'tutorial' || step === undefined || step === prev) return
+    const hint = tutorialHint(step)
+    if (!hint) return
+    localEvents.value.push({
+      cycle: gameStore.cycle,
+      text: `[TUTORIAL] ${hint.replace(/^🎓\s*/, '')}`,
+      type: 'system',
+    })
+  },
+  { immediate: true },
+)
+
 // ── [MOVE] picker ────────────────────────────────────────────
 // The same one-tap-to-move list the trace era's picker draws, reachable from the
 // action bar (which is on screen at every breakpoint, unlike the map).
@@ -1818,13 +1838,6 @@ const rigEnemyIcePresent = computed(() => {
 const rigHasReadyAbility = computed(() =>
   ['Q', 'W', 'E', 'R'].some((s) => abilityButtonState.value[s]?.ready),
 )
-const netLeadText = computed(() => {
-  const lead = scripLead(gameStore.netWorth.chaff, gameStore.netWorth.audit)
-  return lead.leader === null
-    ? 'even'
-    : `${lead.leader === 'chaff' ? 'CHF' : 'AUD'} +${formatScripShort(lead.amount)}`
-})
-
 watch(rigRecommendation, (rec, prev) => {
   if (!rec || rec === prev) return
   localEvents.value.push({ cycle: gameStore.cycle, text: rec, type: 'rig' })
@@ -2171,7 +2184,6 @@ function handleReturnToMenu() {
             : 0
         "
         :alive="gameStore.isAlive"
-        :net-lead="netLeadText"
         :cycle="gameStore.cycle"
         :next-commit-at="gameStore.nextCommitAt"
         :order-committed="gameStore.orderCommitted"
