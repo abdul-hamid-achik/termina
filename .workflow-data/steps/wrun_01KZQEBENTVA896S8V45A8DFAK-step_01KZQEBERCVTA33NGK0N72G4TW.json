@@ -1,0 +1,20 @@
+{
+  "runId": "wrun_01KZQEBENTVA896S8V45A8DFAK",
+  "stepId": "step_01KZQEBERCVTA33NGK0N72G4TW",
+  "stepName": "step//./server/workflows/tickSpike//stampNow",
+  "status": "completed",
+  "input": {
+    "__type": "Uint8Array",
+    "data": "ZGV2bFt7ImFyZ3MiOjEsImNsb3N1cmVWYXJzIjotMSwidGhpc1ZhbCI6LTF9LFsyLDNdLCJuaXRybzIxMy1sb2NhbCIsMF0="
+  },
+  "attempt": 1,
+  "startedAt": "2026-08-11T03:37:45.047Z",
+  "createdAt": "2026-08-11T03:37:44.987Z",
+  "updatedAt": "2026-08-11T03:37:45.053Z",
+  "specVersion": 3,
+  "output": {
+    "__type": "Uint8Array",
+    "data": "ZGV2bFsxNzg2NDE5NDY1MDUxXQ=="
+  },
+  "completedAt": "2026-08-11T03:37:45.053Z"
+}

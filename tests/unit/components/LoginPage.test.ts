@@ -38,6 +38,10 @@ function stubNuxtGlobals() {
     fetch: mockFetchSession,
     clear: mockClearSession,
   }))
+  // The ?next=practice resumption re-fires useStartTutorial's launch(),
+  // which reads this to pick /api/game/tutorial vs /api/game/practice —
+  // legacy path by default (see useStartTutorial.test.ts).
+  vi.stubGlobal('useRuntimeConfig', () => ({ public: { ablyTransport: false } }))
 }
 
 // ── Stubs for global components ────────────────────────────────────

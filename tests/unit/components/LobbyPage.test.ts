@@ -31,7 +31,14 @@ const stubs = {
   TerminalPanel: { name: 'TerminalPanel', template: '<section><slot /></section>' },
   AnnouncementToast: true,
   HeroPicker: true,
-  MatchQueue: true,
+  // A real enough stub to click "cancel" on — the default auto-stub renders
+  // as an opaque <match-queue-stub> with no way to fire its `cancel` emit
+  // from a DOM trigger.
+  MatchQueue: {
+    name: 'MatchQueue',
+    emits: ['cancel'],
+    template: `<button data-testid="cancel-queue" @click="$emit('cancel')">CANCEL</button>`,
+  },
   PartyPanel: true,
   GuildPanel: true,
   // Real enough to click: the mode selector and the practice launcher are only
@@ -60,10 +67,24 @@ function mountLobby() {
  */
 let apiCalls: Array<[string, { method?: string; body?: unknown }]>
 const navigateTo = vi.fn()
+const routerPush = vi.fn()
+// Flips true once /api/queue/join-neon has been called — status-neon's stub
+// response below switches from 'idle' to 'found' from that point on, so the
+// Neon-path tests don't need fake timers: useQueuePolling's very first
+// (immediate, pre-interval) poll already sees the match.
+let neonJoined = false
 
 function apiFetch(url: string, opts: { method?: string; body?: unknown } = {}) {
   apiCalls.push([url, opts])
   if (url === '/api/game/tutorial') return Promise.resolve({ url: '/play?gameId=dev_1&tutorial=1' })
+  if (url === '/api/queue/join-neon') {
+    neonJoined = true
+    return Promise.resolve({ success: true, queueSize: 1 })
+  }
+  if (url === '/api/queue/status-neon') {
+    return Promise.resolve(neonJoined ? { status: 'found', gameId: 'g_neon' } : { status: 'idle' })
+  }
+  if (url === '/api/queue/leave-neon') return Promise.resolve({ success: true })
   return Promise.reject(new Error('no session'))
 }
 
@@ -74,11 +95,16 @@ describe('lobby page', () => {
     setActivePinia(createPinia())
     playSound.mockClear()
     apiCalls = []
+    neonJoined = false
     navigateTo.mockReset()
+    routerPush.mockReset()
     vi.stubGlobal('definePageMeta', () => {})
-    vi.stubGlobal('useRouter', () => ({ push: vi.fn() }))
+    vi.stubGlobal('useRouter', () => ({ push: routerPush }))
     vi.stubGlobal('navigateTo', navigateTo)
     vi.stubGlobal('$fetch', vi.fn(apiFetch))
+    // Legacy WS transport by default — the Neon-queue describe block below
+    // flips this on for its own tests.
+    vi.stubGlobal('useRuntimeConfig', () => ({ public: { ablyTransport: false } }))
     vi.stubGlobal('useUserSession', () => ({
       loggedIn: ref(true),
       user: ref({ id: MY_ID }),
@@ -233,6 +259,56 @@ describe('lobby page', () => {
       ])
       expect(navigateTo).toHaveBeenCalledWith('/play?gameId=dev_1&tutorial=1')
       expect(joinCalls()).toHaveLength(0)
+      wrapper.unmount()
+    })
+  })
+
+  describe('Neon queue path (ablyTransport flag on)', () => {
+    beforeEach(() => {
+      vi.stubGlobal('useRuntimeConfig', () => ({ public: { ablyTransport: true } }))
+    })
+
+    it('joins over /api/queue/join-neon (not the legacy /api/queue/join)', async () => {
+      const wrapper = mountLobby()
+      await flushPromises()
+
+      await wrapper.get('[data-testid="find-match"]').trigger('click')
+      await flushPromises()
+
+      expect(apiCalls.some(([url]) => url === '/api/queue/join-neon')).toBe(true)
+      expect(joinCalls()).toHaveLength(0)
+      wrapper.unmount()
+    })
+
+    it('navigates to /play once the status-neon poll reports found', async () => {
+      const wrapper = mountLobby()
+      await flushPromises()
+
+      await wrapper.get('[data-testid="find-match"]').trigger('click')
+      await flushPromises()
+
+      expect(apiCalls.some(([url]) => url === '/api/queue/status-neon')).toBe(true)
+      expect(routerPush).toHaveBeenCalledWith('/play')
+      wrapper.unmount()
+    })
+
+    it('leaves over /api/queue/leave-neon when cancelling from the searching screen', async () => {
+      const wrapper = mountLobby()
+      await flushPromises()
+
+      await wrapper.get('[data-testid="find-match"]').trigger('click')
+      await flushPromises()
+      // The join's own immediate status-neon poll already reported 'found'
+      // (via the shared apiFetch stub) and navigated away by this point in
+      // the OTHER test above — force back to 'searching' here so this test
+      // can exercise cancel independently of that race.
+      useLobbyStore().queueStatus = 'searching'
+      await nextTick()
+
+      await wrapper.get('[data-testid="cancel-queue"]').trigger('click')
+      await flushPromises()
+
+      expect(apiCalls.some(([url]) => url === '/api/queue/leave-neon')).toBe(true)
       wrapper.unmount()
     })
   })

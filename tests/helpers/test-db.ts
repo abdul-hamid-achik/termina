@@ -14,5 +14,5 @@ export const testDb = drizzle(client, { schema })
 
 /** Wipe every table between tests so each starts from a clean slate. */
 export async function truncateAll(): Promise<void> {
-  await client`TRUNCATE players, matches, match_players, match_replays, hero_stats, player_providers RESTART IDENTITY CASCADE`
+  await client`TRUNCATE players, matches, match_players, match_replays, hero_stats, player_providers, queue_entries RESTART IDENTITY CASCADE`
 }

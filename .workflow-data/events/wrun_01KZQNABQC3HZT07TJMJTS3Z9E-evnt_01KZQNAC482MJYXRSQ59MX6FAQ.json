@@ -1,0 +1,11 @@
+{
+  "eventType": "wait_created",
+  "specVersion": 3,
+  "correlationId": "wait_01KZQNABVJB1QRS9C6E1FZ6ZZ0",
+  "eventData": {
+    "resumeAt": "2026-08-11T05:39:26.883Z"
+  },
+  "runId": "wrun_01KZQNABQC3HZT07TJMJTS3Z9E",
+  "eventId": "evnt_01KZQNAC482MJYXRSQ59MX6FAQ",
+  "createdAt": "2026-08-11T05:39:25.448Z"
+}

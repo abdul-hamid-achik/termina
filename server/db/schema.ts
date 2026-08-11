@@ -10,6 +10,7 @@ import {
   boolean,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
+import type { Command } from '~~/shared/types/commands'
 
 // ── Players ───────────────────────────────────────────────────────
 
@@ -254,6 +255,88 @@ export const heroStatsRelations = relations(heroStats, ({ one }) => ({
   player: one(players, { fields: [heroStats.playerId], references: [players.id] }),
 }))
 
+// ── Live Games (Workflow tick, spike/workflow-tick migration) ──────
+// The durable home for a game's ENGINE state while the all-Vercel workflow
+// tick drives it — replaces the DO process's in-memory `liveGames` map.
+// `cycle` mirrors `state.cycle` in a plain column (not buried in jsonb)
+// specifically so the tick step's UPDATE can compare-and-swap on it: at-
+// least-once workflow execution means two invocations of the SAME tick can
+// race, and only the one that still sees `cycle = loadedCycle` may win the
+// write (see server/workflows/gameTick.ts's CAS guard). `roster` carries
+// everything needed to rehydrate the per-process bot/hero registries on a
+// fresh instance — every step may land on one.
+
+/** One roster entry — enough to rehydrate BotManager.registerBots on a fresh
+ *  instance. Structurally mirrors game-server.ts's local StartPlayer, kept as
+ *  its own type (not imported) so server/db never depends on server/game. */
+export interface LiveGameRosterPlayer {
+  playerId: string
+  team: 'chaff' | 'audit'
+  heroId: string
+  mmr: number
+}
+
+/** Game-wide bot registration options — mirrors BotManager's
+ *  RegisterBotsOptions, kept structurally (not imported) for the same reason. */
+export interface LiveGameBotOptions {
+  difficulty?: 'easy' | 'medium' | 'hard' | 'unfair'
+  forceLane?: string
+  availableLanes?: string[]
+}
+
+export interface LiveGameRoster {
+  players: LiveGameRosterPlayer[]
+  botOptions?: LiveGameBotOptions
+}
+
+export const liveGames = pgTable('live_games', {
+  gameId: text('game_id').primaryKey(),
+  /** Full serialized GameState (Sets converted to arrays — see
+   *  replayArtifact.serializeStateForTransport). Typed loosely: the transport
+   *  shape diverges from GameState (surrenderVotes becomes arrays) and this
+   *  column is always round-tripped through hydrate()/serializeStateForTransport
+   *  in server/workflows/gameTick.ts rather than read as GameState directly. */
+  state: jsonb('state').notNull().$type<Record<string, unknown>>(),
+  /** Denormalized copy of state.cycle — the CAS guard's compare column. */
+  cycle: integer('cycle').notNull(),
+  /** StartPlayer roster (team/heroId/mmr) + bot registration options
+   *  (difficulty/forceLane/availableLanes). */
+  roster: jsonb('roster').notNull().$type<LiveGameRoster>(),
+  /** Denormalized from state.mode — lets the action ingress + finalization
+   *  gate on practice/tutorial games without hydrating the full state. */
+  mode: text('mode').notNull().default('normal'),
+  mapId: text('map_id'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export type LiveGame = typeof liveGames.$inferSelect
+export type NewLiveGame = typeof liveGames.$inferInsert
+
+// ── Pending Actions (Workflow tick) ─────────────────────────────────
+// The durable action ingress queue for a workflow-driven game. Actions land
+// here from POST /api/game/action (the WS ingress has no equivalent on
+// Vercel), and the tick step SELECTs + DELETEs a game's rows in one
+// RETURNING query at the top of each tick before running processCycle —
+// mirroring the in-process queue GameLoop.submitAction fed on DO.
+
+export const pendingActions = pgTable(
+  'pending_actions',
+  {
+    id: serial('id').primaryKey(),
+    gameId: text('game_id').notNull(),
+    playerId: text('player_id').notNull(),
+    command: jsonb('command').notNull().$type<Command>(),
+    /** The cycle the client saw open when it typed this order — mirrors
+     *  ws.ts's forCycle semantics. Null = unstamped (bots, dev tools). */
+    forCycle: integer('for_cycle'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('pending_actions_game_id_idx').on(table.gameId)],
+)
+
+export type PendingAction = typeof pendingActions.$inferSelect
+export type NewPendingAction = typeof pendingActions.$inferInsert
+
 // ── Type Exports ──────────────────────────────────────────────────
 
 export type Player = typeof players.$inferSelect
@@ -292,3 +375,26 @@ export type Season = typeof seasons.$inferSelect
 export type NewSeason = typeof seasons.$inferInsert
 export type Guild = typeof guilds.$inferSelect
 export type NewGuild = typeof guilds.$inferInsert
+
+// ════════════════════════════════════════════════════════════════════
+// Neon matchmaking (spike/workflow-tick) — replaces the Redis sorted-set
+// queue (server/game/matchmaking/queue.ts) for the Vercel-only cutover.
+// See server/game/matchmaking/queueNeon.ts. Kept in its own section at
+// the end of the file to keep this diff isolated from other concurrent
+// schema additions (e.g. live_games/pending_actions).
+// ════════════════════════════════════════════════════════════════════
+
+export const queueEntries = pgTable(
+  'queue_entries',
+  {
+    playerId: text('player_id').primaryKey(),
+    username: text('username').notNull(),
+    mmr: integer('mmr').notNull(),
+    mode: text('mode').notNull(),
+    joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('queue_entries_mode_mmr_idx').on(table.mode, table.mmr)],
+)
+
+export type QueueEntryRow = typeof queueEntries.$inferSelect
+export type NewQueueEntryRow = typeof queueEntries.$inferInsert

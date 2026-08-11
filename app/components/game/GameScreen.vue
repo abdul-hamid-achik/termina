@@ -23,7 +23,7 @@ import PostGame from '~/components/lobby/PostGame.vue'
 import TerminalPanel from '~/components/ui/TerminalPanel.vue'
 import { useGameStore } from '~/stores/game'
 import { useSettingsStore } from '~/stores/settings'
-import { useGameSocket } from '~/composables/useGameSocket'
+import { useGameTransport } from '~/composables/useGameTransport'
 import {
   useCommands,
   validateCommand,
@@ -99,7 +99,7 @@ import { isTutorialComplete } from '~~/shared/constants/tutorial'
 
 const gameStore = useGameStore()
 const settings = useSettingsStore()
-const gameSocket = useGameSocket()
+const gameSocket = useGameTransport()
 const commands = useCommands()
 const { playSound } = useAudio()
 const { connected, reconnecting, connectionLost, latency } = gameSocket

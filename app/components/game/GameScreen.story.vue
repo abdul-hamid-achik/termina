@@ -13,7 +13,8 @@ import {
 import GameScreen from './GameScreen.vue'
 
 // STORE-COUPLED + socket-aware. GameScreen calls BOTH useGameStore() and
-// useGameSocket(). On mount the socket only connects when *both* gameStore.gameId
+// useGameTransport() (the flagged WS/Ably picker — see useGameTransport.ts).
+// On mount the transport only connects when *both* gameStore.gameId
 // AND gameStore.playerId are set (see onMounted). We seed `playerId` (so the
 // store resolves `player` / `canAct` / vision) but deliberately LEAVE `gameId`
 // unset, so connect() is never called and no live WebSocket / ws-ticket fetch is

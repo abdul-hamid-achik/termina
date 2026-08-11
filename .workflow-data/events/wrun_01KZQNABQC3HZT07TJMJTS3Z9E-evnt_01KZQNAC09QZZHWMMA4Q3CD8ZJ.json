@@ -1,0 +1,11 @@
+{
+  "eventType": "step_started",
+  "specVersion": 3,
+  "correlationId": "step_01KZQNABVJB1QRS9C6E1FZ6ZYZ",
+  "eventData": {
+    "stepName": "step//./server/workflows/tickGameSpike//initGameStep"
+  },
+  "runId": "wrun_01KZQNABQC3HZT07TJMJTS3Z9E",
+  "eventId": "evnt_01KZQNAC09QZZHWMMA4Q3CD8ZJ",
+  "createdAt": "2026-08-11T05:39:25.321Z"
+}

@@ -26,6 +26,9 @@ beforeEach(() => {
   vi.stubGlobal('useRoute', () => ({ query: {} }))
   vi.stubGlobal('$fetch', mockFetch)
   vi.stubGlobal('navigateTo', mockNavigateTo)
+  // useStartTutorial's launch() reads this to pick /api/game/tutorial vs
+  // /api/game/practice — legacy path by default (see useStartTutorial.test.ts).
+  vi.stubGlobal('useRuntimeConfig', () => ({ public: { ablyTransport: false } }))
 })
 afterEach(() => {
   vi.unstubAllGlobals()

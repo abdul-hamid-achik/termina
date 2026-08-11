@@ -58,3 +58,4 @@ tests/e2e/junit.xml
 /.playwright-mcp
 histoire-*.png
 .vercel
+/.swc

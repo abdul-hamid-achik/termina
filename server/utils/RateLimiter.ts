@@ -151,6 +151,10 @@ const SCOPE_CONFIGS: Record<string, RateLimitConfig> = {
   // Public read endpoints (leaderboard/history/replay/profile) keyed by IP —
   // generous so normal browsing is never throttled; only blunts scraping/abuse.
   publicRead: { maxActionsPerSecond: 10, maxBurstSize: 50 },
+  // Ably realtime-token minting per user — a client mints one on connect/
+  // reconnect (tokens last 1h, so normal use is infrequent); capped so a
+  // reconnect loop can't hammer the Ably REST API on our behalf.
+  ablyAuth: { maxActionsPerSecond: 1, maxBurstSize: 5 },
 }
 
 /**
