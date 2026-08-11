@@ -155,6 +155,17 @@ export function useGameChannel() {
           nextCommitAt: data.nextCommitAt,
         }
         routeServerMessage(gameStore, msg, { disconnect })
+        // The legacy WS transport gets the fog-filtered event log via a
+        // SEPARATE 'events' message (routed by gameMessageRouter's own
+        // 'events' case, calling addEvents there) — updateFromCycle
+        // deliberately does not touch state.events itself. Ably has no such
+        // second channel: VisionCalculator.filterStateForPlayer already
+        // folds the same events into the cycle_state payload, so this is the
+        // ONLY place that needs to feed them to the store on this transport.
+        // Doing this in the shared gameMessageRouter instead would double-add
+        // them on the WS path, where the separate 'events' message still
+        // fires — hence handling it here, not there.
+        gameStore.addEvents(data.state.events ?? [])
         _notifyHandlers(msg)
         break
       }

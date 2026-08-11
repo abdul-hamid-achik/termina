@@ -28,10 +28,25 @@ export function useStartTutorial() {
    * default hero.
    */
   async function launch(heroId?: string | MouseEvent) {
-    const res = await $fetch<{ url: string }>('/api/game/tutorial', {
-      method: 'POST',
-      body: typeof heroId === 'string' ? { heroSelf: heroId } : {},
-    })
+    const body = typeof heroId === 'string' ? { heroSelf: heroId } : {}
+
+    // All-Vercel migration: the Ably+HTTP transport's game path is served
+    // by the Neon/Workflow live-game route (practice.post.ts) rather than
+    // the DO-era in-process game server (tutorial.post.ts) — same guest-
+    // mint-on-401 retry behavior below covers both, just against a
+    // different endpoint and a differently-shaped success response
+    // ({ gameId } here vs. { url } from tutorial.post.ts), so the /play
+    // URL is built by hand instead of returned ready-made.
+    if (useRuntimeConfig().public.ablyTransport) {
+      const res = await $fetch<{ gameId: string }>('/api/game/practice', { method: 'POST', body })
+      const playerId = useUserSession().user.value?.id
+      const params = new URLSearchParams({ gameId: res.gameId, tutorial: '1' })
+      if (playerId) params.set('playerId', playerId)
+      await navigateTo(`/play?${params.toString()}`)
+      return
+    }
+
+    const res = await $fetch<{ url: string }>('/api/game/tutorial', { method: 'POST', body })
     await navigateTo(res.url)
   }
 

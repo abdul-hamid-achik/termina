@@ -1,10 +1,5 @@
-import { Effect } from 'effect'
-import { start } from 'workflow/api'
-import { useDb } from '~~/server/db'
-import { liveGames, type LiveGameRoster } from '~~/server/db/schema'
-import { createInMemoryStateManager } from '~~/server/game/engine/StateManager'
-import { serializeStateForTransport } from '~~/server/game/engine/replayArtifact'
-import { runGame } from '~~/server/workflows/gameTick'
+import { startLiveGame } from '~~/server/game/liveGame'
+import type { LiveGameRoster, LiveGameRosterPlayer } from '~~/server/db/schema'
 import type { GameMode, TeamId } from '~~/shared/types/game'
 
 interface StartWorkflowBody {
@@ -24,6 +19,11 @@ interface StartWorkflowBody {
  * (server/routes/spike-workflow.*.ts) for now; a real service-to-service
  * call (or folding this into the lobby → game-ready path) is follow-up work
  * once that handoff is built for the all-Vercel cutover.
+ *
+ * The live_games-row-creation + start(runGame,[gameId]) logic itself lives
+ * in server/game/liveGame.ts's startLiveGame — shared with the tutorial/
+ * practice path (practice.post.ts) and the Neon queue's match-formed path
+ * (matchmaking/matchStart.ts) rather than reimplemented here.
  */
 export default defineEventHandler(async (event) => {
   const expected = process.env.WORKFLOW_START_KEY
@@ -48,47 +48,19 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const gameId = body.gameId ?? `wf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-  const mode = body.mode ?? 'normal'
-  const mapId = body.mapId
+  const players: LiveGameRosterPlayer[] = body.players.map((p) => ({
+    playerId: p.playerId,
+    team: p.team,
+    heroId: p.heroId,
+    mmr: p.mmr ?? 1000,
+  }))
 
-  const roster: LiveGameRoster = {
-    players: body.players.map((p) => ({
-      playerId: p.playerId,
-      team: p.team,
-      heroId: p.heroId,
-      mmr: p.mmr ?? 1000,
-    })),
-    ...(body.botOptions ? { botOptions: body.botOptions } : {}),
-  }
-
-  const sm = createInMemoryStateManager()
-  await Effect.runPromise(
-    sm.createGame(
-      gameId,
-      roster.players.map((p) => ({
-        id: p.playerId,
-        name: p.playerId,
-        team: p.team,
-        heroId: p.heroId,
-      })),
-      { mapId, mode },
-    ),
-  )
-  const playing = await Effect.runPromise(
-    sm.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const })),
-  )
-
-  const db = useDb()
-  await db.insert(liveGames).values({
-    gameId,
-    state: serializeStateForTransport(playing),
-    cycle: playing.cycle,
-    roster,
-    mode,
-    mapId: mapId ?? null,
+  const { gameId } = await startLiveGame(players, {
+    gameId: body.gameId,
+    mode: body.mode ?? 'normal',
+    mapId: body.mapId,
+    botOptions: body.botOptions,
   })
 
-  const run = await start(runGame, [gameId])
-  return { gameId, run }
+  return { gameId }
 })

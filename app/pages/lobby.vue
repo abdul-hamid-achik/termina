@@ -4,6 +4,7 @@ import { useAuthStore } from '~/stores/auth'
 import { useLobbyStore } from '~/stores/lobby'
 import { useGameStore } from '~/stores/game'
 import { useGameSocket } from '~/composables/useGameSocket'
+import { useQueuePolling } from '~/composables/useQueuePolling'
 import { useAudio } from '~/composables/useAudio'
 import { useStartTutorial } from '~/composables/useStartTutorial'
 import { lobbyLog } from '~/utils/logger'
@@ -19,6 +20,17 @@ const router = useRouter()
 
 const { connect, connected, onMessage, disconnect, send } = useGameSocket()
 const { playSound } = useAudio()
+
+// All-Vercel migration: when the ablyTransport flag is on, quick-match queue
+// state is driven over plain HTTP polling (queueNeon + status-neon, via
+// useQueuePolling below) instead of the WS pushes handleServerMessage routes
+// below (queue_update/queue_filling/lobby_state/pick_turn/...). The 5v5
+// draft/ban flow is NOT ported to this path — see matchStart.ts's doc
+// comment — so a formed quick-match jumps straight from 'searching' to a
+// running game with bots autofilled and heroes auto-assigned; the WS
+// handlers stay completely untouched for the flag-off (legacy) path.
+const useNeonQueue = useRuntimeConfig().public.ablyTransport
+const queuePolling = useQueuePolling()
 
 let removeHandler: (() => void) | null = null
 
@@ -150,12 +162,67 @@ const {
   start: startTutorial,
 } = useStartTutorial()
 
+/** Once a quick-match is found on the Neon path there is no draft to enter —
+ *  set gameStore.gameId/playerId directly, same as the legacy 'game_starting'
+ *  WS message does; the existing gameStore.gameId watcher below handles the
+ *  disconnect + navigate to /play from there. */
+function onMatchFoundNeon(gameId: string) {
+  queuePolling.stop()
+  gameStore.gameId = gameId
+  gameStore.playerId = authStore.user?.id ?? null
+}
+
+async function joinQueueNeon() {
+  lobbyStore.clearError()
+  try {
+    const res = await $fetch<{ success: boolean; queueSize: number; gameId?: string }>(
+      '/api/queue/join-neon',
+      { method: 'POST', body: { mode: queueMode.value } },
+    )
+    if (res.gameId) {
+      onMatchFoundNeon(res.gameId)
+      return
+    }
+    lobbyStore.playersInQueue = res.queueSize
+    lobbyStore.queueStatus = 'searching'
+    lobbyStore.queueTime = 0
+    queuePolling.start({
+      onFound: onMatchFoundNeon,
+      onSearching: ({ queueSize, botFillDue }) => {
+        lobbyStore.playersInQueue = queueSize
+        lobbyStore.botsFilling = botFillDue
+      },
+    })
+  } catch (err: unknown) {
+    lobbyLog.error('Neon queue join failed', err)
+    const e = err as { data?: { message?: string }; message?: string }
+    lobbyStore.setError(
+      `could not join queue — ${e?.data?.message ?? e?.message ?? 'unknown error'}`,
+    )
+    throw err
+  }
+}
+
+async function leaveQueueNeon() {
+  queuePolling.stop()
+  try {
+    await $fetch('/api/queue/leave-neon', { method: 'POST' })
+  } catch {
+    // Ignore errors on leave — mirrors lobbyStore.leaveQueue's own best-effort catch.
+  }
+  lobbyStore.reset()
+}
+
 async function handleJoinQueue() {
   if (joining.value) return
   joining.value = true
   lobbyLog.info('Joining queue', { mode: queueMode.value })
   try {
-    await lobbyStore.joinQueue(queueMode.value)
+    if (useNeonQueue) {
+      await joinQueueNeon()
+    } else {
+      await lobbyStore.joinQueue(queueMode.value)
+    }
   } catch (err) {
     // Store already set lastError for the inline panel — just log here
     lobbyLog.error('Join queue failed', err)
@@ -166,6 +233,10 @@ async function handleJoinQueue() {
 
 async function handleLeaveQueue() {
   lobbyLog.info('Leaving queue')
+  if (useNeonQueue) {
+    await leaveQueueNeon()
+    return
+  }
   await lobbyStore.leaveQueue()
 }
 
@@ -270,12 +341,47 @@ onMounted(async () => {
 
   // Recover state if we landed on /lobby after a page refresh
   if (lobbyStore.queueStatus === 'idle') {
-    const recovered = await lobbyStore.recoverState()
-    if (recovered) {
-      lobbyLog.info('Recovered lobby state on mount', { status: recovered })
+    if (useNeonQueue) {
+      await recoverNeonQueueState()
+    } else {
+      const recovered = await lobbyStore.recoverState()
+      if (recovered) {
+        lobbyLog.info('Recovered lobby state on mount', { status: recovered })
+      }
     }
   }
 })
+
+/** Neon-path equivalent of lobbyStore.recoverState() for a page refresh
+ *  mid-queue: a fresh mount has no memory of "I was polling" (lobbyStore is
+ *  $dispose()'d on unmount), so check status-neon once and resume polling
+ *  if still searching. */
+async function recoverNeonQueueState() {
+  try {
+    const res = await $fetch<{
+      status: 'idle' | 'searching' | 'found'
+      queueSize?: number
+      botFillDue?: boolean
+      gameId?: string
+    }>('/api/queue/status-neon')
+    if (res.status === 'found' && res.gameId) {
+      onMatchFoundNeon(res.gameId)
+    } else if (res.status === 'searching') {
+      lobbyStore.queueStatus = 'searching'
+      lobbyStore.playersInQueue = res.queueSize ?? 0
+      lobbyStore.botsFilling = res.botFillDue ?? false
+      queuePolling.start({
+        onFound: onMatchFoundNeon,
+        onSearching: ({ queueSize, botFillDue }) => {
+          lobbyStore.playersInQueue = queueSize
+          lobbyStore.botsFilling = botFillDue
+        },
+      })
+    }
+  } catch (err) {
+    lobbyLog.warn('Neon queue status recovery failed', err)
+  }
+}
 
 // Navigate to /play when game ID is set via WS game_starting
 watch(
@@ -312,9 +418,13 @@ watch(
       _stopRecoveryPoll()
       return
     }
-    // Poll when WS is not connected and we're in an active queue state
+    // Poll when WS is not connected and we're in an active queue state. Never
+    // on the Neon path — useQueuePolling already owns state transitions there,
+    // and /api/queue/status (this poll's target) is the legacy Redis-queue
+    // endpoint, which has nothing to report for a Neon-formed match.
     const needsPoll =
-      (!wsConnected && status !== 'idle') || (status === 'starting' && lobbyStore.countdown <= 0)
+      !useNeonQueue &&
+      ((!wsConnected && status !== 'idle') || (status === 'starting' && lobbyStore.countdown <= 0))
     if (needsPoll) {
       _startRecoveryPoll()
     } else if (wsConnected && status !== 'starting') {
@@ -348,6 +458,7 @@ function _stopRecoveryPoll() {
 
 onUnmounted(() => {
   _stopRecoveryPoll()
+  queuePolling.stop()
   disconnect()
   lobbyStore.$dispose()
   if (removeHandler) {

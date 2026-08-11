@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { useStartTutorial } from '~~/app/composables/useStartTutorial'
 
-// The composable uses Nuxt auto-imports ($fetch, navigateTo) as globals — stub
-// them the same way IndexPage.test.ts does.
+// The composable uses Nuxt auto-imports ($fetch, navigateTo, useRuntimeConfig,
+// useUserSession) as globals — stub them the same way IndexPage.test.ts does.
 const mockNavigateTo = vi.fn()
 const mockFetch = vi.fn()
 
@@ -11,6 +11,10 @@ beforeEach(() => {
   mockFetch.mockReset()
   vi.stubGlobal('navigateTo', mockNavigateTo)
   vi.stubGlobal('$fetch', mockFetch)
+  // Legacy DO-WebSocket transport by default — the Ably-transport branch gets
+  // its own describe block below with the flag flipped on.
+  vi.stubGlobal('useRuntimeConfig', () => ({ public: { ablyTransport: false } }))
+  vi.stubGlobal('useUserSession', () => ({ user: { value: { id: 'p1' } }, fetch: vi.fn() }))
 })
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -182,5 +186,83 @@ describe('useStartTutorial', () => {
     resolve({ url: '/play?gameId=g2' })
     await first
     expect(mockNavigateTo).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('useStartTutorial — ablyTransport flag on', () => {
+  beforeEach(() => {
+    vi.stubGlobal('useRuntimeConfig', () => ({ public: { ablyTransport: true } }))
+  })
+
+  it('POSTs /api/game/practice and navigates to /play with the returned gameId + session playerId', async () => {
+    mockFetch.mockResolvedValue({ gameId: 'g1' })
+    const { start } = useStartTutorial()
+
+    await start()
+
+    expect(mockFetch).toHaveBeenCalledWith('/api/game/practice', { method: 'POST', body: {} })
+    expect(mockNavigateTo).toHaveBeenCalledWith('/play?gameId=g1&tutorial=1&playerId=p1')
+  })
+
+  it('forwards a chosen hero as heroSelf', async () => {
+    mockFetch.mockResolvedValue({ gameId: 'g2' })
+    const { start } = useStartTutorial()
+
+    await start('daemon')
+
+    expect(mockFetch).toHaveBeenCalledWith('/api/game/practice', {
+      method: 'POST',
+      body: { heroSelf: 'daemon' },
+    })
+  })
+
+  it('omits playerId from the URL when no session user id is available', async () => {
+    vi.stubGlobal('useUserSession', () => ({ user: { value: null }, fetch: vi.fn() }))
+    mockFetch.mockResolvedValue({ gameId: 'g3' })
+    const { start } = useStartTutorial()
+
+    await start()
+
+    expect(mockNavigateTo).toHaveBeenCalledWith('/play?gameId=g3&tutorial=1')
+  })
+
+  it('mints a guest session and retries the practice launch when not signed in (401)', async () => {
+    // Same guest funnel as the legacy path, just against /api/game/practice.
+    const mockSessionFetch = vi.fn()
+    vi.stubGlobal('useUserSession', () => ({
+      user: { value: { id: 'guest_abc123' } },
+      fetch: mockSessionFetch,
+    }))
+    let calls = 0
+    mockFetch.mockImplementation((url: string) => {
+      if (url === '/api/game/practice') {
+        calls += 1
+        if (calls === 1) return Promise.reject({ statusCode: 401 })
+        return Promise.resolve({ gameId: 'g5' })
+      }
+      if (url === '/api/auth/guest') {
+        return Promise.resolve({ user: { id: 'guest_abc123', guest: true } })
+      }
+      throw new Error(`unexpected $fetch call: ${url}`)
+    })
+    const { start, error } = useStartTutorial()
+
+    await start()
+
+    expect(mockFetch).toHaveBeenCalledWith('/api/auth/guest', { method: 'POST' })
+    expect(mockSessionFetch).toHaveBeenCalledOnce()
+    expect(calls).toBe(2)
+    expect(mockNavigateTo).toHaveBeenCalledWith('/play?gameId=g5&tutorial=1&playerId=guest_abc123')
+    expect(error.value).toBeNull()
+  })
+
+  it('surfaces a non-401 failure the same way as the legacy path', async () => {
+    mockFetch.mockRejectedValue({ statusCode: 409, data: { message: "You're already in a match" } })
+    const { start, error } = useStartTutorial()
+
+    await start()
+
+    expect(error.value).toBe("You're already in a match")
+    expect(mockNavigateTo).not.toHaveBeenCalled()
   })
 })

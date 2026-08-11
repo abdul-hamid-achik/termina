@@ -166,6 +166,37 @@ describe('useGameChannel', () => {
         expect.objectContaining({ type: 'cycle_state', cycle: 5, state: {} }),
       )
     })
+
+    it('feeds state.events from a cycle_state message into addEvents (the Ably path has no separate events message)', async () => {
+      const { useGameStore } = await import('../../../app/stores/game')
+      const store = useGameStore()
+      vi.spyOn(store, 'updateFromCycle').mockImplementation(() => {})
+      const addEventsSpy = vi.spyOn(store, 'addEvents').mockImplementation(() => {})
+
+      const { connect } = useGameChannel()
+      connect('game-1', 'player-1')
+      MockRealtime.last!.connection._setState('connected')
+
+      const events = [{ _tag: 'damage', sourceId: 'player-1', targetId: 'wave-1', amount: 10 }]
+      MockRealtime.last!.channel!._receive('cycle_state', { cycle: 5, state: { events } })
+
+      expect(addEventsSpy).toHaveBeenCalledWith(events)
+    })
+
+    it('feeds an empty array into addEvents when the cycle_state payload has no events field', async () => {
+      const { useGameStore } = await import('../../../app/stores/game')
+      const store = useGameStore()
+      vi.spyOn(store, 'updateFromCycle').mockImplementation(() => {})
+      const addEventsSpy = vi.spyOn(store, 'addEvents').mockImplementation(() => {})
+
+      const { connect } = useGameChannel()
+      connect('game-1', 'player-1')
+      MockRealtime.last!.connection._setState('connected')
+
+      MockRealtime.last!.channel!._receive('cycle_state', { cycle: 5, state: {} })
+
+      expect(addEventsSpy).toHaveBeenCalledWith([])
+    })
   })
 
   describe('send (action ingress)', () => {

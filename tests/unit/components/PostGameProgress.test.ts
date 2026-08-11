@@ -209,6 +209,9 @@ describe('PostGame — practice this', () => {
     fetchMock.mockClear()
     vi.stubGlobal('navigateTo', navigate)
     vi.stubGlobal('$fetch', fetchMock)
+    // useStartTutorial's launch() reads this to pick /api/game/tutorial vs
+    // /api/game/practice — legacy path by default (see useStartTutorial.test.ts).
+    vi.stubGlobal('useRuntimeConfig', () => ({ public: { ablyTransport: false } }))
   })
   afterEach(() => vi.unstubAllGlobals())
 
