@@ -21,6 +21,13 @@ async function stampNow(label: string, i: number): Promise<number> {
   return now
 }
 
+async function logSummary(summary: Record<string, unknown>): Promise<void> {
+  'use step'
+  // One greppable line in the Vercel runtime logs — the results channel when
+  // the run executes on a protected preview deployment.
+  console.log(`[tickSpike:${String(summary.label)}] SUMMARY ${JSON.stringify(summary)}`)
+}
+
 export async function tickSpike(label: string, ticks: number) {
   'use workflow'
   const stamps: number[] = []
@@ -32,7 +39,7 @@ export async function tickSpike(label: string, ticks: number) {
   const intervals = stamps.slice(1).map((t, i) => t - stamps[i]!)
   const sorted = [...intervals].sort((a, b) => a - b)
   const at = (q: number) => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] ?? 0
-  return {
+  const summary = {
     label,
     ticks,
     firstStamp: stamps[0] ?? null,
@@ -46,4 +53,6 @@ export async function tickSpike(label: string, ticks: number) {
     p95WithinBudget: at(0.95) >= 3750 && at(0.95) <= 4250,
     worstWithinHardCap: (sorted[sorted.length - 1] ?? 0) <= 5000,
   }
+  await logSummary(summary)
+  return summary
 }
