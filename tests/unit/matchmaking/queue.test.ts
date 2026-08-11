@@ -6,6 +6,7 @@ import {
   getQueueSize,
   startMatchmakingLoop,
   isPlayerInQueue,
+  noteQueueActivity,
 } from '~~/server/game/matchmaking/queue'
 import type { QueueEntry } from '~~/server/game/matchmaking/queue'
 import { createLobby } from '~~/server/game/matchmaking/lobby'
@@ -259,6 +260,33 @@ describe('Queue', () => {
       const size = await Effect.runPromise(getQueueSize(redis as never, 'quick_3v3'))
       expect(size).toBe(3)
       expect(redis.zcard).toHaveBeenCalledWith('matchmaking:queue:quick_3v3')
+    })
+  })
+
+  describe('idle short-circuit (per-command billing guard)', () => {
+    it('goes Redis-silent once the queue is idle, and re-arms on activity', async () => {
+      noteQueueActivity()
+      const handle = startMatchmakingLoop(redis as never, ws as never, db as never)
+
+      // Armed: sweeps hit Redis.
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(redis.setnx).toHaveBeenCalled()
+
+      // Let the activity stamp go stale (idle window is 10 min), then clear
+      // the counters and observe a full sweep interval of silence.
+      await vi.advanceTimersByTimeAsync(11 * 60 * 1000)
+      vi.mocked(redis.setnx).mockClear()
+      vi.mocked(redis.zcard).mockClear()
+      await vi.advanceTimersByTimeAsync(15_000)
+      expect(redis.setnx).not.toHaveBeenCalled()
+      expect(redis.zcard).not.toHaveBeenCalled()
+
+      // Any queue touch re-arms the sweep.
+      noteQueueActivity()
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(redis.setnx).toHaveBeenCalled()
+
+      clearInterval(handle)
     })
   })
 

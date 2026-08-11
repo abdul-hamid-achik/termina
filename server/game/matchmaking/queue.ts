@@ -32,6 +32,27 @@ const BOT_FILL_WAIT_MS = 10_000
 const MATCHMAKING_LOCK_KEY = 'matchmaking:lock'
 const MATCHMAKING_LOCK_TTL_SECONDS = 5
 
+// ── Idle short-circuit ────────────────────────────────────────────
+// The 5s sweep used to hit Redis forever (lock + one zcard per mode ≈ 2.6M
+// commands/month) with ZERO players queued — real money on per-command
+// billing. Every queue-touching API (join, leave, status poll) stamps
+// activity; once the stamp goes stale the sweep skips Redis entirely. The
+// stamp initialises to "active" on boot so a restart with stale queue
+// entries still gets swept for a full idle window before going quiet.
+const QUEUE_IDLE_AFTER_MS = 10 * 60 * 1000
+
+let lastQueueActivityAt = Date.now()
+
+/** Stamp queue activity — any join/leave/status touch re-arms the sweep. */
+export function noteQueueActivity(): void {
+  lastQueueActivityAt = Date.now()
+}
+
+/** Whether the matchmaking sweep may skip Redis entirely (nobody around). */
+export function isQueueSweepIdle(now: number = Date.now()): boolean {
+  return now - lastQueueActivityAt > QUEUE_IDLE_AFTER_MS
+}
+
 const MMR_RANGES: { afterSeconds: number; range: number }[] = [
   { afterSeconds: 0, range: 50 },
   { afterSeconds: 30, range: 100 },
@@ -60,6 +81,7 @@ function getMmrRange(waitTimeSeconds: number): number {
 }
 
 export function joinQueue(redis: RedisServiceApi, entry: QueueEntry): Effect.Effect<void, Error> {
+  noteQueueActivity()
   const data = JSON.stringify(entry)
   const queueKey = `${QUEUE_KEY}:${entry.mode}`
   const queueTimeKey = `${QUEUE_TIMES_KEY}:${entry.playerId}:${entry.mode}`
@@ -115,6 +137,7 @@ export function leaveQueue(
   playerId: string,
   mode: QueueMode = 'ranked_5v5',
 ): Effect.Effect<void> {
+  noteQueueActivity()
   const queueKey = `${QUEUE_KEY}:${mode}`
   const memberField = `${playerId}:${mode}`
   return Effect.gen(function* () {
@@ -136,6 +159,9 @@ async function tryFormMatch(
   ws: WebSocketServiceApi,
   db: DatabaseServiceApi,
 ): Promise<void> {
+  // Idle short-circuit BEFORE any Redis command — see QUEUE_IDLE_AFTER_MS.
+  if (isQueueSweepIdle()) return
+
   const lockValue = `${Date.now()}_${Math.random()}`
 
   const program = Effect.gen(function* () {
@@ -303,6 +329,9 @@ export function isPlayerInQueue(
   playerId: string,
   mode?: QueueMode,
 ): Effect.Effect<boolean> {
+  // A searching client polls status every few seconds — that poll flows
+  // through here and keeps the sweep armed for the whole wait.
+  noteQueueActivity()
   const modes = mode ? [mode] : (['ranked_5v5', 'quick_3v3', '1v1'] as const)
   return Effect.gen(function* () {
     for (const m of modes) {
