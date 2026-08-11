@@ -1,0 +1,65 @@
+@baseUrl = http://localhost:3000
+
+### Admin overview: unauthenticated is rejected outright
+# @name adminOverviewUnauthed
+GET {{baseUrl}}/api/admin/overview
+
+>>>
+expect status 401
+expect body.message contains "Authentication required"
+<<<
+
+### Setup: register a regular (non-admin) user
+# @name setupAdminPanelUser
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "adm_{{$random(10000, 99999)}}",
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 200
+<<<
+
+>>>capture
+adminPanelCookie from header Set-Cookie
+<<<
+
+### Admin overview: an authenticated NON-admin gets 403
+# (the test server sets no TERMINA_ADMIN_* allow-lists, so the gate is closed)
+# @name adminOverviewForbidden
+# @depends setupAdminPanelUser
+GET {{baseUrl}}/api/admin/overview
+Cookie: {{adminPanelCookie}}
+
+>>>
+expect status 403
+<<<
+
+### Admin halt: same closed gate on the kill switch
+# @name adminHaltForbidden
+# @depends setupAdminPanelUser
+POST {{baseUrl}}/api/admin/halt-game
+Content-Type: application/json
+Cookie: {{adminPanelCookie}}
+
+{
+  "all": true
+}
+
+>>>
+expect status 403
+<<<
+
+### Admin clear-queue: same closed gate
+# @name adminClearQueueForbidden
+# @depends setupAdminPanelUser
+POST {{baseUrl}}/api/admin/clear-queue
+Content-Type: application/json
+Cookie: {{adminPanelCookie}}
+
+>>>
+expect status 403
+<<<

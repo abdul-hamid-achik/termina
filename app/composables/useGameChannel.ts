@@ -169,11 +169,16 @@ export function useGameChannel() {
         _notifyHandlers(msg)
         break
       }
-      case 'game_over': {
-        // Published by the tick workflow in the same batch as the final
-        // cycle_state — winner + full end-of-match scoreboard. Routed through
-        // the shared router so the WS-era setGameOver path is reused verbatim.
-        const msg = { ...(message.data as object), type: 'game_over' } as ServerMessage
+      case 'game_over':
+      case 'announcement':
+      case 'error': {
+        // game_over: published by the tick workflow in the same batch as the
+        // final cycle_state — winner + full end-of-match scoreboard.
+        // announcement/error: published by the operator panel's halt (and any
+        // future server-side notifier). All three reuse the shared router, so
+        // the WS-era handling (setGameOver, NOT_ASSIGNED → lobby) applies
+        // verbatim.
+        const msg = { ...(message.data as object), type: message.name } as ServerMessage
         routeServerMessage(gameStore, msg, { disconnect })
         _notifyHandlers(msg)
         break
