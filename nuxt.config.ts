@@ -26,7 +26,10 @@ export default defineNuxtConfig({
 
   // Tailwind v4 is wired via its Vite plugin (the @nuxtjs/tailwindcss module is
   // v3-only). The stylesheet is imported directly via `css` below.
-  modules: ['@pinia/nuxt', 'nuxt-auth-utils'],
+  // workflow/nuxt: SPIKE ONLY (spike/workflow-tick branch) — Vercel Workflow
+  // DevKit as the 4s tick driver candidate. Do not merge to main until the
+  // migration lands.
+  modules: ['@pinia/nuxt', 'nuxt-auth-utils', 'workflow/nuxt'],
   css: ['~/assets/css/terminal.css'],
   vite: {
     plugins: [tailwindcss()],

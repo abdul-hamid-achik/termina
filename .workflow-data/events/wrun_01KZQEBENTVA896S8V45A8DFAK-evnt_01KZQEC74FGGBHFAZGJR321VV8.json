@@ -1,0 +1,16 @@
+{
+  "eventType": "step_completed",
+  "specVersion": 3,
+  "correlationId": "step_01KZQEBERCVTA33NGK0N72G4V6",
+  "eventData": {
+    "stepName": "step//./server/workflows/tickSpike//stampNow",
+    "workflowName": "workflow//./server/workflows/tickSpike//tickSpike",
+    "result": {
+      "__type": "Uint8Array",
+      "data": "ZGV2bFsxNzg2NDE5NDg1ODM5XQ=="
+    }
+  },
+  "runId": "wrun_01KZQEBENTVA896S8V45A8DFAK",
+  "eventId": "evnt_01KZQEC74FGGBHFAZGJR321VV8",
+  "createdAt": "2026-08-11T03:38:05.839Z"
+}
