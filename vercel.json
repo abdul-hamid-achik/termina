@@ -4,12 +4,6 @@
   "outputDirectory": ".output/public",
   "framework": "nuxtjs",
   "regions": ["iad1"],
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "https://api.terminamoba.com/api/$1"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*)",
