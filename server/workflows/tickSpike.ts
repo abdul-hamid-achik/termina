@@ -21,6 +21,19 @@ async function stampNow(label: string, i: number): Promise<number> {
   return now
 }
 
+/** Wake early via the coarse queue, then align to the EXACT deadline with an
+ * in-process timer — queue jitter becomes millisecond precision. Waiting is
+ * nearly free on Fluid (active-CPU billing); the buffer must exceed the
+ * queue's p95 wake lag (~1.7s measured) or the stamp lands late anyway. */
+async function alignedStamp(label: string, i: number, target: number): Promise<number> {
+  'use step'
+  const wait = target - Date.now()
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait))
+  const now = Date.now()
+  console.log(`[tickSpike:${label}] tick ${i} at ${now} (target ${target}, align ${now - target})`)
+  return now
+}
+
 async function logSummary(summary: Record<string, unknown>): Promise<void> {
   'use step'
   // One greppable line in the Vercel runtime logs — the results channel when
@@ -53,6 +66,26 @@ export async function tickSpikeAbsolute(label: string, ticks: number) {
   for (let i = 0; i < ticks; i++) {
     await sleep(new Date(t0 + (i + 1) * 4000))
     stamps.push(await stampNow(label, i))
+  }
+  const summary = summarize(label, ticks, stamps)
+  await logSummary(summary)
+  return summary
+}
+
+/**
+ * Variant 3 — the SHIP design: coarse queue wake at deadline−2.5s, fine
+ * in-process alignment to the exact deadline inside the step. Absolute
+ * anchoring keeps the average at 4.000s; the in-process timer erases the
+ * queue's wake variance (±600ms measured in variant 2).
+ */
+export async function tickSpikeAligned(label: string, ticks: number) {
+  'use workflow'
+  const t0 = await stampNow(label, -1)
+  const stamps: number[] = []
+  for (let i = 0; i < ticks; i++) {
+    const target = t0 + (i + 1) * 4000
+    await sleep(new Date(target - 2500))
+    stamps.push(await alignedStamp(label, i, target))
   }
   const summary = summarize(label, ticks, stamps)
   await logSummary(summary)

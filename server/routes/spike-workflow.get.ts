@@ -1,5 +1,5 @@
 import { start } from 'workflow/api'
-import { tickSpike, tickSpikeAbsolute } from '~~/server/workflows/tickSpike'
+import { tickSpike, tickSpikeAbsolute, tickSpikeAligned } from '~~/server/workflows/tickSpike'
 
 /**
  * SPIKE trigger, GET variant: preview deployments sit behind Vercel
@@ -17,8 +17,10 @@ export default defineEventHandler(async (event) => {
   }
   const ticks = Math.min(600, Math.max(2, Number(q.ticks ?? 150)))
   const label = String(q.label ?? 'spike')
-  // ?mode=absolute → variant 2 (absolute deadlines); default = naive relative.
-  const workflow = q.mode === 'absolute' ? tickSpikeAbsolute : tickSpike
+  // ?mode=aligned → variant 3 (ship design); ?mode=absolute → variant 2;
+  // default = naive relative (variant 1).
+  const workflow =
+    q.mode === 'aligned' ? tickSpikeAligned : q.mode === 'absolute' ? tickSpikeAbsolute : tickSpike
   await start(workflow, [label, ticks])
   return {
     started: true,
