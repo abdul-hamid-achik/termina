@@ -34,12 +34,9 @@ import { HERO_IDS } from '~~/shared/constants/heroes'
  * what can be tested with the bare engine + state manager.
  *
  * Flows that do NOT exist at this layer (and where they ARE tested):
- * - Player disconnect/reconnect: handled at the WS boundary
- *   (server/routes/ws.ts + PeerRegistry). Covered by
- *   tests/unit/services/PeerRegistry.test.ts and the live-socket round-trips
- *   in tests/integration/websocket-service.test.ts.
- * - Action rate limiting: enforced per-connection in server/routes/ws.ts via
- *   server/utils/RateLimiter.ts before commands ever reach the engine (the
+ * - Action rate limiting: enforced per-request in server/api/game/action.post.ts
+ *   (the workflow-driven ingress — the DO-era ws.ts route it replaced is gone)
+ *   via server/utils/RateLimiter.ts before commands ever reach the engine (the
  *   engine itself dedupes to one action per player per cycle). Covered by
  *   tests/unit/utils/RateLimiter.test.ts.
  */

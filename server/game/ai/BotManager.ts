@@ -1,5 +1,4 @@
 import type { TeamId } from '~~/shared/types/game'
-import type { QueueEntry } from '~~/server/game/matchmaking/queue'
 import { HEROES } from '~~/shared/constants/heroes'
 import type { HeroRole } from '~~/shared/types/hero'
 // Value import (function, used only at runtime in cleanupGame) — BotAI imports
@@ -164,12 +163,25 @@ const LANE_PRIORITY_BY_ROLE: Record<HeroRole, string[]> = {
   offlaner: ['seawall', 'coldstore', 'shallows'],
 }
 
+/** A synthetic bot roster entry — the shape callers (queueNeon.ts's
+ *  tryFormMatchNeon, party/start-coop.post.ts) fold into their own roster
+ *  types (MatchRosterEntry, LiveGameRosterPlayer). `mode` is a leftover of
+ *  this having once returned the Redis queue's QueueEntry shape; every
+ *  caller overrides it with the real mode/team before use. */
+export interface BotRosterEntry {
+  playerId: string
+  username: string
+  mmr: number
+  joinedAt: number
+  mode: 'ranked_5v5' | 'quick_3v3' | '1v1'
+}
+
 export function createBotPlayers(
   count: number,
   existingPlayerIds: string[],
   averageMmr?: number,
-): QueueEntry[] {
-  const bots: QueueEntry[] = []
+): BotRosterEntry[] {
+  const bots: BotRosterEntry[] = []
   const botMmr = averageMmr ?? 1000
   for (let i = 0; i < count; i++) {
     let botId: string

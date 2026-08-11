@@ -157,6 +157,9 @@ function formatStat(value: number | null | undefined): string {
             <span class="text-text-dim"
               >({{ player.seasonMmr ?? 1000 }} SR · S{{ player.seasonNumber ?? 1 }})</span
             >
+            <NuxtLink to="/leaderboard" class="text-ability no-underline hover:text-chaff"
+              >[leaderboard]</NuxtLink
+            >
           </div>
           <div v-if="guild" class="flex gap-2 text-[0.85rem]">
             <span class="min-w-[80px] text-text-dim">Guild:</span>
@@ -340,12 +343,7 @@ function formatStat(value: number | null | undefined): string {
                   class="text-ability no-underline hover:text-chaff"
                   >[replay]</NuxtLink
                 >
-                <NuxtLink
-                  v-else
-                  :to="`/spectate/${m.id}`"
-                  class="text-warn no-underline hover:text-chaff"
-                  >[spectate]</NuxtLink
-                >
+                <span v-else class="text-text-muted">in progress</span>
               </td>
             </tr>
           </tbody>

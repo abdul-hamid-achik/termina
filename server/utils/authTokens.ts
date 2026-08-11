@@ -1,46 +1,65 @@
-import { Effect } from 'effect'
 import { randomBytes } from 'node:crypto'
-import type { RedisServiceApi } from '~~/server/services/RedisService'
+import { eq } from 'drizzle-orm'
+import { useDb } from '~~/server/db'
+import { authTokens } from '~~/server/db/schema'
 
-// Single-use, expiring tokens for password reset + email verification, stored in
-// Redis so they auto-expire (TTL) and `getdel` consumes them atomically (a token
-// can be redeemed exactly once). Tokens are 256-bit random hex — unguessable.
+// Single-use, expiring tokens for password reset + email verification, stored
+// in Neon (auth_tokens) so they can be redeemed exactly once — the DELETE ...
+// RETURNING in consumeToken atomically reads and removes the row, mirroring
+// the old Redis `getdel` behavior. Expired rows are simply never reused;
+// there is no background sweep (a stray unredeemed token sitting past its
+// expiry is inert — consumeToken rejects it on the expiresAt check below).
 
-const RESET_PREFIX = 'auth:pwreset:'
-const VERIFY_PREFIX = 'auth:emailverify:'
 const RESET_TTL_SECONDS = 60 * 60 // 1 hour
 const VERIFY_TTL_SECONDS = 60 * 60 * 24 // 24 hours
+
+type TokenPurpose = 'reset' | 'verify'
 
 function newToken(): string {
   return randomBytes(32).toString('hex')
 }
 
-export async function createResetToken(redis: RedisServiceApi, playerId: string): Promise<string> {
+async function createToken(
+  playerId: string,
+  purpose: TokenPurpose,
+  ttlSeconds: number,
+): Promise<string> {
   const token = newToken()
-  await Effect.runPromise(redis.set(RESET_PREFIX + token, playerId, RESET_TTL_SECONDS))
+  const db = useDb()
+  await db.insert(authTokens).values({
+    token,
+    playerId,
+    purpose,
+    expiresAt: new Date(Date.now() + ttlSeconds * 1000),
+  })
   return token
 }
 
-/** Consume a reset token → playerId, or null if invalid/expired (single-use). */
-export async function consumeResetToken(
-  redis: RedisServiceApi,
-  token: string,
-): Promise<string | null> {
+/** Consume a token of the given purpose → playerId, or null if missing,
+ *  expired, or issued for a different purpose (single-use — always deletes
+ *  on read, whether or not it was still valid). */
+async function consumeToken(token: string, purpose: TokenPurpose): Promise<string | null> {
   if (!token) return null
-  return Effect.runPromise(redis.getdel(RESET_PREFIX + token))
+  const db = useDb()
+  const rows = await db.delete(authTokens).where(eq(authTokens.token, token)).returning()
+  const row = rows[0]
+  if (!row || row.purpose !== purpose) return null
+  if (row.expiresAt.getTime() < Date.now()) return null
+  return row.playerId
 }
 
-export async function createVerifyToken(redis: RedisServiceApi, playerId: string): Promise<string> {
-  const token = newToken()
-  await Effect.runPromise(redis.set(VERIFY_PREFIX + token, playerId, VERIFY_TTL_SECONDS))
-  return token
+export function createResetToken(playerId: string): Promise<string> {
+  return createToken(playerId, 'reset', RESET_TTL_SECONDS)
 }
 
-/** Consume a verification token → playerId, or null if invalid/expired. */
-export async function consumeVerifyToken(
-  redis: RedisServiceApi,
-  token: string,
-): Promise<string | null> {
-  if (!token) return null
-  return Effect.runPromise(redis.getdel(VERIFY_PREFIX + token))
+export function consumeResetToken(token: string): Promise<string | null> {
+  return consumeToken(token, 'reset')
+}
+
+export function createVerifyToken(playerId: string): Promise<string> {
+  return createToken(playerId, 'verify', VERIFY_TTL_SECONDS)
+}
+
+export function consumeVerifyToken(token: string): Promise<string | null> {
+  return consumeToken(token, 'verify')
 }

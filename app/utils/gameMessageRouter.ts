@@ -12,14 +12,15 @@ export interface RouteServerMessageOptions {
 }
 
 /**
- * The store-routing half of the server message switch. Shared by every
- * transport that can produce a `ServerMessage` — today the WS composable
- * (`useGameSocket.ts`), and the Ably+HTTP composable (`useGameChannel.ts`)
- * for the subset it can already receive (`cycle_state` over the per-player
- * Ably channel, `action_ack` synthesized from the POST /api/game/action
- * response). The other cases are dead code on the Ably path until the
- * server side wires their equivalent channel/endpoint — see the
- * "INTEGRATION TODO" comments in useGameChannel.ts.
+ * The store-routing half of the server message switch. Written to be shared
+ * by every transport that can produce a `ServerMessage` — the DO-era WS
+ * composable (`useGameSocket.ts`) was one such transport before it was
+ * deleted in the all-Vercel cutover; `useGameChannel.ts` (Ably+HTTP) is the
+ * only one left, and only receives a subset of `ServerMessage` today
+ * (`cycle_state` over the per-player Ably channel, `action_ack` synthesized
+ * from the POST /api/game/action response). The other cases are dead code
+ * on the Ably path until the server side wires their equivalent channel/
+ * endpoint — see the "INTEGRATION TODO" comments in useGameChannel.ts.
  *
  * Deliberately excludes anything transport-specific: heartbeats, WS
  * reconnect scheduling, HTTP request framing. Those stay in the caller.

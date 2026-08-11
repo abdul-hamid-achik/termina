@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
   const player = await Effect.runPromise(runtime.dbService.getPlayer(userId))
   // Only send when there's an unverified email; return ok either way.
   if (player?.email && !player.emailVerifiedAt) {
-    const token = await createVerifyToken(runtime.redisService, player.id)
+    const token = await createVerifyToken(player.id)
     const verifyUrl = `${useRuntimeConfig().appUrl}/verify-email?token=${token}`
     void sendEmail({ to: player.email, ...verifyEmailTemplate(verifyUrl) })
     authLog.info('Verification email resent', { playerId: player.id })

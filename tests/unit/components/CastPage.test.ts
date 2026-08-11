@@ -16,7 +16,7 @@ const mockNavigateTo = vi.fn()
 beforeEach(() => {
   mockFetch.mockReset()
   mockNavigateTo.mockReset()
-  mockFetch.mockResolvedValue({ url: '/game/abc' })
+  mockFetch.mockResolvedValue({ gameId: 'abc' })
   vi.stubGlobal('ref', ref)
   vi.stubGlobal('computed', computed)
   vi.stubGlobal('watch', watch)
@@ -26,9 +26,7 @@ beforeEach(() => {
   vi.stubGlobal('useRoute', () => ({ query: {} }))
   vi.stubGlobal('$fetch', mockFetch)
   vi.stubGlobal('navigateTo', mockNavigateTo)
-  // useStartTutorial's launch() reads this to pick /api/game/tutorial vs
-  // /api/game/practice — legacy path by default (see useStartTutorial.test.ts).
-  vi.stubGlobal('useRuntimeConfig', () => ({ public: { ablyTransport: false } }))
+  vi.stubGlobal('useUserSession', () => ({ user: { value: null }, fetch: vi.fn() }))
 })
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -136,7 +134,7 @@ describe('heroes page — decision content', () => {
 
     await cta.trigger('click')
     await flushPromises()
-    expect(mockFetch).toHaveBeenCalledWith('/api/game/tutorial', {
+    expect(mockFetch).toHaveBeenCalledWith('/api/game/practice', {
       method: 'POST',
       body: { heroSelf: 'malloc' },
     })

@@ -7,10 +7,10 @@ import { matchLog } from '~~/server/utils/log'
 
 /**
  * Neon-backed matchmaking queue — the all-Vercel replacement for the Redis
- * sorted-set queue (server/game/matchmaking/queue.ts, which keeps serving the
- * DO deployment until cutover; do NOT modify it here).
+ * sorted-set queue that used to live at server/game/matchmaking/queue.ts,
+ * deleted with the rest of the DO/Redis era once this cutover completed.
  *
- * Key differences from the Redis version:
+ * Key differences from the deleted Redis version:
  *  - There is no background interval sweep (`startMatchmakingLoop`) on
  *    Vercel — nothing keeps a process warm to run one. Match formation is
  *    EVENT-DRIVEN instead: `tryFormMatchNeon` runs inline at the end of
@@ -27,10 +27,9 @@ import { matchLog } from '~~/server/utils/log'
  *    this mode OR another) falls out of a Postgres unique-violation on
  *    insert, rather than a separate mode-agnostic sentinel key.
  *
- * Match sizing, MMR-range widening, and the bot-backfill threshold are the
- * SAME rules as queue.ts (MATCH_SIZE_BY_MODE / MMR_RANGES / BOT_FILL_WAIT_MS
- * are intentionally mirrored, not imported — queue.ts's copies are private
- * and this module must not import from it beyond the QueueMode shape).
+ * Match sizing, MMR-range widening, and the bot-backfill threshold
+ * (MATCH_SIZE_BY_MODE / MMR_RANGES / BOT_FILL_WAIT_MS below) are literal
+ * copies of the deleted queue.ts's same constants, not a coincidence.
  */
 
 export type QueueMode = 'ranked_5v5' | 'quick_3v3' | '1v1'
@@ -305,15 +304,15 @@ export async function checkQueueStatusNeon(playerId: string): Promise<QueueStatu
   return { status: 'searching', queueSize: await queueSize(mode) }
 }
 
-// ── Integration TODO (for whoever wires this into game start) ──────────
-// tryFormMatchNeon/joinQueue return a FormedMatch (roster + mode) but do NOT
-// create a lobby, a live_games row, or kick off a Workflow tick — this
-// module has zero dependency on server/workflows/gameTick.ts or
-// server/utils/ablyRest.ts (both being built in parallel by another agent).
-// Once those land, the natural hookup is: wherever `joinQueue`/
-// `checkQueueStatusNeon` return `{ matched: true, match }`, call a
-// `startLiveGame(match.roster, match.mode)`-shaped helper (seeds a
-// live_games row + starts the game's first Workflow tick) instead of the
-// DO-era `createLobby` (which needs RedisServiceApi/WebSocketServiceApi/
-// DatabaseServiceApi that don't exist in this serverless path). Hero
-// picks/bans (lobby.ts) are a separate follow-up — out of scope here.
+// ── Game start hookup (DONE) ─────────────────────────────────────────
+// tryFormMatchNeon/joinQueue return a FormedMatch (roster + mode) only —
+// starting the actual live game is server/game/matchmaking/matchStart.ts's
+// job (startFormedMatch → server/game/liveGame.ts's startLiveGame, which
+// seeds the live_games row and kicks off the game's first Workflow tick),
+// called from both /api/queue/join-neon and /api/queue/status-neon wherever
+// they see `{ matched: true, match }`.
+//
+// Hero picks/bans (the old WS-lobby draft, server/game/matchmaking/lobby.ts)
+// were NOT ported — a formed match goes straight from queue to a running
+// game with round-robin hero assignment and no pick screen. A Neon-backed
+// draft is a real follow-up feature, not a cutover blocker.

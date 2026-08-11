@@ -2,20 +2,12 @@
  * Guest practice (audit finding: the PRACTICE CTA dead-ended new visitors at a
  * login wall). Covers:
  *  - isGuestId: the shared predicate every identity-touching endpoint uses.
- *  - shouldPersistTutorialCompletion: game-server.ts's persistence gate
- *    (bots AND guests skip the DB write — see onTutorialCompleted).
  *  - POST /api/auth/guest: session shape + per-IP rate limiting.
- *
- * game-server.ts calls defineNitroPlugin at module eval, so stub it before
- * import (same pattern as tests/unit/server/practice-persistence.test.ts).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { H3Event } from 'h3'
 
-vi.stubGlobal('defineNitroPlugin', (fn: unknown) => fn)
-
 const { isGuestId } = await import('~~/server/utils/guest')
-const { shouldPersistTutorialCompletion } = await import('~~/server/plugins/game-server')
 
 describe('isGuestId', () => {
   it('matches a guest session id', () => {
@@ -35,20 +27,6 @@ describe('isGuestId', () => {
     // A real id that merely contains "guest_" mid-string must not be treated
     // as ephemeral — same discipline as isPracticeGame's dev_ prefix check.
     expect(isGuestId('local_guest_lookalike')).toBe(false)
-  })
-})
-
-describe('shouldPersistTutorialCompletion (game-server.ts persistence gate)', () => {
-  it('persists for a real human player', () => {
-    expect(shouldPersistTutorialCompletion('github_7379966')).toBe(true)
-  })
-
-  it('skips a bot', () => {
-    expect(shouldPersistTutorialCompletion('bot_r0_dev_123')).toBe(false)
-  })
-
-  it('skips a guest — no players row exists to write tutorialCompleted onto', () => {
-    expect(shouldPersistTutorialCompletion('guest_a1b2c3d4e5f6')).toBe(false)
   })
 })
 

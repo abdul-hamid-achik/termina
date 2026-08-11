@@ -1,11 +1,13 @@
 <script setup lang="ts">
 /**
- * Per-team player scoreboard table — shared by the spectate (live) and replay
- * (historical) pages, which previously inlined two near-identical tables over
- * two different player types (live PlayerState vs replay FramePlayer). Each page
- * normalises its players into PlayerScoreRow[] and this component owns the
- * rendering, so the markup + a11y (caption, scope, dimmed-when-dead, [AI] tag)
- * live in ONE place that a Histoire story + a component test can cover.
+ * Per-team player scoreboard table — used by the replay (historical) page.
+ * Originally shared with a live spectate page (deleted in the all-Vercel
+ * cutover — it depended on the DO-era WS spectator stream, which has no
+ * Ably equivalent), which inlined a near-identical table over a different
+ * player type (live PlayerState vs replay FramePlayer). The page normalises
+ * its players into PlayerScoreRow[] and this component owns the rendering,
+ * so the markup + a11y (caption, scope, dimmed-when-dead, [AI] tag) live in
+ * ONE place that a Histoire story + a component test can cover.
  */
 export interface PlayerScoreRow {
   id: string
@@ -23,7 +25,8 @@ export interface PlayerScoreRow {
   scrip: number
   zone: string
   alive: boolean
-  /** AFK→bot takeover marker (live spectate only; replay rows leave it unset). */
+  /** AFK→bot takeover marker — replay rows currently always leave it unset
+   *  (the archived state doesn't carry it yet). */
   aiControlled?: boolean
 }
 

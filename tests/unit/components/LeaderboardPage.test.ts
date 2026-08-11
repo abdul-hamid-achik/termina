@@ -5,11 +5,11 @@ import { PLACEMENT_GAMES } from '~~/shared/constants/ranks'
 
 // ── Nuxt auto-import stubs ─────────────────────────────────────────
 //
-// leaderboard.vue is an async <script setup> that top-level-awaits two
-// useFetch() calls. We stub useFetch to hand back Nuxt-shaped reactive
-// results synchronously, plus the ref/computed auto-imports. (@nuxt/
-// test-utils is not installed; this mirrors the project's existing
-// vi.stubGlobal pattern in stores/auth.test.ts.)
+// leaderboard.vue is an async <script setup> that top-level-awaits
+// useFetch(). We stub useFetch to hand back a Nuxt-shaped reactive result
+// synchronously, plus the ref/computed auto-imports. (@nuxt/test-utils is
+// not installed; this mirrors the project's existing vi.stubGlobal pattern
+// in stores/auth.test.ts.)
 //
 // Globals are stubbed in beforeEach and removed via vi.unstubAllGlobals()
 // in afterEach so they don't bleed into sibling component-project files.
@@ -22,8 +22,7 @@ interface FetchResult {
   refresh: ReturnType<typeof vi.fn>
 }
 
-// Per-mount queue of useFetch results, consumed in call order
-// (leaderboard first, then active-games).
+// Per-mount queue of useFetch results, consumed in call order.
 let fetchResults: FetchResult[] = []
 const mockUseFetch = vi.fn(() => fetchResults.shift()!)
 
@@ -53,14 +52,6 @@ function leaderboardResult(
   }
 }
 
-function activeResult(games: unknown[] | null): FetchResult {
-  return {
-    data: ref(games === null ? null : { games }),
-    status: ref('success'),
-    refresh: vi.fn(),
-  }
-}
-
 function makeEntry(overrides: Record<string, unknown> = {}) {
   return {
     rank: 1,
@@ -74,18 +65,6 @@ function makeEntry(overrides: Record<string, unknown> = {}) {
     gamesPlayed: 100,
     wins: 70,
     winRate: 70,
-    ...overrides,
-  }
-}
-
-function makeActiveGame(overrides: Record<string, unknown> = {}) {
-  return {
-    gameId: 'g1',
-    cycle: 90,
-    chaffKills: 12,
-    auditKills: 8,
-    chaffHeroes: ['echo', 'kernel'],
-    auditHeroes: ['daemon', 'regex'],
     ...overrides,
   }
 }
@@ -152,7 +131,6 @@ describe('leaderboard page', () => {
             winRate: 40,
           }),
         ]),
-        activeResult([]),
       ]
       const wrapper = await mountLeaderboard()
 
@@ -168,10 +146,7 @@ describe('leaderboard page', () => {
     })
 
     it('links each player to their profile', async () => {
-      fetchResults = [
-        leaderboardResult([makeEntry({ id: 'github_42', username: 'linus' })]),
-        activeResult([]),
-      ]
+      fetchResults = [leaderboardResult([makeEntry({ id: 'github_42', username: 'linus' })])]
       const wrapper = await mountLeaderboard()
 
       const link = wrapper.find('tbody a')
@@ -186,7 +161,6 @@ describe('leaderboard page', () => {
           makeEntry({ rank: 1, id: 'p1', username: 'alpha' }),
           makeEntry({ rank: 2, id: 'p2', username: 'me' }),
         ]),
-        activeResult([]),
       ]
       const wrapper = await mountLeaderboard()
 
@@ -201,7 +175,6 @@ describe('leaderboard page', () => {
       sessionUserId = null
       fetchResults = [
         leaderboardResult([makeEntry({ id: 'p1' }), makeEntry({ rank: 2, id: 'p2' })]),
-        activeResult([]),
       ]
       const wrapper = await mountLeaderboard()
       expect(wrapper.find('tbody tr[data-self="true"]').exists()).toBe(false)
@@ -209,10 +182,7 @@ describe('leaderboard page', () => {
 
     it('exposes accessible table semantics (caption + scoped headers + row headers)', async () => {
       sessionUserId = null
-      fetchResults = [
-        leaderboardResult([makeEntry({ id: 'p1', username: 'alpha' })]),
-        activeResult([]),
-      ]
+      fetchResults = [leaderboardResult([makeEntry({ id: 'p1', username: 'alpha' })])]
       const wrapper = await mountLeaderboard()
 
       expect(wrapper.find('caption').text()).toContain('Top players')
@@ -228,7 +198,7 @@ describe('leaderboard page', () => {
       // An empty ladder is the DEFAULT state at launch, not an error: the board
       // lists only players past PLACEMENT_GAMES. "No players found." read as a
       // fault and left a new player with nothing to do about it.
-      fetchResults = [leaderboardResult([]), activeResult([])]
+      fetchResults = [leaderboardResult([])]
       const wrapper = await mountLeaderboard()
 
       expect(wrapper.text()).toContain(`${PLACEMENT_GAMES} placement matches`)
@@ -237,65 +207,17 @@ describe('leaderboard page', () => {
     })
 
     it('states the qualification bar in the header', async () => {
-      fetchResults = [leaderboardResult([]), activeResult([])]
+      fetchResults = [leaderboardResult([])]
       const wrapper = await mountLeaderboard()
       expect(wrapper.text()).toContain(`${PLACEMENT_GAMES} ranked matches to qualify`)
     })
 
     it('shows a loading indicator while the fetch is pending', async () => {
-      fetchResults = [leaderboardResult(null, 'pending'), activeResult([])]
+      fetchResults = [leaderboardResult(null, 'pending')]
       const wrapper = await mountLeaderboard()
 
       expect(wrapper.text()).toContain('Loading leaderboard')
       expect(wrapper.find('tbody').exists()).toBe(false)
-    })
-  })
-
-  describe('live games panel', () => {
-    it('is hidden entirely when no games are active', async () => {
-      fetchResults = [leaderboardResult([makeEntry()]), activeResult([])]
-      const wrapper = await mountLeaderboard()
-
-      expect(wrapper.text()).not.toContain('Live Games')
-      expect(wrapper.text()).not.toContain('in progress')
-    })
-
-    it('lists active games with score, formatted time and a spectate link', async () => {
-      fetchResults = [
-        leaderboardResult([makeEntry()]),
-        // tick 90 → 360s → 6:00
-        activeResult([makeActiveGame({ gameId: 'abc', cycle: 90, chaffKills: 12, auditKills: 8 })]),
-      ]
-      const wrapper = await mountLeaderboard()
-
-      expect(wrapper.text()).toContain('Live Games')
-      expect(wrapper.text()).toContain('1 game in progress')
-      expect(wrapper.text()).toContain('6:00')
-      expect(wrapper.text()).toContain('echo, kernel')
-
-      const spectate = wrapper.findAll('a').find((a) => a.text().includes('spectate'))!
-      expect(spectate.attributes('href')).toBe('/spectate/abc')
-    })
-
-    it('pluralizes the in-progress count for multiple games', async () => {
-      fetchResults = [
-        leaderboardResult([makeEntry()]),
-        activeResult([makeActiveGame({ gameId: 'a' }), makeActiveGame({ gameId: 'b' })]),
-      ]
-      const wrapper = await mountLeaderboard()
-
-      expect(wrapper.text()).toContain('2 games in progress')
-    })
-
-    it('formats sub-minute tick times with a zero-padded seconds field', async () => {
-      fetchResults = [
-        leaderboardResult([makeEntry()]),
-        // tick 8 → 32s → 0:32
-        activeResult([makeActiveGame({ cycle: 8 })]),
-      ]
-      const wrapper = await mountLeaderboard()
-
-      expect(wrapper.text()).toContain('0:32')
     })
   })
 })

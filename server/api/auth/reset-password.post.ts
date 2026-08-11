@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Single-use: getdel atomically redeems the token so a reset link works once.
-  const playerId = await consumeResetToken(runtime.redisService, token)
+  const playerId = await consumeResetToken(token)
   if (!playerId) {
     throw createError({ statusCode: 400, message: 'This reset link is invalid or has expired' })
   }

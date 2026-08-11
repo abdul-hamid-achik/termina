@@ -26,9 +26,9 @@ export default defineNuxtConfig({
 
   // Tailwind v4 is wired via its Vite plugin (the @nuxtjs/tailwindcss module is
   // v3-only). The stylesheet is imported directly via `css` below.
-  // workflow/nuxt: SPIKE ONLY (spike/workflow-tick branch) — Vercel Workflow
-  // DevKit as the 4s tick driver candidate. Do not merge to main until the
-  // migration lands.
+  // workflow/nuxt: Vercel Workflow DevKit — drives each game's 4s tick
+  // (server/workflows/gameTick.ts), replacing the DO-era in-process game
+  // loop fiber. All-Vercel cutover is complete; this is load-bearing on main.
   modules: ['@pinia/nuxt', 'nuxt-auth-utils', 'workflow/nuxt'],
   css: ['~/assets/css/terminal.css'],
   vite: {
@@ -59,18 +59,16 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
-    // Public (client-exposed) — the WS + API origins for the Vercel frontend →
-    // DigitalOcean WS server split. Empty string = same-origin (dev +
-    // single-instance DO). Set NUXT_PUBLIC_WS_URL / NUXT_PUBLIC_API_URL in prod
-    // to point the Vercel SPA at the DO server.
+    // Public (client-exposed) — the API origin, a leftover of the Vercel
+    // frontend → DigitalOcean API split (now deleted; all-Vercel runs
+    // same-origin via vercel.json's /api/* rewrite). Empty string =
+    // same-origin. Set NUXT_PUBLIC_API_URL only if a future deploy ever
+    // splits origins again. The DO-era WS origin (wsUrl) and the
+    // ablyTransport migration flag that picked between the DO WebSocket
+    // (useGameSocket, deleted) and Ably (useGameChannel) are gone —
+    // useGameTransport() always returns the Ably transport now.
     public: {
-      wsUrl: '',
       apiUrl: '',
-      // Feature flag for the Ably+HTTP realtime transport migration (spike/
-      // workflow-tick): false = legacy DO WebSocket (useGameSocket), true =
-      // Ably Realtime + POST /api/game/action (useGameChannel). Selected via
-      // useGameTransport() — see app/composables/useGameTransport.ts.
-      ablyTransport: false,
     },
     // Server-only: comma-separated allow-list of browser Origins permitted
     // credentialed CORS on /api/ (set NUXT_CORS_ALLOWED_ORIGINS to the Vercel
@@ -81,28 +79,24 @@ export default defineNuxtConfig({
       cookie: {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        // Empty = host-only cookie. This is correct for dev AND for the default
-        // production same-origin proxy (the browser only ever talks to www, so
-        // the cookie need not be shared). It is ONLY needed for the direct
-        // cross-origin fallback (NUXT_PUBLIC_API_URL set → the SPA calls
-        // api.terminamoba.com directly): then set NUXT_SESSION_COOKIE_DOMAIN=
-        // .terminamoba.com on BOTH deployments so the cookie is shared across
-        // www. and api. (www↔api are same-site, so SameSite=Lax suffices). In
-        // every mode NUXT_SESSION_PASSWORD must be identical on Vercel and DO.
+        // Empty = host-only cookie. Correct for dev and for the all-Vercel
+        // deployment (frontend + API are same-origin — there is no DO split
+        // to bridge anymore). Only needed if a future deploy ever splits
+        // origins again (see NUXT_PUBLIC_API_URL above): set
+        // NUXT_SESSION_COOKIE_DOMAIN to the shared parent domain on both
+        // deployments, and keep NUXT_SESSION_PASSWORD identical everywhere.
         domain: '',
       },
     },
     oauth: {
-      // redirectURL is forced to the www frontend in prod (NUXT_OAUTH_*_REDIRECT_URL).
-      // Behind the Vercel→DO proxy, DO sees Host: api.terminamoba.com, so without
-      // an explicit redirectURL nuxt-auth-utils would derive an api.* callback —
-      // which mismatches the registered www callback and lands users on the api
-      // subdomain (breaking the same-origin cookie). Empty = derive from request
-      // (correct for same-origin dev).
+      // redirectURL can be forced to a specific frontend origin in prod
+      // (NUXT_OAUTH_*_REDIRECT_URL) — needed only if a request's Host header
+      // ever diverges from the registered OAuth callback (e.g. a future
+      // reverse proxy). On the all-Vercel deployment there is no such split,
+      // so empty (derive from request) is correct everywhere, incl. dev.
       github: { clientId: '', clientSecret: '', redirectURL: '' },
       discord: { clientId: '', clientSecret: '', redirectURL: '' },
     },
-    redis: { url: 'redis://localhost:6380' },
     database: { url: 'postgresql://termina:termina@localhost:5433/termina' },
     // Transactional email (Resend). apiKey ← NUXT_RESEND_API_KEY (secret); from
     // ← NUXT_RESEND_FROM (needs a verified domain in Resend). Empty apiKey =
@@ -112,12 +106,6 @@ export default defineNuxtConfig({
     // Public base URL used to build links inside emails (verify / reset). Set
     // NUXT_APP_URL to the frontend origin in prod, e.g. https://terminamoba.com.
     appUrl: 'http://localhost:3000',
-  },
-
-  nitro: {
-    experimental: {
-      websocket: true,
-    },
   },
 
   components: [{ path: '~/components', pathPrefix: false }],

@@ -9,8 +9,7 @@ import {
   finalSummaryHash,
   REPLAY_RULESET_VERSION,
 } from '~~/server/game/engine/replayArtifact'
-import type { LoggedAction } from '~~/server/game/engine/ActionLog'
-import type { SnapshotMeta } from '~~/server/game/engine/StateSnapshot'
+import type { LoggedAction, SnapshotMeta } from '~~/server/game/engine/replayArtifact'
 import type { GameState } from '~~/shared/types/game'
 
 /**

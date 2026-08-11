@@ -75,18 +75,20 @@ async function leaveParty() {
   }
 }
 
-const emit = defineEmits<{ started: [lobbyId: string] }>()
+const emit = defineEmits<{ started: [gameId: string] }>()
 
 async function startCoop() {
   busy.value = true
   error.value = null
   try {
-    const res = await $fetch<{ success: boolean; lobbyId: string }>('/api/party/start-coop', {
+    // The all-Vercel path (server/api/party/start-coop.post.ts) starts the
+    // live game directly — no draft, no lobbyId, round-robin heroes — so
+    // this hands the caller a gameId straight away instead of waiting on a
+    // WS lobby_state push (which no longer exists) to drive a draft screen.
+    const res = await $fetch<{ success: boolean; gameId: string }>('/api/party/start-coop', {
       method: 'POST',
     })
-    emit('started', res.lobbyId)
-    // The server broadcasts lobby_state to all party members over WS, which
-    // transitions everyone into the draft. Clear our local party view.
+    emit('started', res.gameId)
     party.value = null
   } catch (e) {
     error.value = (e as { data?: { message?: string } })?.data?.message ?? 'Could not start co-op'

@@ -38,10 +38,6 @@ function stubNuxtGlobals() {
     fetch: mockFetchSession,
     clear: mockClearSession,
   }))
-  // The ?next=practice resumption re-fires useStartTutorial's launch(),
-  // which reads this to pick /api/game/tutorial vs /api/game/practice —
-  // legacy path by default (see useStartTutorial.test.ts).
-  vi.stubGlobal('useRuntimeConfig', () => ({ public: { ablyTransport: false } }))
 }
 
 // ── Stubs for global components ────────────────────────────────────
@@ -262,9 +258,15 @@ describe('login page', () => {
 
     describe('?next=practice resumption', () => {
       it('re-fires the practice launcher instead of going home', async () => {
+        // fetchSession (mocked here) is what a real login refreshes the
+        // reactive session through — stand in for that so the practice
+        // launcher's playerId lookup sees the just-logged-in user.
+        mockFetchSession.mockImplementation(() => {
+          mockUser.value = { id: 'user' }
+        })
         mockFetch.mockImplementation((url: string) =>
-          url === '/api/game/tutorial'
-            ? Promise.resolve({ url: '/play?gameId=t1&tutorial=1' })
+          url === '/api/game/practice'
+            ? Promise.resolve({ gameId: 't1' })
             : Promise.resolve({ success: true }),
         )
         mockRoute.query = { next: 'practice' }
@@ -275,13 +277,13 @@ describe('login page', () => {
         await wrapper.find('form').trigger('submit')
         await flush()
 
-        expect(mockFetch).toHaveBeenCalledWith('/api/game/tutorial', { method: 'POST', body: {} })
-        expect(mockNavigateTo).toHaveBeenCalledWith('/play?gameId=t1&tutorial=1')
+        expect(mockFetch).toHaveBeenCalledWith('/api/game/practice', { method: 'POST', body: {} })
+        expect(mockNavigateTo).toHaveBeenCalledWith('/play?gameId=t1&tutorial=1&playerId=user')
       })
 
       it('surfaces the reason when the resumed launch fails', async () => {
         mockFetch.mockImplementation((url: string) =>
-          url === '/api/game/tutorial'
+          url === '/api/game/practice'
             ? Promise.reject({ statusCode: 409, data: { message: "You're already in a match" } })
             : Promise.resolve({ success: true }),
         )

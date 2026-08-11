@@ -286,8 +286,13 @@ function isRevealedToTeam(player: PlayerState, state: GameState, team: TeamId): 
 /**
  * Build a `PlayerVisibleState` for a spectator — same shape as
  * `filterStateForPlayer` but with no fog applied. All players, zones,
- * waves, and events are exposed. Reuses the player-state shape so the
- * existing renderer can consume it without changes.
+ * waves, and events are exposed. Reuses the player-state shape so a
+ * renderer can consume it without changes.
+ *
+ * Currently unused: the live spectate page (a raw WS stream over this) was
+ * deleted with the DO-era WS game server in the all-Vercel cutover, and
+ * there is no Ably-backed replacement yet. Kept — it's a pure, WS-agnostic
+ * primitive a future Ably-backed spectate mode would want back immediately.
  */
 export function filterStateForSpectator(state: GameState): PlayerVisibleState {
   return {

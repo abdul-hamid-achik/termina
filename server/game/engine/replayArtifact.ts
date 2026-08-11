@@ -1,8 +1,7 @@
 import { createHash } from 'node:crypto'
 import { Effect } from 'effect'
-import type { GameState } from '~~/shared/types/game'
-import type { LoggedAction } from '~~/server/game/engine/ActionLog'
-import type { SnapshotMeta } from '~~/server/game/engine/StateSnapshot'
+import type { GameMode, GameState, TeamId } from '~~/shared/types/game'
+import type { Command } from '~~/shared/types/commands'
 import type { NewMatchReplay } from '~~/server/db/schema'
 import { createInMemoryStateManager } from '~~/server/game/engine/StateManager'
 import { processCycle, submitReplayAction } from '~~/server/game/engine/GameLoop'
@@ -17,11 +16,56 @@ import { processCycle, submitReplayAction } from '~~/server/game/engine/GameLoop
  * game, and the reconstruction itself (shared by the /api/replay endpoints
  * and the determinism tests).
  *
- * The Redis copies (snapshot + action log, 8h TTL) stay the fast path; the
- * archive row in Postgres (match_replays) is written inside the durable
- * finalization path and is what the endpoints fall back to once Redis has
- * forgotten the game.
+ * Archive-only (all-Vercel cutover): the Redis fast path (a live snapshot +
+ * action log, 8h TTL) that used to back this on the DO deployment is gone
+ * along with the DO-era WS game server — server/game/engine/StateSnapshot.ts
+ * and ActionLog.ts (their Redis read/write halves) were deleted with it.
+ * `SnapshotMeta`/`LoggedAction` below are what's left of their public shape:
+ * still exactly what a match_replays row's `meta`/`actions` jsonb columns
+ * hold, and what reconstructReplay needs to re-run a finished game. Nothing
+ * currently WRITES a match_replays row on the Neon/Workflow path yet (see
+ * server/workflows/gameTickCore.ts's finalizeGame TODO) — this module's
+ * write side (buildReplayArtifact) is dormant until that lands; the read
+ * side (reconstructReplay) still serves whatever archived replays exist.
  */
+
+/**
+ * Out-of-state metadata captured at game start so a replay can be
+ * reconstructed from a fresh state manager (roster, map, mode). Kept minimal.
+ */
+export interface SnapshotMeta {
+  players: { playerId: string; team: TeamId; heroId: string; mmr: number }[]
+  mapId?: string
+  mode?: GameMode
+}
+
+export interface LoggedAction {
+  cycle: number
+  playerId: string
+  command: Command
+  synthesized?: boolean
+}
+
+/** Integrity of a stored action log for replay honesty. */
+export interface ActionLogIntegrity {
+  /** True only when the retained log can reconstruct from cycle 1. */
+  complete: boolean
+  /** True when the log was trimmed (or is at capacity and its head is past
+   *  cycle 1 — defensive signal). */
+  truncated: boolean
+  /** True when the log source failed to read; actions will be empty. */
+  readFailed: boolean
+  entryCount: number
+  firstLoggedCycle: number | null
+  lastLoggedCycle: number | null
+  /** Frames always rebuild from a fresh createGame (cycle 0). */
+  initialSnapshotCycle: 0
+}
+
+export interface ActionLogReadResult {
+  actions: LoggedAction[]
+  integrity: ActionLogIntegrity
+}
 
 /**
  * Bumped manually when engine behavior changes enough that replays recorded

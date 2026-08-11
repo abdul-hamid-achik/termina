@@ -30,9 +30,6 @@ beforeEach(() => {
   mockFetch.mockReset()
   vi.stubGlobal('navigateTo', mockNavigateTo)
   vi.stubGlobal('$fetch', mockFetch)
-  // useStartTutorial's launch() reads this to pick /api/game/tutorial vs
-  // /api/game/practice — legacy path by default (see useStartTutorial.test.ts).
-  vi.stubGlobal('useRuntimeConfig', () => ({ public: { ablyTransport: false } }))
 })
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -93,28 +90,42 @@ describe('index (landing) page', () => {
   })
 
   describe('Practice vs bots CTA', () => {
-    it('POSTs to the tutorial route and navigates to the returned game URL', async () => {
-      mockFetch.mockResolvedValue({ url: '/play?gameId=g1&playerId=p1&tutorial=1' })
+    it('POSTs to the practice route and navigates to the built /play URL', async () => {
+      vi.stubGlobal('useUserSession', () => ({
+        loggedIn: ref(true),
+        user: ref({ id: 'p1' }),
+        fetch: vi.fn(),
+        clear: vi.fn(),
+      }))
+      mockFetch.mockResolvedValue({ gameId: 'g1' })
       const wrapper = mountIndex()
 
       await wrapper.get('[data-testid="start-tutorial"]').trigger('click')
       await flushPromises()
 
-      expect(mockFetch).toHaveBeenCalledWith('/api/game/tutorial', { method: 'POST', body: {} })
-      expect(mockNavigateTo).toHaveBeenCalledWith('/play?gameId=g1&playerId=p1&tutorial=1')
+      expect(mockFetch).toHaveBeenCalledWith('/api/game/practice', { method: 'POST', body: {} })
+      expect(mockNavigateTo).toHaveBeenCalledWith('/play?gameId=g1&tutorial=1&playerId=p1')
     })
 
     it('mints a guest session and lands in the game when not signed in (401)', async () => {
       // The audit finding this feature exists to fix: a brand-new visitor
-      // must NOT dead-end at a login wall. The first /api/game/tutorial call
+      // must NOT dead-end at a login wall. The first /api/game/practice call
       // 401s, so the CTA mints a throwaway guest session (no signup) and
-      // retries the same launch — see server/api/auth/guest.post.ts.
-      let tutorialCalls = 0
+      // retries the same launch — see server/api/auth/guest.post.ts. The
+      // session stub already carries the guest id, standing in for the
+      // reactive session having refreshed by the time the retry reads it.
+      vi.stubGlobal('useUserSession', () => ({
+        loggedIn: ref(false),
+        user: ref({ id: 'guest_x' }),
+        fetch: vi.fn(),
+        clear: vi.fn(),
+      }))
+      let practiceCalls = 0
       mockFetch.mockImplementation((url: string) => {
-        if (url === '/api/game/tutorial') {
-          tutorialCalls += 1
-          if (tutorialCalls === 1) return Promise.reject({ statusCode: 401 })
-          return Promise.resolve({ url: '/play?gameId=g6&playerId=guest_x&tutorial=1' })
+        if (url === '/api/game/practice') {
+          practiceCalls += 1
+          if (practiceCalls === 1) return Promise.reject({ statusCode: 401 })
+          return Promise.resolve({ gameId: 'g6' })
         }
         if (url === '/api/auth/guest') {
           return Promise.resolve({ user: { id: 'guest_x', guest: true } })
@@ -127,7 +138,7 @@ describe('index (landing) page', () => {
       await flushPromises()
 
       expect(mockFetch).toHaveBeenCalledWith('/api/auth/guest', { method: 'POST' })
-      expect(mockNavigateTo).toHaveBeenCalledWith('/play?gameId=g6&playerId=guest_x&tutorial=1')
+      expect(mockNavigateTo).toHaveBeenCalledWith('/play?gameId=g6&tutorial=1&playerId=guest_x')
       // No login-wall redirect — that is exactly the dead end this fixes.
       expect(mockNavigateTo).not.toHaveBeenCalledWith({
         path: '/login',
@@ -137,7 +148,7 @@ describe('index (landing) page', () => {
 
     it('falls back to /login when guest-session minting itself fails', async () => {
       mockFetch.mockImplementation((url: string) => {
-        if (url === '/api/game/tutorial') return Promise.reject({ statusCode: 401 })
+        if (url === '/api/game/practice') return Promise.reject({ statusCode: 401 })
         if (url === '/api/auth/guest') return Promise.reject({ statusCode: 503 })
         throw new Error(`unexpected $fetch call: ${url}`)
       })

@@ -1,11 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { H3Event } from 'h3'
 
-const { getGameRuntime, execute } = vi.hoisted(() => ({
-  getGameRuntime: vi.fn(),
-  execute: vi.fn(),
-}))
-vi.mock('~~/server/plugins/game-server', () => ({ getGameRuntime }))
+const { execute } = vi.hoisted(() => ({ execute: vi.fn() }))
 vi.mock('~~/server/db', () => ({ useDb: () => ({ execute }) }))
 
 const responseHeaders: Record<string, string> = {}
@@ -25,7 +21,6 @@ const makeEvent = () => ({}) as H3Event
 type ReadyModule = typeof import('../../../server/api/ready.get')
 type ReadyHandler = (event: H3Event) => Promise<{
   status: string
-  runtime: string
   schema?: string
   missingColumns?: string[]
   timestamp: number
@@ -55,35 +50,21 @@ function rowsFor(
 
 describe('GET /api/ready', () => {
   beforeEach(() => {
-    getGameRuntime.mockReset()
     execute.mockReset()
     for (const key of Object.keys(responseHeaders)) delete responseHeaders[key]
     responseStatus = 200
   })
 
-  it('returns 503 until the managed game runtime is initialized', async () => {
-    getGameRuntime.mockReturnValue(undefined)
-    const { handler } = await freshReadyHandler()
-    const result = await handler(makeEvent())
-    expect(responseStatus).toBe(503)
-    expect(result).toMatchObject({ status: 'starting', runtime: 'starting' })
-    expect(responseHeaders['content-type']).toBe('application/json')
-    // Runtime not ready is a cheaper, earlier gate — the schema query must
-    // never run before it.
-    expect(execute).not.toHaveBeenCalled()
-  })
-
-  it('returns 200 once the managed game runtime is ready and the schema contract is satisfied', async () => {
-    getGameRuntime.mockReturnValue({})
+  it('returns 200 once the schema contract is satisfied', async () => {
     const { handler, columns } = await freshReadyHandler()
     execute.mockResolvedValue(rowsFor(columns))
     const result = await handler(makeEvent())
     expect(responseStatus).toBe(200)
-    expect(result).toMatchObject({ status: 'ready', runtime: 'ready', schema: 'ready' })
+    expect(result).toMatchObject({ status: 'ready', schema: 'ready' })
+    expect(responseHeaders['content-type']).toBe('application/json')
   })
 
   it('(a) all required columns present -> ready', async () => {
-    getGameRuntime.mockReturnValue({})
     const { handler, columns } = await freshReadyHandler()
     execute.mockResolvedValue(rowsFor(columns))
     const result = await handler(makeEvent())
@@ -92,7 +73,6 @@ describe('GET /api/ready', () => {
   })
 
   it('(b) a missing column -> not ready, named in the payload', async () => {
-    getGameRuntime.mockReturnValue({})
     const { handler, columns } = await freshReadyHandler()
     execute.mockResolvedValue(rowsFor(columns, { table: 'players', column: 'tutorial_completed' }))
     const result = await handler(makeEvent())
@@ -102,7 +82,6 @@ describe('GET /api/ready', () => {
   })
 
   it('(c) a failing check is NOT cached — fixing the schema makes the next probe ready', async () => {
-    getGameRuntime.mockReturnValue({})
     const { handler, columns } = await freshReadyHandler()
 
     execute.mockResolvedValueOnce(rowsFor(columns, { table: 'matches', column: 'season_number' }))
@@ -120,7 +99,6 @@ describe('GET /api/ready', () => {
   })
 
   it('(d) a passing check IS cached — subsequent probes do not re-query', async () => {
-    getGameRuntime.mockReturnValue({})
     const { handler, columns } = await freshReadyHandler()
 
     execute.mockResolvedValueOnce(rowsFor(columns))
@@ -138,7 +116,6 @@ describe('GET /api/ready', () => {
   })
 
   it('reports a DB-unreachable failure once, distinct from a schema-drift report', async () => {
-    getGameRuntime.mockReturnValue({})
     const { handler } = await freshReadyHandler()
     execute.mockRejectedValue(new Error('connection refused'))
     const result = await handler(makeEvent())

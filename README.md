@@ -33,11 +33,11 @@ every cycle is a decision.
 - **Stat Validation** - Detect impossible states
 
 ### Infrastructure
-- **State Persistence** - Redis snapshots every 60s (15 cycles)
-- **Auto-Recovery** - Restore games after server restart
+- **State Persistence** - each game's state lives in a Postgres row, updated every tick under a CAS guard — no separate snapshot/recovery step
+- **Vercel Workflow** - drives each game's 4-second tick durably (survives cold starts/deploys)
 - **Effect-TS** - Type-safe functional programming
-- **WebSocket** - Real-time communication
-- **PostgreSQL** - Match history and stats
+- **Ably** - Real-time communication
+- **PostgreSQL** - Match history, stats, and live game state (Neon)
 
 ---
 
@@ -53,28 +53,23 @@ termina/
 ├── server/
 │   ├── api/                # REST endpoints
 │   ├── game/               # Core game engine
-│   │   ├── engine/         # Game loop, state management
+│   │   ├── engine/         # Game loop (processCycle), state management
 │   │   ├── heroes/         # Hero abilities, talent trees
 │   │   ├── items/          # Item system
-│   │   ├── matchmaking/    # Queue, lobby, draft
+│   │   ├── matchmaking/    # Neon-backed queue, party, live-game start
 │   │   └── ai/             # Bot AI
-│   ├── services/           # Infrastructure services
-│   │   ├── RedisService.ts
-│   │   ├── DatabaseService.ts
-│   │   ├── WebSocketService.ts
-│   │   ├── GameStatePersistence.ts
-│   │   └── LeaverSystem.ts
-│   └── routes/             # WebSocket handler
+│   ├── services/           # DatabaseService (Effect), LeaverSystem (AFK detection)
+│   ├── workflows/          # gameTick.ts (Vercel Workflow) + gameTickCore.ts
+│   └── plugins/            # game-server.ts (minimal boot: heroes registry + DB layer)
 ├── shared/                 # Shared types & constants (+ shared/types/*.d.ts augmentations)
 └── tests/                  # Vitest (unit/integration/component) + Cairntrace (E2E)
 ```
 
 ### Technology Stack
 - **Frontend**: Nuxt 4, Vue 3, Pinia 3, Tailwind 4
-- **Backend**: Nitro (Nuxt server), Effect-TS
-- **Database**: PostgreSQL + Drizzle ORM
-- **Cache**: Redis (pub/sub, persistence)
-- **Real-time**: WebSocket (crossws)
+- **Backend**: Nitro (Nuxt server), Effect-TS, Vercel Workflow DevKit
+- **Database**: PostgreSQL (Neon in prod) + Drizzle ORM
+- **Real-time**: Ably (Realtime client, REST publish)
 - **Runtime**: Bun
 - **Tooling**: oxlint (lint) · oxfmt (format) · knip (dead-code) · lefthook (git hooks)
 - **Testing**: Vitest (unit/integration/component) · Cairntrace (browser E2E, real flows)
@@ -86,7 +81,6 @@ termina/
 ### Prerequisites
 - Bun (latest)
 - PostgreSQL 14+
-- Redis 6+
 
 ### Installation
 
@@ -97,7 +91,7 @@ bun install
 # Copy environment variables
 cp .env.example .env
 
-# Start databases (Docker)
+# Start the database (Docker)
 docker-compose up -d
 
 # Push the schema (schema.ts is the source of truth — no migration files)
@@ -111,21 +105,23 @@ bun run dev
 
 ```env
 # Session
-SESSION_PASSWORD=your-secret-password
+NUXT_SESSION_PASSWORD=your-secret-password-at-least-32-chars
 
 # OAuth (optional)
-GITHUB_CLIENT_ID=
-GITHUB_CLIENT_SECRET=
-DISCORD_CLIENT_ID=
-DISCORD_CLIENT_SECRET=
+NUXT_OAUTH_GITHUB_CLIENT_ID=
+NUXT_OAUTH_GITHUB_CLIENT_SECRET=
+NUXT_OAUTH_DISCORD_CLIENT_ID=
+NUXT_OAUTH_DISCORD_CLIENT_SECRET=
 
-# Redis (host port 6380 — see docker-compose.yml; off the default 6379)
-REDIS_URL=redis://localhost:6380
+# Ably (realtime) — mints per-player tokens + publishes cycle_state
+ABLY_API_KEY=
 
 # Database (host port 5433 — off the default 5432 so it can run alongside
 # another project's Postgres; override the host port via TERMINA_POSTGRES_PORT)
 DATABASE_URL=postgresql://termina:termina@localhost:5433/termina
 ```
+
+See `.env.example` for the complete list (incl. `WORKFLOW_START_KEY`).
 
 ---
 
@@ -288,10 +284,9 @@ exercised in-browser).
 a username/password account through the /login Register tab (which logs you in on
 success). `testUser` is `${run.token}` — a unique per-flow token, kept ≤20 chars
 (the app's username limit), so parallel flows and re-runs never collide on a taken
-username. The preview server points at an isolated test Redis
-(`redis://localhost:6380/1`), which the config flushes before each fresh boot
-(`redis-cli -p 6380 -n 1 flushdb`) so a prior run's in-progress games can't resume
-as zombies.
+username. The preview server points at an isolated `termina_test` Postgres database
+(the same one `test:db` provisions), so a prior run's rows can't bleed into a
+fresh one.
 
 ### Continuous integration (GitHub Actions)
 
@@ -314,42 +309,44 @@ small, parallel, properly-named jobs:
 - **`ci-success`** — an aggregate job that fails if any required job did; make
   **this** the single required status check in branch protection.
 
-**Resilience:** Postgres + Redis are started with `docker run` behind a
-pull-retry loop rather than `services:` containers — `services:` image pulls run
-before any step and can't be retried, so a transient Docker Hub pull failure
-would hard-fail the job. Bun is pinned, the install + Playwright browser caches
-are keyed on the lockfile, and each job has a `timeout-minutes` backstop.
+**Resilience:** Postgres is started with `docker run` behind a pull-retry loop
+rather than a `services:` container — `services:` image pulls run before any
+step and can't be retried, so a transient Docker Hub pull failure would
+hard-fail the job. Bun is pinned, the install + Playwright browser caches are
+keyed on the lockfile, and each job has a `timeout-minutes` backstop.
 
 ---
 
 ## 🚢 Deployment
 
-Production is a **two-provider split** (see [`infra/README.md`](infra/README.md)
-for the full runbook):
+Production is **all-Vercel** — the DigitalOcean split (a Pulumi-provisioned App
+Platform Nitro server + a WebSocket game loop) was demolished after the cutover
+to this architecture; there is no `infra/`, no Dockerfile, no separate API
+origin to deploy.
 
-- **Vercel** — the Nuxt frontend (CDN + SSR) **and** the data layer, provisioned
-  via the Vercel Marketplace: **Neon** (Postgres) + **Upstash** (Redis).
-- **DigitalOcean App Platform** — the full Nitro server (SSR + WebSocket +
-  Effect-TS game loop + API), run from a DOCR Docker image. This is the one
-  stateful, long-lived piece: the game runs as a **single authoritative
-  instance** (in-memory game state + a fixed-timestep loop), with Redis used for
-  pub/sub matchmaking handoff and snapshot persistence. Horizontal scaling is
-  not currently wired — a single instance comfortably hosts many concurrent
-  games, and slow cycles are logged so the ceiling is observable.
+- **Vercel** hosts the Nuxt frontend (SSR + all `/api/*` routes, same-origin) at
+  `www.terminamoba.com`, backed by **Neon** (Postgres) via the Vercel
+  Marketplace integration.
+- **Vercel Workflow DevKit** drives each game's 4-second tick durably — see
+  `server/workflows/gameTick.ts` (the statically-bundled workflow body) and
+  `gameTickCore.ts` (the heavy step bodies: read/write the game's row in Neon
+  under a CAS guard, run `processCycle`, publish to Ably). There is no
+  in-memory single-authoritative-instance loop anymore, and no horizontal
+  scaling concern in the old sense — each tick is its own step, schedulable on
+  any warm (or cold) instance.
+- **Ably** is the realtime transport (Realtime for the client, REST for the
+  server-side publish from each tick).
+- **Matchmaking** is Neon-backed and event-driven (no background sweep — a
+  serverless function can't keep one warm); see `server/game/matchmaking/
+  queueNeon.ts`.
 
-The DigitalOcean side is **infrastructure-as-code with Pulumi (TypeScript)** in
-[`infra/`](infra/) — an isolated project (own deps/tsconfig, excluded from the
-app's lint/typecheck/knip/Docker build). Local + deploy secrets are managed with
-**[tvault](https://github.com/abdul-hamid-achik/tinyvault)**, keyed by their real
-env-var names so one project drives both:
+Local dev secrets are managed with
+**[tvault](https://github.com/abdul-hamid-achik/tinyvault)** (project
+`termina-local`); prod secrets are Vercel environment variables:
 
 ```bash
-tvault run -- bun run dev        # local dev with secrets injected
-cd infra && tvault run -- pulumi up   # deploy DO App Platform
+tvault -p termina-local run -- bun run dev   # local dev with secrets injected
 ```
-
-`infra/index.ts` reads each secret **env-var-first** (so tvault's injected vars
-are used) and falls back to Pulumi config otherwise.
 
 ---
 
@@ -372,7 +369,7 @@ are used) and falls back to Pulumi config otherwise.
 ### Adding a New Game Mode
 
 1. Add mode to `shared/types/game.ts`
-2. Implement matchmaking in `server/game/matchmaking/queue.ts`
+2. Implement matchmaking in `server/game/matchmaking/queueNeon.ts`
 3. Adjust rules in `server/game/engine/GameLoop.ts`
 4. Update frontend in `app/pages/play/`
 

@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
   try {
     const player = await Effect.runPromise(runtime.dbService.getPlayerByUsername(username))
     if (player?.email) {
-      const token = await createResetToken(runtime.redisService, player.id)
+      const token = await createResetToken(player.id)
       const resetUrl = `${useRuntimeConfig().appUrl}/reset-password?token=${token}`
       const tpl = passwordResetTemplate(resetUrl)
       await sendEmail({ to: player.email, ...tpl })

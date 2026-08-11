@@ -19,19 +19,14 @@ env:
   # reads DATABASE_URL. Both point at the CI Postgres published on localhost:5432.
   TEST_DATABASE_URL: postgresql://termina:termina@localhost:5432/termina_test
   DATABASE_URL: postgresql://termina:termina@localhost:5432/termina_test
-  # The queue-dedup integration test connects to a real Redis. CI publishes Redis
-  # on the standard 6379 (the pg-redis action), NOT the 6380 the test defaults to
-  # for local docker-compose — without this the shared client's unlimited-retry
-  # strategy queues commands forever and every hook hangs to the 10s timeout.
-  NUXT_REDIS_URL: redis://localhost:6379/1
-  # Single source of truth for the Bun runtime + service image tags across jobs.
+  # Single source of truth for the Bun runtime + service image tag across jobs.
   BUN_VERSION: '1.3.13'
   POSTGRES_IMAGE: postgres:17-alpine
-  REDIS_IMAGE: redis:8-alpine
 
 # Every Bun job opens with `actions/checkout` + the `./.github/actions/bun-setup`
 # composite (pinned Bun + cached `bun install --frozen-lockfile`). Service jobs add
-# `./.github/actions/pg-redis` (Postgres+Redis via retryable docker run).
+# `./.github/actions/postgres` (Postgres via retryable docker run — Redis is gone
+# with the all-Vercel cutover; nothing in the suite talks to it anymore).
 
 jobs:
   # ── tier 1: cheap static checks + fast tests (parallel, no services) ──────────
@@ -115,9 +110,9 @@ jobs:
       # situations — browser e2e stays advisory.
       - run: bun run test:gameplay
 
-  # ── tier 2: needs Postgres+Redis ──────────────────────────────────────────────
+  # ── tier 2: needs Postgres ─────────────────────────────────────────────────────
   # Runs the full vitest suite under v8 coverage, so it also ENFORCES the coverage
-  # thresholds (the old standalone `coverage` job folded in — one PG+Redis bootstrap).
+  # thresholds (the old standalone `coverage` job folded in — one Postgres bootstrap).
   integration-tests:
     name: integration + coverage (vitest v8 + postgres)
     runs-on: ubuntu-latest
@@ -125,10 +120,9 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
-      - uses: ./.github/actions/pg-redis
+      - uses: ./.github/actions/postgres
         with:
           postgres-image: ${{ env.POSTGRES_IMAGE }}
-          redis-image: ${{ env.REDIS_IMAGE }}
       - uses: ./.github/actions/bun-setup
         with:
           bun-version: ${{ env.BUN_VERSION }}
@@ -156,27 +150,6 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
       - run: bun run build
-
-  # ── advisory: infra (Pulumi) typecheck — npm-managed, own tsconfig ────────────
-  # A type error in the deploy program is caught here, not at `pulumi up`. Advisory
-  # (NOT in ci-success); promote once trusted.
-  infra-typecheck:
-    name: infra typecheck (pulumi tsc)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: infra/package-lock.json
-      - name: Install infra deps
-        run: npm ci
-        working-directory: infra
-      - name: Typecheck the Pulumi program (tsc --noEmit)
-        run: npx tsc --noEmit -p tsconfig.json
-        working-directory: infra
 
   # ── advisory: histoire story catalog (NOT in ci-success) ──────────────────────
   stories:
@@ -214,7 +187,6 @@ jobs:
     env:
       HITSPEC_VERSION: '2.14.1'
       NUXT_DATABASE_URL: postgresql://termina:termina@localhost:5432/termina_test
-      NUXT_REDIS_URL: redis://localhost:6379/1
       NUXT_SESSION_PASSWORD: ci_session_password_at_least_32_chars_long
       NUXT_SESSION_COOKIE_SECURE: 'false'
       TERMINA_TEST_HOOKS: '1'
@@ -223,10 +195,9 @@ jobs:
       PORT: '3000'
     steps:
       - uses: actions/checkout@v7
-      - uses: ./.github/actions/pg-redis
+      - uses: ./.github/actions/postgres
         with:
           postgres-image: ${{ env.POSTGRES_IMAGE }}
-          redis-image: ${{ env.REDIS_IMAGE }}
       - uses: ./.github/actions/bun-setup
         with:
           bun-version: ${{ env.BUN_VERSION }}
@@ -269,8 +240,8 @@ jobs:
   # ── aggregate: the single required branch-protection check ────────────────────
   # Keep THIS as the only required status check — it lets the internal job graph
   # change without editing protection rules. Fails if any needed job failed OR was
-  # cancelled. e2e / stories / api-tests / infra-typecheck are advisory (not listed);
-  # promote one by adding it below once it's consistently green.
+  # cancelled. e2e / stories / api-tests are advisory (not listed); promote one by
+  # adding it below once it's consistently green.
   ci-success:
     name: ci-success
     runs-on: ubuntu-latest

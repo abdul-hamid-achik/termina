@@ -398,3 +398,23 @@ export const queueEntries = pgTable(
 
 export type QueueEntryRow = typeof queueEntries.$inferSelect
 export type NewQueueEntryRow = typeof queueEntries.$inferInsert
+
+// ════════════════════════════════════════════════════════════════════
+// Auth tokens (Neon replacement for Redis-backed reset/verify tokens) —
+// see server/utils/authTokens.ts. Single-use, expiring tokens for password
+// reset + email verification. `token` is the primary key (the token string
+// itself is the lookup key, mirroring the old Redis key-per-token scheme);
+// `consumeToken` DELETEs on read so redemption is single-use without a
+// separate "used" flag.
+// ════════════════════════════════════════════════════════════════════
+
+export const authTokens = pgTable('auth_tokens', {
+  token: text('token').primaryKey(),
+  playerId: text('player_id').notNull(),
+  purpose: text('purpose', { enum: ['reset', 'verify'] }).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export type AuthToken = typeof authTokens.$inferSelect
+export type NewAuthToken = typeof authTokens.$inferInsert

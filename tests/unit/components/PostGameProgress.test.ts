@@ -207,11 +207,12 @@ describe('PostGame — practice this', () => {
   beforeEach(() => {
     navigate.mockClear()
     fetchMock.mockClear()
+    fetchMock.mockResolvedValue({ gameId: 'dev_1' })
     vi.stubGlobal('navigateTo', navigate)
     vi.stubGlobal('$fetch', fetchMock)
-    // useStartTutorial's launch() reads this to pick /api/game/tutorial vs
-    // /api/game/practice — legacy path by default (see useStartTutorial.test.ts).
-    vi.stubGlobal('useRuntimeConfig', () => ({ public: { ablyTransport: false } }))
+    // useStartTutorial's launch() reads the session for the playerId it
+    // appends to the built /play URL.
+    vi.stubGlobal('useUserSession', () => ({ user: { value: null }, fetch: vi.fn() }))
   })
   afterEach(() => vi.unstubAllGlobals())
 
@@ -220,8 +221,8 @@ describe('PostGame — practice this', () => {
     await wrapper.get('[data-testid="practice-this-btn"]').trigger('click')
     await Promise.resolve()
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/game/tutorial', expect.anything())
-    expect(navigate).toHaveBeenCalledWith('/game/dev_1')
+    expect(fetchMock).toHaveBeenCalledWith('/api/game/practice', expect.anything())
+    expect(navigate).toHaveBeenCalledWith('/play?gameId=dev_1&tutorial=1')
   })
 
   it('does not offer practice at the end of a practice game', () => {

@@ -1,15 +1,15 @@
 /**
  * Drives the Neon-backed quick-match queue over plain HTTP polling — the
- * client half of the ablyTransport migration's queue path. The legacy WS
- * flow (lobby_state/queue_update/etc pushed by ws.ts) has no equivalent on
- * the Ably+HTTP stack (server/game/matchmaking/queueNeon.ts's queue has no
- * push channel of its own), so this polls GET /api/queue/status-neon on an
- * interval instead, calling back into whatever the page wants done with
- * each state.
+ * only queue path now that the all-Vercel cutover is complete. The DO-era WS
+ * push flow (lobby_state/queue_update/etc, pushed by the now-deleted ws.ts)
+ * has no equivalent on the Ably+HTTP stack (server/game/matchmaking/
+ * queueNeon.ts's queue has no push channel of its own), so this polls
+ * GET /api/queue/status-neon on an interval instead, calling back into
+ * whatever the page wants done with each state.
  *
- * Deliberately dumb: no store coupling, no navigation — the caller (lobby.vue,
- * behind the `ablyTransport` flag) decides what 'searching'/'found' mean for
- * its own UI. `$fetch` is a Nuxt auto-import global.
+ * Deliberately dumb: no store coupling, no navigation — the caller
+ * (lobby.vue) decides what 'searching'/'found' mean for its own UI. `$fetch`
+ * is a Nuxt auto-import global.
  */
 export interface QueuePollStatus {
   status: 'idle' | 'searching' | 'found'

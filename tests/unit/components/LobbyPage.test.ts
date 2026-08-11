@@ -4,20 +4,9 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { useLobbyStore } from '~~/app/stores/lobby'
 
-// ── useGameSocket / useAudio doubles ──────────────────────────────────
-// lobby.vue opens a real WebSocket in onMounted and plays through the Web
-// Audio synth (absent in happy-dom). Both are replaced with spies so mounting
-// stays offline and the audio cues become assertable. Mirrors GameScreen.test.
-const socketSpies = {
-  connect: vi.fn(),
-  send: vi.fn(() => true),
-  disconnect: vi.fn(),
-  onMessage: vi.fn(() => () => {}),
-}
-vi.mock('~/composables/useGameSocket', () => ({
-  useGameSocket: () => ({ connected: ref(true), ...socketSpies }),
-}))
-
+// ── useAudio double ─────────────────────────────────────────────────
+// lobby.vue plays through the Web Audio synth (absent in happy-dom) —
+// replaced with a spy so the audio cues become assertable.
 const playSound = vi.fn()
 vi.mock('~/composables/useAudio', () => ({
   useAudio: () => ({ playSound }),
@@ -30,7 +19,6 @@ const MY_ID = 'github_me'
 const stubs = {
   TerminalPanel: { name: 'TerminalPanel', template: '<section><slot /></section>' },
   AnnouncementToast: true,
-  HeroPicker: true,
   // A real enough stub to click "cancel" on — the default auto-stub renders
   // as an opaque <match-queue-stub> with no way to fire its `cancel` emit
   // from a DOM trigger.
@@ -70,13 +58,13 @@ const navigateTo = vi.fn()
 const routerPush = vi.fn()
 // Flips true once /api/queue/join-neon has been called — status-neon's stub
 // response below switches from 'idle' to 'found' from that point on, so the
-// Neon-path tests don't need fake timers: useQueuePolling's very first
-// (immediate, pre-interval) poll already sees the match.
+// tests don't need fake timers: useQueuePolling's very first (immediate,
+// pre-interval) poll already sees the match.
 let neonJoined = false
 
 function apiFetch(url: string, opts: { method?: string; body?: unknown } = {}) {
   apiCalls.push([url, opts])
-  if (url === '/api/game/tutorial') return Promise.resolve({ url: '/play?gameId=dev_1&tutorial=1' })
+  if (url === '/api/game/practice') return Promise.resolve({ gameId: 'dev_1' })
   if (url === '/api/queue/join-neon') {
     neonJoined = true
     return Promise.resolve({ success: true, queueSize: 1 })
@@ -88,7 +76,7 @@ function apiFetch(url: string, opts: { method?: string; body?: unknown } = {}) {
   return Promise.reject(new Error('no session'))
 }
 
-const joinCalls = () => apiCalls.filter(([url]) => url === '/api/queue/join')
+const joinCalls = () => apiCalls.filter(([url]) => url === '/api/queue/join-neon')
 
 describe('lobby page', () => {
   beforeEach(() => {
@@ -102,9 +90,6 @@ describe('lobby page', () => {
     vi.stubGlobal('useRouter', () => ({ push: routerPush }))
     vi.stubGlobal('navigateTo', navigateTo)
     vi.stubGlobal('$fetch', vi.fn(apiFetch))
-    // Legacy WS transport by default — the Neon-queue describe block below
-    // flips this on for its own tests.
-    vi.stubGlobal('useRuntimeConfig', () => ({ public: { ablyTransport: false } }))
     vi.stubGlobal('useUserSession', () => ({
       loggedIn: ref(true),
       user: ref({ id: MY_ID }),
@@ -117,34 +102,10 @@ describe('lobby page', () => {
     vi.unstubAllGlobals()
   })
 
-  it('plays the ready cue when a match is found', async () => {
-    const wrapper = mountLobby()
-    await flushPromises()
-    playSound.mockClear()
-
-    useLobbyStore().matchFound('lobby-1')
-    await nextTick()
-
-    expect(playSound).toHaveBeenCalledWith('ready')
-    wrapper.unmount()
-  })
-
-  it('plays the ready cue when the draft turn becomes mine, not on someone else’s', async () => {
-    const wrapper = mountLobby()
-    await flushPromises()
-    const lobby = useLobbyStore()
-
-    lobby.setPickTurn('github_other', 'other', 15000)
-    await nextTick()
-    expect(playSound).not.toHaveBeenCalledWith('ready')
-
-    lobby.setPickTurn(MY_ID, 'me', 15000)
-    await nextTick()
-    expect(playSound).toHaveBeenCalledWith('ready')
-    wrapper.unmount()
-  })
-
   it('ticks only over the final three seconds of the countdown', async () => {
+    // Kept for when a future Neon-backed draft/countdown wires
+    // lobbyStore.startCountdown again — a quick-match today jumps straight
+    // into a running game with no countdown, but the watch itself survives.
     const wrapper = mountLobby()
     await flushPromises()
     const lobby = useLobbyStore()
@@ -223,29 +184,8 @@ describe('lobby page', () => {
     })
   })
 
-  describe('draft hand-off', () => {
-    it('tells the picker the player has never finished the tutorial', async () => {
-      vi.stubGlobal('useUserSession', () => ({
-        loggedIn: ref(true),
-        user: ref({ id: MY_ID, tutorialCompleted: false }),
-        fetch: vi.fn(),
-        clear: vi.fn(),
-      }))
-      const wrapper = mountLobby()
-      await flushPromises()
-
-      useLobbyStore().queueStatus = 'picking'
-      await nextTick()
-
-      // The picker uses this to pre-select a beginner hero; without it a
-      // first-timer's 15s draft ends in an auto-random.
-      expect(wrapper.get('hero-picker-stub').attributes('new-player')).toBe('true')
-      wrapper.unmount()
-    })
-  })
-
   describe('practice vs bots', () => {
-    it('starts a tutorial game and jumps into it', async () => {
+    it('starts a practice game and jumps into it', async () => {
       const wrapper = mountLobby()
       await flushPromises()
 
@@ -254,21 +194,17 @@ describe('lobby page', () => {
 
       // The bare @click hands the handler a click event; it must not travel to
       // the server as a hero id.
-      expect(apiCalls.filter(([url]) => url === '/api/game/tutorial')).toEqual([
-        ['/api/game/tutorial', { method: 'POST', body: {} }],
+      expect(apiCalls.filter(([url]) => url === '/api/game/practice')).toEqual([
+        ['/api/game/practice', { method: 'POST', body: {} }],
       ])
-      expect(navigateTo).toHaveBeenCalledWith('/play?gameId=dev_1&tutorial=1')
+      expect(navigateTo).toHaveBeenCalledWith('/play?gameId=dev_1&tutorial=1&playerId=github_me')
       expect(joinCalls()).toHaveLength(0)
       wrapper.unmount()
     })
   })
 
-  describe('Neon queue path (ablyTransport flag on)', () => {
-    beforeEach(() => {
-      vi.stubGlobal('useRuntimeConfig', () => ({ public: { ablyTransport: true } }))
-    })
-
-    it('joins over /api/queue/join-neon (not the legacy /api/queue/join)', async () => {
+  describe('quick-match queue (Neon-backed — the only path)', () => {
+    it('joins over /api/queue/join-neon', async () => {
       const wrapper = mountLobby()
       await flushPromises()
 
@@ -276,7 +212,6 @@ describe('lobby page', () => {
       await flushPromises()
 
       expect(apiCalls.some(([url]) => url === '/api/queue/join-neon')).toBe(true)
-      expect(joinCalls()).toHaveLength(0)
       wrapper.unmount()
     })
 
@@ -311,30 +246,5 @@ describe('lobby page', () => {
       expect(apiCalls.some(([url]) => url === '/api/queue/leave-neon')).toBe(true)
       wrapper.unmount()
     })
-  })
-
-  it('pops the countdown digit each second instead of blinking it out of sight', async () => {
-    const wrapper = mountLobby()
-    await flushPromises()
-    const lobby = useLobbyStore()
-    lobby.allPicksComplete()
-    lobby.countdown = 3
-    await nextTick()
-
-    const digit = wrapper.get('[data-testid="countdown-digit"]')
-    expect(digit.text()).toBe('3')
-    expect(digit.classes()).toContain('anim-pop')
-    // animate-blink is a 1s step-end infinite loop: it left the digit fully
-    // transparent for half of every second, reading as a broken countdown.
-    expect(digit.classes()).not.toContain('animate-blink')
-
-    // Re-keyed per second so the pop animation replays rather than running once.
-    const firstKey = digit.element
-    lobby.countdown = 2
-    await nextTick()
-    const next = wrapper.get('[data-testid="countdown-digit"]')
-    expect(next.text()).toBe('2')
-    expect(next.element).not.toBe(firstKey)
-    wrapper.unmount()
   })
 })

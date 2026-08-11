@@ -78,7 +78,7 @@ export default defineEventHandler(async (event) => {
       const appUrl = useRuntimeConfig().appUrl
       void (async () => {
         try {
-          const token = await createVerifyToken(runtime.redisService, player.id)
+          const token = await createVerifyToken(player.id)
           const verifyUrl = `${appUrl}/verify-email?token=${token}`
           const welcome = welcomeTemplate(username)
           await sendEmail({ to: email, ...welcome })

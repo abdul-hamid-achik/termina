@@ -1,22 +1,26 @@
 import { getGameRuntime } from '~~/server/plugins/game-server'
-import { getGameLoopHealthSummary } from '~~/server/game/engine/GameLoopHealth'
 
 /**
- * Liveness probe for the DO App Platform / load balancer.
+ * Liveness probe (Vercel Functions have no separate load-balancer health
+ * check, but this stays for parity with /api/ready and for any external
+ * uptime monitor).
  *
  * Returns 200 with a JSON body while the Nitro server is alive. The `runtime`
- * field reports whether Redis + DB + WS services are initialized. Use
- * `/api/ready` for load-balancer readiness. The loop summary makes repeated
- * cycle failures observable without exposing the underlying error.
+ * field reports whether the DB service layer is initialized. Use /api/ready
+ * for the stricter readiness gate (schema contract included).
+ *
+ * The per-game cycle-failure loop summary this used to report died with the
+ * DO-era in-process game loop fiber (server/game/engine/GameLoopHealth.ts) —
+ * Vercel Workflow (server/workflows/gameTick.ts) now drives each tick as its
+ * own step with its own retry semantics, so there is no long-lived
+ * per-instance loop to report health for.
  */
 export default defineEventHandler((event) => {
   const runtime = getGameRuntime()
-  const loop = getGameLoopHealthSummary()
   setHeader(event, 'content-type', 'application/json')
   return {
     status: 'ok',
     runtime: runtime ? 'ready' : 'starting',
-    loop,
     timestamp: Date.now(),
   }
 })

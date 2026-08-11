@@ -3,13 +3,11 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 import { useLobbyStore } from '~/stores/lobby'
 import { useGameStore } from '~/stores/game'
-import { useGameSocket } from '~/composables/useGameSocket'
 import { useQueuePolling } from '~/composables/useQueuePolling'
 import { useAudio } from '~/composables/useAudio'
 import { useStartTutorial } from '~/composables/useStartTutorial'
 import { lobbyLog } from '~/utils/logger'
 import { mapIdForMode, zonesForMap } from '~~/shared/constants/maps'
-import type { ServerMessage } from '~~/shared/types/protocol'
 
 definePageMeta({ middleware: 'auth', ssr: false })
 
@@ -18,120 +16,21 @@ const lobbyStore = useLobbyStore()
 const gameStore = useGameStore()
 const router = useRouter()
 
-const { connect, connected, onMessage, disconnect, send } = useGameSocket()
 const { playSound } = useAudio()
 
-// All-Vercel migration: when the ablyTransport flag is on, quick-match queue
-// state is driven over plain HTTP polling (queueNeon + status-neon, via
-// useQueuePolling below) instead of the WS pushes handleServerMessage routes
-// below (queue_update/queue_filling/lobby_state/pick_turn/...). The 5v5
-// draft/ban flow is NOT ported to this path — see matchStart.ts's doc
-// comment — so a formed quick-match jumps straight from 'searching' to a
-// running game with bots autofilled and heroes auto-assigned; the WS
-// handlers stay completely untouched for the flag-off (legacy) path.
-const useNeonQueue = useRuntimeConfig().public.ablyTransport
+// All-Vercel: quick-match queue state is driven entirely over HTTP polling
+// (queueNeon + status-neon, via useQueuePolling below) — there is no WS push
+// anymore (the DO-era WS lobby/draft route is gone). A formed quick-match
+// jumps straight from 'searching' to a running game, bots autofilled and
+// heroes auto-assigned — see server/game/matchmaking/matchStart.ts's doc
+// comment. The 5v5 draft/ban flow (HeroPicker, lobbyStore's picking/banning/
+// found/starting states, hero pick/ban HTTP endpoints) was NOT ported to
+// this path; it's a real follow-up feature, not wired here.
 const queuePolling = useQueuePolling()
-
-let removeHandler: (() => void) | null = null
-
-function handleServerMessage(msg: ServerMessage) {
-  lobbyLog.debug('WS message received', { type: msg.type })
-  switch (msg.type) {
-    case 'queue_update':
-      lobbyStore.playersInQueue = msg.playersInQueue
-      lobbyStore.estimatedWaitSeconds = msg.estimatedWaitSeconds
-      break
-    case 'queue_roster':
-      lobbyStore.queueRoster = msg.players
-      lobbyStore.matchSize = msg.total
-      break
-    case 'queue_filling':
-      lobbyStore.botsFilling = true
-      lobbyStore.botsCount = msg.botsCount
-      break
-    case 'announcement':
-      // Surface lobby/draft announcements (player→bot swap, etc.) as a transient
-      // toast instead of dropping them silently.
-      lobbyStore.setAnnouncement(msg.message, msg.level)
-      break
-    case 'lobby_cancelled':
-      // The forming lobby was torn down — reset back to the find-match screen so
-      // a surviving drafter isn't frozen on draft/found/starting, then surface
-      // the reason as a toast (setAnnouncement AFTER reset, which clears it).
-      lobbyStore.reset()
-      lobbyStore.setAnnouncement(msg.reason, 'warning')
-      break
-    case 'error':
-      lobbyLog.warn('Server error during lobby', { code: msg.code, message: msg.message })
-      // Surface the error inline instead of dying in the console, and undo
-      // any optimistic hero pick the server just rejected.
-      lobbyStore.rollbackPendingPick()
-      lobbyStore.setError(msg.message || msg.code)
-      break
-    case 'hero_pick':
-      lobbyLog.debug('Hero pick received', { playerId: msg.playerId, heroId: msg.heroId })
-      lobbyStore.heroPicked(msg.playerId, msg.heroId)
-      break
-    case 'hero_ban':
-      lobbyLog.debug('Hero ban received', { playerId: msg.playerId, heroId: msg.heroId })
-      lobbyStore.heroBanned(msg.heroId)
-      break
-    case 'pick_turn':
-      lobbyLog.debug('Pick turn received', { playerId: msg.playerId })
-      lobbyStore.setPickTurn(msg.playerId, msg.username, msg.timeRemainingMs)
-      break
-    case 'ban_turn':
-      lobbyLog.debug('Ban turn received', { playerId: msg.playerId })
-      lobbyStore.setBanTurn(msg.playerId, msg.username, msg.timeRemainingMs)
-      break
-    case 'lobby_state':
-      lobbyLog.info('Lobby state received', { lobbyId: msg.lobbyId, team: msg.team })
-      lobbyStore.lobbyId = msg.lobbyId
-      lobbyStore.setTeamInfo(
-        msg.team,
-        msg.players.map((p) => ({
-          playerId: p.playerId,
-          name: p.username ?? p.playerId,
-          heroId: p.heroId,
-          team: p.team,
-        })),
-      )
-      // Sync any already-picked heroes (covers reconnect where picks happened before we joined)
-      for (const p of msg.players) {
-        if (p.heroId) {
-          lobbyStore.heroPicked(p.playerId, p.heroId)
-        }
-      }
-      // Sync bans + the draft phase (banning vs picking) on (re)connect.
-      for (const b of msg.bans ?? []) {
-        lobbyStore.heroBanned(b)
-      }
-      lobbyStore.matchFound(msg.lobbyId)
-      // Drive the draft phase from the server's authoritative phase so the
-      // banning→picking transition lands when bans complete (matchFound only runs
-      // the found-splash from a pre-match state). Don't clobber 'starting'.
-      if (msg.phase === 'banning') {
-        lobbyStore.queueStatus = 'banning'
-      } else if (msg.phase === 'picking' && lobbyStore.queueStatus !== 'starting') {
-        lobbyStore.queueStatus = 'picking'
-      }
-      break
-    case 'game_countdown':
-      lobbyLog.info('Game countdown received', { seconds: msg.seconds })
-      lobbyStore.allPicksComplete()
-      lobbyStore.startCountdown(msg.seconds)
-      break
-    case 'game_starting':
-      lobbyLog.info('Game starting', { gameId: msg.gameId })
-      gameStore.gameId = msg.gameId
-      gameStore.playerId = authStore.user?.id ?? null
-      break
-  }
-}
 
 const joining = ref(false)
 
-/** Matches the modes `/api/queue/join` accepts (and `leaveQueue` mirrors). */
+/** Matches the modes /api/queue/join-neon accepts (and leave-neon mirrors). */
 type QueueMode = 'ranked_5v5' | 'quick_3v3' | '1v1'
 
 const queueMode = ref<QueueMode>('ranked_5v5')
@@ -162,17 +61,16 @@ const {
   start: startTutorial,
 } = useStartTutorial()
 
-/** Once a quick-match is found on the Neon path there is no draft to enter —
- *  set gameStore.gameId/playerId directly, same as the legacy 'game_starting'
- *  WS message does; the existing gameStore.gameId watcher below handles the
- *  disconnect + navigate to /play from there. */
-function onMatchFoundNeon(gameId: string) {
+/** Once a quick-match (or a party co-op game) is found/started there is no
+ *  draft to enter — set gameStore.gameId/playerId directly; the gameStore.
+ *  gameId watcher below handles navigating to /play from there. */
+function onMatchFound(gameId: string) {
   queuePolling.stop()
   gameStore.gameId = gameId
   gameStore.playerId = authStore.user?.id ?? null
 }
 
-async function joinQueueNeon() {
+async function joinQueue() {
   lobbyStore.clearError()
   try {
     const res = await $fetch<{ success: boolean; queueSize: number; gameId?: string }>(
@@ -180,21 +78,21 @@ async function joinQueueNeon() {
       { method: 'POST', body: { mode: queueMode.value } },
     )
     if (res.gameId) {
-      onMatchFoundNeon(res.gameId)
+      onMatchFound(res.gameId)
       return
     }
     lobbyStore.playersInQueue = res.queueSize
     lobbyStore.queueStatus = 'searching'
     lobbyStore.queueTime = 0
     queuePolling.start({
-      onFound: onMatchFoundNeon,
+      onFound: onMatchFound,
       onSearching: ({ queueSize, botFillDue }) => {
         lobbyStore.playersInQueue = queueSize
         lobbyStore.botsFilling = botFillDue
       },
     })
   } catch (err: unknown) {
-    lobbyLog.error('Neon queue join failed', err)
+    lobbyLog.error('Queue join failed', err)
     const e = err as { data?: { message?: string }; message?: string }
     lobbyStore.setError(
       `could not join queue — ${e?.data?.message ?? e?.message ?? 'unknown error'}`,
@@ -203,12 +101,12 @@ async function joinQueueNeon() {
   }
 }
 
-async function leaveQueueNeon() {
+async function leaveQueue() {
   queuePolling.stop()
   try {
     await $fetch('/api/queue/leave-neon', { method: 'POST' })
   } catch {
-    // Ignore errors on leave — mirrors lobbyStore.leaveQueue's own best-effort catch.
+    // Ignore errors on leave — best-effort.
   }
   lobbyStore.reset()
 }
@@ -218,11 +116,7 @@ async function handleJoinQueue() {
   joining.value = true
   lobbyLog.info('Joining queue', { mode: queueMode.value })
   try {
-    if (useNeonQueue) {
-      await joinQueueNeon()
-    } else {
-      await lobbyStore.joinQueue(queueMode.value)
-    }
+    await joinQueue()
   } catch (err) {
     // Store already set lastError for the inline panel — just log here
     lobbyLog.error('Join queue failed', err)
@@ -233,80 +127,12 @@ async function handleJoinQueue() {
 
 async function handleLeaveQueue() {
   lobbyLog.info('Leaving queue')
-  if (useNeonQueue) {
-    await leaveQueueNeon()
-    return
-  }
-  await lobbyStore.leaveQueue()
+  await leaveQueue()
 }
 
-async function handleHeroPick(heroId: string) {
-  if (!lobbyStore.lobbyId) return
-
-  // Optimistically update local state (rolled back if the server rejects)
-  if (authStore.user?.id) {
-    lobbyStore.optimisticPick(authStore.user.id, heroId)
-  }
-
-  if (connected.value) {
-    send({ type: 'hero_pick', lobbyId: lobbyStore.lobbyId, heroId })
-  } else {
-    // HTTP fallback when WebSocket isn't connected
-    try {
-      await $fetch('/api/queue/pick', {
-        method: 'POST',
-        body: { lobbyId: lobbyStore.lobbyId, heroId },
-      })
-    } catch (err) {
-      lobbyLog.error('HTTP hero pick failed', err)
-      lobbyStore.rollbackPendingPick()
-      lobbyStore.setError('hero pick failed — try again')
-    }
-  }
-}
-
-async function handleHeroBan(heroId: string) {
-  if (!lobbyStore.lobbyId) return
-
-  if (connected.value) {
-    send({ type: 'hero_ban', lobbyId: lobbyStore.lobbyId, heroId })
-  } else {
-    // HTTP fallback when WebSocket isn't connected
-    try {
-      await $fetch('/api/queue/ban', {
-        method: 'POST',
-        body: { lobbyId: lobbyStore.lobbyId, heroId },
-      })
-    } catch (err) {
-      lobbyLog.error('HTTP hero ban failed', err)
-      lobbyStore.setError('hero ban failed — try again')
-    }
-  }
-}
-
-// Audio cues for the three lobby moments a player can miss while looking at
-// another tab: the match landing, their own draft turn, and the last seconds
-// before the game takes over the screen.
-watch(
-  () => lobbyStore.queueStatus,
-  (status, prev) => {
-    if (status === 'found' && prev !== 'found') playSound('ready')
-  },
-)
-
-// A draft turn is a 15s window that ends in an auto-random, so missing it is
-// expensive — it gets the same cue as the match landing.
-watch(
-  () => {
-    const me = authStore.user?.id
-    if (!me) return false
-    return lobbyStore.currentPicker?.playerId === me || lobbyStore.currentBanner?.playerId === me
-  },
-  (mine, wasMine) => {
-    if (mine && !wasMine) playSound('ready')
-  },
-)
-
+// Audio cue for the countdown-to-game-start moment (kept for when a future
+// Neon-backed draft/countdown wires lobbyStore.startCountdown again — a
+// quick-match today jumps straight into a running game with no countdown).
 watch(
   () => lobbyStore.countdown,
   (seconds) => {
@@ -314,49 +140,16 @@ watch(
   },
 )
 
-// Connect WS eagerly on mount — always ready for server pushes.
-// Recovery (page refresh) runs after the connection is established.
+// Recover queue state if we landed on /lobby after a page refresh: check
+// status-neon once and resume polling if still searching.
 onMounted(async () => {
   if (!authStore.user?.id) return
-
-  lobbyLog.info('Opening lobby WebSocket', { playerId: authStore.user.id })
-  connect('lobby', authStore.user.id)
-  removeHandler = onMessage(handleServerMessage)
-
-  // Wait for connection before attempting recovery
-  if (!connected.value) {
-    await new Promise<void>((resolve) => {
-      const stop = watch(connected, (val) => {
-        if (val) {
-          stop()
-          resolve()
-        }
-      })
-      setTimeout(() => {
-        stop()
-        resolve()
-      }, 3000)
-    })
-  }
-
-  // Recover state if we landed on /lobby after a page refresh
   if (lobbyStore.queueStatus === 'idle') {
-    if (useNeonQueue) {
-      await recoverNeonQueueState()
-    } else {
-      const recovered = await lobbyStore.recoverState()
-      if (recovered) {
-        lobbyLog.info('Recovered lobby state on mount', { status: recovered })
-      }
-    }
+    await recoverQueueState()
   }
 })
 
-/** Neon-path equivalent of lobbyStore.recoverState() for a page refresh
- *  mid-queue: a fresh mount has no memory of "I was polling" (lobbyStore is
- *  $dispose()'d on unmount), so check status-neon once and resume polling
- *  if still searching. */
-async function recoverNeonQueueState() {
+async function recoverQueueState() {
   try {
     const res = await $fetch<{
       status: 'idle' | 'searching' | 'found'
@@ -365,13 +158,13 @@ async function recoverNeonQueueState() {
       gameId?: string
     }>('/api/queue/status-neon')
     if (res.status === 'found' && res.gameId) {
-      onMatchFoundNeon(res.gameId)
+      onMatchFound(res.gameId)
     } else if (res.status === 'searching') {
       lobbyStore.queueStatus = 'searching'
       lobbyStore.playersInQueue = res.queueSize ?? 0
       lobbyStore.botsFilling = res.botFillDue ?? false
       queuePolling.start({
-        onFound: onMatchFoundNeon,
+        onFound: onMatchFound,
         onSearching: ({ queueSize, botFillDue }) => {
           lobbyStore.playersInQueue = queueSize
           lobbyStore.botsFilling = botFillDue
@@ -379,136 +172,39 @@ async function recoverNeonQueueState() {
       })
     }
   } catch (err) {
-    lobbyLog.warn('Neon queue status recovery failed', err)
+    lobbyLog.warn('Queue status recovery failed', err)
   }
 }
 
-// Navigate to /play when game ID is set via WS game_starting
+// Navigate to /play once a game ID is set (quick-match found, or a party
+// co-op game started).
 watch(
   () => gameStore.gameId,
   (gId) => {
     if (gId) {
       lobbyLog.info('Navigating to /play', { gameId: gId })
       if (!gameStore.playerId) gameStore.playerId = authStore.user?.id ?? null
-
-      // Stop the recovery poll — we're navigating
-      _stopRecoveryPoll()
-
-      // Disconnect the lobby WebSocket — GameScreen will open a new game connection
-      disconnect()
-      if (removeHandler) {
-        removeHandler()
-        removeHandler = null
-      }
       router.push('/play')
     }
   },
 )
 
-// Polling fallback: when WS isn't connected or when stuck in 'starting',
-// poll the status endpoint to drive state transitions via HTTP.
-// This makes the game playable even if the WebSocket proxy chain fails.
-let recoveryPollTimer: ReturnType<typeof setInterval> | null = null
-
-// Start polling when WS fails to connect or when stuck in 'starting'
-watch(
-  [connected, () => lobbyStore.queueStatus],
-  ([wsConnected, status]) => {
-    if (gameStore.gameId) {
-      _stopRecoveryPoll()
-      return
-    }
-    // Poll when WS is not connected and we're in an active queue state. Never
-    // on the Neon path — useQueuePolling already owns state transitions there,
-    // and /api/queue/status (this poll's target) is the legacy Redis-queue
-    // endpoint, which has nothing to report for a Neon-formed match.
-    const needsPoll =
-      !useNeonQueue &&
-      ((!wsConnected && status !== 'idle') || (status === 'starting' && lobbyStore.countdown <= 0))
-    if (needsPoll) {
-      _startRecoveryPoll()
-    } else if (wsConnected && status !== 'starting') {
-      _stopRecoveryPoll()
-    }
-  },
-  { immediate: true },
-)
-
-function _startRecoveryPoll() {
-  if (recoveryPollTimer) return
-  lobbyLog.info('Starting recovery poll', {
-    connected: connected.value,
-    status: lobbyStore.queueStatus,
-  })
-  recoveryPollTimer = setInterval(async () => {
-    if (gameStore.gameId) {
-      _stopRecoveryPoll()
-      return
-    }
-    await lobbyStore.recoverState()
-  }, 3000)
-}
-
-function _stopRecoveryPoll() {
-  if (recoveryPollTimer) {
-    clearInterval(recoveryPollTimer)
-    recoveryPollTimer = null
-  }
-}
-
 onUnmounted(() => {
-  _stopRecoveryPoll()
   queuePolling.stop()
-  disconnect()
   lobbyStore.$dispose()
-  if (removeHandler) {
-    removeHandler()
-    removeHandler = null
-  }
 })
 </script>
 
 <template>
   <div class="flex flex-1 flex-col">
-    <!-- Transient toast for server announcements during lobby/draft (match
-         cancelled, a player replaced by a bot). Rendered at the page root so it
-         shows over every phase (searching / found / picking / starting). -->
+    <!-- Transient toast for lobby announcements. -->
     <AnnouncementToast
       :text="lobbyStore.lastAnnouncement?.message ?? ''"
       :seq="lobbyStore.lastAnnouncement?.seq ?? 0"
       :level="lobbyStore.lastAnnouncement?.level ?? 'info'"
     />
 
-    <!-- PICKING: Hero selection (full-width layout).
-         The wrapper caps the picker at the visible viewport height (dvh) on
-         phones so the hero grid scrolls internally and the sticky confirm
-         bar stays pinned on-screen. -->
-    <div
-      v-if="lobbyStore.queueStatus === 'picking' || lobbyStore.queueStatus === 'banning'"
-      class="flex min-h-0 flex-1 flex-col max-sm:max-h-[calc(100dvh-7.5rem)]"
-    >
-      <HeroPicker
-        :mode="lobbyStore.queueStatus === 'banning' ? 'ban' : 'pick'"
-        :team="lobbyStore.team ?? 'chaff'"
-        :picked-heroes="lobbyStore.pickedHeroes"
-        :banned-heroes="lobbyStore.bannedHeroes"
-        :team-roster="lobbyStore.teamRoster"
-        :current-picker="
-          lobbyStore.queueStatus === 'banning' ? lobbyStore.currentBanner : lobbyStore.currentPicker
-        "
-        :pick-deadline="
-          lobbyStore.queueStatus === 'banning' ? lobbyStore.banDeadline : lobbyStore.pickDeadline
-        "
-        :my-player-id="authStore.user?.id ?? null"
-        :error-message="lobbyStore.lastError"
-        :new-player="authStore.user?.tutorialCompleted === false"
-        @pick="handleHeroPick"
-        @ban="handleHeroBan"
-      />
-    </div>
-
-    <!-- All other states: centered narrow layout -->
-    <div v-else class="mx-auto flex flex-1 max-w-[500px] flex-col items-center justify-center">
+    <div class="mx-auto flex flex-1 max-w-[500px] flex-col items-center justify-center">
       <!-- IDLE: Find Match -->
       <template v-if="lobbyStore.queueStatus === 'idle'">
         <div class="flex w-full flex-col justify-center gap-4">
@@ -579,9 +275,8 @@ onUnmounted(() => {
               </div>
             </div>
           </TerminalPanel>
-          <!-- Co-op with friends: party up and play vs bots (no rating on the line).
-             Starting broadcasts lobby_state over WS, which drives the draft. -->
-          <PartyPanel :my-player-id="authStore.user?.id ?? null" />
+          <!-- Co-op with friends: party up and play vs bots (no rating on the line). -->
+          <PartyPanel :my-player-id="authStore.user?.id ?? null" @started="onMatchFound" />
           <!-- Persistent guild/clan: create or join; the tag shows on the leaderboard. -->
           <GuildPanel :my-player-id="authStore.user?.id ?? null" />
         </div>
@@ -598,48 +293,6 @@ onUnmounted(() => {
           :bots-count="lobbyStore.botsCount"
           @cancel="handleLeaveQueue"
         />
-      </template>
-
-      <!-- FOUND: Match found transition -->
-      <template v-else-if="lobbyStore.queueStatus === 'found'">
-        <TerminalPanel title="Matchmaking">
-          <div class="flex flex-col items-center gap-4 p-6" role="status" aria-live="assertive">
-            <p class="text-base font-bold text-chaff text-glow">
-              <span aria-hidden="true">&gt;_</span> MATCH FOUND
-            </p>
-            <p class="text-[0.8rem] text-text-dim">Opening the draft...</p>
-          </div>
-        </TerminalPanel>
-      </template>
-
-      <!-- STARTING: Game countdown -->
-      <template v-else-if="lobbyStore.queueStatus === 'starting'">
-        <TerminalPanel title="Game Starting">
-          <div class="flex flex-col items-center gap-4 p-6">
-            <p class="text-base font-bold text-chaff text-glow" role="status" aria-live="assertive">
-              <span aria-hidden="true">&gt;_</span> GAME STARTING
-            </p>
-            <!-- aria-hidden: the per-second countdown would otherwise spam a
-                 screen reader; the heading + status text below convey it.
-                 The :key re-mounts the digit so anim-pop replays each second —
-                 animate-blink used to leave it INVISIBLE for half of every
-                 second, which reads as a broken countdown rather than urgency. -->
-            <span
-              v-if="lobbyStore.countdown > 0"
-              :key="lobbyStore.countdown"
-              data-testid="countdown-digit"
-              aria-hidden="true"
-              class="anim-pop text-4xl font-bold tabular-nums text-chaff"
-              :class="{ 'text-audit': lobbyStore.countdown <= 3 }"
-            >
-              {{ lobbyStore.countdown }}
-            </span>
-            <p class="text-[0.8rem] text-text-dim" role="status" aria-live="polite">
-              {{ lobbyStore.countdown > 0 ? 'Syncing to the clock...' : 'Entering TERMINA...' }}
-            </p>
-            <span aria-hidden="true" class="animate-blink text-2xl text-chaff">|</span>
-          </div>
-        </TerminalPanel>
       </template>
     </div>
   </div>

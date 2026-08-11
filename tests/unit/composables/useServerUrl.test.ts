@@ -10,47 +10,9 @@ vi.stubGlobal('useRuntimeConfig', () => ({ public: mockPublicConfig }))
 
 // ── Subject ────────────────────────────────────────────────────────
 
-const { useWsOrigin, useApiOrigin, rewriteApiRequest } =
-  await import('../../../app/composables/useServerUrl')
+const { useApiOrigin, rewriteApiRequest } = await import('../../../app/composables/useServerUrl')
 
 // ── Tests ──────────────────────────────────────────────────────────
-
-describe('useWsOrigin', () => {
-  beforeEach(() => {
-    mockPublicConfig = {}
-  })
-
-  it('uses explicit wsUrl override with ws:// protocol normalization', () => {
-    mockPublicConfig = { wsUrl: 'http://ws.example.com' }
-    expect(useWsOrigin()).toBe('ws://ws.example.com')
-  })
-
-  it('normalizes https:// override to wss://', () => {
-    mockPublicConfig = { wsUrl: 'https://ws.example.com' }
-    expect(useWsOrigin()).toBe('wss://ws.example.com')
-  })
-
-  it('passes through ws:// and wss:// overrides unchanged', () => {
-    mockPublicConfig = { wsUrl: 'ws://ws.example.com' }
-    expect(useWsOrigin()).toBe('ws://ws.example.com')
-
-    mockPublicConfig = { wsUrl: 'wss://ws.example.com' }
-    expect(useWsOrigin()).toBe('wss://ws.example.com')
-  })
-
-  it('strips leading slashes from a protocol-relative override', () => {
-    // A protocol-relative override has no http(s):// to rewrite, so it exercises
-    // the `replace(/^\/+/, '')` strip (the https:// case never has leading
-    // slashes after normalization, so it wouldn't test this path at all).
-    mockPublicConfig = { wsUrl: '//ws.example.com' }
-    expect(useWsOrigin()).toBe('ws.example.com')
-  })
-
-  it('falls back to ws://localhost:3000 when no override and not on client', () => {
-    mockPublicConfig = {}
-    expect(useWsOrigin()).toBe('ws://localhost:3000')
-  })
-})
 
 describe('useApiOrigin', () => {
   beforeEach(() => {

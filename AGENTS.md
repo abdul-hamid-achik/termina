@@ -58,14 +58,14 @@ TenantAI.ts, CacheAI.ts, WaveAI.ts.
 ## Commands
 
 ```bash
-# Dev server (do NOT use bun --bun flag — it breaks WebSocket proxy chain).
-# For OAuth + DB/Redis locally, inject the LOCAL secret set:
+# Dev server (do NOT use the bun --bun flag — see Important Gotchas).
+# For OAuth + DB (+ Ably) locally, inject the LOCAL secret set:
 #   tvault -p termina-local run -- bun run dev   (see Deployment → Secrets)
 bun run dev
 
 # Tests
 bun run test:all          # LITERALLY EVERYTHING — pure package.json composition, NO scripts/ file:
-                          #   test:db (PG+Redis + isolated termina_test + flush + schema) → all
+                          #   test:db (Postgres + isolated termina_test + schema) → all
                           #   Vitest projects → build → `start-server-and-test` boots ONE prod
                           #   server (serve:test) for hitspec (API) + cairntrace e2e (reuse), then
                           #   tears it down. ~12-15 min. Helpers: test:db / serve:test / test:server.
@@ -131,26 +131,21 @@ Each cycle (4s) runs this pipeline in `processCycle`:
 7. Check win condition
 8. Broadcast vision-filtered state to each player via `filterStateForPlayer()`
 
+`processCycle` itself is transport-agnostic (pure `GameState` in, `GameState` + events out) — it is now driven by **Vercel Workflow**, one tick at a time, rather than a long-lived in-process loop. See `server/workflows/gameTick.ts` (the thin, statically-bundled workflow body — `runGame`, sleeps to the next 4s boundary, chains a continuation every 250 ticks) and `gameTickCore.ts` (the heavy step bodies, loaded via dynamic import: reads/writes the `live_games` row in Neon under a CAS guard, drains `pending_actions`, calls `processCycle`, publishes the result to Ably).
+
 ### Effect-TS Service Pattern
 
-Services use Effect's Context.Tag + Layer for dependency injection:
-- `DatabaseService` — Drizzle ORM wrapper (PostgreSQL)
-- `RedisService` — Pub/sub messaging
-- `WebSocketService` — Connection tracking per game
+`DatabaseService` (Drizzle ORM wrapper over Neon/Postgres) is the one surviving Effect Context.Tag + Layer service — resolved once at boot by `server/plugins/game-server.ts`'s minimal `ManagedRuntime` and exposed via `getGameRuntime().dbService`. `RedisService` and `WebSocketService` (DO-era) are gone; nothing in the running system talks to Redis or manages a WebSocket connection registry anymore. The `~50` other server files that use `Effect.gen`/`Effect.runPromise` do so as a thin typed-error wrapper over plain async work, not for DI.
 
-The game server plugin (`server/plugins/game-server.ts`) composes layers into a `ManagedRuntime` that provides services to all game loop fibers.
+### Realtime Flow (Ably)
 
-### WebSocket Flow
-
-Browser → Vite dev server → Nuxt CLI upgrade → Nitro DevServer → http-proxy → Worker (crossws/adapters/node)
-
-`PeerRegistry` (`server/services/PeerRegistry.ts`) tracks player↔peer mappings. Use `crosswsPeer.send()` as primary (it properly delegates to underlying ws). The `rawWs` (peer.websocket Proxy) is a fallback only.
+The client's `useGameChannel` composable (selected via `useGameTransport()`) subscribes to a per-player Ably channel (`game:{gameId}:p:{playerId}`), authenticated by a short-lived token minted at `POST /api/auth/ably-token` (`server/utils/ablyToken.ts`). Each `gameTickStep` publishes that tick's vision-filtered `cycle_state` to Ably over REST (`server/utils/ablyRest.ts`) — there is no persistent server-side connection registry (no `PeerRegistry`/`WebSocketService`) because nothing needs to track "who's connected to what": Ably owns delivery. Outbound player actions go the other way, over plain HTTP: `POST /api/game/action` writes to the `pending_actions` table, drained by the next tick.
 
 ### State Flow (Client)
 
-WebSocket messages → `useGameSocket` composable → routes to Pinia stores:
+Ably `cycle_state` messages → `useGameChannel` → `routeServerMessage` (`app/utils/gameMessageRouter.ts`) → Pinia stores:
 - `game.ts` store: cycle state, player state, scoreboard, events
-- `lobby.ts` store: queue status, hero picks, countdown
+- `lobby.ts` store: queue status (Neon-backed quick-match only — the 5v5 draft/pick UI it also owns is currently unreachable; see `app/pages/lobby.vue`)
 - `auth.ts` store: session via `nuxt-auth-utils`
 
 `gameStore.playerId` = OAuth session user ID (e.g., `github_7379966`). This same ID is used as the key in `GameState.players` on the server.
@@ -165,14 +160,16 @@ Zones are defined in `shared/constants/zones.ts` with `adjacentTo` arrays. Movem
 
 ## Deployment
 
-Production is a Vercel + DigitalOcean split (full runbook: `infra/README.md`):
+Production is **all-Vercel** (the DigitalOcean split was demolished after cutover — no `infra/` Pulumi program, no Dockerfile, no DOCR image, no `deploy.yml` anymore):
 
-- **Vercel** — the Nuxt frontend, plus the data layer (Neon Postgres + Upstash Redis) provisioned via the Vercel Marketplace. Browser → `www.terminamoba.com`; HTTP `/api/*` is proxied to DO via `vercel.json` `rewrites` (same-origin, first-party cookie). WebSockets connect directly to DO (`NUXT_PUBLIC_WS_URL`)
-- **DigitalOcean App Platform** — the full Nitro server (SSR + WS + 4s-cycle game loop + API) at `api.terminamoba.com`, from a DOCR Docker image (`Dockerfile`, non-root runtime). Managed as **Pulumi (TypeScript) IaC in `infra/`** — isolated (own deps/tsconfig; excluded from app lint/typecheck/knip/Docker), so it never affects app CI gates. OAuth runs here; `redirect_uri` is forced to the www frontend via `NUXT_OAUTH_*_REDIRECT_URL` (behind the proxy DO sees `Host: api.*`, so it must be pinned)
-- **State backend** is self-managed: a DigitalOcean Spaces (S3-compatible) bucket pinned in `infra/Pulumi.yaml` `backend.url` (DO `pulumi login` not needed). Secrets via the default `passphrase` provider
-- **Secrets** are managed locally with **tvault**, keyed by their real env-var names, in **two projects**: `termina` holds the PROD secrets (deploy: `tvault -p termina run -- pulumi up`; www-callback OAuth apps + Neon/Upstash) and `termina-local` holds LOCAL dev secrets (run: `tvault -p termina-local run -- bun run dev`; localhost-callback GitHub OAuth app + docker Postgres/Redis). Always pass `-p` — bare `tvault run` uses the current project and can inject prod creds (incl. the prod DB) into local dev. `infra/index.ts` reads each secret env-first, else Pulumi config. The DO Spaces keys (`AWS_*`) are distinct from the provider token (`DIGITALOCEAN_TOKEN`)
-- **Auth invariant**: `NUXT_SESSION_PASSWORD` must be byte-identical on Vercel and DO (the session cookie seal must be mutually decryptable). Vercel only needs `NUXT_SESSION_PASSWORD` + `NUXT_PUBLIC_WS_URL` (+ the Neon/Upstash integration vars); the rest of the backend secrets live only on DO
-- CI `.github/workflows/deploy.yml` builds + pushes the image to DOCR (`registry.digitalocean.com`), then runs `pulumi up` (triggered via `workflow_run` after CI succeeds on main)
+- **Vercel** hosts everything: the Nuxt frontend (SSR + `/api/*` routes, same-origin — no cross-origin proxy needed) at `www.terminamoba.com`, backed by **Neon Postgres** (via the Vercel Marketplace integration). `NUXT_PUBLIC_API_URL` exists only for a hypothetical future origin split and is empty in prod.
+- **Vercel Workflow DevKit** (`workflow/nuxt` module) drives each game's 4s tick — see the Game Loop Pipeline section above. `POST /api/game/start-workflow` (internal, `WORKFLOW_START_KEY`-gated) or the tutorial/practice/matchmaking paths (`server/game/liveGame.ts`'s `startLiveGame`) create the `live_games` row and kick off the first tick.
+- **Ably** is the realtime transport (Realtime for client subscriptions, REST for server-side publish) — see the Realtime Flow section above. Requires `ABLY_API_KEY`.
+- **Matchmaking** is Neon-backed (`server/game/matchmaking/queueNeon.ts`, `queue_entries` table) — event-driven match formation (no background sweep; a Vercel serverless function can't keep one warm). The Redis sorted-set queue and its WS-pushed lobby/draft flow (`lobby.ts`) are gone; a quick-match goes straight from "searching" to a running game with bots autofilled and heroes round-robin-assigned, no pick screen. A Neon-backed draft is an open follow-up, not yet built.
+- **Auth tokens** (password reset, email verification) are Neon-backed (`auth_tokens` table, `server/utils/authTokens.ts`) — single-use, `DELETE ... RETURNING` on redemption. No Redis TTL keys anymore.
+- **Secrets**: local dev secrets live in the tvault project `termina-local` (run: `tvault -p termina-local run -- bun run dev`; localhost-callback GitHub OAuth app + docker Postgres only — no local Redis either). Prod secrets are Vercel environment variables, managed via the tvault project `termina` for reference/backup. Always pass `-p` to tvault — bare `tvault run` uses whatever project is currently active.
+- **Auth invariant**: `NUXT_SESSION_PASSWORD` must stay stable across deploys (rotating it invalidates every live session cookie).
+- Readiness (`GET /api/ready`) checks the Postgres schema contract only — there is no separate "runtime starting" window to gate on in a serverless deploy.
 
 ## Key Conventions
 
@@ -188,12 +185,11 @@ Production is a Vercel + DigitalOcean split (full runbook: `infra/README.md`):
 
 ## Important Gotchas
 
-- **Never use `bun --bun nuxt dev`** — Bun's native HTTP breaks the WebSocket proxy chain in dev mode
+- **Never use `bun --bun nuxt dev`** — Bun's native HTTP has broken Nuxt dev-server behavior before (originally documented against the now-deleted WS proxy chain; untested since realtime moved to Ably, so the caution stays defensive)
 - **Font imports** go in `app/assets/css/terminal.css` via `@import`, not in `nuxt.config.ts` `css` array (prevents SSR 404s)
 - **`<ClientOnly>`** is needed around auth-conditional UI in layouts (Nuxt 4 loads layouts async, causing hydration mismatches)
 - **`processCycle` validates actions once in production** — GameLoop validates up front (catching rejections for player feedback); `resolveActions` only re-validates in dev/test as a divergence assertion ("GameLoop should have filtered this — a divergence is a bug"). It used to validate twice; the redundant production pass was removed
 - **Bot IDs** start with `bot_` prefix — checked via `isBot()` from BotManager
-- **Lobby cleanup** happens in `game-server.ts` after game creation, not in lobby.ts — prevents race condition where poll returns 'searching' between lobby end and game start
 - **knip config is `knip.config.ts`, NOT `knip.json`** — knip resolves `knip.json` first, so adding one shadows the tuned config and explodes findings. Unused exports/types are advisory `warn`; unused files/deps fail the gate
 - **oxfmt formats everything by default** — its `.oxfmtrc.json` `ignorePatterns` MUST exclude `tests/e2e/**` (stamped cairntrace YAML — reformatting breaks the contractHash), `server/db/migrations/**`, and `**/*.{md,yml,yaml}`
 - **Type augmentations go in `shared/types/*.d.ts`** (e.g. the `#auth-utils` `User` augmentation) — Nuxt 4's split tsconfigs don't load `server/types/*.d.ts` as global augmentations, but `shared/**/*.d.ts` is in both the app and server include
@@ -214,14 +210,13 @@ Expert in the server-side game loop and combat systems.
 
 **Key files**:
 
-- `GameLoop.ts` — cycle pipeline, `processCycle`, `submitAction`, `buildGameLoop`
+- `GameLoop.ts` — `processCycle` (the pure per-tick pipeline, driven by Vercel Workflow — see the Game Loop Pipeline section above), `submitAction`/`submitReplayAction` (the in-process action queue a tick drains)
 - `ActionResolver.ts` — `validateAction`, `resolveActions` (phase-ordered: instant → move → attack → passive → buy)
 - `StateManager.ts` — `createPlayerState`, `createInitialGameState`, in-memory Effect service
 - `VisionCalculator.ts` — `filterStateForPlayer`, fog-of-war per team
 - `DamageCalculator.ts` — kinetic/code/black damage formulas (plate/ice mitigation)
 - R4 combat lexicon: damage types kinetic/code/black; mitigation plate/ice; pools INTEG/BW; immunity AIRGAP; access state BREACH (code halved into closed targets; hard control fails until breached)
 - `CombatResolver.ts` — `resolvePhysicalHit` unified NPC→hero damage path (wraps `_base.dealDamage`); `computeBladeMailReflect` single reflect formula
-- `StateDelta.ts` — per-player cycle_state delta compression (reference-equality field diff)
 - `ScripDistributor.ts` — passive scrip, kill bounties, last-hit rewards
 - `WaveAI.ts`, `IceAI.ts` — NPC behavior each cycle
 - `NeutralAI.ts` — Silt dweller spawning, attacking heroes
@@ -267,57 +262,60 @@ are normalised (`nullref`/`null-ref` resolve to `null_ref`).
 
 ### frontend
 
-Expert in the Vue 3 game UI, stores, and WebSocket integration.
+Expert in the Vue 3 game UI, stores, and Ably realtime integration.
 
 **Owns**: `app/`
 
 **Key files**:
 
-- `composables/useGameSocket.ts` — WebSocket lifecycle, auto-reconnect, message routing
+- `composables/useGameChannel.ts` — Ably Realtime lifecycle (subscribe to `game:{gameId}:p:{playerId}`, token auth, reconnect), routes inbound messages, sends outbound actions over `POST /api/game/action`. Selected via `composables/useGameTransport.ts` (a thin permanent wrapper — the DO-era `useGameSocket` + the flag it picked between are gone)
 - `composables/useCommands.ts` — command parsing (`move`, `attack`, `cast`, `buy`, etc.) and autocomplete
-- `composables/useServerUrl.ts` — resolves the WS origin (`useWsOrigin`) + the same-origin/cross-origin API fetch transform (`rewriteApiRequest`); paired with `app/plugins/api-origin.client.ts`
+- `composables/useServerUrl.ts` — `useApiOrigin`/`rewriteApiRequest`, a same-origin/cross-origin API fetch transform kept for a hypothetical future origin split (empty/no-op today); paired with `app/plugins/api-origin.client.ts`
 - `stores/game.ts` — `updateFromCycle`, player state, scoreboard, events
-- `stores/lobby.ts` — queue flow (idle → searching → found → picking → starting)
+- `stores/lobby.ts` — queue flow; only `idle`/`searching` are reachable on the live (Neon quick-match) path today — `found`/`picking`/`banning`/`starting` (the 5v5 draft/ban UI, `HeroPicker.vue`) have no current trigger, kept for a future Neon-backed draft
 - `stores/auth.ts` — session via `nuxt-auth-utils`; OAuth via `navigateTo('/api/auth/<provider>', { external: true })`
 - `components/game/GameScreen.vue` — terminal shell: STREAM + TRACE + status lines + ActionRow + prompt
 - `components/game/TraceRail.vue` — route as hop depth, contacts, both terminals (replaces the 2D board)
 - `components/game/Stream.vue` — combat log / stream (full-height center column)
 - `components/game/StatusLines.vue` — always-on hop / net / cycle clock lines
 - `components/game/ActionRow.vue` — phone-first move/strip/burn + ability strip (hidden on fine pointer)
-- `pages/lobby.vue` — matchmaking + hero picker + polling fallback
+- `pages/lobby.vue` — quick-match queue (HTTP polling via `useQueuePolling`) + party/guild panels + practice launcher
 
 **Conventions**: Terminal-themed UI. CSS vars in `assets/css/terminal.css`. Tailwind 4 (wired via `@tailwindcss/vite` + an `@config` directive that keeps the v3-style `tailwind.config.ts` theme) utility classes using custom colors (`text-chaff`, `text-audit`, `text-self`, `bg-bg-primary`). `<ClientOnly>` required around auth-conditional rendering.
 
 ### matchmaking
 
-Expert in the queue, lobby, and hero pick systems.
+Expert in the Neon-backed queue and live-game start-up.
 
-**Owns**: `server/game/matchmaking/`, `server/api/queue/`
+**Owns**: `server/game/matchmaking/`, `server/api/queue/`, `server/game/liveGame.ts`
 
 **Key files**:
 
-- `queue.ts` — `joinQueue`, `leaveQueue`, `startMatchmakingLoop` (Redis sorted set by MMR)
-- `lobby.ts` — `createLobby`, `pickHero`, `confirmPick`, `startReadyCheck`, `currentPickTurn` (snake pick order)
-- `server/api/queue/join.post.ts`, `status.get.ts`, `pick.post.ts` — HTTP endpoints
+- `queueNeon.ts` — `joinQueue`, `leaveQueue`, `tryFormMatchNeon` (Postgres `queue_entries` table + `pg_advisory_xact_lock`, no background sweep — event-driven: forms a match inline on join, and opportunistically again on a status poll)
+- `matchStart.ts` — `assignQuickMatchRoster` (round-robin heroes, alternate teams by MMR-sorted index — no pick screen), `startFormedMatch`
+- `party.ts` — in-memory co-op party (create/join/leave, leader-only start); `server/api/party/start-coop.post.ts` starts the live game directly (party on chaff, bots fill the rest — no draft)
+- `elo.ts` — `calculateMmrChange`, `teamAverageMmr`
+- `server/game/liveGame.ts` — `startLiveGame` (seeds the `live_games` row + kicks off the first Workflow tick), shared by the tutorial/practice, quick-match, and party co-op paths
+- `server/api/queue/join-neon.post.ts`, `leave-neon.post.ts`, `status-neon.get.ts` — the HTTP endpoints `useQueuePolling` (client) actually calls
 
-**Flow**: Queue → match found → lobby created → snake hero picks (15s per pick, auto-random on timeout) → 1.5s delay → 3s countdown → `game_ready` published to Redis → game-server.ts creates game. Draft opens on a ban phase (2 bans per side, R,D,R,D) for the 5v5 mode; 1v1 and casual co-op skip bans. On lobby reconnect, `ws.ts` re-sends both `lobby_state` AND `pick_turn` so a refreshing/seeded client recovers whose turn it is.
+**Flow**: Join → `tryFormMatchNeon` forms a roster (bot-backfilled after a 10s wait) → `startLiveGame` seeds `live_games` and starts the Workflow tick → the client's poll (`GET /api/queue/status-neon`) sees `{status: 'found', gameId}` and navigates to `/play`. No lobby, no hero pick/ban screen — heroes are round-robin assigned. The DO-era Redis sorted-set queue (`queue.ts`) and its WS-pushed snake-draft lobby (`lobby.ts`, ban phase 2-per-side R/D/R/D) are gone; a Neon-backed draft is an open follow-up (`queueNeon.ts`'s doc comment), not yet built.
 
 ### services
 
-Expert in Effect-TS services, WebSocket infrastructure, and the plugin lifecycle.
+Expert in the DatabaseService layer, Ably realtime plumbing, and the Vercel Workflow tick.
 
-**Owns**: `server/services/`, `server/plugins/game-server.ts`, `server/routes/ws.ts`
+**Owns**: `server/services/`, `server/plugins/game-server.ts`, `server/workflows/`, `server/utils/ablyRest.ts`, `server/utils/ablyToken.ts`
 
 **Key files**:
 
-- `PeerRegistry.ts` — `registerPeer`, `unregisterPeer`, `sendToPeer` (crosswsPeer primary, rawWs fallback)
-- `WebSocketService.ts` — per-game connection tracking via Effect Layer
-- `RedisService.ts` — pub/sub with `ioredis`, Effect-wrapped
-- `DatabaseService.ts` — Drizzle ORM queries (players, matches, hero stats). DB is `drizzle-kit push`-managed — `schema.ts` is the source of truth; apply schema changes with `bun run db:push`. The file-migration history is vestigial, so there are no `db:generate`/`db:migrate` recipes. `players` and `hero_stats` both have `games_played`/`wins`, so qualify those columns in joins/upserts
-- `ws.ts` — WebSocket handler: auth (via a session-minted ticket from `/api/auth/ws-ticket`), message dispatch, reconnect with 60s grace window
-- `game-server.ts` — `ManagedRuntime` composition, Redis subscription for `game_ready`, game loop callbacks
+- `DatabaseService.ts` — Drizzle ORM queries (players, matches, hero stats), the one surviving `Context.Tag` + `Layer.succeed` Effect service. DB is `drizzle-kit push`-managed — `schema.ts` is the source of truth; apply schema changes with `bun run db:push`. The file-migration history is vestigial, so there are no `db:generate`/`db:migrate` recipes. `players` and `hero_stats` both have `games_played`/`wins`, so qualify those columns in joins/upserts
+- `LeaverSystem.ts` — AFK detection (`detectAFKPlayers`, `shouldConvertAFK`) — pure GameState logic `GameLoop.ts`'s `processCycle` calls directly. The Redis-backed leaver-penalty ledger (score/low-priority queue) was already dead before the cutover and is gone; the in-memory "deliberate client input" ledger (`markClientInput`/`msSinceClientInput`) has no live producer since the DO-era WS route that used to stamp it is gone — every AFK check degrades to the "disconnected" branch until an Ably-presence signal is wired back in
+- `game-server.ts` — minimal boot plugin: `registerAllHeroes()` + resolves `DatabaseServiceLive` once into `getGameRuntime().dbService` (read by most API routes as their "is the DB layer up" gate). Everything Redis/fiber/reaper/spectator/finalize-intent that used to live here died with the DO-era in-process game server
+- `server/workflows/gameTick.ts` — the THIN, statically-bundled workflow body (`runGame`, `shouldChainAt`) — Workflow DevKit forbids Node-module imports anywhere in a workflow module's static import graph, so this file must stay clean
+- `server/workflows/gameTickCore.ts` — the heavy step bodies (loaded via dynamic `import()` inside `gameTick.ts`'s steps): `runOneTick` (CAS-guarded tick against `live_games`), `finalizeGame`, `rehydrateRegistries`
+- `ablyToken.ts` / `ablyRest.ts` — per-player token auth (`mintAblyToken`) and server→client publish (`ablyPublishBatch`)
 
-**Pattern**: Services use `Context.Tag` + `Layer.succeed` for DI. The `ManagedRuntime` provides layers to all game loop fibers. Bot filtering via `isBot()` prevents sending messages to bot players.
+**Pattern**: `DatabaseService` uses `Context.Tag` + `Layer.succeed` for DI, resolved once at boot. Everything else uses `Effect.gen`/`Effect.runPromise` as a thin typed-error wrapper, not for DI — there is no long-lived runtime to attach a service layer to on a per-tick Workflow step. Bot filtering via `isBot()` prevents publishing Ably messages to bot players.
 
 ### tester
 
@@ -329,13 +327,14 @@ Expert in writing and maintaining Vitest (unit/integration/component) and Cairnt
 
 - `tests/unit/engine/` — GameLoop, ActionResolver, StateManager, VisionCalculator, DamageCalculator
 - `tests/unit/heroes/` — per-hero stat and ability validation
-- `tests/unit/services/` — PeerRegistry, WebSocketService, protocol
-- `tests/unit/matchmaking/` — queue, lobby (+ `seed-draft-lobby`)
+- `tests/unit/services/` — LeaverSystem (AFK detection)
+- `tests/unit/workflows/` — `gameTick`/`gameTickCore` (CAS idempotency, chain boundary, action drain)
+- `tests/unit/matchmaking/` — elo, matchStart, party
 - `tests/unit/stores/` — game store, lobby store
-- `tests/unit/composables/` — useGameSocket, useCommands, useAudio, useServerUrl
+- `tests/unit/composables/` — useGameChannel, useGameTransport, useCommands, useAudio, useServerUrl
 - `tests/e2e/` — **Cairntrace** YAML flows that drive the REAL app (register/log in through the UI, navigate, assert); NO test seed hooks. `flows/`, reusable `actions/login.yml`, `cairntrace.config.yml`. Game/engine truth lives in `tests/gameplay/` (`bun run test:gameplay`). See the **End-to-end** section of the root `README.md`.
 
-**Patterns**: Vitest 4 — projects are in `test.projects` in `vitest.config.ts`. `vi.fn()` mocks; `vi.mock()` for modules (PeerRegistry, BotManager); `vi.useFakeTimers()`; `Effect.runSync` for Effect code. NOTE vitest 4: `new (vi.fn(() => obj))()` returns the empty `this` — stub constructors with a plain `function(){ return mock }`. Clean up peers/lobbies in `afterEach`. E2E: each flow must pass `cairn run --cold-start` green and be stamped; `testUser` is `${run.token}` (unique per flow, ≤20 chars for the username limit).
+**Patterns**: Vitest 4 — projects are in `test.projects` in `vitest.config.ts`. `vi.fn()` mocks; `vi.mock()` for modules (BotManager, DatabaseService); `vi.useFakeTimers()`; `Effect.runSync` for Effect code. NOTE vitest 4: `new (vi.fn(() => obj))()` returns the empty `this` — stub constructors with a plain `function(){ return mock }`. Clean up in-memory state (parties, bot registries) in `afterEach`. E2E: each flow must pass `cairn run --cold-start` green and be stamped; `testUser` is `${run.token}` (unique per flow, ≤20 chars for the username limit).
 
 **Commands**: `bun run test:unit | test:integration | test:components`; `npx vitest run <file>` for one; `bun run test:e2e` (cairn builds + boots a prod-preview server itself); `bun run typecheck`, `bun run lint` (oxlint), `bun run format` (oxfmt), `bun run knip`.
 
@@ -350,7 +349,7 @@ Expert in NPC bot behavior and lane assignment.
 - `BotManager.ts` — `registerBots`, `getBotPlayerIds`, `getBotLane`, `isBot`, `cleanupGame`
 - `BotAI.ts` — `decideBotAction` (lane-based movement, attack priority, ability usage)
 
-**Conventions**: Bot IDs use `bot_` prefix. Bots are assigned lanes on game creation. `decideBotAction` runs per-bot before draining the player action queue each cycle. Bots never receive WebSocket messages.
+**Conventions**: Bot IDs use `bot_` prefix. Bots are assigned lanes on game creation. `decideBotAction` runs per-bot before draining the player action queue each cycle. Bots never receive realtime (Ably) messages.
 
 ### map-systems
 

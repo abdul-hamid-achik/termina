@@ -29,7 +29,7 @@ describe('GET /api/health', () => {
     getGameRuntime.mockReset()
   })
 
-  it('always reports status "ok" with a JSON content-type (DO liveness probe)', () => {
+  it('always reports status "ok" with a JSON content-type (liveness probe)', () => {
     getGameRuntime.mockReturnValue(undefined)
     const res = healthHandler(makeEvent())
     expect(res.status).toBe('ok')
@@ -42,7 +42,7 @@ describe('GET /api/health', () => {
   })
 
   it('reports runtime "ready" once the game runtime is live', () => {
-    getGameRuntime.mockReturnValue({ dbService: {}, redisService: {} })
+    getGameRuntime.mockReturnValue({ dbService: {} })
     expect(healthHandler(makeEvent()).runtime).toBe('ready')
   })
 
@@ -51,13 +51,5 @@ describe('GET /api/health', () => {
     const res = healthHandler(makeEvent())
     expect(typeof res.timestamp).toBe('number')
     expect(res.timestamp).toBeGreaterThan(0)
-  })
-
-  it('includes loop failure counters without changing liveness semantics', () => {
-    getGameRuntime.mockReturnValue(undefined)
-    const res = healthHandler(makeEvent()) as unknown as {
-      loop: { degradedGames: number; totalConsecutiveFailures: number }
-    }
-    expect(res.loop).toEqual({ degradedGames: 0, totalConsecutiveFailures: 0 })
   })
 })

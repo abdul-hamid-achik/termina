@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 503, message: 'Game server not ready' })
   }
 
-  const playerId = await consumeVerifyToken(runtime.redisService, token)
+  const playerId = await consumeVerifyToken(token)
   if (!playerId) {
     throw createError({
       statusCode: 400,

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { formatTickClock } from '~/utils/gameClock'
 import { PLACEMENT_GAMES } from '~~/shared/constants/ranks'
 
 interface LeaderboardEntry {
@@ -17,15 +16,6 @@ interface LeaderboardEntry {
   winRate: number
 }
 
-interface ActiveGame {
-  gameId: string
-  cycle: number
-  chaffKills: number
-  auditKills: number
-  chaffHeroes: string[]
-  auditHeroes: string[]
-}
-
 const {
   data,
   status,
@@ -34,19 +24,11 @@ const {
   season: { number: number; startedAt: string }
   leaderboard: LeaderboardEntry[]
 }>('/api/leaderboard')
-const { data: activeData, refresh: refreshActive } = await useFetch<{ games: ActiveGame[] }>(
-  '/api/match/active',
-  {
-    // Re-fetch every 10s while the page is open
-    server: false,
-  },
-)
 
-// Poll both the leaderboard + active games every 10s while the page is open.
+// Poll the leaderboard every 10s while the page is open.
 let pollTimer: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
   pollTimer = setInterval(() => {
-    void refreshActive()
     void refreshLeaderboard()
   }, 10_000)
 })
@@ -55,16 +37,11 @@ onUnmounted(() => {
 })
 
 const players = computed(() => data.value?.leaderboard ?? [])
-const activeGames = computed(() => activeData.value?.games ?? [])
 
 // Highlight the viewing player's own row so they can spot their rank at a glance
 // (null when anonymous — the leaderboard is public).
 const { user } = useUserSession()
 const meId = computed(() => (user.value?.id as string | undefined) ?? null)
-
-function gameTime(cycle: number): string {
-  return formatTickClock(cycle)
-}
 </script>
 
 <template>
@@ -79,40 +56,6 @@ function gameTime(cycle: number): string {
         Season {{ data.season.number }}
       </span>
     </header>
-    <TerminalPanel v-if="activeGames.length > 0" title="Live Games" title-as="h2">
-      <div class="mb-2 border-b border-border pb-2 text-[0.8rem] text-text-dim">
-        &gt;_ {{ activeGames.length }} game{{ activeGames.length === 1 ? '' : 's' }} in progress —
-        click to spectate
-      </div>
-      <div class="flex flex-col">
-        <div
-          v-for="g in activeGames"
-          :key="g.gameId"
-          class="flex items-center justify-between gap-3 border-b border-border/50 py-1.5 text-[0.8rem] last:border-0"
-        >
-          <div class="flex flex-col">
-            <div class="t-mono-num">
-              <span class="text-chaff">{{ g.chaffKills }}</span>
-              <span class="mx-1 text-text-muted">vs</span>
-              <span class="text-audit">{{ g.auditKills }}</span>
-              <span class="ml-3 text-text-dim">@ {{ gameTime(g.cycle) }}</span>
-            </div>
-            <div class="text-[0.7rem] text-text-dim">
-              <span class="text-chaff">{{ g.chaffHeroes.join(', ') }}</span>
-              <span class="mx-1">·</span>
-              <span class="text-audit">{{ g.auditHeroes.join(', ') }}</span>
-            </div>
-          </div>
-          <NuxtLink
-            :to="`/spectate/${g.gameId}`"
-            class="border border-warn px-2 py-0.5 text-warn no-underline hover:bg-warn/10 hover:text-chaff"
-          >
-            [spectate]
-          </NuxtLink>
-        </div>
-      </div>
-    </TerminalPanel>
-
     <TerminalPanel title="Leaderboard" title-as="h2">
       <div class="mb-3 border-b border-border pb-3">
         <span class="text-[0.8rem] text-text-dim"

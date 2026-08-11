@@ -1,6 +1,10 @@
 /**
- * Unit tests for GET /api/replay/[gameId]/frames — active-game lockout,
- * integrity rejection, and mapId/mode preservation into createGame.
+ * Unit tests for GET /api/replay/[gameId]/frames — archive-only lookup and
+ * mapId/mode preservation into createGame.
+ *
+ * Archive-only (all-Vercel cutover): the DO-era Redis fast path is gone with
+ * the WS game server — the only source left is the Postgres archive
+ * (match_replays), read via runtime.dbService.getMatchReplay.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { Effect } from 'effect'
@@ -29,7 +33,7 @@ vi.stubGlobal('createError', (opts: { statusCode: number; message: string; data?
 vi.stubGlobal('getRouterParam', () => routerParam)
 
 const getMatchReplay = vi.fn(() => Effect.succeed(null))
-const mockRuntime = { redisService: { tag: 'redis' }, dbService: { getMatchReplay } }
+const mockRuntime = { dbService: { getMatchReplay } }
 
 const createGame = vi.fn(() => Effect.succeed(undefined))
 const updateState = vi.fn(() => Effect.succeed(undefined))
@@ -48,25 +52,6 @@ const getState = vi.fn(() =>
 
 vi.mock('~~/server/plugins/game-server', () => ({
   getGameRuntime: vi.fn(() => mockRuntime),
-}))
-vi.mock('~~/server/game/engine/StateSnapshot', () => ({
-  readSnapshot: vi.fn(() => Effect.succeed(null)),
-}))
-vi.mock('~~/server/game/engine/ActionLog', () => ({
-  readActionLog: vi.fn(() =>
-    Effect.succeed({
-      actions: [],
-      integrity: {
-        complete: true,
-        truncated: false,
-        readFailed: false,
-        entryCount: 0,
-        firstLoggedCycle: null,
-        lastLoggedCycle: null,
-        initialSnapshotCycle: 0,
-      },
-    }),
-  ),
 }))
 vi.mock('~~/server/game/engine/StateManager', () => ({
   createInMemoryStateManager: vi.fn(() => ({ createGame, updateState, getState })),
@@ -91,34 +76,31 @@ vi.mock('~~/server/game/engine/GameLoop', () => ({
 
 const framesHandler = (await import('../../../server/api/replay/[gameId]/frames.get')).default
 const { getGameRuntime } = await import('~~/server/plugins/game-server')
-const { readSnapshot } = await import('~~/server/game/engine/StateSnapshot')
-const { readActionLog } = await import('~~/server/game/engine/ActionLog')
 const { submitReplayAction } = await import('~~/server/game/engine/GameLoop')
 
-function endedSnap(
+function archivedReplay(
   over: {
-    cycle?: number
-    phase?: string
-    mapId?: string
-    mode?: string
+    rngSeed?: number | null
+    finalSummaryHash?: string | null
+    rulesetVersion?: number
+    finalState?: Record<string, unknown>
     meta?: Record<string, unknown>
+    actions?: unknown[]
   } = {},
 ) {
   return {
-    savedAt: 100,
-    state: {
-      cycle: 2,
-      phase: 'ended',
-      mapId: 'classic',
-      mode: 'normal',
-      ...over,
-    },
+    matchId: 'g1',
+    rngSeed: over.rngSeed ?? null,
+    finalSummaryHash: over.finalSummaryHash ?? null,
+    rulesetVersion: over.rulesetVersion ?? 1,
+    finalState: { cycle: 2, phase: 'ended', ...over.finalState },
     meta: {
       players: [{ playerId: 'p1', team: 'chaff', heroId: 'echo', mmr: 1000 }],
       mapId: 'seawall',
       mode: 'tutorial',
       ...over.meta,
     },
+    actions: over.actions ?? [],
   }
 }
 
@@ -128,21 +110,7 @@ describe('GET /api/replay/[gameId]/frames', () => {
     thrownError = null
     vi.clearAllMocks()
     vi.mocked(getGameRuntime).mockReturnValue(mockRuntime as never)
-    vi.mocked(readSnapshot).mockReturnValue(Effect.succeed(null))
-    vi.mocked(readActionLog).mockReturnValue(
-      Effect.succeed({
-        actions: [],
-        integrity: {
-          complete: true,
-          truncated: false,
-          readFailed: false,
-          entryCount: 0,
-          firstLoggedCycle: null,
-          lastLoggedCycle: null,
-          initialSnapshotCycle: 0,
-        },
-      }),
-    )
+    getMatchReplay.mockReturnValue(Effect.succeed(null))
     createGame.mockImplementation(() => Effect.succeed(undefined))
     updateState.mockImplementation(() => Effect.succeed(undefined))
     getState.mockImplementation(() =>
@@ -175,96 +143,14 @@ describe('GET /api/replay/[gameId]/frames', () => {
     expect(thrownError?.statusCode).toBe(400)
   })
 
-  it('404 when no snapshot exists', async () => {
-    vi.mocked(readSnapshot).mockReturnValue(Effect.succeed(null))
+  it('404 when no archived replay exists', async () => {
+    getMatchReplay.mockReturnValue(Effect.succeed(null))
     await expect(framesHandler(makeEvent())).rejects.toThrow()
     expect(thrownError?.statusCode).toBe(404)
   })
 
-  it('403 for a mid-game snapshot — replays are post-game only', async () => {
-    vi.mocked(readSnapshot).mockReturnValue(
-      Effect.succeed({
-        savedAt: 1,
-        state: { cycle: 9, phase: 'playing' },
-        meta: { players: [] },
-      } as never),
-    )
-    await expect(framesHandler(makeEvent())).rejects.toThrow()
-    expect(thrownError?.statusCode).toBe(403)
-    expect(thrownError?.message).toMatch(/after the game ends/i)
-  })
-
-  it('422 when setup metadata is missing', async () => {
-    vi.mocked(readSnapshot).mockReturnValue(
-      Effect.succeed({
-        savedAt: 1,
-        state: { cycle: 2, phase: 'ended' },
-        meta: undefined,
-      } as never),
-    )
-    await expect(framesHandler(makeEvent())).rejects.toThrow()
-    expect(thrownError?.statusCode).toBe(422)
-  })
-
-  it('503 when the action log read failed', async () => {
-    vi.mocked(readSnapshot).mockReturnValue(Effect.succeed(endedSnap() as never))
-    vi.mocked(readActionLog).mockReturnValue(
-      Effect.succeed({
-        actions: [],
-        integrity: {
-          complete: false,
-          truncated: false,
-          readFailed: true,
-          entryCount: 0,
-          firstLoggedCycle: null,
-          lastLoggedCycle: null,
-          initialSnapshotCycle: 0,
-        },
-      }),
-    )
-    await expect(framesHandler(makeEvent())).rejects.toThrow()
-    expect(thrownError?.statusCode).toBe(503)
-  })
-
-  it('409 when the action log was truncated — never serve a fake full replay', async () => {
-    vi.mocked(readSnapshot).mockReturnValue(Effect.succeed(endedSnap() as never))
-    vi.mocked(readActionLog).mockReturnValue(
-      Effect.succeed({
-        actions: [{ cycle: 500, playerId: 'p1', command: { type: 'move', zone: 'a' } }],
-        integrity: {
-          complete: false,
-          truncated: true,
-          readFailed: false,
-          entryCount: 10000,
-          firstLoggedCycle: 500,
-          lastLoggedCycle: 900,
-          initialSnapshotCycle: 0,
-        },
-      } as never),
-    )
-    await expect(framesHandler(makeEvent())).rejects.toThrow()
-    expect(thrownError?.statusCode).toBe(409)
-    expect(thrownError?.data).toMatchObject({
-      integrity: expect.objectContaining({ truncated: true, complete: false }),
-    })
-  })
-
-  it('passes mapId/mode from snapshot meta into createGame', async () => {
-    vi.mocked(readSnapshot).mockReturnValue(Effect.succeed(endedSnap() as never))
-    vi.mocked(readActionLog).mockReturnValue(
-      Effect.succeed({
-        actions: [],
-        integrity: {
-          complete: true,
-          truncated: false,
-          readFailed: false,
-          entryCount: 0,
-          firstLoggedCycle: null,
-          lastLoggedCycle: null,
-          initialSnapshotCycle: 0,
-        },
-      }),
-    )
+  it('passes mapId/mode from archived meta into createGame', async () => {
+    getMatchReplay.mockReturnValue(Effect.succeed(archivedReplay() as never))
 
     const result = await framesHandler(makeEvent())
     expect(createGame).toHaveBeenCalledWith(
@@ -276,33 +162,27 @@ describe('GET /api/replay/[gameId]/frames', () => {
     )
     expect(result).toMatchObject({
       gameId: 'g1',
+      source: 'archive',
       integrity: { complete: true, truncated: false },
       meta: { mapId: 'seawall', mode: 'tutorial' },
     })
   })
 
   it('replays synthesized flags through submitReplayAction', async () => {
-    vi.mocked(readSnapshot).mockReturnValue(Effect.succeed(endedSnap({ cycle: 1 }) as never))
-    vi.mocked(readActionLog).mockReturnValue(
-      Effect.succeed({
-        actions: [
-          {
-            cycle: 1,
-            playerId: 'p1',
-            command: { type: 'move', zone: 'coldstore-cross' },
-            synthesized: true,
-          },
-        ],
-        integrity: {
-          complete: true,
-          truncated: false,
-          readFailed: false,
-          entryCount: 1,
-          firstLoggedCycle: 1,
-          lastLoggedCycle: 1,
-          initialSnapshotCycle: 0,
-        },
-      } as never),
+    getMatchReplay.mockReturnValue(
+      Effect.succeed(
+        archivedReplay({
+          finalState: { cycle: 1, phase: 'ended' },
+          actions: [
+            {
+              cycle: 1,
+              playerId: 'p1',
+              command: { type: 'move', zone: 'coldstore-cross' },
+              synthesized: true,
+            },
+          ],
+        }) as never,
+      ),
     )
 
     await framesHandler(makeEvent())

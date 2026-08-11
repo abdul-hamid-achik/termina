@@ -1,9 +1,7 @@
-import type { ManagedRuntime } from 'effect'
-import { Effect, Schedule, Fiber } from 'effect'
+import { Effect } from 'effect'
 import type { GameEvent, GameState, TeamId } from '~~/shared/types/game'
 import type { Command } from '~~/shared/types/commands'
 import {
-  CYCLE_DURATION_MS,
   RESPAWN_BASE_CYCLES,
   RESPAWN_PER_LEVEL_CYCLES,
   RESPAWN_FREE_LEVELS,
@@ -20,8 +18,7 @@ import {
   NIGHT_DURATION_CYCLES,
   HARDEN_DURATION_CYCLES,
 } from '~~/shared/constants/balance'
-import type { StateManagerApi } from './StateManager'
-import { scaledTickIntervalMs, scaledRespawnTicks, fastGameFactor } from './fastGame'
+import { scaledRespawnTicks, fastGameFactor } from './fastGame'
 import { resolveActions, validateAction, type PlayerAction } from './ActionResolver'
 import {
   advanceTutorialAfterTick,
@@ -40,8 +37,6 @@ import { spawnWaveUnits, spawnCaches } from '~~/server/game/map/spawner'
 import { spawnSiltDwellers, runNeutralAI, applyNeutralActions } from './NeutralAI'
 import { removeExpiredWards } from '~~/server/game/map/zones'
 import { mix, mulberry32, hashStringToSeed } from './rng'
-import { filterStateForPlayer } from './VisionCalculator'
-import { computeDelta, recordSentState, clearGameSentStates, getSentState } from './StateDelta'
 // Importing from '~~/server/game/heroes' (not '../heroes/_base') guarantees every hero's
 // registerHero() side effect has run before the first tick resolves a cast.
 import {
@@ -65,17 +60,7 @@ import {
   msSinceClientInput,
   recordLeaverSafe,
 } from '~~/server/services/LeaverSystem'
-import { getPeer } from '~~/server/services/PeerRegistry'
-import { writeSnapshot, SNAPSHOT_EVERY_N_TICKS, type SnapshotMeta } from './StateSnapshot'
-import { appendActions } from './ActionLog'
 import { escalateRejection } from './rejectionEscalation'
-import type { RedisServiceApi } from '~~/server/services/RedisService'
-import {
-  clearGameLoopHealth,
-  recordTickFailure,
-  recordTickSuccess,
-  TICK_FAILURE_NOTICE_THRESHOLD,
-} from './GameLoopHealth'
 
 // ── Action queue per game ──────────────────────────────────────
 
@@ -201,28 +186,6 @@ export function getFarmStats(gameId: string): Record<string, PlayerFarm> {
     out[playerId] = { ...farm }
   }
   return out
-}
-
-// ── Cycle clock ────────────────────────────────────────────────
-// The wall-clock shape of the batch clock, per game: which cycle is OPEN for
-// orders and when it commits. Stamped by the loop fiber each tick; read by
-// the WS layer to put nextCommitAt on cycle_state broadcasts (the HUD's CYCLE
-// countdown) and to validate forCycle-stamped orders. Manual-tick games
-// (dev/test harness) never stamp it — consumers must tolerate its absence.
-
-export interface GameClock {
-  cycle: number
-  nextCommitAt: number
-}
-
-const gameClocks = new Map<string, GameClock>()
-
-export function stampGameClock(gameId: string, cycle: number, nextCommitAt: number): void {
-  gameClocks.set(gameId, { cycle, nextCommitAt })
-}
-
-export function getGameClock(gameId: string): GameClock | null {
-  return gameClocks.get(gameId) ?? null
 }
 
 /** Submit an action for the current tick (single-instance, in-process queue). */
@@ -655,7 +618,7 @@ export function processCycle(
     // player down. convertToBot adds them to the bot roster, so the driver at
     // the top of this pipeline issues their actions from next cycle; we flag the
     // slot `aiControlled` for the UI and emit an afk_takeover event. No-reclaim:
-    // the WS action path drops a reconnecting human's input via isGameBot, and
+    // the action ingress drops a reconnecting human's input via isGameBot, and
     // detectAFKPlayers skips aiControlled slots so this fires exactly once.
     if (currentState.cycle % 60 === 0) {
       for (const afk of detectAFKPlayers(currentState)) {
@@ -665,8 +628,13 @@ export function processCycle(
         // player who is at the screen but between actions (reading the shop,
         // watching a fight). A connected player is only converted after the
         // longer silence window, and only when a human teammate benefits.
+        // isConnected is hardcoded false — there is no live-peer signal on the
+        // Workflow/Ably path (the DO-era WS PeerRegistry this used to read is
+        // gone), so every AFK player takes the "disconnected" branch of
+        // shouldConvertAFK today. Wiring an Ably-presence signal back in here
+        // is the tracked follow-up (see LeaverSystem.ts's module doc).
         const convert = shouldConvertAFK(currentState, afk.playerId, {
-          isConnected: getPeer(afk.playerId) !== undefined,
+          isConnected: false,
           msSinceInput: msSinceClientInput(gameId, afk.playerId),
         })
         if (!convert || !convertToBot(gameId, afk.playerId)) continue
@@ -685,6 +653,7 @@ export function processCycle(
           team: player.team,
           message: 'went AFK — a bot has taken over',
         })
+        recordLeaverSafe(afk.playerId, gameId, currentState, 'afk')
       }
     }
 
@@ -703,342 +672,6 @@ export function processCycle(
     tallyFarm(gameId, allEvents)
 
     return { state: currentState, events: allEvents, rejectedActions, notices, actions }
-  })
-}
-
-// ── Game lifecycle ─────────────────────────────────────────────
-
-export interface GameCallbacks {
-  onCycleState: (
-    gameId: string,
-    playerId: string,
-    state: ReturnType<typeof filterStateForPlayer>,
-  ) => void
-  onEvents: (gameId: string, events: GameEngineEvent[]) => void
-  /**
-   * `farm` is handed over rather than looked up by the callback: the loop
-   * interrupts (and its finalizer drops the per-game maps) the moment this
-   * returns, so an async consumer that read it after its first `await` would
-   * find nothing.
-   */
-  onGameOver: (gameId: string, winner: TeamId, farm: Record<string, PlayerFarm>) => void
-  onActionRejected?: (gameId: string, playerId: string, reason: string) => void
-  /**
-   * Coaching line for one player — currently tutorial guidance (a step timing
-   * out, or a step not yet satisfied). Distinct from onActionRejected: nothing
-   * went wrong, the game is teaching. Optional.
-   */
-  onNotice?: (gameId: string, playerId: string, message: string) => void
-  /**
-   * Fires once when the human player finishes the last tutorial step. Optional —
-   * the plugin persists it (players.tutorialCompleted) so the client funnel can
-   * stop routing returning players to practice. Skipped if not set.
-   */
-  onTutorialCompleted?: (gameId: string, playerId: string) => void
-  /** Fires once after repeated cycle failures so the server can surface a
-   * degraded match to players and operations instead of silently freezing. */
-  onGameDegraded?: (gameId: string, consecutiveFailures: number) => void
-  /**
-   * Fires once per cycle with the unfiltered (fogless) state. Optional —
-   * implemented by the plugin to broadcast to spectators. Skipped if not set.
-   */
-  onSpectatorTick?: (gameId: string, state: GameState) => void
-}
-
-/** Active game fibers, keyed by gameId. */
-const activeGames = new Map<string, Fiber.RuntimeFiber<void, never>>()
-
-/**
- * Build the game loop Effect for a given game.
- * The returned Effect runs the tick loop directly (no forking) — it stays
- * alive for the entire game duration. The caller is responsible for
- * running it (typically via Effect.runFork for a root-level fiber).
- */
-function buildGameLoop(
-  gameId: string,
-  stateManager: StateManagerApi,
-  callbacks: GameCallbacks,
-  redis?: RedisServiceApi,
-  snapshotMeta?: SnapshotMeta,
-): Effect.Effect<void> {
-  // Run a single tick with per-cycle error recovery so one bad tick
-  // doesn't kill the entire game loop.
-  const tickLoop = Effect.gen(function* () {
-    const currentState = yield* stateManager.getState(gameId)
-    if (currentState.phase === 'ended') {
-      // The game can be ended out-of-band — the test-only force-end hook, or a
-      // resumed already-finished snapshot — without processCycle having fired
-      // the game-over broadcast below. If a winner is set, fire onGameOver once
-      // so the client receives game_over and renders the post-game screen, then
-      // stop. (A normal in-tick end fires onGameOver at the bottom of this loop
-      // and interrupts, so it never re-reaches this branch — no double fire.)
-      const winner = currentState.winner ?? checkWinCondition(currentState)
-      if (winner) {
-        try {
-          clearGameSentStates(gameId)
-          callbacks.onGameOver(gameId, winner, getFarmStats(gameId))
-        } catch (err) {
-          engineLog.warn('onGameOver (out-of-band end) failed', { gameId, error: String(err) })
-        }
-      }
-      return yield* Effect.interrupt
-    }
-
-    const tickStart = performance.now()
-    const {
-      state: newState,
-      events,
-      rejectedActions,
-      notices,
-      actions,
-    } = yield* processCycle(gameId, currentState)
-    // Observability: warn when a tick's engine work eats into the schedule
-    // budget (>50% of the interval). Sustained breaches are what push
-    // Schedule.fixed into its running-behind regime (a slowed game clock) — this
-    // is the early signal that the "~N games per instance" ceiling is being hit.
-    const tickMs = performance.now() - tickStart
-    if (tickMs > CYCLE_DURATION_MS * 0.5) {
-      engineLog.warn('Slow tick', {
-        gameId,
-        cycle: currentState.cycle,
-        tickMs: Math.round(tickMs),
-        budgetMs: CYCLE_DURATION_MS,
-        players: Object.keys(currentState.players).length,
-      })
-    }
-    yield* stateManager.updateState(gameId, () => newState)
-
-    // Stamp the clock: newState.cycle is now the OPEN batch, and it commits
-    // when the next tick fires. cycleIntervalMs is captured from the outer
-    // scope at run time (the schedule only starts after it's defined).
-    stampGameClock(gameId, newState.cycle, Date.now() + cycleIntervalMs)
-
-    // Tutorial completion: processCycle advanced the human past the last scripted
-    // step → fire the callback (the plugin persists players.tutorialCompleted) so
-    // the client funnel stops routing this player to practice. Detected here, not
-    // in processCycle, because only the loop fiber holds the callbacks handle.
-    if (
-      callbacks.onTutorialCompleted &&
-      (currentState.tutorialStep ?? 0) < TUTORIAL_STEP_COUNT &&
-      (newState.tutorialStep ?? 0) >= TUTORIAL_STEP_COUNT &&
-      // Honest graduation: a run with skipped drills ends the game but does
-      // NOT persist tutorialCompleted — the funnel keeps offering practice.
-      tutorialMasteryAchieved(newState)
-    ) {
-      const humanId = Object.keys(newState.players).find((id) => !isBot(id))
-      if (humanId) {
-        try {
-          callbacks.onTutorialCompleted(gameId, humanId)
-        } catch {
-          // Non-critical — a persistence failure just leaves the funnel as-is.
-        }
-      }
-    }
-
-    // Persist this cycle's actions for replay/debugging. Forked so a slow
-    // Redis write never blocks the broadcast.
-    if (redis && actions.length > 0) {
-      yield* Effect.forkDaemon(
-        appendActions(
-          redis,
-          gameId,
-          actions.map((a) => ({
-            cycle: newState.cycle,
-            playerId: a.playerId,
-            command: a.command,
-            ...(a.synthesized ? { synthesized: true } : {}),
-          })),
-        ),
-      )
-    }
-
-    // Send tutorial coaching lines
-    if (callbacks.onNotice) {
-      for (const notice of notices) {
-        try {
-          callbacks.onNotice(gameId, notice.playerId, notice.message)
-        } catch {
-          // Non-critical — don't let feedback failures affect the game loop
-        }
-      }
-    }
-
-    // Send feedback for rejected player actions
-    if (callbacks.onActionRejected) {
-      for (const rejected of rejectedActions) {
-        try {
-          callbacks.onActionRejected(gameId, rejected.playerId, rejected.reason)
-        } catch {
-          // Non-critical — don't let feedback failures affect the game loop
-        }
-      }
-    }
-
-    // Log every 10th tick to verify loop is alive
-    if (newState.cycle % 10 === 0) {
-      engineLog.debug('Tick', { gameId, cycle: newState.cycle })
-    }
-
-    // Persist a leaver record (best-effort, Redis) for each AFK takeover this
-    // tick performed. Driven off the emitted event so it fires exactly once per
-    // player: processCycle owns the detection + bot swap; the fiber owns the
-    // Redis write (processCycle has no Redis handle).
-    for (const event of events) {
-      if (event._tag !== 'afk_takeover') continue
-      recordLeaverSafe(event.playerId, gameId, newState, 'afk', redis)
-      engineLog.warn('AFK player replaced by bot', { gameId, playerId: event.playerId })
-    }
-
-    // Periodic state snapshot (best-effort; failures don't break the loop).
-    // Forked so a slow Redis write doesn't block tick broadcast.
-    if (redis && newState.cycle % SNAPSHOT_EVERY_N_TICKS === 0) {
-      yield* Effect.forkDaemon(writeSnapshot(redis, gameId, newState, snapshotMeta))
-    }
-
-    // Broadcast filtered state to each player — delta-compressed: only fields
-    // that changed since the last tick are sent (saves ~60% WS bandwidth on
-    // idle ticks where only `tick` + `players` change).
-    for (const playerId of Object.keys(newState.players)) {
-      if (isBot(playerId)) continue
-      const fullState = filterStateForPlayer(newState, playerId, gameId)
-      const delta = computeDelta(fullState, getSentState(gameId, playerId))
-      try {
-        callbacks.onCycleState(gameId, playerId, delta as PlayerVisibleState)
-        recordSentState(gameId, playerId, fullState)
-      } catch (err) {
-        engineLog.warn('Failed to send cycle_state', { gameId, playerId, error: String(err) })
-      }
-    }
-
-    // Spectator tick — fogless full state. Fired once regardless of how many
-    // spectators are watching; the plugin fans out to each one.
-    if (callbacks.onSpectatorTick) {
-      try {
-        callbacks.onSpectatorTick(gameId, newState)
-      } catch (err) {
-        engineLog.warn('Failed to broadcast spectator_tick', { gameId, error: String(err) })
-      }
-    }
-
-    if (events.length > 0) {
-      callbacks.onEvents(gameId, events)
-    }
-
-    // A complete cycle reached the broadcast boundary successfully. Clearing
-    // the failure streak here means one healthy cycle closes the incident.
-    recordTickSuccess(gameId)
-
-    // Check win — phase is set to 'ended' by processCycle (ice or surrender)
-    if (newState.phase === 'ended') {
-      const winner = newState.winner ?? checkWinCondition(newState)
-      if (winner) {
-        // Close the replay out. Snapshots are periodic, so 14 games in 15 ended
-        // between writes and the replay endpoint — which requires a snapshot
-        // with `phase === 'ended'` — 403'd on the [WATCH REPLAY] link this
-        // screen is about to offer. Awaited, not forked: the fiber is
-        // interrupted two lines down, and writeSnapshot swallows its own errors.
-        if (redis && newState.cycle % SNAPSHOT_EVERY_N_TICKS !== 0) {
-          yield* writeSnapshot(redis, gameId, newState, snapshotMeta)
-        }
-        clearGameSentStates(gameId)
-        callbacks.onGameOver(gameId, winner, getFarmStats(gameId))
-      }
-      return yield* Effect.interrupt
-    }
-  }).pipe(
-    // Recover from individual tick failures so the loop keeps running
-    Effect.catchAll((error) => {
-      const health = recordTickFailure(gameId)
-      engineLog.error('Tick error (recovering)', {
-        gameId,
-        error: String(error),
-        consecutiveFailures: health.consecutiveFailures,
-      })
-      if (health.consecutiveFailures === TICK_FAILURE_NOTICE_THRESHOLD) {
-        try {
-          callbacks.onGameDegraded?.(gameId, health.consecutiveFailures)
-        } catch (callbackError) {
-          engineLog.warn('Game degraded callback failed', {
-            gameId,
-            error: String(callbackError),
-          })
-        }
-      }
-      return Effect.void
-    }),
-  )
-
-  // scaledTickIntervalMs is a no-op (returns CYCLE_DURATION_MS) unless the
-  // dev/test-only TERMINA_TEST_FAST_GAME accelerator is active — fastGame.ts.
-  const cycleIntervalMs = scaledTickIntervalMs(CYCLE_DURATION_MS)
-  return Effect.gen(function* () {
-    yield* stateManager.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const }))
-    engineLog.info('Game loop starting', { gameId, cycleIntervalMs })
-    yield* Effect.repeat(tickLoop, Schedule.fixed(`${cycleIntervalMs} millis`))
-  }).pipe(
-    Effect.catchAll((error) => {
-      engineLog.error('Game loop fatal error', { gameId, error: String(error) })
-      return Effect.void
-    }),
-    // Guarantee per-game maps are cleaned up no matter how the loop ends
-    // (natural win, crash, interrupt). Without this, gameActionQueues leaks
-    // entries for any game that ends without an explicit stopGameLoop call.
-    Effect.ensuring(
-      Effect.sync(() => {
-        gameActionQueues.delete(gameId)
-        activeGames.delete(gameId)
-        recentHeroDamage.delete(gameId)
-        gameFarm.delete(gameId)
-        gameClocks.delete(gameId)
-        clearGameLoopHealth(gameId)
-      }),
-    ),
-  )
-}
-
-/**
- * Start the game loop as a fiber within a ManagedRuntime.
- * The runtime provides all layers (logger, services) to the fiber,
- * ensuring Effect.logInfo/logDebug use the proper game logger.
- * Falls back to Effect.runFork if no runtime is provided.
- *
- * EFFECT POSTURE (why we keep Effect-TS — see the modernization audit): this
- * loop is the ONE load-bearing use of Effect. Each game is a supervised,
- * cancellable fiber — Schedule.fixed + Effect.repeat drive the fixed-interval
- * tick, runFork/forkDaemon spawn it, ManagedRuntime owns the service layers, and
- * Effect.interrupt (via stopGameLoop) cleanly tears a game down. Replacing this
- * with raw setInterval + manual cancellation/lifecycle would be a real
- * regression in correctness. The other ~50 server files use Effect only as a
- * thin Promise wrapper for typed errors; that's stylistic, not essential — but
- * rewriting them buys nothing and loses the typed-error ergonomics, so we keep
- * Effect on 3.x project-wide. (v4 is beta-only; do not adopt.)
- */
-export function startGameLoop(
-  gameId: string,
-  stateManager: StateManagerApi,
-  callbacks: GameCallbacks,
-  runtime?: ManagedRuntime.ManagedRuntime<never, never>,
-  redis?: RedisServiceApi,
-  snapshotMeta?: SnapshotMeta,
-): void {
-  const loop = buildGameLoop(gameId, stateManager, callbacks, redis, snapshotMeta)
-  const fiber = runtime ? runtime.runFork(loop) : Effect.runFork(loop)
-  activeGames.set(gameId, fiber)
-  engineLog.info('Game loop fiber started', { gameId })
-}
-
-/** Stop a running game loop. */
-export function stopGameLoop(gameId: string): Effect.Effect<void> {
-  return Effect.gen(function* () {
-    const fiber = activeGames.get(gameId)
-    if (fiber) {
-      activeGames.delete(gameId)
-      yield* Fiber.interrupt(fiber)
-    }
-    gameActionQueues.delete(gameId)
-    recentHeroDamage.delete(gameId)
-    gameFarm.delete(gameId)
-    gameClocks.delete(gameId)
   })
 }
 

@@ -13,6 +13,11 @@ export const ACTION_WINDOW_MS = 3500
  * the match. Delaying every watcher's feed by this much closes that channel:
  * nothing a spectator sees can reach a live player before the play itself
  * would have. NOT player-tunable — one global constant, no per-viewer knob.
+ *
+ * Currently unused: the live spectate page + its delay buffer (Spectator
+ * DelayBuffer.ts) were deleted with the DO-era WS game server in the
+ * all-Vercel cutover — no Ably-backed replacement exists yet. Kept as the
+ * governing constant for whatever replaces it.
  */
 export const SPECTATOR_BROADCAST_DELAY_MS = 150_000 // 2.5 minutes
 

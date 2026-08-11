@@ -28,6 +28,7 @@ import { shouldApplyDerivedMatchStats } from '~~/server/game/engine/matchPersist
 import { isGuestId } from '~~/server/utils/guest'
 import { ablyPublishBatch, type AblyBatchSpec } from '~~/server/utils/ablyRest'
 import { engineLog } from '~~/server/utils/log'
+import { gameLoggerLive } from '~~/server/utils/logger'
 import type { GameState } from '~~/shared/types/game'
 import type { Command } from '~~/shared/types/commands'
 
@@ -247,7 +248,13 @@ export function productionTickDeps(): TickDeps {
   return {
     liveGamesRepo: liveGamesRepo(),
     pendingActionsRepo: pendingActionsRepo(),
-    runCycle: (gameId, state) => Effect.runPromise(processCycle(gameId, state)),
+    // gameLoggerLive formats processCycle's Effect.logInfo/logDebug calls
+    // (pretty in dev, structured JSON in prod) — the same layer the DO-era
+    // game-server.ts's ManagedRuntime used to provide to every game loop
+    // fiber. Provided per-tick here since a workflow step has no long-lived
+    // runtime to attach it to once.
+    runCycle: (gameId, state) =>
+      Effect.runPromise(Effect.provide(processCycle(gameId, state), gameLoggerLive)),
     publish: ablyPublishBatch,
     rehydrate: rehydrateRegistries,
   }

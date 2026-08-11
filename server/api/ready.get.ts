@@ -1,32 +1,25 @@
 import { sql } from 'drizzle-orm'
 import { useDb } from '~~/server/db'
-import { getGameRuntime } from '~~/server/plugins/game-server'
 import { logger } from '~~/server/utils/log'
 
 /**
- * Readiness probe for the DO App Platform / load balancer.
- *
- * Liveness must stay 200 while Nitro is starting; readiness must not receive
- * traffic until the managed Redis/DB/WebSocket runtime and game-ready
- * subscription have been initialized — AND the connected database actually
- * has the columns the running code depends on.
+ * Readiness probe.
  *
  * The DB is `drizzle-kit push`-managed with no migration history, which means
  * "ship the code" and "apply the schema" are two separate manual steps. Twice
  * now (Aug 1: login broken, Aug 10: /api/match/history 500) a deploy shipped
  * ahead of `bun run db:push` against prod Neon and served 500s to players
  * instead of failing readiness. See REQUIRED_COLUMNS below.
+ *
+ * The old runtime gate (getGameRuntime — "has the DO-era in-process game
+ * server's Redis/DB/WebSocket bring-up finished") is gone with that plugin's
+ * rework: on Vercel, a serverless function's Nitro plugins finish resolving
+ * before the function ever serves a request, so there is no long-lived
+ * "starting" window left to gate on — the schema contract is the only
+ * readiness signal that still means something here.
  */
 export default defineEventHandler(async (event) => {
-  const runtime = getGameRuntime()
-  const runtimeReady = runtime != null
-
   setHeader(event, 'content-type', 'application/json')
-
-  if (!runtimeReady) {
-    setResponseStatus(event, 503)
-    return { status: 'starting', runtime: 'starting', timestamp: Date.now() }
-  }
 
   const schema = await checkSchemaContract()
 
@@ -34,7 +27,6 @@ export default defineEventHandler(async (event) => {
     setResponseStatus(event, 503)
     return {
       status: schema.errored ? 'schema_check_failed' : 'schema_drift',
-      runtime: 'ready',
       schema: schema.errored ? 'unknown' : 'drift',
       ...(schema.errored ? {} : { missingColumns: schema.missing }),
       timestamp: Date.now(),
@@ -42,7 +34,7 @@ export default defineEventHandler(async (event) => {
   }
 
   setResponseStatus(event, 200)
-  return { status: 'ready', runtime: 'ready', schema: 'ready', timestamp: Date.now() }
+  return { status: 'ready', schema: 'ready', timestamp: Date.now() }
 })
 
 /**
@@ -68,6 +60,10 @@ export const REQUIRED_COLUMNS: ReadonlyArray<{ readonly table: string; readonly 
     { table: 'players', column: 'season_mmr' },
     { table: 'players', column: 'tutorial_completed' },
     { table: 'match_replays', column: 'rng_seed' },
+    { table: 'live_games', column: 'roster' },
+    { table: 'pending_actions', column: 'for_cycle' },
+    { table: 'queue_entries', column: 'joined_at' },
+    { table: 'auth_tokens', column: 'expires_at' },
   ]
 
 interface SchemaContractResult {

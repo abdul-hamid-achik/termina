@@ -15,11 +15,22 @@ interface ActionRequestBody {
 /**
  * Action ingress for a workflow-driven game (spike/workflow-tick migration).
  * There is no long-lived WS connection backing a Vercel workflow tick, so an
- * order lands here instead of ws.ts's `action` message — written to
- * `pending_actions`, then drained by the next gameTickStep (see
+ * order lands here instead of the deleted DO-era ws.ts's `action` message —
+ * written to `pending_actions`, then drained by the next gameTickStep (see
  * server/workflows/gameTick.ts). The response shape is the same
- * ActionAckMessage the WS path echoes, so the client's ack handling doesn't
- * need to branch on transport.
+ * ActionAckMessage the old WS path echoed, so the client's ack handling
+ * doesn't need to branch on transport.
+ *
+ * TODO (inherited gap, not introduced by the WS-era cleanup): `body.command`
+ * is cast to `Command` with no runtime schema check — the DO-era ws.ts
+ * validated every inbound message against server/utils/ws-schemas.ts's zod
+ * `clientMessageSchema` before it ever reached the engine; that schema was
+ * deleted along with ws.ts (see shared/constants/commands.ts's Trap #9 doc).
+ * A malformed/malicious body currently reaches `pending_actions` (and from
+ * there `processCycle`'s `validateAction`, which rejects most nonsense but
+ * was never meant to be the FIRST line of defense) unchecked. Re-adding a
+ * zod validator here — reusing the same Command union shape — is real,
+ * scoped follow-up work.
  *
  * Body: { gameId, command, forCycle?, clientSeq? }
  */
