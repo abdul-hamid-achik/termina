@@ -1,12 +1,18 @@
 import { describe, it, expect } from 'vitest'
-import { seedGame, HUMAN, ENEMY } from './harness'
+import { seedGame, HUMAN } from './harness'
 import {
   TUTORIAL_STEP_COUNT,
   TUTORIAL_STEP_DEADLINE_CYCLES,
   tutorialHint,
+  tutorialMasteryAchieved,
 } from '~~/server/game/modes/tutorial'
+import { TUTORIAL_FLOW, TUTORIAL_SKIP_AFTER_DEADLINES } from '~~/shared/constants/tutorial'
 import { canSurrender } from '~~/server/game/engine/SurrenderSystem'
-import { SURRENDER_MIN_CYCLE } from '~~/shared/constants/balance'
+import { SURRENDER_MIN_CYCLE, STRIP_HP_THRESHOLD, LINE_UNIT_HP } from '~~/shared/constants/balance'
+
+/** Index of a drill in the flow, by id — steps are data, tests shouldn't hardcode positions. */
+const stepIndex = (id: (typeof TUTORIAL_FLOW)[number]['id']): number =>
+  TUTORIAL_FLOW.findIndex((s) => s.id === id)
 
 /** Did the human's action get rejected with a tutorial-lock hint this cycle? */
 function lockedThisTick(rejected: Array<{ playerId: string; reason: string }>): boolean {
@@ -126,18 +132,25 @@ describe('tutorial mode', () => {
       await game.tick()
       expect((await game.state()).tutorialStep).toBe(1) // attack step
 
-      // Put the enemy in the human's lane zone so the attack lands, then attack.
+      // The attack drill's objective is DAMAGE ON A WAVE UNIT — a swing at a
+      // hero doesn't clear it. Seed a healthy enemy unit and hit it.
       await game.patch((s) => ({
         ...s,
-        players: {
-          ...s.players,
-          [ENEMY]: { ...s.players[ENEMY]!, zone: 'coldstore-t3-chaff', integ: 800 },
-        },
+        waves: [
+          {
+            id: 'wave-drill',
+            team: 'audit' as const,
+            zone: 'coldstore-t3-chaff',
+            integ: LINE_UNIT_HP,
+            maxInteg: LINE_UNIT_HP,
+            type: 'line' as const,
+          },
+        ],
       }))
-      game.attackHero(ENEMY)
+      game.submit({ type: 'attack', target: { kind: 'wave', index: 0 } })
       await game.tick()
 
-      // A landed attack completes step 1 → the tutorial unlocks casting (step 2).
+      // A landed wave hit completes step 1 → the strip drill opens (step 2).
       expect((await game.state()).tutorialStep).toBe(2)
     })
 
@@ -226,14 +239,15 @@ describe('tutorial mode', () => {
     // the only real way out was closing the tab.
     it('ends the game and credits the human when the last step completes', async () => {
       const game = await seedGame('fresh', { mode: 'tutorial', mapId: 'one_lane' })
-      // Park on the final step with its deadline already elapsed. Driving
-      // graduation off the clock rather than a purchase keeps the test about
-      // "graduation ends the game" instead of item economics — and the deadline
-      // is the path a real stuck player takes anyway.
+      // Park on the final step with EVERY deadline already exhausted (skips
+      // only fire after TUTORIAL_SKIP_AFTER_DEADLINES of them now). Driving
+      // graduation off the clock rather than an ice hit keeps the test about
+      // "graduation ends the game" — and the skip path is the one a truly
+      // stuck player takes anyway.
       await game.patch((s) => ({
         ...s,
         tutorialStep: TUTORIAL_STEP_COUNT - 1,
-        tutorialStepSince: s.cycle - TUTORIAL_STEP_DEADLINE_CYCLES,
+        tutorialStepSince: s.cycle - TUTORIAL_STEP_DEADLINE_CYCLES * TUTORIAL_SKIP_AFTER_DEADLINES,
       }))
       await game.tick()
 
@@ -282,22 +296,29 @@ describe('tutorial mode', () => {
    * the per-step deadline — which is the whole point of the deadline existing.
    */
   describe('the tutorial always terminates', () => {
-    it('reaches completion from step 0 on deadlines alone, with nothing patched', async () => {
+    it('reaches completion from step 0 on deadlines alone — but counted, never mastered', async () => {
       const game = await seedGame('fresh', { mode: 'tutorial' })
       expect((await game.state()).tutorialStep ?? 0).toBe(0)
 
-      // Enough cycles for every step to time out, plus slack. A player who
-      // typed nothing at all must still finish.
-      const budget = TUTORIAL_STEP_COUNT * (TUTORIAL_STEP_DEADLINE_CYCLES + 2)
+      // Enough cycles for every step to exhaust ALL its deadlines, plus slack.
+      // A player who typed nothing at all must still arrive at the end (the
+      // dead-end guarantee) — the design change is that arriving this way is
+      // COUNTED: every step records a skip and mastery is denied, so the
+      // funnel keeps offering practice instead of stamping a false graduation.
+      const budget =
+        TUTORIAL_STEP_COUNT * (TUTORIAL_STEP_DEADLINE_CYCLES * TUTORIAL_SKIP_AFTER_DEADLINES + 2)
       for (let i = 0; i < budget; i++) {
         await game.tick()
         if ((await game.state()).tutorialStep! >= TUTORIAL_STEP_COUNT) break
       }
 
-      const step = (await game.state()).tutorialStep ?? 0
+      const s = await game.state()
+      const step = s.tutorialStep ?? 0
       expect(step, `stuck on tutorial step ${step} after ${budget} cycles`).toBeGreaterThanOrEqual(
         TUTORIAL_STEP_COUNT,
       )
+      expect(s.tutorialSkips ?? 0).toBeGreaterThan(0)
+      expect(tutorialMasteryAchieved(s)).toBe(false)
     })
 
     it('never leaves the player with nothing legal to do', async () => {
@@ -322,6 +343,169 @@ describe('tutorial mode', () => {
         expect(hint, `step ${step} has no hint`).toBeTruthy()
         expect(hint!.length, `step ${step} hint is too short to teach anything`).toBeGreaterThan(20)
       }
+    })
+  })
+
+  /**
+   * Objective-gated drills: a step completes only when the thing it teaches
+   * ACTUALLY HAPPENED in the engine, and a stalled step gets the world nudged
+   * into practicability instead of a silent advance.
+   */
+  describe('objective-gated drills', () => {
+    /** Seed a tutorial game parked on a drill, with the human out in the lane. */
+    async function seedAtStep(
+      id: (typeof TUTORIAL_FLOW)[number]['id'],
+      zone = 'coldstore-t3-chaff',
+    ) {
+      const game = await seedGame('fresh', { mode: 'tutorial', mapId: 'one_lane' })
+      await game.patch((s) => ({
+        ...s,
+        tutorialStep: stepIndex(id),
+        tutorialStepSince: s.cycle,
+        players: {
+          ...s.players,
+          [HUMAN]: { ...s.players[HUMAN]!, zone, alive: true },
+        },
+      }))
+      return game
+    }
+
+    const lowUnit = (team: 'chaff' | 'audit', zone: string) => ({
+      id: `wave-low-${team}`,
+      team,
+      zone,
+      integ: Math.floor(LINE_UNIT_HP * STRIP_HP_THRESHOLD) - 1,
+      maxInteg: LINE_UNIT_HP,
+      type: 'line' as const,
+    })
+
+    it('the strip drill completes on a REAL strip, not on plain wave damage', async () => {
+      // A swing at a healthy unit damages it — that cleared the old tutorial,
+      // but the strip drill demands the payload: only a wave_strip clears it.
+      const game = await seedAtStep('strip')
+      await game.patch((s) => ({
+        ...s,
+        waves: [
+          {
+            id: 'wave-fat',
+            team: 'audit' as const,
+            zone: 'coldstore-t3-chaff',
+            integ: LINE_UNIT_HP,
+            maxInteg: LINE_UNIT_HP,
+            type: 'line' as const,
+          },
+        ],
+      }))
+      game.submit({ type: 'attack', target: { kind: 'wave', index: 0 } })
+      await game.tick()
+      expect((await game.state()).tutorialStep).toBe(stepIndex('strip')) // held
+
+      // Now the unit is low — inside the window, the swing takes it: drill done.
+      await game.patch((s) => ({
+        ...s,
+        waves: [lowUnit('audit', 'coldstore-t3-chaff')],
+      }))
+      game.submit({ type: 'attack', target: { kind: 'wave', index: 0 } })
+      await game.tick()
+      expect((await game.state()).tutorialStep).toBe(stepIndex('strip') + 1)
+      expect((await game.state()).tutorialSkips ?? 0).toBe(0)
+    })
+
+    it('the burn drill completes on a real burn of your OWN unit', async () => {
+      const game = await seedAtStep('burn')
+      await game.patch((s) => ({
+        ...s,
+        waves: [lowUnit('chaff', 'coldstore-t3-chaff')],
+      }))
+      game.submit({ type: 'burn', target: { kind: 'wave', index: 0 } })
+      await game.tick()
+      expect((await game.state()).tutorialStep).toBe(stepIndex('burn') + 1)
+    })
+
+    it('a stalled strip drill gets the world nudged: a unit weakened into the window', async () => {
+      // The crossing, not a T3 zone: standing ICE shoots the practice unit,
+      // which is exactly the noise this drill's nudge must survive without.
+      const game = await seedAtStep('strip', 'coldstore-cross')
+      // A healthy wave stands in the zone; the player does nothing. When the
+      // deadline lapses, the tutorial weakens it into the window instead of
+      // skipping the lesson.
+      await game.patch((s) => ({
+        ...s,
+        tutorialStepSince: s.cycle - TUTORIAL_STEP_DEADLINE_CYCLES + 1,
+        waves: [
+          {
+            id: 'wave-sturdy',
+            team: 'audit' as const,
+            zone: 'coldstore-cross',
+            integ: LINE_UNIT_HP,
+            maxInteg: LINE_UNIT_HP,
+            type: 'line' as const,
+          },
+        ],
+      }))
+      await game.tick()
+
+      const s = await game.state()
+      expect(s.tutorialStep).toBe(stepIndex('strip')) // NOT advanced
+      const unit = s.waves.find((w) => w.zone === 'coldstore-cross' && w.team === 'audit')
+      expect(unit, 'the practice unit vanished').toBeDefined()
+      expect(unit!.integ).toBeLessThanOrEqual(LINE_UNIT_HP * STRIP_HP_THRESHOLD)
+    })
+
+    it('the buy drill grants a stipend on its deadline instead of stranding a broke player', async () => {
+      const game = await seedAtStep('buy', 'rookery-terminal')
+      await game.patch((s) => ({
+        ...s,
+        tutorialStepSince: s.cycle - TUTORIAL_STEP_DEADLINE_CYCLES + 1,
+        players: {
+          ...s.players,
+          [HUMAN]: { ...s.players[HUMAN]!, scrip: 0 },
+        },
+      }))
+      await game.tick()
+      const s = await game.state()
+      expect(s.tutorialStep).toBe(stepIndex('buy'))
+      expect(s.players[HUMAN]!.scrip).toBeGreaterThanOrEqual(430) // edge_kit cost
+
+      // And the drill still completes only on the actual purchase.
+      game.submit({ type: 'buy', item: 'edge_kit' })
+      await game.tick()
+      expect((await game.state()).tutorialStep).toBe(stepIndex('buy') + 1)
+    })
+
+    it('the tap drill completes when a ward is actually placed', async () => {
+      const game = await seedAtStep('tap', 'rookery-terminal')
+      await game.patch((s) => ({
+        ...s,
+        players: {
+          ...s.players,
+          [HUMAN]: {
+            ...s.players[HUMAN]!,
+            items: ['camtap', null, null, null, null, null],
+          },
+        },
+      }))
+      game.submit({ type: 'tap', zone: 'rookery-terminal' })
+      await game.tick()
+      expect((await game.state()).tutorialStep).toBe(stepIndex('tap') + 1)
+    })
+
+    it('a skipped drill is COUNTED and denies mastery', async () => {
+      const game = await seedAtStep('ice')
+      await game.patch((s) => ({
+        ...s,
+        tutorialStepSince: s.cycle - TUTORIAL_STEP_DEADLINE_CYCLES * TUTORIAL_SKIP_AFTER_DEADLINES,
+      }))
+      await game.tick()
+      const s = await game.state()
+      expect(s.tutorialStep).toBe(stepIndex('ice') + 1)
+      expect(s.tutorialSkips).toBe(1)
+      expect(tutorialMasteryAchieved(s)).toBe(false)
+    })
+
+    it('a clean run masters the tutorial (no skips)', async () => {
+      const game = await seedGame('fresh', { mode: 'tutorial', mapId: 'one_lane' })
+      expect(tutorialMasteryAchieved(await game.state())).toBe(true)
     })
   })
 })

@@ -8,12 +8,16 @@ import {
   tutorialLockMessage,
   tutorialHint,
   advanceTutorialAfterTick,
+  tutorialMasteryAchieved,
   buildTutorialRoster,
 } from '~~/server/game/modes/tutorial'
 import { isBot } from '~~/server/game/ai/BotManager'
 import { ITEMS } from '~~/shared/constants/items'
 import { STARTING_SCRIP } from '~~/shared/constants/balance'
-import { TUTORIAL_STEP_DEADLINE_CYCLES } from '~~/shared/constants/tutorial'
+import {
+  TUTORIAL_STEP_DEADLINE_CYCLES,
+  TUTORIAL_SKIP_AFTER_DEADLINES,
+} from '~~/shared/constants/tutorial'
 import { ONE_LANE_ZONES } from '~~/shared/constants/maps'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import { findPath } from '~~/shared/pathfinding'
@@ -43,10 +47,23 @@ function tutorialState(step: number, humanZone = 'coldstore-cross', cycle = 0): 
   } as unknown as GameState
 }
 
+/** Index of a drill in the flow, by id — positions are data, not contract. */
+const stepIndex = (id: (typeof TUTORIAL_FLOW)[number]['id']): number =>
+  TUTORIAL_FLOW.findIndex((s) => s.id === id)
+
 describe('tutorial flow', () => {
-  it('teaches move → attack → cast → buy in order', () => {
-    expect(TUTORIAL_FLOW.map((s) => s.teaches)).toEqual(['move', 'attack', 'cast', 'buy'])
-    expect(TUTORIAL_STEP_COUNT).toBe(4)
+  it('drills the real game in order: move → attack → strip → burn → cast → buy → tap → ice', () => {
+    expect(TUTORIAL_FLOW.map((s) => s.id)).toEqual([
+      'move',
+      'attack',
+      'strip',
+      'burn',
+      'cast',
+      'buy',
+      'tap',
+      'ice',
+    ])
+    expect(TUTORIAL_STEP_COUNT).toBe(8)
   })
 
   describe('cumulative unlocks', () => {
@@ -60,14 +77,19 @@ describe('tutorial flow', () => {
       expect(u.has('map')).toBe(true)
     })
 
-    it('accumulates earlier verbs as the step climbs', () => {
-      expect(isCommandAllowedInTutorial('move', 1)).toBe(true)
-      expect(isCommandAllowedInTutorial('attack', 1)).toBe(true)
-      expect(isCommandAllowedInTutorial('cast', 1)).toBe(false)
+    it('accumulates earlier verbs as the drills climb', () => {
+      expect(isCommandAllowedInTutorial('move', stepIndex('attack'))).toBe(true)
+      expect(isCommandAllowedInTutorial('attack', stepIndex('attack'))).toBe(true)
+      expect(isCommandAllowedInTutorial('cast', stepIndex('attack'))).toBe(false)
 
-      expect(isCommandAllowedInTutorial('cast', 2)).toBe(true)
-      expect(isCommandAllowedInTutorial('buy', 2)).toBe(false)
-      expect(isCommandAllowedInTutorial('buy', 3)).toBe(true)
+      expect(isCommandAllowedInTutorial('burn', stepIndex('burn'))).toBe(true)
+      expect(isCommandAllowedInTutorial('burn', stepIndex('strip'))).toBe(false)
+
+      expect(isCommandAllowedInTutorial('cast', stepIndex('cast'))).toBe(true)
+      expect(isCommandAllowedInTutorial('buy', stepIndex('cast'))).toBe(false)
+      expect(isCommandAllowedInTutorial('buy', stepIndex('buy'))).toBe(true)
+      expect(isCommandAllowedInTutorial('tap', stepIndex('tap'))).toBe(true)
+      expect(isCommandAllowedInTutorial('tap', stepIndex('buy'))).toBe(false)
     })
 
     it('unlocks everything past the last scripted step (free play)', () => {
@@ -93,12 +115,12 @@ describe('tutorial flow', () => {
       'select_talent',
     ] as const
 
-    // Staged verbs: locked at step 0, each unlocked by its own step.
-    const STAGED_LOCKED_AT_0 = ['attack', 'cast', 'buy'] as const
+    // Staged verbs: locked at step 0, each unlocked by its own drill.
+    const STAGED_LOCKED_AT_0 = ['attack', 'burn', 'cast', 'buy', 'tap'] as const
 
     // Advanced actions stay gated until free play (they aren't part of the
-    // verb-learning sequence and would only confuse a brand-new player).
-    const GATED_UNTIL_FREEPLAY = ['tap', 'use', 'burn', 'backup', 'harden', 'buyback'] as const
+    // drill sequence and would only confuse a brand-new player).
+    const GATED_UNTIL_FREEPLAY = ['use', 'backup', 'harden', 'buyback'] as const
 
     it('always allows informational / essential-progression commands', () => {
       for (const c of ALWAYS_ALLOWED) {
@@ -153,9 +175,10 @@ describe('tutorial flow', () => {
       // for the many heroes whose Q needs an enemy hero, standing alone means the
       // cast is refused. Players believed the game would handle it, sat still,
       // and the step never completed. The hint must set the real precondition.
-      expect(tutorialHint(2)).toContain('cast q')
-      expect(tutorialHint(2)!.toLowerCase()).not.toContain('auto-pick')
-      expect(tutorialHint(2)!.toLowerCase()).toMatch(/enemy hero|in your zone/)
+      const castHint = tutorialHint(stepIndex('cast'))
+      expect(castHint).toContain('cast q')
+      expect(castHint!.toLowerCase()).not.toContain('auto-pick')
+      expect(castHint!.toLowerCase()).toMatch(/enemy hero|in your zone/)
     })
 
     it('the first move hint sends the player somewhere reachable, valid, and SAFE', () => {
@@ -189,7 +212,7 @@ describe('tutorial flow', () => {
       // Every other hint gives a concrete command; the buy hint must name a real,
       // buyable item (not a `<item>` placeholder) the player can afford — AND one
       // that does something (a real stat or an active).
-      const itemId = /buy ([a-z_]+)/.exec(tutorialHint(3) ?? '')?.[1]
+      const itemId = /buy ([a-z_]+)/.exec(tutorialHint(stepIndex('buy')) ?? '')?.[1]
       expect(itemId && ITEMS[itemId]).toBeTruthy()
       const item = ITEMS[itemId!]!
       expect(item.cost).toBeLessThanOrEqual(STARTING_SCRIP)
@@ -231,8 +254,9 @@ describe('tutorial flow', () => {
       }
     })
 
-    it('does not advance on a different verb', () => {
-      const state = tutorialState(0)
+    it('does not advance without the objective actually happening', () => {
+      // Parked in home ground on the move drill: a status readout changes nothing.
+      const state = tutorialState(0, 'rookery-terminal')
       const next = advanceTutorialAfterTick(
         state,
         [{ playerId: 'p1', command: { type: 'status' } }],
@@ -242,21 +266,34 @@ describe('tutorial flow', () => {
       expect(next.notice).toBeNull()
     })
 
-    it('does not advance if the taught action was rejected in resolution', () => {
-      const next = advanceTutorialAfterTick(
-        tutorialState(2),
+    it('a typed-and-accepted cast does NOT clear the cast drill — only the ability_used event does', () => {
+      // The core of the redesign: the OLD tutorial advanced on the accepted
+      // command. Now the objective is engine truth. Same accepted action, no
+      // event → held; with the event → cleared.
+      const held = advanceTutorialAfterTick(
+        tutorialState(stepIndex('cast')),
         [{ playerId: 'p1', command: { type: 'cast', ability: 'q' } }],
-        [{ playerId: 'p1', reason: 'Not enough BW' }],
+        [],
+        [],
       )
-      expect(next.state.tutorialStep).toBe(2)
+      expect(held.state.tutorialStep).toBe(stepIndex('cast'))
+
+      const cleared = advanceTutorialAfterTick(
+        tutorialState(stepIndex('cast')),
+        [],
+        [],
+        [{ _tag: 'ability_used', cycle: 1, playerId: 'p1' } as never],
+      )
+      expect(cleared.state.tutorialStep).toBe(stepIndex('cast') + 1)
     })
 
-    it('ignores bot actions (only the human drives the tutorial)', () => {
-      const state = tutorialState(0)
+    it("ignores bots' events (only the human drives the tutorial)", () => {
+      const state = tutorialState(stepIndex('strip'))
       const next = advanceTutorialAfterTick(
         state,
-        [{ playerId: 'bot_r0_g', command: { type: 'move', zone: 'coldstore-cross' } }],
         [],
+        [],
+        [{ _tag: 'wave_strip', cycle: 1, playerId: 'bot_r0_g' } as never],
       )
       expect(next.state).toBe(state)
     })
@@ -272,43 +309,71 @@ describe('tutorial flow', () => {
       expect(next.notice).toBeNull()
     })
 
-    describe('step deadline (the tutorial must never dead-end)', () => {
-      // REGRESSION: every step's success condition depends on the live match —
-      // "cast" needs a legal target, which for most heroes means an enemy hero in
-      // your zone. A player who never got one sat on step 2 forever, and because
-      // tutorial mode gates LATER commands behind the current step they had
-      // nothing legal left to do. The flow could not reach the final step, so
-      // tutorial completion never fired for anyone.
-      it('auto-advances a step the player cannot satisfy, and explains why', () => {
-        const stuck = tutorialState(2, 'coldstore-t3-chaff', TUTORIAL_STEP_DEADLINE_CYCLES)
+    describe('deadlines help, then count (the tutorial must never dead-end OR fake-graduate)', () => {
+      // The OLD deadline silently advanced the step — a player who typed
+      // nothing was stamped "graduated" in four minutes. Now a deadline pushes
+      // the step's sharper help (plus a world nudge where one applies), and
+      // only after TUTORIAL_SKIP_AFTER_DEADLINES exhausted deadlines does the
+      // step skip — recorded in tutorialSkips, which denies mastery.
+      it('a first deadline pushes help and HOLDS the step', () => {
+        const stuck = tutorialState(
+          stepIndex('cast'),
+          'coldstore-t3-chaff',
+          TUTORIAL_STEP_DEADLINE_CYCLES,
+        )
         const next = advanceTutorialAfterTick(stuck, [], [])
-        expect(next.state.tutorialStep).toBe(3)
+        expect(next.state.tutorialStep).toBe(stepIndex('cast'))
+        expect(next.notice).toBe(TUTORIAL_FLOW[stepIndex('cast')]!.help)
+      })
+
+      it('does not react before the deadline', () => {
+        const waiting = tutorialState(
+          stepIndex('cast'),
+          'coldstore-t3-chaff',
+          TUTORIAL_STEP_DEADLINE_CYCLES - 1,
+        )
+        const next = advanceTutorialAfterTick(waiting, [], [])
+        expect(next.state.tutorialStep).toBe(stepIndex('cast'))
+        expect(next.notice).toBeNull()
+      })
+
+      it('skips only after every deadline is exhausted — and counts it', () => {
+        const stuck = tutorialState(
+          stepIndex('cast'),
+          'coldstore-t3-chaff',
+          TUTORIAL_STEP_DEADLINE_CYCLES * TUTORIAL_SKIP_AFTER_DEADLINES,
+        )
+        const next = advanceTutorialAfterTick(stuck, [], [])
+        expect(next.state.tutorialStep).toBe(stepIndex('cast') + 1)
+        expect(next.state.tutorialSkips).toBe(1)
         expect(next.notice).toContain('Moving on')
       })
 
-      it('does not auto-advance before the deadline', () => {
-        const waiting = tutorialState(2, 'coldstore-t3-chaff', TUTORIAL_STEP_DEADLINE_CYCLES - 1)
-        expect(advanceTutorialAfterTick(waiting, [], []).state.tutorialStep).toBe(2)
-      })
-
-      it('always reaches free play from a standing start, doing nothing at all', () => {
-        // The whole flow, driven only by the clock — this is the invariant that
-        // makes tutorial completion (and the returning-player funnel) reachable.
+      it('always reaches the end from a standing start — with every skip counted, mastery denied', () => {
+        // The dead-end guarantee survives the redesign: doing nothing still
+        // terminates. What changed is the verdict: all skips are recorded and
+        // the run does not count as tutorial completion.
         let state = tutorialState(0, 'rookery-anchor', 0)
-        for (
-          let cycle = 1;
-          cycle <= TUTORIAL_STEP_DEADLINE_CYCLES * TUTORIAL_STEP_COUNT + 1;
-          cycle++
-        ) {
+        const budget =
+          TUTORIAL_STEP_DEADLINE_CYCLES * TUTORIAL_SKIP_AFTER_DEADLINES * TUTORIAL_STEP_COUNT + 1
+        for (let cycle = 1; cycle <= budget; cycle++) {
           state = { ...state, cycle }
           state = advanceTutorialAfterTick(state, [], []).state
         }
         expect(state.tutorialStep).toBeGreaterThanOrEqual(TUTORIAL_STEP_COUNT)
+        expect(state.tutorialSkips).toBe(TUTORIAL_STEP_COUNT)
+        expect(tutorialMasteryAchieved(state)).toBe(false)
       })
 
-      it('every step carries a skipNote so an auto-advance still teaches', () => {
+      it('a clean run keeps mastery', () => {
+        expect(tutorialMasteryAchieved(tutorialState(0))).toBe(true)
+      })
+
+      it('every step carries help and a skipNote so escalation still teaches', () => {
         for (const step of TUTORIAL_FLOW) {
-          expect(step.skipNote, `${step.teaches} needs a skipNote`).toBeTruthy()
+          expect(step.help, `${step.id} needs help copy`).toBeTruthy()
+          expect(step.skipNote, `${step.id} needs a skipNote`).toBeTruthy()
+          expect(step.done, `${step.id} needs a done note`).toBeTruthy()
         }
       })
     })

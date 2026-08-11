@@ -26,7 +26,7 @@ const progress = computed(() => Math.min(props.step, TUTORIAL_STEP_COUNT))
 /** Per-verb checklist state: done (past), current (active), or upcoming. */
 const items = computed(() =>
   TUTORIAL_FLOW.map((s, i) => ({
-    verb: s.teaches,
+    verb: s.id,
     state: i < props.step ? 'done' : i === props.step ? 'current' : 'upcoming',
   })),
 )
@@ -75,7 +75,7 @@ const items = computed(() =>
       {{ hint }}
     </p>
     <p v-else class="min-w-0 text-chaff" data-testid="tutorial-complete">
-      ✓ Tutorial complete — you're in free play. Push mid and destroy the enemy Terminal!
+      ✓ Practice complete — wrapping up.
     </p>
   </div>
 </template>

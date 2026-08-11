@@ -174,6 +174,11 @@ export interface GameState {
    *  yet, no enemy hero in range — eventually times out instead of dead-ending
    *  the player. See TUTORIAL_STEP_DEADLINE_CYCLES. */
   tutorialStepSince?: number
+  /** How many tutorial steps skipped themselves on exhausted deadlines instead
+   *  of being genuinely performed. Server-only. Graduation with any skips ends
+   *  the game normally but does NOT persist tutorial completion — see
+   *  tutorialMasteryAchieved. */
+  tutorialSkips?: number
 }
 
 /** A game's mode. 'normal' is a standard match; 'tutorial' is the guided

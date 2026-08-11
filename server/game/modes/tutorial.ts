@@ -1,22 +1,38 @@
 import type { Command } from '~~/shared/types/commands'
-import type { GameState, TeamId } from '~~/shared/types/game'
+import type { GameState, TeamId, WaveUnitState } from '~~/shared/types/game'
+import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import {
   TUTORIAL_FLOW,
   TUTORIAL_STEP_COUNT,
   TUTORIAL_STEP_DEADLINE_CYCLES,
+  TUTORIAL_SKIP_AFTER_DEADLINES,
+  type TutorialStep,
 } from '~~/shared/constants/tutorial'
 import { HERO_IDS } from '~~/shared/constants/heroes'
 import { ZONE_MAP } from '~~/shared/constants/zones'
+import { ITEMS } from '~~/shared/constants/items'
+import { STRIP_HP_THRESHOLD, BURN_HP_THRESHOLD, waveUnitMaxHp } from '~~/shared/constants/balance'
 
 /**
- * Tutorial mode — staggered command unlocks (server side).
+ * Tutorial mode — objective-gated drills (server side).
  *
- * In tutorial mode the player learns one verb at a time: only the commands
- * unlocked by the current step (plus always-allowed informational commands)
- * pass validation. Performing the command a step teaches advances the flow,
- * unlocking the next verb. Past the last step everything is unlocked (free
- * play). The flow DATA (steps + hints) lives in shared/constants/tutorial so
- * the client can render it; this module owns the gate + advancement logic.
+ * The player learns one thing at a time: only the commands unlocked so far
+ * (plus always-allowed informational commands) pass validation, and a step
+ * completes ONLY when its objective actually happened in the engine — a
+ * wave_strip event, damage on ICE, a ward placed — never merely because the
+ * taught command was typed and accepted.
+ *
+ * Deadlines escalate help instead of advancing: at each exhausted deadline the
+ * step's sharper `help` copy is pushed together with a controlled NUDGE that
+ * makes the objective practicable (a unit weakened into the strip window, BW
+ * refilled, a training stipend). Only after TUTORIAL_SKIP_AFTER_DEADLINES
+ * deadlines does a step skip, and the skip is counted in `tutorialSkips`:
+ * graduation with skips ends the game normally but does NOT mark the player
+ * tutorial-complete (tutorialMasteryAchieved) — the funnel keeps offering
+ * practice until every drill was genuinely performed.
+ *
+ * The flow DATA (steps, copy) lives in shared/constants/tutorial so the client
+ * can render it; this module owns the gate, the objectives and the nudges.
  */
 
 // Re-export the shared flow so existing server-side imports keep one source.
@@ -32,7 +48,7 @@ export {
  * readouts (status/map/scan), comms (chat/ping/missing), the player's own escape
  * hatch (surrender), grabbing a cache you're standing on, and — importantly —
  * selecting a talent. Talent selection is essential hero progression gated by
- * its own level requirement, so the verb-learning sequence must never block a
+ * its own level requirement, so the drill sequence must never block a
  * leveled-up tutorial player from spending a talent point.
  */
 const TUTORIAL_ALWAYS_ALLOWED: ReadonlySet<Command['type']> = new Set([
@@ -48,13 +64,13 @@ const TUTORIAL_ALWAYS_ALLOWED: ReadonlySet<Command['type']> = new Set([
 ])
 
 /**
- * Commands unlocked at a given step (cumulative): every step's `teaches` up to
+ * Commands unlocked at a given step (cumulative): every step's `unlocks` up to
  * and including the current step, plus the always-allowed informational set.
  */
 export function tutorialUnlockedCommands(step: number): ReadonlySet<Command['type']> {
   const unlocked = new Set<Command['type']>(TUTORIAL_ALWAYS_ALLOWED)
   for (let i = 0; i <= step && i < TUTORIAL_FLOW.length; i++) {
-    unlocked.add(TUTORIAL_FLOW[i]!.teaches)
+    for (const cmd of TUTORIAL_FLOW[i]!.unlocks) unlocked.add(cmd)
   }
   return unlocked
 }
@@ -70,6 +86,16 @@ export function isCommandAllowedInTutorial(commandType: Command['type'], step: n
 export function tutorialLockMessage(step: number): string {
   const current = TUTORIAL_FLOW[Math.min(step, TUTORIAL_FLOW.length - 1)]
   return current ? current.hint : '🎓 Tutorial: follow the current step first.'
+}
+
+/**
+ * Whether graduation should mark the player tutorial-complete. A run where
+ * every drill was genuinely performed masters the tutorial; a run where any
+ * step skipped itself on exhausted deadlines does not — the game still ends,
+ * but the funnel keeps offering practice.
+ */
+export function tutorialMasteryAchieved(state: GameState): boolean {
+  return (state.tutorialSkips ?? 0) === 0
 }
 
 export interface TutorialRosterPlayer {
@@ -110,75 +136,240 @@ export interface TutorialAdvance {
   notice: string | null
 }
 
+/** Zone types that count as home ground (the move drill holds until left). */
+function isHomeGround(zoneId: string | undefined): boolean {
+  const type = ZONE_MAP[zoneId ?? '']?.type
+  return type === 'base' || type === 'anchor'
+}
+
+/**
+ * Did this step's objective ACTUALLY happen this tick (or hold in state)?
+ * Evaluated against engine truth: resolution events for everything the engine
+ * emits, current state for the one positional drill (move).
+ */
+function objectiveMet(
+  step: TutorialStep,
+  state: GameState,
+  humanId: string,
+  events: readonly GameEngineEvent[],
+): boolean {
+  switch (step.id) {
+    case 'move':
+      return !isHomeGround(state.players[humanId]?.zone)
+    case 'attack':
+      // Any damage the human landed on a wave unit (spawner ids are `wave-N`;
+      // tutorial-spawned practice units keep the prefix).
+      return events.some(
+        (e) =>
+          e._tag === 'damage' && e.sourceId === humanId && String(e.targetId).startsWith('wave-'),
+      )
+    case 'strip':
+      return events.some((e) => e._tag === 'wave_strip' && e.playerId === humanId)
+    case 'burn':
+      return events.some((e) => e._tag === 'wave_burn' && e.playerId === humanId)
+    case 'cast':
+      return events.some((e) => e._tag === 'ability_used' && e.playerId === humanId)
+    case 'buy':
+      return events.some((e) => e._tag === 'item_purchased' && e.playerId === humanId)
+    case 'tap':
+      return events.some((e) => e._tag === 'ward_placed' && e.playerId === humanId)
+    case 'ice':
+      return events.some(
+        (e) =>
+          e._tag === 'damage' && e.sourceId === humanId && String(e.targetId).startsWith('ice_'),
+      )
+  }
+}
+
+/** A practice wave unit for nudges, prefix-compatible with spawner ids. */
+function practiceUnit(team: TeamId, zone: string, cycle: number, integ?: number): WaveUnitState {
+  const full = waveUnitMaxHp('line', 0)
+  return {
+    id: `wave-tut-${team}-${cycle}`,
+    team,
+    zone,
+    integ: integ ?? full,
+    maxInteg: full,
+    type: 'line',
+  }
+}
+
+/** Top a player's scrip up to `target`, if short. */
+function grantStipend(state: GameState, humanId: string, target: number): GameState {
+  const human = state.players[humanId]
+  if (!human || human.scrip >= target) return state
+  return {
+    ...state,
+    players: { ...state.players, [humanId]: { ...human, scrip: target } },
+  }
+}
+
+/**
+ * The controlled nudge for a stalled step: change the WORLD so the objective
+ * is practicable, never fake the objective itself. Idempotent enough to apply
+ * at each exhausted deadline.
+ */
+function applyNudge(state: GameState, step: TutorialStep, humanId: string): GameState {
+  const human = state.players[humanId]
+  if (!human) return state
+  const enemyTeam: TeamId = human.team === 'chaff' ? 'audit' : 'chaff'
+
+  // World nudges that place or weaken wave units only make sense where waves
+  // belong. A player still parked on home ground (never completed the move
+  // drill) gets copy-only help — no enemy units spawn in a fountain.
+  const wavesNudgeable = !isHomeGround(human.zone)
+  if (!wavesNudgeable && (step.id === 'attack' || step.id === 'strip' || step.id === 'burn')) {
+    return state
+  }
+
+  switch (step.id) {
+    case 'attack': {
+      // Ensure there is an enemy unit to swing at where the player stands.
+      const hasTarget = state.waves.some(
+        (w) => w.zone === human.zone && w.team === enemyTeam && w.integ > 0,
+      )
+      if (hasTarget) return state
+      return { ...state, waves: [...state.waves, practiceUnit(enemyTeam, human.zone, state.cycle)] }
+    }
+    case 'strip': {
+      // Ensure an enemy unit in the player's zone sits INSIDE the strip window.
+      const inZone = state.waves.filter(
+        (w) => w.zone === human.zone && w.team === enemyTeam && w.integ > 0,
+      )
+      const window = (w: WaveUnitState) =>
+        w.integ <= (w.maxInteg ?? waveUnitMaxHp(w.type, 0)) * STRIP_HP_THRESHOLD
+      if (inZone.some(window)) return state
+      const lowest = inZone.sort((a, b) => a.integ - b.integ)[0]
+      if (!lowest) {
+        const low = Math.max(1, Math.floor(waveUnitMaxHp('line', 0) * STRIP_HP_THRESHOLD * 0.8))
+        return {
+          ...state,
+          waves: [...state.waves, practiceUnit(enemyTeam, human.zone, state.cycle, low)],
+        }
+      }
+      const spawn = lowest.maxInteg ?? waveUnitMaxHp(lowest.type, 0)
+      const weakened = {
+        ...lowest,
+        integ: Math.max(1, Math.floor(spawn * STRIP_HP_THRESHOLD * 0.8)),
+      }
+      return { ...state, waves: state.waves.map((w) => (w.id === lowest.id ? weakened : w)) }
+    }
+    case 'burn': {
+      // Same shape as strip, on the player's OWN units and the burn window.
+      const inZone = state.waves.filter(
+        (w) => w.zone === human.zone && w.team === human.team && w.integ > 0,
+      )
+      const window = (w: WaveUnitState) =>
+        w.integ <= (w.maxInteg ?? waveUnitMaxHp(w.type, 0)) * BURN_HP_THRESHOLD
+      if (inZone.some(window)) return state
+      const lowest = inZone.sort((a, b) => a.integ - b.integ)[0]
+      if (!lowest) {
+        const low = Math.max(1, Math.floor(waveUnitMaxHp('line', 0) * BURN_HP_THRESHOLD * 0.8))
+        return {
+          ...state,
+          waves: [...state.waves, practiceUnit(human.team, human.zone, state.cycle, low)],
+        }
+      }
+      const spawn = lowest.maxInteg ?? waveUnitMaxHp(lowest.type, 0)
+      const weakened = {
+        ...lowest,
+        integ: Math.max(1, Math.floor(spawn * BURN_HP_THRESHOLD * 0.8)),
+      }
+      return { ...state, waves: state.waves.map((w) => (w.id === lowest.id ? weakened : w)) }
+    }
+    case 'cast':
+      // The commonest silent blocker is an empty BW pool. Refill it.
+      return {
+        ...state,
+        players: { ...state.players, [humanId]: { ...human, bw: human.maxBw } },
+      }
+    case 'buy':
+      return grantStipend(state, humanId, ITEMS.edge_kit?.cost ?? 430)
+    case 'tap': {
+      // The camtap item comes first; make sure it's affordable.
+      const owns = (human.items ?? []).some((i) => i === 'camtap' || i === 'sniffer')
+      if (owns) return state
+      return grantStipend(state, humanId, ITEMS.camtap?.cost ?? 75)
+    }
+    case 'move':
+    case 'ice':
+      // Positional drills — sharper copy is the whole nudge.
+      return state
+  }
+}
+
 /**
  * Advance the tutorial after a tick's actions resolve.
  *
- * A step completes when the human (any non-bot player) performed — and the
- * engine accepted — the command that step teaches. A step ALSO completes when it
- * has been active longer than TUTORIAL_STEP_DEADLINE_CYCLES.
- *
- * The deadline is the load-bearing part. Every step's success condition depends
- * on the live match: "attack" wants a wave to have arrived, "cast" wants a
- * legal target (most heroes' Q needs an enemy hero in your zone). Without a
- * deadline a player whose zone never produced a legal target sat on the same
- * step forever — and because tutorial mode gates the *later* commands behind the
- * current step, they were left with nothing they were allowed to do. That was a
- * true dead end: the flow could never reach the last step, so tutorial
- * completion never fired for anyone.
- *
- * Pure: returns the same state reference unless the step changed.
+ * Objective-gated: see the module doc. Pure: returns the same state reference
+ * when nothing changed.
  */
 export function advanceTutorialAfterTick(
   state: GameState,
   validActions: readonly { playerId: string; command: Command }[],
-  rejected: readonly { playerId: string }[],
+  _rejected: readonly { playerId: string }[],
+  events: readonly GameEngineEvent[] = [],
 ): TutorialAdvance {
   if (state.mode !== 'tutorial') return { state, notice: null }
-  const step = state.tutorialStep ?? 0
+  let step = state.tutorialStep ?? 0
   if (step >= TUTORIAL_FLOW.length) return { state, notice: null }
 
-  const current = TUTORIAL_FLOW[step]!
-  const taught = current.teaches
-  const rejectedIds = new Set(rejected.map((r) => r.playerId))
-  const actor = validActions.find(
-    (a) =>
-      !a.playerId.startsWith('bot_') && a.command.type === taught && !rejectedIds.has(a.playerId),
-  )
+  const humanId = Object.keys(state.players).find((id) => !id.startsWith('bot_'))
+  if (!humanId) return { state, notice: null }
 
-  // The move step teaches "walk to the lane", not "take one step": from the
-  // fountain the first hop only reaches base, where the next steps (last-hit a
-  // wave, cast on an enemy) have no targets. Hold the step until the human has
-  // actually left their base/fountain into the field — but SAY so, otherwise the
-  // player who typed exactly what the hint said sees nothing happen at all.
-  // "Home ground" comes from the zone's TYPE, not from matching words in its id.
-  // The old `/fountain|base/.test(zoneId)` stopped matching the moment the zones
-  // were renamed to rookery-terminal / rookery-anchor, which silently advanced
-  // the tutorial while the player was still standing in their base — exactly the
-  // dead end the step exists to prevent.
-  const zoneType = ZONE_MAP[state.players[actor?.playerId ?? '']?.zone ?? '']?.type
-  const stalledInBase =
-    !!actor && taught === 'move' && (zoneType === 'base' || zoneType === 'anchor')
+  // Objectives achieved this tick — several can land in one cycle (a swing
+  // that both first-hits AND strips a unit), so advance through all of them.
+  let current = state
+  const notices: string[] = []
+  while (
+    step < TUTORIAL_FLOW.length &&
+    objectiveMet(TUTORIAL_FLOW[step]!, current, humanId, events)
+  ) {
+    notices.push(TUTORIAL_FLOW[step]!.done)
+    current = advanceTo(current, step + 1)
+    step += 1
+  }
+  if (notices.length > 0) return { state: current, notice: notices.join(' ') }
 
-  if (actor && !stalledInBase) return { state: advanceTo(state, step + 1), notice: null }
+  // Deadline machinery: at each exhausted deadline push the sharper help copy
+  // and nudge the world; after the last one, skip — counted, never silent.
+  const since = current.tutorialStepSince ?? 0
+  const elapsed = current.cycle - since
+  const stepDef = TUTORIAL_FLOW[step]!
 
-  const since = state.tutorialStepSince ?? 0
-  const elapsed = state.cycle - since
-  if (elapsed >= TUTORIAL_STEP_DEADLINE_CYCLES) {
-    return {
-      state: advanceTo(state, step + 1),
-      notice: `🎓 Moving on — ${current.skipNote}`,
-    }
+  if (elapsed >= TUTORIAL_STEP_DEADLINE_CYCLES * TUTORIAL_SKIP_AFTER_DEADLINES) {
+    const skipped = advanceTo(
+      { ...current, tutorialSkips: (current.tutorialSkips ?? 0) + 1 },
+      step + 1,
+    )
+    return { state: skipped, notice: `🎓 Moving on — ${stepDef.skipNote}` }
   }
 
-  if (stalledInBase) {
+  // Exactly-on-the-boundary check: this runs once per cycle, so each deadline
+  // multiple fires its help+nudge exactly once.
+  if (elapsed > 0 && elapsed % TUTORIAL_STEP_DEADLINE_CYCLES === 0) {
+    return { state: applyNudge(current, stepDef, humanId), notice: stepDef.help }
+  }
+
+  // A move typed while still on home ground is the one objective miss that
+  // deserves an immediate word: from the fountain the first hop only reaches
+  // base, so the player who did exactly what the hint said would otherwise
+  // watch nothing happen until the first deadline. Everything else waits for
+  // the deadline help. (Runs after the skip/nudge checks so it can never
+  // starve them.)
+  if (
+    stepDef.id === 'move' &&
+    isHomeGround(current.players[humanId]?.zone) &&
+    validActions.some((a) => a.playerId === humanId && a.command.type === 'move')
+  ) {
     return {
-      state,
+      state: current,
       notice:
-        '🎓 Still in your base — keep going with `move coldstore-t1-chaff` to reach the lane.',
+        '🎓 Still on home ground — keep going: `move coldstore-t1-chaff` walks the whole way.',
     }
   }
 
-  return { state, notice: null }
+  return { state: current, notice: null }
 }
 
 /** Step the flow forward, stamping the tick so the next step gets a fresh deadline. */

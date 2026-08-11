@@ -61,8 +61,10 @@ function* authoredStrings(): Generator<[string, string]> {
       yield [`item ${item.id} passive "${item.passive.name}"`, item.passive.description]
   }
   for (const step of TUTORIAL_FLOW) {
-    yield [`tutorial ${step.teaches} hint`, step.hint]
-    yield [`tutorial ${step.teaches} skipNote`, step.skipNote]
+    yield [`tutorial ${step.id} hint`, step.hint]
+    yield [`tutorial ${step.id} help`, step.help]
+    yield [`tutorial ${step.id} done`, step.done]
+    yield [`tutorial ${step.id} skipNote`, step.skipNote]
   }
   for (const [posture, meta] of Object.entries(POSTURE_META)) {
     yield [`posture ${posture} blurb`, meta.blurb]

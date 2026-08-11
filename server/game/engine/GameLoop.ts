@@ -23,7 +23,11 @@ import {
 import type { StateManagerApi } from './StateManager'
 import { scaledTickIntervalMs, scaledRespawnTicks, fastGameFactor } from './fastGame'
 import { resolveActions, validateAction, type PlayerAction } from './ActionResolver'
-import { advanceTutorialAfterTick, TUTORIAL_STEP_COUNT } from '~~/server/game/modes/tutorial'
+import {
+  advanceTutorialAfterTick,
+  tutorialMasteryAchieved,
+  TUTORIAL_STEP_COUNT,
+} from '~~/server/game/modes/tutorial'
 import { distributePassiveScrip, awardKill, xpComebackMultiplier } from './ScripDistributor'
 import { runWaveAI, applyWaveActions, enforceWaveZoneCap } from './WaveAI'
 import { ensureTerminals, updateTerminalVulnerability, checkTerminalWin } from './TerminalSystem'
@@ -449,12 +453,17 @@ export function processCycle(
       ...resolved.rejected.map((r) => ({ ...r, reason: escalate(r.playerId, r.reason) })),
     )
 
-    // 3.4. Advance the tutorial if the human performed the verb this step
-    // teaches, or if the step outlasted its deadline (no-op in normal games).
-    // Uses validation-accepted actions minus any the resolver then rejected, so
-    // a failed cast doesn't count.
+    // 3.4. Advance the tutorial when this tick's ENGINE EVENTS satisfy the
+    // current drill's objective (a wave_strip, damage on ICE, a ward placed…)
+    // — never merely because the taught command was typed (no-op in normal
+    // games). Exhausted deadlines escalate help/nudges inside the module.
     {
-      const advanced = advanceTutorialAfterTick(currentState, validActions, resolved.rejected)
+      const advanced = advanceTutorialAfterTick(
+        currentState,
+        validActions,
+        resolved.rejected,
+        resolved.events,
+      )
       const graduated =
         currentState.mode === 'tutorial' &&
         (currentState.tutorialStep ?? 0) < TUTORIAL_STEP_COUNT &&
@@ -478,7 +487,12 @@ export function processCycle(
         if (humanId) {
           notices.push({
             playerId: humanId,
-            message: "🎓 That's the basics — practice complete. Here's how it went.",
+            // An honest graduation: mastery = every drill genuinely performed.
+            // With skips the game still ends (never trap the player), but the
+            // funnel keeps offering practice — say so.
+            message: tutorialMasteryAchieved(currentState)
+              ? "🎓 That's the basics — practice complete. Here's how it went."
+              : '🎓 Practice over — some drills timed out and were skipped. Run practice again to master them.',
           })
         }
       }
@@ -794,7 +808,10 @@ function buildGameLoop(
     if (
       callbacks.onTutorialCompleted &&
       (currentState.tutorialStep ?? 0) < TUTORIAL_STEP_COUNT &&
-      (newState.tutorialStep ?? 0) >= TUTORIAL_STEP_COUNT
+      (newState.tutorialStep ?? 0) >= TUTORIAL_STEP_COUNT &&
+      // Honest graduation: a run with skipped drills ends the game but does
+      // NOT persist tutorialCompleted — the funnel keeps offering practice.
+      tutorialMasteryAchieved(newState)
     ) {
       const humanId = Object.keys(newState.players).find((id) => !isBot(id))
       if (humanId) {
