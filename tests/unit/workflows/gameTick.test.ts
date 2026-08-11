@@ -3,13 +3,12 @@ import {
   applyDrainedActions,
   hydrate,
   runOneTick,
-  shouldChainAt,
-  CHAIN_EVERY_TICKS,
   type DrainedAction,
   type LiveGamesRepo,
   type PendingActionsRepo,
   type TickDeps,
-} from '~~/server/workflows/gameTick'
+} from '~~/server/workflows/gameTickCore'
+import { shouldChainAt, CHAIN_EVERY_TICKS } from '~~/server/workflows/gameTick'
 import { serializeStateForTransport } from '~~/server/game/engine/replayArtifact'
 import type { GameState } from '~~/shared/types/game'
 import type { LiveGame } from '~~/server/db/schema'
