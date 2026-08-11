@@ -31,6 +31,7 @@ import { engineLog } from '~~/server/utils/log'
 import { gameLoggerLive } from '~~/server/utils/logger'
 import type { GameState } from '~~/shared/types/game'
 import type { Command } from '~~/shared/types/commands'
+import type { PlayerEndStats } from '~~/shared/types/protocol'
 
 /**
  * THE PRODUCTION game-tick workflow (spike/workflow-tick migration).
@@ -310,12 +311,51 @@ export async function runOneTick(gameId: string, deps: TickDeps): Promise<TickRe
     return { ended: hydrate(current.state).phase === 'ended', cycle: current.cycle, skipped: true }
   }
 
-  const specs: AblyBatchSpec[] = row.roster.players
-    .filter((p) => !isBot(p.playerId))
-    .map((p) => ({
-      channel: `game:${gameId}:p:${p.playerId}`,
-      data: { cycle: next.cycle, state: filterStateForPlayer(next, p.playerId, gameId) },
-    }))
+  const humans = row.roster.players.filter((p) => !isBot(p.playerId))
+  const specs: AblyBatchSpec[] = humans.map((p) => ({
+    channel: `game:${gameId}:p:${p.playerId}`,
+    data: { cycle: next.cycle, state: filterStateForPlayer(next, p.playerId, gameId) },
+  }))
+
+  // The game just ended on this tick: ride an explicit game_over message in
+  // the SAME batch as the final cycle_state. The client's post-game screen is
+  // driven by this message (winner + end-of-match scoreboard); the final
+  // cycle_state also carries phase+winner as a fallback, but only game_over
+  // has the full stats. mmrChange is intentionally absent — MMR is computed
+  // at finalize time and no ranked (10-human) games exist on this path yet.
+  if (next.phase === 'ended' && next.winner) {
+    const hasBots = row.roster.players.some((p) => isBot(p.playerId))
+    const stats: Record<string, PlayerEndStats> = {}
+    for (const [id, ps] of Object.entries(next.players)) {
+      stats[id] = {
+        kills: ps.kills,
+        deaths: ps.deaths,
+        assists: ps.assists,
+        scrip: ps.scrip,
+        items: ps.items,
+        heroDamage: ps.damageDealt,
+        iceDamage: ps.iceDamageDealt,
+        netWorth: playerNetWorth(ps),
+        level: ps.level,
+        // Farm counters are an in-process Map that doesn't survive fresh
+        // instances — same TODO as persistMatch's lastHits/burns.
+        lastHits: 0,
+        burns: 0,
+      }
+    }
+    for (const p of humans) {
+      specs.push({
+        channel: `game:${gameId}:p:${p.playerId}`,
+        name: 'game_over',
+        data: {
+          winner: next.winner,
+          stats,
+          ranked: isRankedMatch(row.roster.players.length, hasBots),
+          durationCycles: next.cycle,
+        },
+      })
+    }
+  }
   await deps.publish(specs)
 
   return { ended: next.phase === 'ended', cycle: next.cycle, skipped: false }

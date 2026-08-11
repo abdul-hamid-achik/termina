@@ -169,10 +169,19 @@ export function useGameChannel() {
         _notifyHandlers(msg)
         break
       }
+      case 'game_over': {
+        // Published by the tick workflow in the same batch as the final
+        // cycle_state — winner + full end-of-match scoreboard. Routed through
+        // the shared router so the WS-era setGameOver path is reused verbatim.
+        const msg = { ...(message.data as object), type: 'game_over' } as ServerMessage
+        routeServerMessage(gameStore, msg, { disconnect })
+        _notifyHandlers(msg)
+        break
+      }
       default:
         // INTEGRATION TODO: once the server publishes other message types on
-        // this channel (events, announcement, error, game_over, ...), route
-        // them the same way — see gameMessageRouter.ts / useGameSocket.ts.
+        // this channel (events, announcement, error, ...), route them the
+        // same way — see gameMessageRouter.ts / useGameSocket.ts.
         socketLog.warn('Unhandled Ably message on game channel', { name: message.name })
     }
   }

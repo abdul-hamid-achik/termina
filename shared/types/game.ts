@@ -260,6 +260,7 @@ export type VisibleStateBase = Pick<
   | 'mapId'
   | 'mode'
   | 'tutorialStep'
+  | 'winner'
 >
 
 export interface PlayerVisibleState extends VisibleStateBase {

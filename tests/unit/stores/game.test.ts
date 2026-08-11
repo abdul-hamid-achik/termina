@@ -778,6 +778,48 @@ describe('Game Store', () => {
       })
     })
 
+    describe('cycle_state game-over fallback', () => {
+      it('derives the post-game screen from a final cycle_state carrying phase ended + winner', () => {
+        const store = useGameStore()
+        store.playerId = 'p1'
+
+        const msg = makeCycleMessage({
+          cycle: 60,
+          phase: 'ended',
+          players: { p1: makePlayer({ kills: 2, deaths: 1, assists: 4, scrip: 300, level: 6 }) },
+        })
+        ;(msg.state as { winner?: string }).winner = 'chaff'
+        store.updateFromCycle(msg)
+
+        expect(store.phase).toBe('ended')
+        expect(store.winner).toBe('chaff')
+        expect(store.gameOverStats?.['p1']).toMatchObject({
+          kills: 2,
+          deaths: 1,
+          assists: 4,
+          scrip: 300,
+          level: 6,
+        })
+        expect(store.gameOverDurationTicks).toBe(60)
+        // Fallback path can't know ranked-ness — never claims a ranked result.
+        expect(store.gameOverRanked).toBe(false)
+      })
+
+      it('does not clobber a game_over message that already arrived', () => {
+        const store = useGameStore()
+        store.setGameOver('audit', {}, -12, true, 55)
+
+        const msg = makeCycleMessage({ cycle: 56, phase: 'ended' })
+        ;(msg.state as { winner?: string }).winner = 'audit'
+        store.updateFromCycle(msg)
+
+        // The authoritative message's mmr/ranked survive the fallback.
+        expect(store.gameOverMmrChange).toBe(-12)
+        expect(store.gameOverRanked).toBe(true)
+        expect(store.gameOverDurationTicks).toBe(55)
+      })
+    })
+
     describe('reset', () => {
       it('resets all state to defaults', () => {
         const store = useGameStore()

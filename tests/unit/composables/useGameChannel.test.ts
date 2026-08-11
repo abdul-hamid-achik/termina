@@ -197,6 +197,26 @@ describe('useGameChannel', () => {
 
       expect(addEventsSpy).toHaveBeenCalledWith([])
     })
+
+    it('routes an Ably game_over message to setGameOver (the tick workflow publishes it in the final batch)', async () => {
+      const { useGameStore } = await import('../../../app/stores/game')
+      const store = useGameStore()
+      const spy = vi.spyOn(store, 'setGameOver').mockImplementation(() => {})
+
+      const { connect } = useGameChannel()
+      connect('game-1', 'player-1')
+      MockRealtime.last!.connection._setState('connected')
+
+      const stats = { 'player-1': { kills: 1, deaths: 0, assists: 2 } }
+      MockRealtime.last!.channel!._receive('game_over', {
+        winner: 'chaff',
+        stats,
+        ranked: false,
+        durationCycles: 60,
+      })
+
+      expect(spy).toHaveBeenCalledWith('chaff', stats, undefined, false, 60)
+    })
   })
 
   describe('send (action ingress)', () => {

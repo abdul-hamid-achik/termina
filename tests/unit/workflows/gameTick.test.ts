@@ -208,6 +208,75 @@ describe('gameTick — runOneTick CAS idempotency guard', () => {
     expect(specs[0]!.channel).toBe('game:g1:p:p1')
   })
 
+  it('rides a game_over message in the final batch when the tick ends the game', async () => {
+    const loadedRow = makeRow({ cycle: 5 })
+    const nextState = makeGameState({
+      cycle: 6,
+      phase: 'ended',
+      winner: 'chaff',
+      players: {
+        p1: {
+          id: 'p1',
+          team: 'chaff',
+          heroId: 'echo',
+          zone: 'rookery-terminal',
+          alive: true,
+          buffs: [],
+          kills: 3,
+          deaths: 1,
+          assists: 2,
+          scrip: 420,
+          items: ['edge_kit', null, null, null, null, null],
+          damageDealt: 1234,
+          iceDamageDealt: 567,
+          level: 7,
+        },
+      } as unknown as GameState['players'],
+    })
+
+    const liveGamesRepo: LiveGamesRepo = {
+      get: vi.fn().mockResolvedValue(loadedRow),
+      casUpdate: vi.fn().mockResolvedValue(makeRow({ cycle: 6 })),
+      delete: vi.fn(),
+    }
+    const pendingActionsRepo: PendingActionsRepo = {
+      drain: vi.fn().mockResolvedValue([]),
+      deleteAll: vi.fn(),
+    }
+    const publish = vi.fn().mockResolvedValue(undefined)
+    const deps: TickDeps = {
+      liveGamesRepo,
+      pendingActionsRepo,
+      runCycle: vi.fn().mockResolvedValue({ state: nextState }),
+      publish,
+      rehydrate: vi.fn(),
+    }
+
+    const result = await runOneTick('g1', deps)
+
+    expect(result.ended).toBe(true)
+    const specs = publish.mock.calls[0]![0] as Array<{
+      channel: string
+      name?: string
+      data: Record<string, unknown>
+    }>
+    // One cycle_state + one game_over, both on the human's channel only.
+    expect(specs).toHaveLength(2)
+    const over = specs.find((s) => s.name === 'game_over')!
+    expect(over.channel).toBe('game:g1:p:p1')
+    expect(over.data['winner']).toBe('chaff')
+    expect(over.data['durationCycles']).toBe(6)
+    // Bot-filled game → unranked.
+    expect(over.data['ranked']).toBe(false)
+    const stats = over.data['stats'] as Record<string, Record<string, unknown>>
+    expect(stats['p1']).toMatchObject({ kills: 3, deaths: 1, assists: 2, scrip: 420, level: 7 })
+    // The final cycle_state itself carries phase+winner (the client fallback).
+    const cycleSpec = specs.find((s) => s.name === undefined)!
+    const visible = cycleSpec.data['state'] as { phase: string; winner?: string | null }
+    expect(visible.phase).toBe('ended')
+    expect(visible.winner).toBe('chaff')
+  })
+
   it('is a no-op (no engine run, no publish) once the row is already ended', async () => {
     const endedRow = makeRow({
       cycle: 9,

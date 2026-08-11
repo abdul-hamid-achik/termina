@@ -298,6 +298,7 @@ export function filterStateForSpectator(state: GameState): PlayerVisibleState {
   return {
     cycle: state.cycle,
     phase: state.phase,
+    winner: state.winner,
     teams: state.teams,
     players: { ...state.players },
     zones: { ...state.zones },
@@ -333,6 +334,7 @@ export function filterStateForPlayer(
     return {
       cycle: state.cycle,
       phase: state.phase,
+      winner: state.winner,
       teams: state.teams,
       players: {},
       zones: {},
@@ -455,6 +457,10 @@ export function filterStateForPlayer(
   return {
     cycle: state.cycle,
     phase: state.phase,
+    // The final broadcast of a game carries `phase: 'ended'` — without the
+    // winner riding along, a client whose game_over message goes missing can
+    // freeze on a dead board with no post-game screen (first-playtest bug).
+    winner: state.winner,
     teams: state.teams,
     players: filteredPlayers,
     zones: filteredZones,

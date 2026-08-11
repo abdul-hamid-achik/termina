@@ -305,6 +305,7 @@ export const useGameStore = defineStore('game', () => {
       mapId?: string
       mode?: GameMode
       tutorialStep?: number
+      winner?: TeamId | null
     }
 
     gameLog.trace('cycle_state', {
@@ -335,6 +336,31 @@ export const useGameStore = defineStore('game', () => {
     // and corrupts any phase check). players + zones are always sent, so stay
     // unconditional.
     if (state.phase) phase.value = state.phase
+    // Fallback end-of-game path: the serverless tick publishes an explicit
+    // game_over message alongside the final cycle_state, but if that message
+    // is lost the player must NEVER be stranded on a dead board (the
+    // first-playtest bug: phase froze to 'ended', winner stayed null, and
+    // PostGame — which requires both — never rendered). Derive the post-game
+    // screen from the ended state itself; a real game_over arriving first
+    // wins (winner already set), arriving after overwrites with richer data.
+    if (state.phase === 'ended' && state.winner && winner.value === null) {
+      const derived: Record<string, PlayerEndStats> = {}
+      for (const [id, p] of Object.entries(state.players)) {
+        const full = p as Partial<PlayerState>
+        derived[id] = {
+          kills: p.kills ?? 0,
+          deaths: p.deaths ?? 0,
+          assists: p.assists ?? 0,
+          scrip: full.scrip ?? 0,
+          items: full.items ?? [],
+          heroDamage: full.damageDealt ?? 0,
+          iceDamage: full.iceDamageDealt ?? 0,
+          netWorth: full.items ? playerNetWorth(full as PlayerState) : undefined,
+          level: full.level ?? 1,
+        }
+      }
+      setGameOver(state.winner, derived, undefined, false, msg.cycle)
+    }
     allPlayers.value = state.players
     visibleZones.value = state.zones
     // visibleZones (the fog id list) is always sent in the delta; fall back to
