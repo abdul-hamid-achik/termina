@@ -866,6 +866,19 @@ export default defineWebSocketHandler({
       disconnectTimers.delete(playerId)
     }
 
+    // Stale-close guard: if a newer connection already took over this
+    // player's slot (duplicate tab, or a reconnect racing ahead of this close
+    // event), the unregisterPeer above left that live peer registered — so
+    // this close event must not cancel a lobby or start a disconnect grace
+    // period against a socket that's actually healthy. Same isCurrentPeer
+    // check the ping sweep uses for the same reason. Peer-scoped bookkeeping
+    // above (unregister, spectator, liveness) still ran; only the
+    // lobby-cancel / disconnect-grace side effects are skipped here.
+    if (!isCurrentPeer(playerId, peer)) {
+      peerState.delete(peer)
+      return
+    }
+
     const lobbyId = getPlayerLobby(playerId)
     if (lobbyId) {
       const runtime = getGameRuntime()

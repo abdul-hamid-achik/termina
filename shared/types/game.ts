@@ -179,6 +179,14 @@ export interface GameState {
    *  the game normally but does NOT persist tutorial completion — see
    *  tutorialMasteryAchieved. */
   tutorialSkips?: number
+  /** Per-game seed for deterministic tick resolution (crits, procs, neutral/cache
+   *  spawn rolls). Set ONCE at game creation (StateManager.createInitialGameState)
+   *  and never mutated — it rides in the state, so snapshots/resume carry it
+   *  automatically. Server-only (not broadcast; absent from VisibleStateBase).
+   *  Older snapshots without it fall back to a stable hash of the gameId — see
+   *  `hashStringToSeed` in server/game/engine/rng.ts and its use in GameLoop's
+   *  processCycle. */
+  rngSeed?: number
 }
 
 /** A game's mode. 'normal' is a standard match; 'tutorial' is the guided

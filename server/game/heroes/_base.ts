@@ -59,6 +59,10 @@ export type HeroAbilityResolver = (
   slot: AbilitySlot,
   abilityLevel: number,
   target?: TargetRef,
+  /** Deterministic per-tick rng (see server/game/engine/rng.ts) for the rare
+   *  ability that rolls a chance/random target (e.g. kernel's R). Optional —
+   *  most hero resolvers ignore it entirely. */
+  rng?: () => number,
 ) => Effect.Effect<AbilityResult, AbilityError>
 
 export type HeroPassiveResolver = (
@@ -695,6 +699,9 @@ export function resolveAbility(
   playerId: string,
   ability: AbilitySlot,
   target?: TargetRef,
+  /** Deterministic per-tick rng (see rng.ts). Defaults to Math.random for
+   *  back-compat with existing direct callers/tests. */
+  rng: () => number = Math.random,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
     const player = state.players[playerId]
@@ -742,7 +749,7 @@ export function resolveAbility(
       )
     }
 
-    const result = yield* resolver.ability(state, player, ability, abilityLevel, target)
+    const result = yield* resolver.ability(state, player, ability, abilityLevel, target, rng)
     const withTalents = applyAbilityTalents(state, result, player, ability)
     const withLatency = applyLatencyPenalty(withTalents, player, ability)
     return applyArcaneRefund(withLatency, player)

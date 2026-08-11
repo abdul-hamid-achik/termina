@@ -25,5 +25,14 @@ import AsciiButton from './AsciiButton.vue'
     <Variant title="disabled">
       <AsciiButton label="Locked" disabled />
     </Variant>
+    <!-- `to` renders AS the link (NuxtLink, stubbed <a> here) instead of
+         wrapping AsciiButton in a NuxtLink — avoids the invalid
+         <a><button>…</button></a> nested-interactive markup. -->
+    <Variant title="link (to)">
+      <AsciiButton label="Enter" variant="ghost" to="/lobby" />
+    </Variant>
+    <Variant title="link, disabled">
+      <AsciiButton label="Enter" variant="ghost" to="/lobby" disabled />
+    </Variant>
   </Story>
 </template>

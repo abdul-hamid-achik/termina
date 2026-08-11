@@ -1053,6 +1053,66 @@ describe('ws route — close()', () => {
     await vi.advanceTimersByTimeAsync(60_000)
     expect(cancelLobby).not.toHaveBeenCalled()
   })
+
+  // Owner audit item 2a: a STALE close event — one whose peer has already been
+  // superseded by a newer, healthy connection for the same player — must not
+  // cancel a lobby or start a disconnect-grace period. isCurrentPeer compares
+  // the closing peer's identity against whatever PeerRegistry.getPeer reports
+  // is currently registered (the same check the ping sweep already uses).
+  describe('stale-close guard (item 2a)', () => {
+    it('does not start a lobby-cancel grace period on a stale close', async () => {
+      vi.useFakeTimers()
+      const runtime = mockRuntime()
+      vi.mocked(getGameRuntime).mockReturnValue(runtime as never)
+      vi.mocked(getPlayerLobby).mockReturnValue('lobby_stale')
+      const peer = openAuthedPeer('p_stale_lobby')
+
+      // A replacement connection has already taken over the registry entry
+      // for this player by the time THIS (older) peer's close fires.
+      const replacement = createPeer({ sessionPlayerId: 'p_stale_lobby' })
+      vi.mocked(getPeer).mockReturnValue(replacement as never)
+
+      handler.close(peer, {})
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      expect(cancelLobby).not.toHaveBeenCalled()
+    })
+
+    it('does not start a disconnect-grace timer on a stale close for an in-game player', async () => {
+      vi.useFakeTimers()
+      const { peer, runtime } = openPeerInGame('p_stale_game', 'game_stale')
+
+      const replacement = createPeer({ sessionPlayerId: 'p_stale_game' })
+      vi.mocked(getPeer).mockReturnValue(replacement as never)
+
+      handler.close(peer, {})
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      expect(runtime.wsService.removeConnection).not.toHaveBeenCalled()
+      expect(runtime.wsService.broadcastToGame).not.toHaveBeenCalled()
+    })
+
+    it('still starts a disconnect-grace timer when this closing peer IS still the registered one', async () => {
+      vi.useFakeTimers()
+      const { peer, runtime } = openPeerInGame('p_still_current', 'game_current')
+      // Explicit equality branch of isCurrentPeer (registered === peer) for
+      // THIS close's synchronous check, as opposed to the "nothing
+      // registered" default the other close() tests exercise. Only the first
+      // getPeer call (inside close()'s stale-close guard) should see this —
+      // the deeper, pre-existing "did someone reconnect during the wait"
+      // guard 60s later must see the registry as empty (its normal state
+      // once unregisterPeer has actually run), or it fires for the wrong
+      // reason and this test would pass by accident.
+      vi.mocked(getPeer)
+        .mockReturnValueOnce(peer as never)
+        .mockReturnValue(undefined)
+
+      handler.close(peer, {})
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      expect(runtime.wsService.removeConnection).toHaveBeenCalledWith('p_still_current')
+    })
+  })
 })
 
 describe('ws route — error()', () => {

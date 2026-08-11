@@ -24,9 +24,15 @@ function mountItems() {
     global: {
       stubs: {
         NuxtLink: { template: '<a><slot /></a>' },
+        // Mirrors the real AsciiButton's `to` handling (renders AS the link,
+        // never a <button> nested inside an <a>) so this stub can't silently
+        // diverge from the flattened markup.
         AsciiButton: {
-          props: ['label', 'disabled', 'variant'],
-          template: '<button>{{ label }}</button>',
+          props: ['label', 'disabled', 'variant', 'to'],
+          template: `
+            <a v-if="to" :href="to">{{ label }}</a>
+            <button v-else>{{ label }}</button>
+          `,
         },
         InlineError: true,
       },
@@ -95,5 +101,12 @@ describe('items page — build guidance', () => {
     expect(wrapper.find(`[data-testid="build-badge-${target}"]`).exists()).toBe(false)
     await wrapper.find(`[data-testid="build-role-${role}"]`).trigger('click')
     expect(wrapper.find(`[data-testid="build-badge-${target}"]`).exists()).toBe(true)
+  })
+
+  it('never nests a button inside the "meet the heroes" link (invalid, breaks AT)', () => {
+    // Regression: this used to be `<NuxtLink to="/cast"><AsciiButton /></NuxtLink>`,
+    // i.e. <a><button>…</button></a>. AsciiButton now renders AS the link via `to`.
+    const link = mountItems().get('a[href="/cast"]')
+    expect(link.find('button').exists()).toBe(false)
   })
 })

@@ -39,6 +39,7 @@ import { resolveKineticHit } from './CombatResolver'
 import { spawnWaveUnits, spawnCaches } from '~~/server/game/map/spawner'
 import { spawnSiltDwellers, runNeutralAI, applyNeutralActions } from './NeutralAI'
 import { removeExpiredWards } from '~~/server/game/map/zones'
+import { mix, mulberry32, hashStringToSeed } from './rng'
 import { filterStateForPlayer } from './VisionCalculator'
 import { computeDelta, recordSentState, clearGameSentStates, getSentState } from './StateDelta'
 // Importing from '~~/server/game/heroes' (not '../heroes/_base') guarantees every hero's
@@ -316,6 +317,16 @@ export function processCycle(
     const rejectedActions: Array<{ playerId: string; reason: string }> = []
     const notices: Array<{ playerId: string; message: string }> = []
 
+    // THE BATCH CLOCK IS CANON: resolution must be deterministic given the same
+    // state+actions, so every random draw this cycle (crits, procs, neutral/cache
+    // spawn rolls — never bot AI, which is an INPUT, recorded and re-fed on
+    // replay) comes from one rng derived from the per-game seed mixed with the
+    // cycle number. Explicit parameter, not a module-level "current rng" —
+    // game fibers interleave. Older states without a stamped rngSeed (pre-seed
+    // snapshots) fall back to a stable hash of the gameId.
+    const rngSeed = currentState.rngSeed ?? hashStringToSeed(gameId)
+    const rng = mulberry32(mix(rngSeed, currentState.cycle))
+
     // Third-identical-rejection escalation (tutorial lock messages are
     // teaching, not failure — excluded inside the helper).
     const escalate = (playerId: string, reason: string) =>
@@ -443,7 +454,7 @@ export function processCycle(
 
     // 3. Resolve actions via ActionResolver
     const preIce = currentState.ice
-    const resolved = yield* resolveActions(currentState, validActions)
+    const resolved = yield* resolveActions(currentState, validActions, rng)
     currentState = resolved.state
     allEvents.push(...resolved.events)
     // Casts/moves that failed inside resolution (BW, bad target, slow)
@@ -517,6 +528,7 @@ export function processCycle(
     const npcResult = runNPCAI(currentState, {
       heroAttackers: resolved.heroAttackers,
       priorEvents: allEvents,
+      rng,
     })
     currentState = npcResult.state
     allEvents.push(...npcResult.events)
@@ -532,7 +544,7 @@ export function processCycle(
     currentState = updateTerminalVulnerability(currentState)
 
     // 6–7. Spawn waves / neutrals / caches; expire caches + wards
-    currentState = runSpawning(currentState)
+    currentState = runSpawning(currentState, rng)
 
     // 8. Distribute passive scrip
     currentState = distributePassiveScrip(currentState)
@@ -1306,10 +1318,17 @@ export function runHeroPassives(
  */
 export function runNPCAI(
   state: GameState,
-  ctx: { heroAttackers: Map<string, string>; priorEvents: GameEngineEvent[] },
+  ctx: {
+    heroAttackers: Map<string, string>
+    priorEvents: GameEngineEvent[]
+    /** Deterministic per-tick rng (see rng.ts). Defaults to Math.random for
+     *  back-compat with existing direct callers/tests. */
+    rng?: () => number
+  },
 ): { state: GameState; events: GameEngineEvent[] } {
   let s = state
   const events: GameEngineEvent[] = []
+  const rng = ctx.rng ?? Math.random
 
   // Waves (may damage/destroy the enemy Terminal — events carry that)
   const waveResult = applyWaveActions(s, runWaveAI(s))
@@ -1317,7 +1336,7 @@ export function runNPCAI(
   events.push(...waveResult.events)
 
   // Neutrals
-  const neutralResult = applyNeutralActions(s, runNeutralAI(s))
+  const neutralResult = applyNeutralActions(s, runNeutralAI(s, rng))
   s = neutralResult.state
   events.push(...neutralResult.events)
 
@@ -1376,7 +1395,7 @@ export function runNPCAI(
  * and clean up expired caches and wards. Pure: same state object if nothing
  * spawned and nothing expired.
  */
-export function runSpawning(state: GameState): GameState {
+export function runSpawning(state: GameState, rng: () => number = Math.random): GameState {
   let s = state
   // Gate wave/neutral/cache spawning to the zones THIS game's map actually has,
   // so subset maps (one-lane) don't spawn into uninitialized top/bot/silt zones.
@@ -1390,13 +1409,13 @@ export function runSpawning(state: GameState): GameState {
   // Defensive cap: never let waves stack unboundedly in a zone
   s = enforceWaveZoneCap(s)
 
-  const newNeutrals = spawnSiltDwellers(s.cycle, hasZone, s.neutrals ?? [])
+  const newNeutrals = spawnSiltDwellers(s.cycle, hasZone, s.neutrals ?? [], rng)
   if (newNeutrals.length > 0) {
     s = { ...s, neutrals: [...(s.neutrals ?? []), ...newNeutrals] }
   }
 
   const activeCacheZones = new Set<string>((s.caches ?? []).map((r) => r.zone))
-  const newCaches = spawnCaches(s.cycle, hasZone, activeCacheZones)
+  const newCaches = spawnCaches(s.cycle, hasZone, activeCacheZones, rng)
   if (newCaches.length > 0) {
     s = { ...s, caches: [...(s.caches ?? []), ...newCaches] }
   }

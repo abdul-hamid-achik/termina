@@ -101,8 +101,43 @@ describe('index (landing) page', () => {
       expect(mockNavigateTo).toHaveBeenCalledWith('/play?gameId=g1&playerId=p1&tutorial=1')
     })
 
-    it('routes to /login when the player is not signed in (401)', async () => {
-      mockFetch.mockRejectedValue({ statusCode: 401 })
+    it('mints a guest session and lands in the game when not signed in (401)', async () => {
+      // The audit finding this feature exists to fix: a brand-new visitor
+      // must NOT dead-end at a login wall. The first /api/game/tutorial call
+      // 401s, so the CTA mints a throwaway guest session (no signup) and
+      // retries the same launch — see server/api/auth/guest.post.ts.
+      let tutorialCalls = 0
+      mockFetch.mockImplementation((url: string) => {
+        if (url === '/api/game/tutorial') {
+          tutorialCalls += 1
+          if (tutorialCalls === 1) return Promise.reject({ statusCode: 401 })
+          return Promise.resolve({ url: '/play?gameId=g6&playerId=guest_x&tutorial=1' })
+        }
+        if (url === '/api/auth/guest') {
+          return Promise.resolve({ user: { id: 'guest_x', guest: true } })
+        }
+        throw new Error(`unexpected $fetch call: ${url}`)
+      })
+      const wrapper = mountIndex()
+
+      await wrapper.get('[data-testid="start-tutorial"]').trigger('click')
+      await flushPromises()
+
+      expect(mockFetch).toHaveBeenCalledWith('/api/auth/guest', { method: 'POST' })
+      expect(mockNavigateTo).toHaveBeenCalledWith('/play?gameId=g6&playerId=guest_x&tutorial=1')
+      // No login-wall redirect — that is exactly the dead end this fixes.
+      expect(mockNavigateTo).not.toHaveBeenCalledWith({
+        path: '/login',
+        query: { next: 'practice' },
+      })
+    })
+
+    it('falls back to /login when guest-session minting itself fails', async () => {
+      mockFetch.mockImplementation((url: string) => {
+        if (url === '/api/game/tutorial') return Promise.reject({ statusCode: 401 })
+        if (url === '/api/auth/guest') return Promise.reject({ statusCode: 503 })
+        throw new Error(`unexpected $fetch call: ${url}`)
+      })
       const wrapper = mountIndex()
 
       await wrapper.get('[data-testid="start-tutorial"]').trigger('click')

@@ -710,9 +710,7 @@ const postureGroups = POSTURE_ORDER.map((posture) => ({
             data-testid="start-tutorial"
             @click="startTutorial"
           />
-          <NuxtLink to="/lobby">
-            <AsciiButton label="ENTER THE TERMINAL" variant="ghost" />
-          </NuxtLink>
+          <AsciiButton label="ENTER THE TERMINAL" variant="ghost" to="/lobby" />
         </div>
         <InlineError :message="tutorialError" />
       </div>

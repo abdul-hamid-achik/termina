@@ -5,18 +5,23 @@ import ErrorPage from '~~/app/error.vue'
 // error.vue calls Nuxt's auto-imported clearError; stub it + the components it
 // renders (the component vitest project has no Nuxt auto-import).
 const clearError = vi.fn()
+// Mirrors the real AsciiButton's `to` handling (renders AS the link, not a
+// <button> nested inside an <a> — the nested-interactive bug that was fixed)
+// so this stub doesn't silently diverge from the flattened markup.
 const AsciiButtonStub = {
   name: 'AsciiButton',
-  props: ['label', 'variant', 'disabled'],
+  props: ['label', 'variant', 'disabled', 'to'],
   emits: ['click'],
-  template: `<button :data-variant="variant" @click="$emit('click', $event)">{{ label }}</button>`,
+  template: `
+    <a v-if="to" :href="to" :data-variant="variant">{{ label }}</a>
+    <button v-else :data-variant="variant" @click="$emit('click', $event)">{{ label }}</button>
+  `,
 }
-const NuxtLinkStub = { name: 'NuxtLink', props: ['to'], template: '<a :href="to"><slot /></a>' }
 
 function mountError(error: Record<string, unknown>) {
   return mount(ErrorPage, {
     props: { error },
-    global: { stubs: { AsciiButton: AsciiButtonStub, NuxtLink: NuxtLinkStub } },
+    global: { stubs: { AsciiButton: AsciiButtonStub } },
   })
 }
 
@@ -58,5 +63,14 @@ describe('error page', () => {
   it('offers a recovery link to the learn guide', () => {
     const wrapper = mountError({ statusCode: 500 })
     expect(wrapper.find('a[href="/learn"]').exists()).toBe(true)
+  })
+
+  it('never nests a button inside the learn-guide link (invalid, breaks AT)', () => {
+    // Regression: this used to be `<NuxtLink to="/learn"><AsciiButton /></NuxtLink>`,
+    // i.e. <a><button>…</button></a> — invalid HTML that gives assistive tech two
+    // controls for one action. AsciiButton now renders AS the link via `to`.
+    const wrapper = mountError({ statusCode: 500 })
+    const link = wrapper.get('a[href="/learn"]')
+    expect(link.find('button').exists()).toBe(false)
   })
 })

@@ -54,16 +54,76 @@ describe('useStartTutorial', () => {
     expect(mockFetch).toHaveBeenCalledWith('/api/game/tutorial', { method: 'POST', body: {} })
   })
 
-  it('routes to /login when not signed in (401), explaining why', async () => {
-    mockFetch.mockRejectedValue({ statusCode: 401 })
+  it('mints a guest session and retries the launch when not signed in (401)', async () => {
+    // Guest funnel (server/api/auth/guest.post.ts): the first /api/game/tutorial
+    // call 401s (no session), so the composable mints a guest session and
+    // retries the SAME launch once — no login wall for a first-time visitor.
+    const mockSessionFetch = vi.fn()
+    vi.stubGlobal('useUserSession', () => ({ fetch: mockSessionFetch }))
+    let tutorialCalls = 0
+    mockFetch.mockImplementation((url: string) => {
+      if (url === '/api/game/tutorial') {
+        tutorialCalls += 1
+        if (tutorialCalls === 1) return Promise.reject({ statusCode: 401 })
+        return Promise.resolve({ url: '/play?gameId=g5&tutorial=1' })
+      }
+      if (url === '/api/auth/guest') {
+        return Promise.resolve({ user: { id: 'guest_abc123', guest: true } })
+      }
+      throw new Error(`unexpected $fetch call: ${url}`)
+    })
     const { start, error } = useStartTutorial()
 
     await start()
 
-    // `next=practice` is what lets login resume the launch — a bare '/login'
-    // sent the player home and made them hunt for the button again.
+    expect(mockFetch).toHaveBeenCalledWith('/api/auth/guest', { method: 'POST' })
+    // The reactive session must refresh so the header/store see the new
+    // guest user immediately — same as any other login path.
+    expect(mockSessionFetch).toHaveBeenCalledOnce()
+    expect(tutorialCalls).toBe(2)
+    expect(mockNavigateTo).toHaveBeenCalledWith('/play?gameId=g5&tutorial=1')
+    expect(error.value).toBeNull()
+  })
+
+  it('falls back to /login when guest-session minting itself fails', async () => {
+    vi.stubGlobal('useUserSession', () => ({ fetch: vi.fn() }))
+    mockFetch.mockImplementation((url: string) => {
+      if (url === '/api/game/tutorial') return Promise.reject({ statusCode: 401 })
+      if (url === '/api/auth/guest') return Promise.reject({ statusCode: 503 })
+      throw new Error(`unexpected $fetch call: ${url}`)
+    })
+    const { start, error } = useStartTutorial()
+
+    await start()
+
+    // `next` rather than `redirect`: there is no URL that starts a practice
+    // game (the launcher POSTs), so login re-fires this call once a real
+    // session exists instead of dropping the player on a page.
     expect(mockNavigateTo).toHaveBeenCalledWith({ path: '/login', query: { next: 'practice' } })
     expect(error.value).toBeTruthy()
+  })
+
+  it('does not bounce to /login when guest-session minting is only rate limited', async () => {
+    // A 429 means "try again shortly", not "you need an account" — sending the
+    // player to a login wall for a transient rate limit would recreate the
+    // exact dead end this feature exists to remove.
+    vi.stubGlobal('useUserSession', () => ({ fetch: vi.fn() }))
+    mockFetch.mockImplementation((url: string) => {
+      if (url === '/api/game/tutorial') return Promise.reject({ statusCode: 401 })
+      if (url === '/api/auth/guest') {
+        return Promise.reject({
+          statusCode: 429,
+          data: { message: 'Too many guest sessions — try again shortly' },
+        })
+      }
+      throw new Error(`unexpected $fetch call: ${url}`)
+    })
+    const { start, error } = useStartTutorial()
+
+    await start()
+
+    expect(mockNavigateTo).not.toHaveBeenCalled()
+    expect(error.value).toBe('Too many guest sessions — try again shortly')
   })
 
   it('surfaces the failure instead of silently redirecting', async () => {

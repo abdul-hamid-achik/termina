@@ -4,11 +4,22 @@ import { joinQueue, getQueueSize, isPlayerInQueue } from '~~/server/game/matchma
 import { getPlayerGame } from '~~/server/services/PeerRegistry'
 import { getPlayerLobby } from '~~/server/game/matchmaking/lobby'
 import { checkScopedRateLimit } from '~~/server/utils/RateLimiter'
+import { isGuestId } from '~~/server/utils/guest'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
   if (!session?.user?.id) {
     throw createError({ statusCode: 401, message: 'Authentication required' })
+  }
+
+  // Ranked/casual matchmaking persists MMR, match history and hero stats —
+  // none of which exist for a guest. Practice vs bots (the tutorial) is the
+  // only mode a guest can play; send them to sign in for everything else.
+  if (isGuestId(session.user.id as string)) {
+    throw createError({
+      statusCode: 403,
+      message: 'Sign in to queue for a match — guest sessions can only play practice vs bots',
+    })
   }
 
   if (!checkScopedRateLimit('queue', session.user.id as string)) {

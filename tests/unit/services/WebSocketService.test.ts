@@ -326,7 +326,14 @@ describe('WebSocketService', () => {
       warnSpy.mockRestore()
     })
 
-    it('should clean up playerToGame map on connection removal', async () => {
+    it('drops the dead peer on a send failure but KEEPS the player→game assignment', async () => {
+      // REGRESSION (owner audit item 3): a failed send used to clear the
+      // player→game assignment too, same bug as removeConnection above — a
+      // send failure can be a transient blip inside the 60s reconnect grace
+      // window, and clearing the assignment made `reconnect`/`join_game`
+      // refuse a game the player was still legitimately mid-window for. The
+      // assignment is released only by explicit game cleanup or a leave, never
+      // as a side effect of one failed send.
       const ws = {
         send: vi.fn().mockImplementation(() => {
           throw new Error('Connection closed')
@@ -340,7 +347,7 @@ describe('WebSocketService', () => {
           yield* svc.addConnection('game_w', 'player_w', ws)
           yield* svc.sendToPlayer('player_w', { type: 'test' })
           const gameId = yield* svc.getPlayerGame('player_w')
-          expect(gameId).toBeNull()
+          expect(gameId).toBe('game_w')
         }),
       )
 

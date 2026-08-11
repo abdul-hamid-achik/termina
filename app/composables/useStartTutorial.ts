@@ -27,25 +27,51 @@ export function useStartTutorial() {
    * unrecognised id is not rejected here: the server already falls back to a
    * default hero.
    */
+  async function launch(heroId?: string | MouseEvent) {
+    const res = await $fetch<{ url: string }>('/api/game/tutorial', {
+      method: 'POST',
+      body: typeof heroId === 'string' ? { heroSelf: heroId } : {},
+    })
+    await navigateTo(res.url)
+  }
+
   async function start(heroId?: string | MouseEvent) {
     if (starting.value) return
     starting.value = true
     error.value = null
     try {
-      const res = await $fetch<{ url: string }>('/api/game/tutorial', {
-        method: 'POST',
-        body: typeof heroId === 'string' ? { heroSelf: heroId } : {},
-      })
-      await navigateTo(res.url)
+      await launch(heroId)
     } catch (err: unknown) {
       const e = err as { statusCode?: number; data?: { message?: string }; message?: string }
-      const status = e?.statusCode
-      if (status === 401) {
-        error.value = 'Sign in first — practice games are saved to your profile.'
-        // `next` rather than `redirect`: there is no URL that starts a practice
-        // game (the launcher POSTs), so login re-fires this call once the
-        // session exists instead of dropping the player on a page.
-        await navigateTo({ path: '/login', query: { next: 'practice' } })
+      if (e?.statusCode === 401) {
+        // No account is not a dead end — an anonymous visitor gets a throwaway
+        // guest session (server/api/auth/guest.post.ts: no DB row, nothing
+        // persisted) and the launch retries once. Signing in is only needed to
+        // KEEP progress, not to try the game — that's the whole point of the
+        // funnel fix this composable exists for.
+        try {
+          await $fetch('/api/auth/guest', { method: 'POST' })
+          // Refresh the reactive session so the header/store see the new
+          // (guest) user immediately, same as any other login path.
+          await useUserSession().fetch()
+          await launch(heroId)
+          return
+        } catch (guestErr: unknown) {
+          const ge = guestErr as {
+            statusCode?: number
+            data?: { message?: string }
+            message?: string
+          }
+          error.value = ge?.data?.message ?? ge?.message ?? 'Could not start a guest practice game.'
+          // `next` rather than `redirect`: there is no URL that starts a
+          // practice game (the launcher POSTs), so login re-fires this call
+          // once a real session exists instead of dropping the player on a
+          // page. Skip the bounce on a rate limit — retrying login won't help
+          // faster than just waiting out the guest-session limiter.
+          if (ge?.statusCode !== 429) {
+            await navigateTo({ path: '/login', query: { next: 'practice' } })
+          }
+        }
         return
       }
       // Surface the server's reason (already in a match, rate limited, server

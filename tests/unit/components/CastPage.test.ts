@@ -36,11 +36,16 @@ function mountHeroes() {
     global: {
       stubs: {
         NuxtLink: { template: '<a><slot /></a>' },
+        // Mirrors the real AsciiButton's `to` handling (renders AS the link,
+        // never a <button> nested inside an <a>) so this stub can't silently
+        // diverge from the flattened markup.
         AsciiButton: {
-          props: ['label', 'disabled', 'variant'],
+          props: ['label', 'disabled', 'variant', 'to'],
           emits: ['click'],
-          template:
-            '<button :disabled="disabled" @click="$emit(\'click\', $event)">{{ label }}</button>',
+          template: `
+            <a v-if="to" :href="to">{{ label }}</a>
+            <button v-else :disabled="disabled" @click="$emit('click', $event)">{{ label }}</button>
+          `,
         },
         InlineError: true,
       },
@@ -132,5 +137,13 @@ describe('heroes page — decision content', () => {
       method: 'POST',
       body: { heroSelf: 'malloc' },
     })
+  })
+
+  it('never nests a button inside the "enter the terminal" link (invalid, breaks AT)', () => {
+    // Regression: this used to be `<NuxtLink to="/lobby"><AsciiButton /></NuxtLink>`,
+    // i.e. <a><button>…</button></a>. AsciiButton now renders AS the link via `to`.
+    const wrapper = mountHeroes()
+    const link = wrapper.get('a[href="/lobby"]')
+    expect(link.find('button').exists()).toBe(false)
   })
 })

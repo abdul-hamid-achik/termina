@@ -62,6 +62,7 @@ import {
   type BotDifficulty,
   type RegisterBotsOptions,
 } from '~~/server/game/ai/BotManager'
+import { isGuestId } from '~~/server/utils/guest'
 import { ONE_LANE_MAP_ID, TWO_LANE_MAP_ID, mapIdForMode } from '~~/shared/constants/maps'
 import { buildTutorialRoster } from '~~/server/game/modes/tutorial'
 import {
@@ -72,7 +73,13 @@ import {
   getGamePlayers,
 } from '~~/server/services/PeerRegistry'
 import { cleanupLobby } from '~~/server/game/matchmaking/lobby'
-import { claimGameReady } from '~~/server/game/matchmaking/gameReadyClaim'
+import {
+  claimGameReady,
+  gameIdForLobby,
+  deleteGameReadyPending,
+  sweepGameReadyPending,
+  type GameReadyPayload,
+} from '~~/server/game/matchmaking/gameReadyClaim'
 import { calculateMmrChange, teamAverageMmr } from '~~/server/game/matchmaking/elo'
 import { HEROES } from '~~/shared/constants/heroes'
 import { registerAllHeroes } from '~~/server/game/heroes'
@@ -178,6 +185,17 @@ export function isEventVisibleToPlayer(
  */
 export function isPracticeGame(gameId: string, mode?: GameMode): boolean {
   return mode === 'tutorial' || gameId.startsWith('dev_')
+}
+
+/**
+ * Whether a tutorial-completion event should persist to the DB. Bots have no
+ * `players` row, and neither does a guest session (server/api/auth/guest.post.ts)
+ * — an ephemeral id that only ever lives in the signed session cookie. Exported
+ * standalone, same pattern as `isPracticeGame` above, so the gate itself is
+ * unit-testable without booting the whole plugin.
+ */
+export function shouldPersistTutorialCompletion(playerId: string): boolean {
+  return !isBot(playerId) && !isGuestId(playerId)
 }
 
 /**
@@ -405,6 +423,139 @@ export function botDifficultyForRoster(
   return difficultyForMmr(averageMmr)
 }
 
+/**
+ * Does this completed match move MMR? (owner audit item 5).
+ *
+ * A match only affects MMR if it's a FULL human-only 5v5 — bot-filled matches
+ * of any size are already excluded (grinding a leaderboard against bots), but
+ * until now every bot-free match was treated as ranked regardless of size, so
+ * a human-only 1v1 or 3v3 wrote the same mmr/seasonMmr change as a 5v5.
+ * Smaller human-only formats are casual: `mmrChange` stays 0 and their
+ * matchMode label already reads honestly ('1v1' / 'quick_3v3', never
+ * 'ranked_5v5' — see the matchMode ternary in onGameOver).
+ */
+export function isRankedMatch(playerCount: number, hasBots: boolean): boolean {
+  return playerCount === 10 && !hasBots
+}
+
+// ── Durable match finalization (owner audit item 4) ────────────────────────
+// onGameOver's persistence (recordMatch + applyMatchDerivedStats) is awaited
+// within the callback, but nothing durable records the INTENT to do it before
+// attempting it — a crash/deploy between the postgame broadcast and a
+// successful DB write loses the match silently. Mirroring the intent to Redis
+// first, and deleting it only once persistence actually succeeds, lets a
+// boot-time sweep replay anything that never finished. Both DB steps are
+// already idempotent — recordMatch checks for an existing row by id before
+// inserting, and applyMatchDerivedStats claims matches.derived_stats_applied
+// inside the same transaction as the mutations it guards — so replaying a
+// completed finalization (whether from the live path or a later sweep) is
+// safe and a guaranteed no-op.
+
+export const FINALIZE_PENDING_TTL_SECONDS = 60 * 60 // 1 hour
+
+export function finalizePendingKey(gameId: string): string {
+  return `finalize:pending:${gameId}`
+}
+
+/** Everything needed to (re)run one match's persistence, independent of the
+ *  live game state (which is gone by the time a boot sweep might replay it). */
+export interface FinalizeIntent {
+  matchRecord: NewMatch
+  matchPlayerRecords: NewMatchPlayer[]
+  derivedPlayers: MatchDerivedPlayerStats[]
+}
+
+/** Mirror the finalize intent durably, keyed by the match id. Must be called
+ *  BEFORE attempting persistence (see onGameOver below). */
+export function writeFinalizePending(
+  redis: RedisServiceApi,
+  intent: FinalizeIntent,
+): Effect.Effect<void> {
+  return redis.set(
+    finalizePendingKey(intent.matchRecord.id),
+    JSON.stringify(intent),
+    FINALIZE_PENDING_TTL_SECONDS,
+  )
+}
+
+/** Drop the durable mirror. Only call once persistence has actually
+ *  succeeded (recordMatch + applyMatchDerivedStats both settled). */
+export function deleteFinalizePending(redis: RedisServiceApi, gameId: string): Effect.Effect<void> {
+  return redis.del(finalizePendingKey(gameId))
+}
+
+/** Reconstruct a FinalizeIntent from its stored JSON. `endedAt` survives
+ *  JSON.stringify as an ISO string, not a Date — rebuild it before the intent
+ *  goes back through drizzle. Corrupt entries return null rather than throw. */
+function parseFinalizeIntent(raw: string): FinalizeIntent | null {
+  try {
+    const parsed = JSON.parse(raw) as FinalizeIntent
+    if (!parsed?.matchRecord?.id) return null
+    return {
+      ...parsed,
+      matchRecord: {
+        ...parsed.matchRecord,
+        endedAt: parsed.matchRecord.endedAt ? new Date(parsed.matchRecord.endedAt) : undefined,
+      },
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Boot-time sweep: every `finalize:pending:*` key left over from a process
+ * that died between writing the intent and finishing persistence. A single
+ * corrupt entry is skipped, not fatal to the rest of the sweep.
+ */
+export function sweepFinalizePending(redis: RedisServiceApi): Effect.Effect<FinalizeIntent[]> {
+  return Effect.gen(function* () {
+    const keys = yield* redis.scan('finalize:pending:*')
+    const intents: FinalizeIntent[] = []
+    for (const key of keys) {
+      const raw = yield* redis.get(key)
+      if (!raw) continue
+      const intent = parseFinalizeIntent(raw)
+      if (intent) intents.push(intent)
+    }
+    return intents
+  })
+}
+
+/**
+ * Persist one match's row + derived ladder/hero stats. Returns whether both
+ * steps completed (a failed `recordMatch` — all retries exhausted — reports
+ * false and never touches derived stats). Safe to call twice for the same
+ * gameId (see the idempotency note above); callers decide whether to delete
+ * the durable pending intent based on the return value.
+ */
+export function finalizeMatchIntent(
+  db: DatabaseServiceApi,
+  intent: FinalizeIntent,
+): Effect.Effect<boolean> {
+  return Effect.gen(function* () {
+    const matchPersisted = yield* db.recordMatch(intent.matchRecord, intent.matchPlayerRecords)
+    if (!shouldApplyDerivedMatchStats(matchPersisted)) {
+      gameLog.error('Match was not persisted; skipping derived stats', {
+        gameId: intent.matchRecord.id,
+        result: matchPersisted,
+      })
+      return false
+    }
+
+    const derivedApplied = yield* db.applyMatchDerivedStats(
+      intent.matchRecord.id,
+      intent.derivedPlayers,
+    )
+    gameLog.info('Match derived stats settled', {
+      gameId: intent.matchRecord.id,
+      record: matchPersisted,
+      applied: derivedApplied,
+    })
+    return true
+  })
+}
+
 interface DevGameOpts {
   /** The authenticated session user — becomes the human player. */
   humanId: string
@@ -597,6 +748,24 @@ export default defineNitroPlugin(async (nitroApp) => {
   // cleared on genuine shutdown via the Nitro close hook.
   const _keepAliveTimer = setInterval(() => {}, 10_000)
 
+  // Reconcile one match's durable finalize intent (owner audit item 4): persist
+  // it, and delete the pending Redis mirror only once persistence actually
+  // succeeded. Used by both the live onGameOver path and the boot-time sweep
+  // below, so a replayed intent goes through the exact same idempotent logic.
+  async function reconcileFinalization(intent: FinalizeIntent): Promise<void> {
+    try {
+      const persisted = await managedRuntime.runPromise(finalizeMatchIntent(db, intent))
+      if (persisted) {
+        await managedRuntime.runPromise(deleteFinalizePending(redis, intent.matchRecord.id))
+      }
+    } catch (err) {
+      gameLog.error('Game over persistence failed', {
+        gameId: intent.matchRecord.id,
+        error: String(err),
+      })
+    }
+  }
+
   // Build the callbacks for a single game. Captured separately from the
   // game_ready handler so the snapshot-resume path can use the same shape.
   type StartPlayer = { playerId: string; team: TeamId; heroId: string; mmr: number }
@@ -673,7 +842,7 @@ export default defineNitroPlugin(async (nitroApp) => {
       },
 
       onTutorialCompleted: (_gId, playerId) => {
-        if (isBot(playerId)) return
+        if (!shouldPersistTutorialCompletion(playerId)) return
         // Persist best-effort: a DB hiccup must never block the game loop. The
         // client funnel degrades gracefully if this never lands (it just keeps
         // offering practice).
@@ -736,11 +905,13 @@ export default defineNitroPlugin(async (nitroApp) => {
         }
 
         const realPlayers = players.filter((p) => !isBot(p.playerId))
-        // A match only affects MMR if it contained NO bots. Bot-filled matchmaking
-        // and practice games are recorded for history but are NOT ranked — otherwise
-        // the leaderboard (ordered by MMR) could be grinded against bots.
+        // MMR moves ONLY for a full human-only 5v5 (owner audit item 5). Bot-filled
+        // matchmaking and practice games are recorded for history but are NOT
+        // ranked — otherwise the leaderboard (ordered by MMR) could be grinded
+        // against bots. Smaller human-only formats (1v1, 3v3) are casual too —
+        // see isRankedMatch's doc comment.
         const hasBots = players.some((p) => isBot(p.playerId))
-        const isRanked = !hasBots
+        const isRanked = isRankedMatch(players.length, hasBots)
 
         // Build the end-of-game stats (no DB needed) and broadcast game_over
         // FIRST. Players must reach the post-game screen even if DB persistence
@@ -829,39 +1000,39 @@ export default defineNitroPlugin(async (nitroApp) => {
               }
             })
 
-            await managedRuntime.runPromise(
-              Effect.gen(function* () {
-                const matchPersisted = yield* db.recordMatch(matchRecord, matchPlayerRecords)
-                if (!shouldApplyDerivedMatchStats(matchPersisted)) {
-                  gameLog.error('Match was not persisted; skipping derived stats', {
-                    gameId: gId,
-                    result: matchPersisted,
-                  })
-                  return
-                }
+            const derivedPlayers: MatchDerivedPlayerStats[] = realPlayers.map((p) => {
+              const ps = finalState.players[p.playerId]
+              return {
+                playerId: p.playerId,
+                heroId: p.heroId,
+                won: p.team === winner,
+                ranked: isRanked,
+                mmrChange: mmrChanges.get(p.playerId) ?? 0,
+                kills: ps?.kills ?? 0,
+                deaths: ps?.deaths ?? 0,
+                assists: ps?.assists ?? 0,
+              }
+            })
 
-                const derivedPlayers: MatchDerivedPlayerStats[] = realPlayers.map((p) => {
-                  const ps = finalState.players[p.playerId]
-                  return {
-                    playerId: p.playerId,
-                    heroId: p.heroId,
-                    won: p.team === winner,
-                    ranked: isRanked,
-                    mmrChange: mmrChanges.get(p.playerId) ?? 0,
-                    kills: ps?.kills ?? 0,
-                    deaths: ps?.deaths ?? 0,
-                    assists: ps?.assists ?? 0,
-                  }
-                })
+            const intent: FinalizeIntent = { matchRecord, matchPlayerRecords, derivedPlayers }
 
-                const derivedApplied = yield* db.applyMatchDerivedStats(gId, derivedPlayers)
-                gameLog.info('Match derived stats settled', {
+            // Durable handoff (owner audit item 4): mirror the intent to Redis
+            // BEFORE attempting persistence. A crash/deploy between here and a
+            // successful DB write must not silently lose the match — the boot
+            // sweep below replays anything still pending.
+            try {
+              await managedRuntime.runPromise(writeFinalizePending(redis, intent))
+            } catch (err) {
+              gameLog.warn(
+                'Failed to write finalize pending intent — proceeding without durability',
+                {
                   gameId: gId,
-                  record: matchPersisted,
-                  applied: derivedApplied,
-                })
-              }),
-            )
+                  error: String(err),
+                },
+              )
+            }
+
+            await reconcileFinalization(intent)
           } catch (err) {
             gameLog.error('Game over persistence failed', { gameId: gId, error: String(err) })
           }
@@ -903,147 +1074,197 @@ export default defineNitroPlugin(async (nitroApp) => {
     }
   }
 
-  // Subscribe to game_ready events from lobby
+  // Process one game_ready payload: claim ownership, create the game, start its
+  // loop. Used by BOTH the live Pub/Sub subscriber and the boot-time sweep of
+  // any handoff a crashed process never finished (owner audit item 1) — the
+  // exact same claim + create logic runs either way, so a replayed payload
+  // can't diverge from a live one.
+  async function processGameReadyPayload(gameData: GameReadyPayload): Promise<void> {
+    try {
+      if (!gameData.lobbyId || !Array.isArray(gameData.players) || gameData.players.length === 0) {
+        gameLog.error('Ignoring malformed game_ready payload', { gameData })
+        return
+      }
+
+      // Redis Pub/Sub delivers a message to every subscribed app instance (and
+      // the boot sweep may independently find the same durable mirror on more
+      // than one instance after a crash). Claim the lobby before creating any
+      // local state so only one instance ever creates the game. The TTL is
+      // long enough to cover a match while still allowing a stale claim to heal.
+      const claimed = await managedRuntime.runPromise(
+        claimGameReady(redis, gameData.lobbyId, String(process.pid)),
+      )
+      if (!claimed) {
+        gameLog.info('Skipping already-claimed game_ready payload', { lobbyId: gameData.lobbyId })
+        return
+      }
+
+      // A lobby id is globally unique and now owns the game id. This makes
+      // logs, snapshots and the durable pending mirror converge on one
+      // identity instead of generating a new id per subscriber.
+      const gameId = gameIdForLobby(gameData.lobbyId)
+      // The lobby stamps the queue mode + derived mapId onto game_ready. The
+      // mapId drives which zone set the game uses (5v5 → 3 lanes, 3v3 → 2,
+      // 1v1 → 1); fall back to deriving it from mode, then to the full map.
+      const mapId = gameData.mapId ?? mapIdForMode(gameData.mode) ?? 'default_5v5'
+      gameLog.info('game_ready received', {
+        lobbyId: gameData.lobbyId,
+        playerCount: gameData.players.length,
+        mode: gameData.mode ?? 'ranked_5v5',
+        mapId,
+      })
+
+      // Create a standalone state manager for this game
+      const stateManager = createInMemoryStateManager()
+      registerLiveGame(gameId, stateManager)
+
+      // Resolve guild tags for in-game display (humans only — bots have none).
+      // Best-effort: a DB hiccup just leaves tags undefined, never blocks the game.
+      const humanIds = gameData.players.filter((p) => !isBot(p.playerId)).map((p) => p.playerId)
+      const guildTags = await managedRuntime
+        .runPromise(db.getGuildTagsForPlayers(humanIds))
+        .catch(() => ({}) as Record<string, string>)
+
+      // Create player setups
+      const playerSetups = gameData.players.map((p) => ({
+        id: p.playerId,
+        name: p.playerId,
+        team: p.team,
+        heroId: p.heroId,
+        guildTag: guildTags[p.playerId],
+      }))
+
+      // Initialise game state in a single Effect pipeline
+      await managedRuntime.runPromise(
+        Effect.gen(function* () {
+          yield* stateManager.createGame(gameId, playerSetups, { mapId })
+          yield* stateManager.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const }))
+        }),
+      )
+
+      // Register bots for this game (lane assignment, tracking). On a subset
+      // map the role lanes (top/bot/jungle) may not exist; pin bots to the
+      // lanes that do (mid-only for one-lane, top/mid for two-lane) so their
+      // global-graph pathing can't walk them off the map.
+      const botOpts: RegisterBotsOptions = {
+        difficulty: botDifficultyForRoster(gameData.players),
+      }
+      if (mapId === ONE_LANE_MAP_ID) {
+        botOpts.forceLane = 'coldstore'
+      } else if (mapId === TWO_LANE_MAP_ID) {
+        // 3v3 two-lane map: top + mid only, no bot lane to path into.
+        botOpts.availableLanes = ['seawall', 'coldstore']
+      }
+      registerBots(
+        gameId,
+        gameData.players.map((p) => ({ playerId: p.playerId, team: p.team, heroId: p.heroId })),
+        botOpts,
+      )
+
+      // Notify real players that the game is starting via PeerRegistry
+      // (players aren't registered with WebSocketService yet — that happens
+      // when they respond with 'join_game')
+      for (const p of gameData.players) {
+        if (isBot(p.playerId)) continue
+        gameLog.debug('Sending game_starting', { playerId: p.playerId, gameId })
+        setPlayerGame(p.playerId, gameId)
+        sendToPeer(p.playerId, {
+          type: 'game_starting',
+          gameId,
+        })
+      }
+
+      // Clean up the lobby now that the game is created
+      cleanupLobby(gameData.lobbyId)
+
+      const callbacks = buildCallbacks(gameData.players, stateManager)
+
+      gameLog.info('Game created — starting loop', {
+        gameId,
+        playerCount: gameData.players.length,
+      })
+
+      // Brief delay to let clients navigate to /play and open game WS
+      // before the first cycle tries to send data
+      await managedRuntime.runPromise(Effect.sleep('2 seconds'))
+
+      // Start the game loop as a fiber within the managed runtime.
+      // The snapshot meta lets the resume path rebuild the same callbacks
+      // after a process restart.
+      const snapshotMeta: SnapshotMeta = {
+        players: gameData.players,
+        mapId,
+        // Queue modes (ranked_5v5, quick_3v3, 1v1) are not GameMode values;
+        // the state itself uses normal/tutorial while mapId carries the map
+        // variant. Never persist the queue label as a replay mode.
+        mode: gameData.mode === 'tutorial' ? 'tutorial' : 'normal',
+      }
+      startGameLoop(gameId, stateManager, callbacks, managedRuntime, redis, snapshotMeta)
+      setLiveGameMeta(gameId, snapshotMeta)
+
+      // Durable handoff (owner audit item 1): only drop the pending mirror once
+      // the game has actually been created and its loop started. Deleting it
+      // any earlier would let a crash between here and the game truly existing
+      // fall through both Pub/Sub AND the boot sweep with nothing left to
+      // recreate it.
+      await managedRuntime.runPromise(deleteGameReadyPending(redis, gameId))
+    } catch (err) {
+      gameLog.error('Failed to process game_ready payload', { error: String(err) })
+    }
+  }
+
+  // Subscribe to game_ready events from lobby — the fast path. The boot sweep
+  // below is the fallback for a payload whose owning process crashed before
+  // this ever fired (or before it finished).
   await managedRuntime.runPromise(
     redis.subscribe('matchmaking:game_ready', async (message) => {
+      let gameData: GameReadyPayload
       try {
-        const gameData = JSON.parse(message) as {
-          lobbyId: string
-          mode?: string
-          mapId?: string
-          players: { playerId: string; team: TeamId; heroId: string; mmr: number }[]
-        }
-
-        if (
-          !gameData.lobbyId ||
-          !Array.isArray(gameData.players) ||
-          gameData.players.length === 0
-        ) {
-          gameLog.error('Ignoring malformed game_ready event', { message })
-          return
-        }
-
-        // Redis Pub/Sub delivers a message to every subscribed app instance.
-        // Claim the lobby before creating any local state so a scale-out event
-        // cannot create one independent game per instance. The TTL is long
-        // enough to cover a match while still allowing a stale claim to heal.
-        const claimed = await managedRuntime.runPromise(
-          claimGameReady(redis, gameData.lobbyId, String(process.pid)),
-        )
-        if (!claimed) {
-          gameLog.info('Skipping already-claimed game_ready event', {
-            lobbyId: gameData.lobbyId,
-          })
-          return
-        }
-
-        // A lobby id is globally unique and now owns the game id. This makes
-        // logs, snapshots and any future durable owner record converge on one
-        // identity instead of generating a new id per subscriber.
-        const gameId = `game_${gameData.lobbyId}`
-        // The lobby stamps the queue mode + derived mapId onto game_ready. The
-        // mapId drives which zone set the game uses (5v5 → 3 lanes, 3v3 → 2,
-        // 1v1 → 1); fall back to deriving it from mode, then to the full map.
-        const mapId = gameData.mapId ?? mapIdForMode(gameData.mode) ?? 'default_5v5'
-        gameLog.info('game_ready received', {
-          lobbyId: gameData.lobbyId,
-          playerCount: gameData.players.length,
-          mode: gameData.mode ?? 'ranked_5v5',
-          mapId,
-        })
-
-        // Create a standalone state manager for this game
-        const stateManager = createInMemoryStateManager()
-        registerLiveGame(gameId, stateManager)
-
-        // Resolve guild tags for in-game display (humans only — bots have none).
-        // Best-effort: a DB hiccup just leaves tags undefined, never blocks the game.
-        const humanIds = gameData.players.filter((p) => !isBot(p.playerId)).map((p) => p.playerId)
-        const guildTags = await managedRuntime
-          .runPromise(db.getGuildTagsForPlayers(humanIds))
-          .catch(() => ({}) as Record<string, string>)
-
-        // Create player setups
-        const playerSetups = gameData.players.map((p) => ({
-          id: p.playerId,
-          name: p.playerId,
-          team: p.team,
-          heroId: p.heroId,
-          guildTag: guildTags[p.playerId],
-        }))
-
-        // Initialise game state in a single Effect pipeline
-        await managedRuntime.runPromise(
-          Effect.gen(function* () {
-            yield* stateManager.createGame(gameId, playerSetups, { mapId })
-            yield* stateManager.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const }))
-          }),
-        )
-
-        // Register bots for this game (lane assignment, tracking). On a subset
-        // map the role lanes (top/bot/jungle) may not exist; pin bots to the
-        // lanes that do (mid-only for one-lane, top/mid for two-lane) so their
-        // global-graph pathing can't walk them off the map.
-        const botOpts: RegisterBotsOptions = {
-          difficulty: botDifficultyForRoster(gameData.players),
-        }
-        if (mapId === ONE_LANE_MAP_ID) {
-          botOpts.forceLane = 'coldstore'
-        } else if (mapId === TWO_LANE_MAP_ID) {
-          // 3v3 two-lane map: top + mid only, no bot lane to path into.
-          botOpts.availableLanes = ['seawall', 'coldstore']
-        }
-        registerBots(
-          gameId,
-          gameData.players.map((p) => ({ playerId: p.playerId, team: p.team, heroId: p.heroId })),
-          botOpts,
-        )
-
-        // Notify real players that the game is starting via PeerRegistry
-        // (players aren't registered with WebSocketService yet — that happens
-        // when they respond with 'join_game')
-        for (const p of gameData.players) {
-          if (isBot(p.playerId)) continue
-          gameLog.debug('Sending game_starting', { playerId: p.playerId, gameId })
-          setPlayerGame(p.playerId, gameId)
-          sendToPeer(p.playerId, {
-            type: 'game_starting',
-            gameId,
-          })
-        }
-
-        // Clean up the lobby now that the game is created
-        cleanupLobby(gameData.lobbyId)
-
-        const callbacks = buildCallbacks(gameData.players, stateManager)
-
-        gameLog.info('Game created — starting loop', {
-          gameId,
-          playerCount: gameData.players.length,
-        })
-
-        // Brief delay to let clients navigate to /play and open game WS
-        // before the first cycle tries to send data
-        await managedRuntime.runPromise(Effect.sleep('2 seconds'))
-
-        // Start the game loop as a fiber within the managed runtime.
-        // The snapshot meta lets the resume path rebuild the same callbacks
-        // after a process restart.
-        const snapshotMeta: SnapshotMeta = {
-          players: gameData.players,
-          mapId,
-          // Queue modes (ranked_5v5, quick_3v3, 1v1) are not GameMode values;
-          // the state itself uses normal/tutorial while mapId carries the map
-          // variant. Never persist the queue label as a replay mode.
-          mode: gameData.mode === 'tutorial' ? 'tutorial' : 'normal',
-        }
-        startGameLoop(gameId, stateManager, callbacks, managedRuntime, redis, snapshotMeta)
-        setLiveGameMeta(gameId, snapshotMeta)
-      } catch (err) {
-        gameLog.error('Failed to process game_ready event', { error: String(err) })
+        gameData = JSON.parse(message) as GameReadyPayload
+      } catch {
+        gameLog.error('Ignoring unparseable game_ready message', { message })
+        return
       }
+      await processGameReadyPayload(gameData)
     }),
   )
+
+  // Boot-time sweep of durable game_ready handoffs (owner audit item 1):
+  // replay any payload whose owning process died between the lobby's publish
+  // and this instance's game actually getting created. Each entry still goes
+  // through the same claim inside processGameReadyPayload, so if the original
+  // subscriber actually finished (and just hadn't deleted the key yet, e.g. a
+  // slow shutdown), this is a safe, idempotent no-op.
+  try {
+    const pendingGameReady = await managedRuntime.runPromise(sweepGameReadyPending(redis))
+    if (pendingGameReady.length > 0) {
+      gameLog.info('Found pending game_ready handoffs to sweep', { count: pendingGameReady.length })
+    }
+    for (const payload of pendingGameReady) {
+      await processGameReadyPayload(payload)
+    }
+  } catch (err) {
+    gameLog.error('game_ready pending sweep failed', { error: String(err) })
+  }
+
+  // Boot-time sweep of durable finalize intents (owner audit item 4): replay
+  // any match persistence whose owning process died between writing the
+  // intent and a successful DB write. finalizeMatchIntent's underlying steps
+  // are idempotent (see FinalizeIntent's doc comment), so this is safe even if
+  // the original onGameOver call actually completed.
+  try {
+    const pendingFinalizations = await managedRuntime.runPromise(sweepFinalizePending(redis))
+    if (pendingFinalizations.length > 0) {
+      gameLog.info('Found pending match finalizations to sweep', {
+        count: pendingFinalizations.length,
+      })
+    }
+    for (const intent of pendingFinalizations) {
+      await reconcileFinalization(intent)
+    }
+  } catch (err) {
+    gameLog.error('finalize pending sweep failed', { error: String(err) })
+  }
 
   _runtime = {
     redisService: redis,

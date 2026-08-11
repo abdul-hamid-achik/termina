@@ -215,9 +215,7 @@ const BEATS = [
           data-testid="start-tutorial"
           @click="startTutorial"
         />
-        <NuxtLink to="/cast" class="no-underline">
-          <AsciiButton label="MEET THE HEROES" variant="ghost" />
-        </NuxtLink>
+        <AsciiButton label="MEET THE HEROES" variant="ghost" to="/cast" />
       </div>
       <InlineError :message="tutorialError" />
     </footer>

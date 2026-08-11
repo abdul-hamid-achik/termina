@@ -9,6 +9,7 @@ import { mapIdForMode } from '~~/shared/constants/maps'
 import { isBot, createBotPlayers } from '~~/server/game/ai/BotManager'
 import { sendToPeer } from '~~/server/services/PeerRegistry'
 import { lobbyLog } from '~~/server/utils/log'
+import { gameIdForLobby, writeGameReadyPending } from './gameReadyClaim'
 
 const PICK_TIME_SECONDS = 15
 const PICK_TIME_MS = PICK_TIME_SECONDS * 1000
@@ -610,8 +611,17 @@ function startReadyCheck(
           })
           return Effect.void
         }
-        lobbyLog.info('Publishing game_ready', { lobbyId: lobby.id })
-        return redis.publish('matchmaking:game_ready', JSON.stringify(gameData))
+        // Durable handoff (owner audit item 1): mirror the payload to Redis
+        // BEFORE publishing. Pub/sub alone is fire-and-forget — a crash between
+        // publish and game creation would strand this lobby in 'starting'
+        // forever. The game-server boot sweep replays any pending mirror whose
+        // publish never got claimed/finished; it deletes this key once the game
+        // is actually created.
+        const gameId = gameIdForLobby(lobby.id)
+        lobbyLog.info('Publishing game_ready', { lobbyId: lobby.id, gameId })
+        return writeGameReadyPending(redis, gameId, gameData).pipe(
+          Effect.andThen(() => redis.publish('matchmaking:game_ready', JSON.stringify(gameData))),
+        )
       }),
       Effect.catchAll((err) => {
         lobbyLog.error('Failed to publish game_ready', { lobbyId: lobby.id, error: String(err) })

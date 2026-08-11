@@ -25,9 +25,14 @@ import type { GameEngineEvent } from '~~/server/game/protocol/events'
  * pure `(state, opts) => GameState` transforms that shape a fresh game. Use this
  * for engine truth; keep Cairntrace for "the UI renders + a human can click it".
  *
- * Determinism note: the engine has no injectable RNG (bot AI uses Math.random),
- * so the harness never registers bots — only the human + a single enemy exist,
- * and nothing acts unless you `submit` it.
+ * Determinism note: tick RESOLUTION is seedable — GameLoop.processCycle derives
+ * a deterministic rng from `state.rngSeed` (falling back to a stable hash of
+ * gameId for older states) and threads it through every crit/proc/spawn roll;
+ * see server/game/engine/rng.ts and tests/gameplay/rngDeterminism.test.ts. Bot
+ * AI is deliberately NOT on that seeded stream — bot decisions are recorded
+ * inputs a replay re-feeds, not a resolution outcome — so it still uses
+ * Math.random(), which is why the harness never registers bots: only the
+ * human + a single enemy exist, and nothing acts unless you `submit` it.
  *
  * Assertion gotchas (hard-won — read before writing INTEG / cast / buff checks):
  *  - First-tick maxInteg recompute. Heroes seed at level 6 and their maxInteg is

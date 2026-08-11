@@ -22,7 +22,24 @@ export function registerPeer(
   crosswsPeer: CrosswsPeer,
   rawWs: RawWs | CrosswsPeer | null | undefined,
 ) {
+  const existing = peers.get(playerId)
   peers.set(playerId, { crosswsPeer, rawWs: rawWs ?? crosswsPeer })
+  // A second live socket for the same player (duplicate tab, or a reconnect
+  // racing ahead of the old socket's own close event) must not linger: it can
+  // still deliver stale game state via a direct send, and its eventual close
+  // event must not be mistaken for THE disconnect (ws.ts's close handler
+  // checks peer identity before starting any lobby-cancel/disconnect-grace
+  // timer — see isCurrentPeer there). Best-effort: `.close` may not exist on
+  // every fake/mock peer.
+  if (existing && existing.crosswsPeer !== crosswsPeer) {
+    try {
+      ;(
+        existing.crosswsPeer as unknown as { close?: (code?: number, reason?: string) => void }
+      ).close?.(4009, 'Replaced by a newer connection')
+    } catch (err) {
+      peerLog.warn('Failed to close superseded peer', { playerId, error: String(err) })
+    }
+  }
 }
 
 /** Remove a peer and clean up any game association. */
@@ -119,21 +136,18 @@ export function sendToPeerRaw(playerId: string, data: string): boolean {
       entry.rawWs.send(data)
       return true
     } catch {
-      // Both send paths failed — the connection is dead. Remove the peer
-      // and its game association so future broadcasts skip it.
+      // Both send paths failed — the connection is dead. Remove ONLY the peer,
+      // never the player→game assignment: a send failure can be a transient
+      // blip inside the 60s reconnect grace window (see ws.ts), and clearing
+      // the assignment here used to make `reconnect` fail NOT_ASSIGNED even
+      // though the player was still legitimately mid-window. The assignment is
+      // cleared only by game cleanup (onGameOver/reaper/stopDevGame) or an
+      // explicit leave — never as a side effect of a failed send.
       peerLog.warn('Peer send failed on both paths — removing dead peer', {
         playerId,
         error: String(err),
       })
       peers.delete(playerId)
-      const gameId = playerGames.get(playerId)
-      if (gameId) {
-        const set = gamePlayers.get(gameId)
-        set?.delete(playerId)
-        if (set && set.size === 0) gamePlayers.delete(gameId)
-        playerGames.delete(playerId)
-      }
-      playerTeams.delete(playerId)
       return false
     }
   }

@@ -34,11 +34,16 @@ function mountLore() {
     global: {
       stubs: {
         NuxtLink: { template: '<a><slot /></a>' },
+        // Mirrors the real AsciiButton's `to` handling (renders AS the link,
+        // never a <button> nested inside an <a>) so this stub can't silently
+        // diverge from the flattened markup.
         AsciiButton: {
-          props: ['label', 'disabled', 'variant'],
+          props: ['label', 'disabled', 'variant', 'to'],
           emits: ['click'],
-          template:
-            '<button :disabled="disabled" @click="$emit(\'click\', $event)">{{ label }}</button>',
+          template: `
+            <a v-if="to" :href="to">{{ label }}</a>
+            <button v-else :disabled="disabled" @click="$emit('click', $event)">{{ label }}</button>
+          `,
         },
         HeroLoreCard: { props: ['hero', 'tags'], template: '<div>{{ hero.name }}</div>' },
         InlineError: { props: ['message'], template: '<div>{{ message }}</div>' },
@@ -75,5 +80,12 @@ describe('lore page — the TERMINA frame', () => {
 
   it('keeps the tutorial CTA wired', () => {
     expect(mountLore().find('[data-testid="start-tutorial"]').exists()).toBe(true)
+  })
+
+  it('never nests a button inside the "meet the heroes" link (invalid, breaks AT)', () => {
+    // Regression: this used to be `<NuxtLink to="/cast"><AsciiButton /></NuxtLink>`,
+    // i.e. <a><button>…</button></a>. AsciiButton now renders AS the link via `to`.
+    const link = mountLore().get('a[href="/cast"]')
+    expect(link.find('button').exists()).toBe(false)
   })
 })

@@ -363,4 +363,27 @@ describe('learn page', () => {
     expect(text).toContain('move fountain')
     expect(text.toLowerCase()).toContain('your side')
   })
+
+  it('never nests a button inside the "enter the terminal" link (invalid, breaks AT)', () => {
+    // Regression: this used to be `<NuxtLink to="/lobby"><AsciiButton /></NuxtLink>`,
+    // i.e. <a><button>…</button></a>. AsciiButton now renders AS the link via `to`,
+    // mirrored here with a higher-fidelity stub than the shared mountLearn() one.
+    const wrapper = mount(LearnPage, {
+      global: {
+        stubs: {
+          TerminalPanel: { template: '<section><slot /></section>' },
+          NuxtLink: { template: '<a><slot /></a>' },
+          AsciiButton: {
+            props: ['label', 'disabled', 'variant', 'to'],
+            template: `
+              <a v-if="to" :href="to">{{ label }}</a>
+              <button v-else>{{ label }}</button>
+            `,
+          },
+        },
+      },
+    })
+    const link = wrapper.get('a[href="/lobby"]')
+    expect(link.find('button').exists()).toBe(false)
+  })
 })

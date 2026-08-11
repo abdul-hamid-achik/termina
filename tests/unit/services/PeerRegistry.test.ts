@@ -10,7 +10,7 @@ import {
 import { peerLog } from '~~/server/utils/log'
 
 function makePeer() {
-  return { send: vi.fn() }
+  return { send: vi.fn(), close: vi.fn() }
 }
 
 function makeRawWs() {
@@ -239,6 +239,100 @@ describe('PeerRegistry', () => {
       setPlayerGame('pg1', 'game_old')
       setPlayerGame('pg1', 'game_new')
       expect(getPlayerGame('pg1')).toBe('game_new')
+    })
+  })
+
+  // Owner audit item 2b: a superseded peer must not linger — it can still
+  // deliver stale game state, and its later close() must not be mistaken for
+  // THE disconnect by ws.ts's isCurrentPeer check.
+  describe('registerPeer closes a superseded connection', () => {
+    it('closes the OLD peer when a second connection registers for the same player', () => {
+      const oldPeer = makePeer()
+      registerPeer('p_super', oldPeer, makeRawWs())
+
+      const newPeer = makePeer()
+      registerPeer('p_super', newPeer, makeRawWs())
+      registered.push({ playerId: 'p_super', peer: newPeer })
+
+      expect(oldPeer.close).toHaveBeenCalledWith(4009, expect.any(String))
+      expect(newPeer.close).not.toHaveBeenCalled()
+    })
+
+    it('does not close anything on a FIRST registration (no prior peer)', () => {
+      const peer = makePeer()
+      registerPeer('p_first', peer, makeRawWs())
+      registered.push({ playerId: 'p_first', peer })
+
+      expect(peer.close).not.toHaveBeenCalled()
+    })
+
+    it('does not close when re-registering the SAME peer object', () => {
+      const peer = makePeer()
+      registerPeer('p_same', peer, makeRawWs())
+      registerPeer('p_same', peer, makeRawWs())
+      registered.push({ playerId: 'p_same', peer })
+
+      expect(peer.close).not.toHaveBeenCalled()
+    })
+
+    it('tolerates a superseded peer with no close() method (fakes/mocks)', () => {
+      const oldPeer = { send: vi.fn() } // no `.close` at all
+      registerPeer('p_noclose', oldPeer, makeRawWs())
+
+      const newPeer = makePeer()
+      expect(() => registerPeer('p_noclose', newPeer, makeRawWs())).not.toThrow()
+      registered.push({ playerId: 'p_noclose', peer: newPeer })
+    })
+
+    it('swallows a throwing close() rather than letting registerPeer fail', () => {
+      const oldPeer = makePeer()
+      oldPeer.close.mockImplementation(() => {
+        throw new Error('already closed')
+      })
+      registerPeer('p_throwclose', oldPeer, makeRawWs())
+
+      const warnSpy = vi.spyOn(peerLog, 'warn').mockImplementation(() => {})
+      const newPeer = makePeer()
+      expect(() => registerPeer('p_throwclose', newPeer, makeRawWs())).not.toThrow()
+      registered.push({ playerId: 'p_throwclose', peer: newPeer })
+      expect(warnSpy).toHaveBeenCalled()
+      warnSpy.mockRestore()
+    })
+  })
+
+  // Owner audit item 3: a send failure must drop only the dead peer, never
+  // the player→game assignment — that assignment is what `reconnect` checks
+  // inside the 60s grace window (see ws.ts). MUTATION-CHECKED: see the report.
+  describe('sendToPeer failure scope (item 3)', () => {
+    afterEach(() => {
+      clearPlayerGame('p_deadsend')
+    })
+
+    it('drops the dead peer but preserves the player→game assignment', () => {
+      const peer = makePeer()
+      peer.send.mockImplementation(() => {
+        throw new Error('peer failed')
+      })
+      const rawWs = makeRawWs()
+      rawWs.send.mockImplementation(() => {
+        throw new Error('rawWs failed')
+      })
+      registerPeer('p_deadsend', peer, rawWs)
+      setPlayerGame('p_deadsend', 'game_grace')
+
+      const warnSpy = vi.spyOn(peerLog, 'warn').mockImplementation(() => {})
+      const result = sendToPeer('p_deadsend', { type: 'test' })
+      warnSpy.mockRestore()
+
+      expect(result).toBe(false)
+      // The peer itself IS gone (a fresh sendToPeer would warn "no peer found").
+      const warnSpy2 = vi.spyOn(peerLog, 'warn').mockImplementation(() => {})
+      sendToPeer('p_deadsend', { type: 'test2' })
+      expect(warnSpy2).toHaveBeenCalled()
+      warnSpy2.mockRestore()
+      // But the game assignment survives — reconnect() must still find it
+      // inside the grace window.
+      expect(getPlayerGame('p_deadsend')).toBe('game_grace')
     })
   })
 })

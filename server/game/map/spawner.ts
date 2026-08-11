@@ -109,6 +109,7 @@ export function spawnCaches(
   cycle: number,
   hasZone?: (zoneId: string) => boolean,
   activeCaches?: Set<string>,
+  rng: () => number = Math.random,
 ): CacheSpawn[] {
   if (cycle === 0 || cycle % CACHE_INTERVAL_CYCLES !== 0) return []
 
@@ -116,7 +117,7 @@ export function spawnCaches(
   for (const zone of ['cache-seawall', 'cache-shallows']) {
     if (hasZone && !hasZone(zone)) continue
     if (activeCaches && activeCaches.has(zone)) continue // spot already occupied
-    const type = CACHE_TYPES[Math.floor(Math.random() * CACHE_TYPES.length)]!
+    const type = CACHE_TYPES[Math.floor(rng() * CACHE_TYPES.length)]!
     caches.push({ zone, type, cycle })
   }
   return caches

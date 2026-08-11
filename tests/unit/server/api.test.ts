@@ -5,12 +5,15 @@ import type { H3Event } from 'h3'
 
 // ── Stubs for Nitro/h3 auto-imports ─────────────────────────────────
 
-let sessionUser: { user?: { id?: string; username?: string } } | null = null
+let sessionUser: {
+  user?: { id?: string; username?: string; guest?: boolean }
+} | null = null
 let requestHeaders: Record<string, string> = {}
 let requestBody: unknown = {}
 let requestQuery: Record<string, unknown> = {}
 let routerParam: string | undefined
 let thrownError: { statusCode: number; message: string } | null = null
+let sessionSets: Array<{ user: Record<string, unknown> }> = []
 
 function makeEvent(method: string, path: string): H3Event {
   return {
@@ -33,6 +36,12 @@ vi.stubGlobal('readBody', async () => requestBody)
 vi.stubGlobal('getQuery', () => requestQuery)
 vi.stubGlobal('setHeader', () => {})
 vi.stubGlobal('getRequestIP', () => '127.0.0.1')
+vi.stubGlobal(
+  'setUserSession',
+  async (_event: H3Event, payload: { user: Record<string, unknown> }) => {
+    sessionSets.push(payload)
+  },
+)
 vi.stubGlobal('getRouterParam', () => routerParam)
 
 // ── Mocks for module imports ────────────────────────────────────────
@@ -81,6 +90,7 @@ const mockRuntime = {
     getHeroStats: vi.fn(() => Effect.succeed([])),
     recordMatch: vi.fn(() => Effect.succeed(true)),
     getPlayerStats: vi.fn(() => Effect.succeed(null)),
+    updatePlayerAvatar: vi.fn(() => Effect.succeed(undefined)),
   },
 }
 
@@ -167,6 +177,7 @@ describe('API endpoints', () => {
     requestQuery = {}
     routerParam = undefined
     thrownError = null
+    sessionSets = []
     vi.clearAllMocks()
     vi.mocked(getGameRuntime).mockReturnValue(mockRuntime)
     vi.mocked(checkScopedRateLimit).mockReturnValue(true)
@@ -206,6 +217,19 @@ describe('API endpoints', () => {
       vi.mocked(getGameRuntime).mockReturnValue(null)
       await expect(joinHandler(makeEvent('POST', '/api/queue/join'))).rejects.toThrow()
       expect(thrownError?.statusCode).toBe(503)
+    })
+
+    it('403 when the session is a guest — ranked/casual persist state a guest has none of', async () => {
+      // Guest practice (server/api/auth/guest.post.ts) only ever launches the
+      // tutorial directly; matchmaking needs an MMR + match history a guest
+      // has no DB row for. Reject clearly rather than let it fall through to
+      // a real queue entry keyed on an id nothing will ever read back.
+      sessionUser = { user: { id: 'guest_a1b2c3d4e5f6', username: 'GUEST-A1B2', guest: true } }
+      await expect(joinHandler(makeEvent('POST', '/api/queue/join'))).rejects.toThrow()
+      expect(thrownError?.statusCode).toBe(403)
+      expect(thrownError?.message.toLowerCase()).toContain('sign in')
+      // Must reject BEFORE touching the rate limiter or any queue state.
+      expect(vi.mocked(checkScopedRateLimit)).not.toHaveBeenCalled()
     })
 
     it('409 when already in an active game', async () => {
@@ -756,6 +780,58 @@ describe('API endpoints', () => {
       const result = await tutorialHandler(makeEvent('POST', '/api/game/tutorial'))
       expect(result).toMatchObject({ gameId: 'tut-1', playerId: 'p1' })
       expect(result.url).toContain('/play?gameId=tut-1')
+    })
+
+    it('launches for a guest id with no DB read — a guest has no players row', async () => {
+      // Guest practice (server/api/auth/guest.post.ts): the tutorial launcher
+      // itself must never touch the DB for a guest id. It doesn't touch the
+      // DB for ANY id today (mmr is hardcoded, not read) — this pins that.
+      sessionUser = { user: { id: 'guest_a1b2c3d4e5f6', guest: true } }
+      vi.mocked(getPlayerGame).mockReturnValue(undefined)
+      vi.mocked(checkScopedRateLimit).mockReturnValue(true)
+      vi.mocked(createTutorialGame).mockResolvedValue({ gameId: 'tut-guest' } as never)
+      const tutorialHandler = (await import('../../../server/api/game/tutorial.post')).default
+      const result = await tutorialHandler(makeEvent('POST', '/api/game/tutorial'))
+      expect(result).toMatchObject({ gameId: 'tut-guest', playerId: 'guest_a1b2c3d4e5f6' })
+      expect(mockRuntime.dbService.getPlayer).not.toHaveBeenCalled()
+    })
+  })
+
+  // ── /api/player/settings ─────────────────────────────────────────
+
+  describe('PUT /api/player/settings', () => {
+    it('403s a guest session instead of 500ing on the missing players row', async () => {
+      // The actual bug this fix removes: with no explicit guard, the handler
+      // unconditionally re-reads getPlayer(playerId) at the end to re-stamp
+      // the session, then dereferences the result as `player!.id` — for a
+      // guest (no row) that throws on the null, surfacing as a bare 500.
+      sessionUser = { user: { id: 'guest_a1b2c3d4e5f6', guest: true } }
+      requestBody = { selectedAvatar: 'daemon' }
+      const settingsHandler = (await import('../../../server/api/player/settings.put')).default
+      await expect(settingsHandler(makeEvent('PUT', '/api/player/settings'))).rejects.toThrow()
+      expect(thrownError?.statusCode).toBe(403)
+      expect(thrownError?.message.toLowerCase()).toContain('sign in')
+      expect(mockRuntime.dbService.getPlayer).not.toHaveBeenCalled()
+      expect(sessionSets).toHaveLength(0)
+    })
+
+    it('still updates a real account (regression guard for the guest fix above)', async () => {
+      sessionUser = { user: { id: 'p1', username: 'alice' } }
+      requestBody = { selectedAvatar: 'daemon' }
+      mockRuntime.dbService.getPlayer.mockReturnValue(
+        Effect.succeed({
+          id: 'p1',
+          username: 'alice',
+          avatarUrl: null,
+          selectedAvatar: 'daemon',
+          passwordHash: null,
+          tutorialCompleted: false,
+        } as never),
+      )
+      const settingsHandler = (await import('../../../server/api/player/settings.put')).default
+      const result = await settingsHandler(makeEvent('PUT', '/api/player/settings'))
+      expect(mockRuntime.dbService.updatePlayerAvatar).toHaveBeenCalledWith('p1', 'daemon')
+      expect((result as { user: { selectedAvatar: string } }).user.selectedAvatar).toBe('daemon')
     })
   })
 

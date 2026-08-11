@@ -150,6 +150,12 @@ function createInitialGameState(
     // Stamp the step-0 deadline clock so a player who can never satisfy step 0
     // still gets moved along (see advanceTutorialAfterTick).
     tutorialStepSince: mode === 'tutorial' ? 0 : undefined,
+    // Set ONCE here — never mutated again. Rides in the state so snapshots and
+    // resume carry it automatically; GameLoop's processCycle derives each
+    // tick's deterministic rng from it (see server/game/engine/rng.ts). This is
+    // the one allowlisted Math.random call in the resolution path: it's the
+    // seed itself, not a resolution outcome.
+    rngSeed: Math.floor(Math.random() * 2 ** 31),
   }
 }
 

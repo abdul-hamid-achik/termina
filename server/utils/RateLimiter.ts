@@ -138,6 +138,11 @@ const SCOPE_CONFIGS: Record<string, RateLimitConfig> = {
   lobby: { maxActionsPerSecond: 2, maxBurstSize: 6 },
   // Tutorial game creation per user — cheap to ask for, but cap rapid spamming
   tutorial: { maxActionsPerSecond: 0.5, maxBurstSize: 3 },
+  // Guest session minting per IP — no credentials to brute-force, but an
+  // unauthenticated endpoint that mints a fresh identity on every call is a
+  // cheap way to spray load, so it gets the same slow budget as the
+  // credential (auth) endpoints rather than its own generous allowance.
+  guestSession: { maxActionsPerSecond: 0.5, maxBurstSize: 5 },
   // In-game chat + map pings per user — 3/s with a burst of 10
   chat: { maxActionsPerSecond: 3, maxBurstSize: 10 },
   // Reconnect / request_state recovery ops per player — cheap to send but each

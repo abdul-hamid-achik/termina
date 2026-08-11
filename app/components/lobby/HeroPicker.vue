@@ -447,7 +447,7 @@ function initialOf(name: string | undefined | null): string {
         type="button"
         data-testid="posture-tab-all"
         :aria-pressed="postureFilter === 'all'"
-        class="border px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide transition-colors"
+        class="touch-target border px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide transition-colors"
         :class="
           postureFilter === 'all'
             ? 'border-ability bg-ability/10 text-ability'
@@ -463,7 +463,7 @@ function initialOf(name: string | undefined | null): string {
         type="button"
         :data-testid="'posture-tab-' + tab.posture"
         :aria-pressed="postureFilter === tab.posture"
-        class="border px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide transition-colors"
+        class="touch-target border px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide transition-colors"
         :class="
           postureFilter === tab.posture
             ? 'border-ability bg-ability/10 text-ability'
@@ -479,13 +479,13 @@ function initialOf(name: string | undefined | null): string {
         data-testid="hero-search"
         placeholder="filter…"
         aria-label="Filter heroes by name or role"
-        class="min-w-0 flex-1 border border-border bg-bg-panel px-1.5 py-0.5 font-mono text-[0.7rem] text-text-primary placeholder:text-text-muted focus:border-ability focus:outline-none"
+        class="touch-target min-w-0 flex-1 border border-border bg-bg-panel px-1.5 py-0.5 font-mono text-[0.7rem] text-text-primary placeholder:text-text-muted focus:border-ability focus:outline-none"
       />
       <button
         type="button"
         data-testid="hero-random"
         :disabled="lockedIn"
-        class="border border-border px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-text-dim transition-colors hover:border-border-glow hover:text-text-primary disabled:opacity-35"
+        class="touch-target border border-border px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-text-dim transition-colors hover:border-border-glow hover:text-text-primary disabled:opacity-35"
         @click="pickRandom"
       >
         [Random]

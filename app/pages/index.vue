@@ -111,9 +111,11 @@ const pillars = [
             data-testid="start-tutorial"
             @click="startTutorial"
           />
-          <NuxtLink to="/lobby" class="no-underline">
-            <AsciiButton label="ENTER THE TERMINAL" :variant="tutorialDone ? 'primary' : 'ghost'" />
-          </NuxtLink>
+          <AsciiButton
+            to="/lobby"
+            label="ENTER THE TERMINAL"
+            :variant="tutorialDone ? 'primary' : 'ghost'"
+          />
         </div>
         <InlineError :message="tutorialError" />
         <p class="text-[0.75rem] text-text-dim/70">

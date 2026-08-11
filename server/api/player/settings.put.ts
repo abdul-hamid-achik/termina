@@ -1,11 +1,20 @@
 import { Effect } from 'effect'
 import { getGameRuntime } from '~~/server/plugins/game-server'
 import { isHeroId } from '~~/shared/constants/heroes'
+import { isGuestId } from '~~/server/utils/guest'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
   if (!session?.user?.id) {
     throw createError({ statusCode: 401, message: 'Authentication required' })
+  }
+
+  // Nothing here has anywhere to land for a guest: no `players` row means the
+  // unconditional getPlayer() re-read below (used to re-stamp the session)
+  // would find nothing and throw on the null. Reject up front with a clear
+  // reason instead of a bare 500.
+  if (isGuestId(session.user.id as string)) {
+    throw createError({ statusCode: 403, message: 'Sign in to change your settings' })
   }
 
   const body = await readBody<{

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useFocusTrap } from '~/composables/useFocusTrap'
 import { formatTickClock } from '~/utils/gameClock'
 import AnnouncementToast from '~/components/game/AnnouncementToast.vue'
 import TraceRail from '~/components/game/TraceRail.vue'
@@ -115,6 +116,26 @@ const localEvents = ref<
 // ── Shop & Scoreboard state ──────────────────────────────────
 const showShop = ref(false)
 const showScoreboard = ref(false)
+
+// ── Focus trap wiring for the shop/scoreboard dialogs (WAI-ARIA APG) ────
+// Registered before the "reclaim the prompt" watch below so its nextTick()
+// (restore focus to the opener) is queued first — on desktop the prompt
+// refocus that already existed wins the tie and stays the end state; on a
+// coarse pointer (no such refocus) the opener now correctly gets focus back.
+const scoreboardDialogRef = ref<HTMLElement | null>(null)
+const shopDialogRef = ref<HTMLElement | null>(null)
+const scoreboardDialogActive = computed(() => showScoreboard.value && !!gameStore.teams)
+const shopDialogActive = computed(() => showShop.value)
+const scoreboardFocusTrap = useFocusTrap(scoreboardDialogRef, scoreboardDialogActive, {
+  onClose: () => {
+    showScoreboard.value = false
+  },
+})
+const shopFocusTrap = useFocusTrap(shopDialogRef, shopDialogActive, {
+  onClose: () => {
+    showShop.value = false
+  },
+})
 
 // Quick buy pinned items (persisted in localStorage). A player who has never
 // customized them gets a curated starter set so the bar isn't empty — a new
@@ -2209,12 +2230,14 @@ function handleReturnToMenu() {
     <!-- Scoreboard overlay (Tab hold on desktop, SCORE button on mobile) -->
     <div
       v-if="showScoreboard && gameStore.teams"
+      ref="scoreboardDialogRef"
       class="absolute inset-0 z-30 flex items-center justify-center bg-bg-overlay/80 p-2 anim-fade-in-up"
       data-testid="scoreboard-overlay"
       role="dialog"
       aria-modal="true"
       aria-label="Scoreboard"
       @click.self="showScoreboard = false"
+      @keydown="scoreboardFocusTrap.onKeydown"
     >
       <div class="w-full max-w-4xl border border-border bg-bg-primary">
         <Scoreboard
@@ -2235,11 +2258,13 @@ function handleReturnToMenu() {
     <!-- Item Shop overlay -->
     <div
       v-if="showShop"
+      ref="shopDialogRef"
       class="absolute inset-0 z-30 flex items-center justify-center bg-bg-overlay/80"
       role="dialog"
       aria-modal="true"
       aria-label="Item shop"
       @click.self="showShop = false"
+      @keydown="shopFocusTrap.onKeydown"
     >
       <div
         class="flex max-h-[85vh] w-full max-w-2xl flex-col border border-border bg-bg-primary p-4"
@@ -2352,7 +2377,12 @@ function handleReturnToMenu() {
    prompt (R3-04 / R3-08). */
 .game-grid {
   display: grid;
-  grid-template-columns: minmax(190px, 2.4fr) minmax(0, 5fr) minmax(244px, 3.3fr);
+  /* War (col 1) holds only StatusLines — a handful of text lines — so at its
+     old 2.4fr share (~22% of the board) it read as a wide, mostly-empty
+     column on desktop. Its content didn't change; its share did, handed to
+     STREAM (col 2), the primary reading surface, which is what a player
+     actually spends the screen on. */
+  grid-template-columns: minmax(190px, 1.6fr) minmax(0, 5.8fr) minmax(244px, 3.3fr);
   grid-template-rows: auto 1fr auto;
   gap: 2px;
   overflow: hidden;

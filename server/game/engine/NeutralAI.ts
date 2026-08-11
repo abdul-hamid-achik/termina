@@ -17,9 +17,14 @@ function nextNeutralId(): string {
 
 export function resetNeutralIdCounter(gameId?: string): void {
   neutralIdCounter = 0
+  // crypto.randomUUID() here, deliberately not the Math.random RNG: this
+  // suffix only disambiguates test runs that omit a gameId (production always
+  // passes one) — it never runs on the tick-resolution path processCycle
+  // drives, so it's outside the determinism contract the rng.ts structural
+  // guard enforces.
   gameInstanceSuffix = gameId
     ? gameId.replace(/-/g, '_').slice(0, 8)
-    : Math.random().toString(36).slice(2, 10)
+    : crypto.randomUUID().slice(0, 8)
 }
 
 /** Jungle camp zones */
@@ -37,6 +42,7 @@ export function spawnSiltDwellers(
   cycle: number,
   hasZone?: (zoneId: string) => boolean,
   existingNeutrals: SiltDwellerState[] = [],
+  rng: () => number = Math.random,
 ): SiltDwellerState[] {
   // Spawn at cycle 60, then every 60 ticks
   if (cycle === 0 || cycle % SILT_DWELLER_INTERVAL_CYCLES !== 0) return []
@@ -56,12 +62,12 @@ export function spawnSiltDwellers(
     if (currentCount >= MAX_NEUTRALS_PER_CAMP) continue
 
     // Each camp gets 1-2 random neutrals, but respect the cap
-    const campSize = Math.min(Math.random() < 0.5 ? 1 : 2, MAX_NEUTRALS_PER_CAMP - currentCount)
+    const campSize = Math.min(rng() < 0.5 ? 1 : 2, MAX_NEUTRALS_PER_CAMP - currentCount)
     if (campSize <= 0) continue
 
     for (let i = 0; i < campSize; i++) {
       // Random wave type (weighted towards smaller ones)
-      const roll = Math.random()
+      const roll = rng()
       let waveType: SiltDwellerType
 
       if (roll < 0.4) {
@@ -101,7 +107,7 @@ export interface NeutralAction {
 /**
  * Neutral waves defend themselves - attack enemies in their zone
  */
-export function runNeutralAI(state: GameState): NeutralAction[] {
+export function runNeutralAI(state: GameState, rng: () => number = Math.random): NeutralAction[] {
   const actions: NeutralAction[] = []
 
   for (const neutral of state.neutrals ?? []) {
@@ -114,7 +120,7 @@ export function runNeutralAI(state: GameState): NeutralAction[] {
 
     if (enemies.length > 0) {
       // Attack a random enemy in range (always adjacent for neutrals)
-      const target = enemies[Math.floor(Math.random() * enemies.length)]!
+      const target = enemies[Math.floor(rng() * enemies.length)]!
       const stats = SILT_DWELLERS[neutral.type as SiltDwellerType]
       if (stats) {
         actions.push({

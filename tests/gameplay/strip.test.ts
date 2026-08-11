@@ -298,6 +298,75 @@ describe('strip: same-cycle swings are simultaneous', () => {
     expect(strips[0]!.scripAwarded).toBe(WAVE_SCRIP)
   })
 
+  it('two same-cycle swings on a Silt camp share the bounty (no "already dead" rejection)', async () => {
+    const game = await seedTwoAttackers({ team: 'audit', integ: LINE_UNIT_HP })
+    // Replace the wave with a nearly-dead camp: both swings are lethal against
+    // the snapshot, so both claim and split the bounty.
+    await game.patch((s) => ({
+      ...s,
+      waves: [],
+      neutrals: [
+        {
+          id: 'camp-a',
+          type: 'stub',
+          zone: 'seawall-cross',
+          integ: 10,
+          maxInteg: 300,
+          alive: true,
+        },
+      ],
+    }))
+    game.submit({ type: 'attack', target: { kind: 'neutral', index: 0 } }, HUMAN)
+    game.submit({ type: 'attack', target: { kind: 'neutral', index: 0 } }, ALLY)
+    await game.tick()
+
+    const s = await game.state()
+    expect(
+      s.neutrals.find((n) => n.id === 'camp-a'),
+      'the camp survived',
+    ).toBeUndefined()
+    expect(game.lastRejected).toHaveLength(0)
+
+    const kills = game.lastEvents.filter(
+      (e) => e._tag === 'neutral_killed' && (e as { neutralId?: string }).neutralId === 'camp-a',
+    ) as Array<{ playerId: string }>
+    expect(kills.map((k) => k.playerId).sort()).toEqual([ALLY, HUMAN])
+  })
+
+  it('permuting same-cycle camp swings changes nothing', async () => {
+    const outcomes = [] as Array<{ scrip: number[] }>
+    for (const order of [
+      [HUMAN, ALLY],
+      [ALLY, HUMAN],
+    ]) {
+      const game = await seedTwoAttackers({ team: 'audit', integ: LINE_UNIT_HP })
+      await game.patch((s) => ({
+        ...s,
+        waves: [],
+        neutrals: [
+          {
+            id: 'camp-b',
+            type: 'stub',
+            zone: 'seawall-cross',
+            integ: 10,
+            maxInteg: 300,
+            alive: true,
+          },
+        ],
+      }))
+      const before = await game.state()
+      for (const who of order) {
+        game.submit({ type: 'attack', target: { kind: 'neutral', index: 0 } }, who)
+      }
+      await game.tick()
+      const after = await game.state()
+      outcomes.push({
+        scrip: [HUMAN, ALLY].map((id) => after.players[id]!.scrip - before.players[id]!.scrip),
+      })
+    }
+    expect(outcomes[1]).toEqual(outcomes[0])
+  })
+
   it('two same-cycle burns share the deny instead of eating a cycle', async () => {
     const game = await seedTwoAttackers({
       team: 'chaff',

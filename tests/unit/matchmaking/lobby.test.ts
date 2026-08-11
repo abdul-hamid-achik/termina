@@ -16,6 +16,7 @@ import type { Lobby } from '~~/server/game/matchmaking/lobby'
 import type { QueueEntry } from '~~/server/game/matchmaking/queue'
 import { HERO_IDS } from '~~/shared/constants/heroes'
 import { sendToPeer } from '~~/server/services/PeerRegistry'
+import { gameIdForLobby, gameReadyPendingKey } from '~~/server/game/matchmaking/gameReadyClaim'
 
 // ── Mocks ──────────────────────────────────────────────────────────
 
@@ -612,6 +613,61 @@ describe('Lobby', () => {
       cancelLobby(lobbyId, ws as never)
       await vi.advanceTimersByTimeAsync(3500)
 
+      expect(vi.mocked(redis.publish)).not.toHaveBeenCalled()
+      vi.useRealTimers()
+      createdLobbyId = null
+    })
+  })
+
+  describe('durable game_ready handoff (owner audit item 1)', () => {
+    it('mirrors game_ready to Redis BEFORE publishing it', async () => {
+      vi.useFakeTimers()
+      const entries = makeQueueEntries(10)
+      const lobby = createLobby(entries, ws as never, redis as never, db as never)
+      const lobbyId = lobby.id
+      createdLobbyId = lobbyId
+      completeBanPhase(lobby)
+
+      vi.advanceTimersByTime(10 * 15000 + 1500)
+      expect(lobby.phase).toBe('starting')
+
+      await vi.advanceTimersByTimeAsync(3000)
+
+      const gameId = gameIdForLobby(lobbyId)
+      expect(vi.mocked(redis.set)).toHaveBeenCalledWith(
+        gameReadyPendingKey(gameId),
+        expect.stringContaining(lobbyId),
+        expect.any(Number),
+      )
+      expect(vi.mocked(redis.publish)).toHaveBeenCalledWith(
+        'matchmaking:game_ready',
+        expect.stringContaining(lobbyId),
+      )
+      // The durable mirror must land before the fire-and-forget publish — a
+      // crash right after the publish is exactly the window this protects.
+      const setOrder = vi.mocked(redis.set).mock.invocationCallOrder[0]!
+      const publishOrder = vi.mocked(redis.publish).mock.invocationCallOrder[0]!
+      expect(setOrder).toBeLessThan(publishOrder)
+
+      vi.useRealTimers()
+      createdLobbyId = null
+    })
+
+    it('does not mirror or publish when cancelled before the countdown resolves', async () => {
+      vi.useFakeTimers()
+      const entries = makeQueueEntries(10)
+      const lobby = createLobby(entries, ws as never, redis as never, db as never)
+      const lobbyId = lobby.id
+      createdLobbyId = lobbyId
+      completeBanPhase(lobby)
+
+      vi.advanceTimersByTime(10 * 15000 + 1500)
+      expect(lobby.phase).toBe('starting')
+
+      cancelLobby(lobbyId, ws as never)
+      await vi.advanceTimersByTimeAsync(3500)
+
+      expect(vi.mocked(redis.set)).not.toHaveBeenCalled()
       expect(vi.mocked(redis.publish)).not.toHaveBeenCalled()
       vi.useRealTimers()
       createdLobbyId = null

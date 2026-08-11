@@ -585,6 +585,7 @@ function resolveInstantCastsPhase(
   waveKills: Array<{ playerId: string; waveId: string; waveType: 'line' | 'sweep' | 'breach' }>,
   neutralKills: Array<{ playerId: string; neutralId: string }>,
   findHero: (name: string) => string | null,
+  rng: () => number = Math.random,
 ): {
   players: Record<string, PlayerState>
   zones: Record<string, ZoneRuntimeState>
@@ -616,6 +617,7 @@ function resolveInstantCastsPhase(
       waveKills,
       neutralKills,
       findHero,
+      rng,
     )
     players = result.players
     zones = result.zones
@@ -730,6 +732,7 @@ function resolveAttackPhase(
   iceKills: Array<{ zone: string; team: TeamId }>,
   findHeroByName: (name: string) => string | null,
   getCachedItemStats: (playerId: string, items: (string | null)[]) => ItemStats,
+  rng: () => number = Math.random,
 ): {
   players: Record<string, PlayerState>
   waves: WaveUnitState[]
@@ -770,6 +773,13 @@ function resolveAttackPhase(
   const waveAttackGroups = new Map<
     string,
     { wave: WaveUnitState; attackers: Array<{ playerId: string; damage: number }> }
+  >()
+  // Silt camps get the same treatment: swings batch per camp and resolve
+  // against the phase-start snapshot (see the wave comment above).
+  const neutralsAtPhaseStart = [...neutrals]
+  const neutralAttackGroups = new Map<
+    string,
+    { neutral: SiltDwellerState; attackers: Array<{ playerId: string; damage: number }> }
   >()
 
   for (const action of attacks) {
@@ -865,7 +875,7 @@ function resolveAttackPhase(
       let critMultiplier = 1
       if (ownedCrits.length > 0) {
         const best = ownedCrits.reduce((a, b) => (b.chance > a.chance ? b : a))
-        if (Math.random() < best.chance) critMultiplier = best.multiplier
+        if (rng() < best.chance) critMultiplier = best.multiplier
       }
 
       attackDamage = Math.round(attackDamage * critMultiplier)
@@ -875,13 +885,13 @@ function resolveAttackPhase(
         bonusMagicDamage = TRUESTRIKE_RIG_BONUS_DAMAGE
       }
 
-      if (attacker.items.includes('arc_coil') && Math.random() < 0.25) {
+      if (attacker.items.includes('arc_coil') && rng() < 0.25) {
         const chainTargets = Object.values(players).filter(
           (p) =>
             p.zone === attacker.zone && p.team !== attacker.team && p.alive && p.id !== target.id,
         )
         if (chainTargets.length > 0) {
-          const chainTarget = chainTargets[Math.floor(Math.random() * chainTargets.length)]!
+          const chainTarget = chainTargets[Math.floor(rng() * chainTargets.length)]!
           const chainDamage = isDamageImmune(chainTarget, 'code')
             ? 0
             : Math.round(
@@ -958,7 +968,7 @@ function resolveAttackPhase(
       }
 
       let blockedDamage = 0
-      if (target.items.includes('bulwark_plate') && Math.random() < BULWARK_PLATE_BLOCK_CHANCE) {
+      if (target.items.includes('bulwark_plate') && rng() < BULWARK_PLATE_BLOCK_CHANCE) {
         blockedDamage = BULWARK_PLATE_BLOCK_AMOUNT
       }
 
@@ -1014,7 +1024,7 @@ function resolveAttackPhase(
 
       const newInteg = Math.max(0, targetPendingHp - hpLoss)
 
-      if (attacker.items.includes('concussion_hammer') && Math.random() < 0.25) {
+      if (attacker.items.includes('concussion_hammer') && rng() < 0.25) {
         // cyclesRemaining 2 = one gated action: reaped same-cycle by cycleAllBuffs
         // (see the applyBuff note), so 1 would never reach the next validateAction.
         newBuffs.push({ id: 'stun', stacks: 1, cyclesRemaining: 2, source: attacker.id })
@@ -1201,12 +1211,12 @@ function resolveAttackPhase(
       // Zone-local index, mirroring the 'wave' branch above: neutrals are now
       // vision-filtered before broadcast (fog parity with waves), so a global
       // array index would name a different camp than the one the client saw.
-      const resolved = neutralInZoneByIndex(neutrals, attacker.zone, cmd.target.index)
+      const resolved = neutralInZoneByIndex(neutralsAtPhaseStart, attacker.zone, cmd.target.index)
       if (!resolved) {
         miss('No neutral wave at that index')
         continue
       }
-      const { neutral, globalIdx: neutralIdx } = resolved
+      const { neutral } = resolved
       if (!neutral.alive) {
         miss('That neutral is already dead')
         continue
@@ -1214,23 +1224,14 @@ function resolveAttackPhase(
 
       const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
       const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
-      const newInteg = Math.max(0, neutral.integ - attackDamage)
 
-      neutrals[neutralIdx] = { ...neutral, integ: newInteg, alive: newInteg > 0 }
+      // Swings batch per camp and land after this loop against the snapshot —
+      // arrival order can't decide the kill credit, and the second swing is
+      // no longer told the camp is "already dead".
+      const group = neutralAttackGroups.get(neutral.id) ?? { neutral, attackers: [] }
+      group.attackers.push({ playerId: action.playerId, damage: attackDamage })
+      neutralAttackGroups.set(neutral.id, group)
       holdTarget()
-
-      if (newInteg <= 0) {
-        neutralKills.push({ playerId: action.playerId, neutralId: neutral.id })
-      }
-
-      events.push({
-        _tag: 'damage',
-        cycle: state.cycle,
-        sourceId: action.playerId,
-        targetId: neutral.id,
-        amount: attackDamage,
-        damageType: 'kinetic',
-      })
     } else if (cmd.target.kind === 'terminal') {
       const enemyTeam: TeamId = attacker.team === 'chaff' ? 'audit' : 'chaff'
       if (attacker.zone !== TERMINAL_ZONES[enemyTeam]) {
@@ -1319,6 +1320,43 @@ function resolveAttackPhase(
 
     for (const s of strippers) {
       waveKills.push({ playerId: s.playerId, waveId, waveType: wave.type })
+    }
+  }
+
+  // Same batch-clock resolution for Silt camps. No strip window here: a swing
+  // lethal against the snapshot claims the kill (ties share); a camp downed
+  // only by the cycle's combined damage credits every hand. The bounty split
+  // happens where neutralKills is paid out.
+  for (const [neutralId, group] of [...neutralAttackGroups.entries()].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    const neutral = group.neutral
+    const attackers = [...group.attackers].sort((a, b) => a.playerId.localeCompare(b.playerId))
+    const totalDamage = attackers.reduce((sum, a) => sum + a.damage, 0)
+    const lethal = attackers.filter((a) => a.damage >= neutral.integ)
+    const goesDown = totalDamage >= neutral.integ
+    const claimants = lethal.length > 0 ? lethal : goesDown ? attackers : []
+    const newInteg = goesDown ? 0 : neutral.integ - totalDamage
+
+    const liveIdx = neutrals.findIndex((n) => n.id === neutralId)
+    const live = neutrals[liveIdx]
+    if (live) {
+      neutrals[liveIdx] = { ...live, integ: newInteg, alive: newInteg > 0 }
+    }
+
+    for (const a of attackers) {
+      events.push({
+        _tag: 'damage',
+        cycle: state.cycle,
+        sourceId: a.playerId,
+        targetId: neutralId,
+        amount: a.damage,
+        damageType: 'kinetic',
+      })
+    }
+
+    for (const c of claimants) {
+      neutralKills.push({ playerId: c.playerId, neutralId })
     }
   }
 
@@ -1912,28 +1950,45 @@ function resolvePostShopPhases(
     }
   }
 
-  // Neutral kill scrip + XP
+  // Neutral kill scrip + XP — grouped per camp: simultaneous lethal swings
+  // share the bounty evenly (remainder pennies deterministic by sorted
+  // playerId), the camp is removed once, and iteration is sorted so nothing
+  // depends on message arrival order.
+  const killsByNeutral = new Map<string, string[]>()
   for (const kill of neutralKills) {
-    const neutral = neutrals.find((n) => n.id === kill.neutralId)
+    const list = killsByNeutral.get(kill.neutralId) ?? []
+    if (!list.includes(kill.playerId)) list.push(kill.playerId)
+    killsByNeutral.set(kill.neutralId, list)
+  }
+  for (const [neutralId, playerIds] of [...killsByNeutral.entries()].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    const neutral = neutrals.find((n) => n.id === neutralId)
     if (!neutral) continue
     const stats = SILT_DWELLERS[neutral.type as SiltDwellerType]
     if (!stats) continue
-    const killer = players[kill.playerId]
-    if (killer) {
+    const claimants = [...playerIds].sort()
+    for (const [i, playerId] of claimants.entries()) {
+      const killer = players[playerId]
+      if (!killer) continue
+      const scripShare =
+        Math.floor(stats.scrip / claimants.length) + (i < stats.scrip % claimants.length ? 1 : 0)
+      const xpShare =
+        Math.floor(stats.xp / claimants.length) + (i < stats.xp % claimants.length ? 1 : 0)
       players = {
         ...players,
-        [kill.playerId]: { ...killer, scrip: killer.scrip + stats.scrip, xp: killer.xp + stats.xp },
+        [playerId]: { ...killer, scrip: killer.scrip + scripShare, xp: killer.xp + xpShare },
       }
       events.push({
         _tag: 'neutral_killed' as const,
         cycle: state.cycle,
-        playerId: kill.playerId,
+        playerId,
         neutralId: neutral.id,
         neutralType: neutral.type,
         zone: neutral.zone,
       })
     }
-    neutrals = neutrals.filter((n) => n.id !== kill.neutralId)
+    neutrals = neutrals.filter((n) => n.id !== neutralId)
   }
 
   // Ice kill scrip
@@ -2009,6 +2064,10 @@ function resolvePostShopPhases(
 export function resolveActions(
   state: GameState,
   actions: PlayerAction[],
+  /** Deterministic per-tick rng (see rng.ts) — every crit/proc roll in this
+   *  resolution pass draws from it. Defaults to Math.random for back-compat
+   *  with existing direct callers/tests. */
+  rng: () => number = Math.random,
 ): Effect.Effect<{
   state: GameState
   events: GameEngineEvent[]
@@ -2199,6 +2258,7 @@ export function resolveActions(
         waveKills,
         neutralKills,
         findHeroByNameCached,
+        rng,
       )
       players = result.players
       zones = result.zones
@@ -2255,6 +2315,7 @@ export function resolveActions(
         iceKills,
         findHeroByNameCached,
         getCachedItemStats,
+        rng,
       )
       players = result.players
       waves = result.waves
@@ -2281,6 +2342,7 @@ export function resolveActions(
         waveKills,
         neutralKills,
         findHeroByNameCached,
+        rng,
       )
       players = result.players
       zones = result.zones
@@ -2475,6 +2537,7 @@ function resolveHeroCast(
   waveKills: Array<{ playerId: string; waveId: string; waveType: 'line' | 'sweep' | 'breach' }>,
   neutralKills: Array<{ playerId: string; neutralId: string }>,
   findHero: (name: string) => string | null,
+  rng: () => number = Math.random,
 ): {
   players: Record<string, PlayerState>
   zones: GameState['zones']
@@ -2518,7 +2581,7 @@ function resolveHeroCast(
   // Effect.either keeps AbilityError failures as values — an uncaught defect
   // here would abort the entire cycle (GameLoop recovers but loses actions).
   const result = Effect.runSync(
-    Effect.either(resolveAbility(tempState, action.playerId, cmd.ability, cmd.target)),
+    Effect.either(resolveAbility(tempState, action.playerId, cmd.ability, cmd.target, rng)),
   )
 
   if (Either.isLeft(result)) {
@@ -2689,10 +2752,7 @@ function resolveHeroCast(
   // so the echo only happens if the caster can afford both casts. Emits plain
   // damage/heal events from the echo's INTEG diff (no Spite Plate/Overclock recursion
   // on the echo — deliberately simple).
-  if (
-    hasTalentCastEffect(caster, 'double_cast', cmd.ability) &&
-    Math.random() < DOUBLE_CAST_CHANCE
-  ) {
+  if (hasTalentCastEffect(caster, 'double_cast', cmd.ability) && rng() < DOUBLE_CAST_CHANCE) {
     const echoCaster = newPlayers[action.playerId]
     if (echoCaster) {
       const echoPlayers = {
@@ -2712,7 +2772,7 @@ function resolveHeroCast(
         terminals,
       }
       const echoResult = Effect.runSync(
-        Effect.either(resolveAbility(echoState, action.playerId, cmd.ability, cmd.target)),
+        Effect.either(resolveAbility(echoState, action.playerId, cmd.ability, cmd.target, rng)),
       )
       if (Either.isRight(echoResult)) {
         const echoNewPlayers = echoResult.right.state.players

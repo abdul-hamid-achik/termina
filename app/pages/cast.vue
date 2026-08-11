@@ -518,9 +518,7 @@ const {
           data-testid="start-tutorial"
           @click="() => startTutorial(selectedId)"
         />
-        <NuxtLink to="/lobby" class="no-underline">
-          <AsciiButton label="ENTER THE TERMINAL" variant="ghost" />
-        </NuxtLink>
+        <AsciiButton label="ENTER THE TERMINAL" variant="ghost" to="/lobby" />
       </div>
       <InlineError :message="tutorialError" />
     </footer>

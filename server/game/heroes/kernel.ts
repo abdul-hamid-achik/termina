@@ -43,6 +43,7 @@ function resolveHeroAbility(
   slot: AbilitySlot,
   level: number,
   target?: TargetRef,
+  rng: () => number = Math.random,
 ): Effect.Effect<AbilityResult, AbilityError> {
   switch (slot) {
     case 'q':
@@ -52,7 +53,7 @@ function resolveHeroAbility(
     case 'e':
       return resolveE(state, player, level)
     case 'r':
-      return resolveR(state, player, level)
+      return resolveR(state, player, level, rng)
   }
 }
 
@@ -202,6 +203,7 @@ function resolveR(
   state: GameState,
   player: PlayerState,
   level: number,
+  rng: () => number = Math.random,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
     const bwCost = scaleValue(R_MANA, level)
@@ -215,7 +217,7 @@ function resolveR(
     const enemies = getEnemiesInZone(state, player)
     const displaced = enemies.map((e) => {
       const adjacent = getAdjacentZones(e.zone)
-      const randomZone = adjacent[Math.floor(Math.random() * adjacent.length)] ?? e.zone
+      const randomZone = adjacent[Math.floor(rng() * adjacent.length)] ?? e.zone
       return applyBuff(
         { ...e, zone: randomZone },
         { id: 'feared', stacks: 1, cyclesRemaining: 1, source: player.id },

@@ -8,6 +8,13 @@ declare module '#auth-utils' {
     hasPassword: boolean
     /** True once the guided tutorial is done — drives the new-player funnel. */
     tutorialCompleted: boolean
+    /**
+     * True for an ephemeral guest session (see server/api/auth/guest.post.ts):
+     * no `players` DB row backs this id, so anything that reads/writes one
+     * must skip guests rather than 404/500. Absent (not merely false) for
+     * every real account.
+     */
+    guest?: boolean
   }
 }
 

@@ -46,9 +46,7 @@ function goHome() {
 
     <div class="flex flex-wrap justify-center gap-3">
       <AsciiButton label="RETURN HOME" variant="primary" @click="goHome" />
-      <NuxtLink to="/learn" class="no-underline">
-        <AsciiButton label="LEARN THE COMMANDS" variant="ghost" />
-      </NuxtLink>
+      <AsciiButton label="LEARN THE COMMANDS" variant="ghost" to="/learn" />
     </div>
 
     <div class="text-[0.8rem]">

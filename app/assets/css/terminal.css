@@ -19,7 +19,15 @@
   --border-glow: 64 64 110;
   --text-primary: 232 234 240;
   --text-dim: 138 148 160;
-  --text-muted: 90 100 115;
+  /* --text-muted was 90 100 115 (2.97:1 on --bg-panel / 3.25:1 on --bg-primary
+     — below WCAG AA 4.5:1) but carries functional info everywhere (K/D/A
+     separators, field labels, input placeholders, the lobby "VS" label — see
+     grep on `text-text-muted`), not decoration. Brightened to a lighter dim
+     that clears 4.5:1 against every --bg-* surface it appears on while
+     staying visibly dimmer than --text-dim: 4.61:1 (--bg-elevated, the
+     tightest case) / 4.93:1 (--bg-panel) / 5.13:1 (--bg-secondary) /
+     5.39:1 (--bg-primary). */
+  --text-muted: 124 136 149;
 
   /* ── PHOSPHOR (C3a) ─────────────────────────────────────────────
      One hue: monochrome green CRT. The semantic tokens below are ALIASES
@@ -49,9 +57,23 @@
   --color-self: var(--p-5);
   --color-gold: var(--p-4);
   --color-bw: var(--p-4);
-  --color-damage: var(--p-2);
+  /* --color-damage and --color-system used to alias p-2 (2.88:1 on --bg-panel
+     / 3.15:1 on --bg-primary — the audit's "~3.2:1" finding). Stream.vue
+     paints the combat-log damage numbers and the [SYS] line with them —
+     functional reads, not decoration — so they owe the 4.5:1 body-text floor,
+     not just the 3:1 floor p-2 stays valid for as a non-text UI color
+     (--color-chaff-deep, a ProgressBar fill, is untouched and still p-2).
+     Re-aliased onto brighter existing ramp steps instead of brightening p-2
+     itself, so the ramp's own minimum inter-step luminance delta (tested in
+     tests/unit/utils/palette.test.ts) isn't disturbed:
+       --color-damage → p-3: 7.38:1 on --bg-primary / 6.75:1 on --bg-panel
+       --color-system → p-4: 13.48:1 on --bg-primary / 12.32:1 on --bg-panel
+     p-3 (not p-4) for damage, and p-4 (not p-3) for system, because the "no
+     pair the log renders side by side lands on the same ramp step" contract
+     requires --color-system to differ from --color-chaff (p-3). */
+  --color-damage: var(--p-3);
   --color-healing: var(--p-4);
-  --color-system: var(--p-2);
+  --color-system: var(--p-4);
   --color-zone: var(--p-3);
   --color-ability: var(--p-4);
   --color-warn: var(--p-accent);

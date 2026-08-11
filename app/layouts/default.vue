@@ -18,8 +18,14 @@ const authNavLinks = [
   { label: 'SETTINGS', to: '/profile/settings' },
 ]
 
+// A guest session (server/api/auth/guest.post.ts) is logged in — the header
+// would otherwise treat it like a real account — but it has no `players` DB
+// row, so PROFILE/SETTINGS have nothing to show and settings.put.ts rejects
+// it outright. Route guests to the same links an anonymous visitor gets.
+const isGuest = computed(() => authStore.user?.guest === true)
+
 const navLinks = computed(() =>
-  loggedIn.value ? [...publicNavLinks, ...authNavLinks] : publicNavLinks,
+  loggedIn.value && !isGuest.value ? [...publicNavLinks, ...authNavLinks] : publicNavLinks,
 )
 
 // Single logout path: the auth store resets the game/lobby stores, then clears
@@ -52,8 +58,26 @@ function logout() {
           [{{ link.label }}]
         </NuxtLink>
         <ClientOnly>
+          <!-- Guest: keep the affordance to one line — a plain [GUEST] tag plus
+               the nudge that an account is only needed to KEEP progress, not
+               to play. `next=practice` on this login link is deliberate: if a
+               mid-practice guest signs in, whatever practice game is running
+               was never going to persist anyway, and this at least resumes the
+               same funnel rather than dropping them on the home page. -->
+          <template v-if="isGuest">
+            <span class="px-1 py-1 text-[0.8rem] text-text-dim" data-testid="guest-tag"
+              >[GUEST]</span
+            >
+            <NuxtLink
+              to="/login"
+              class="px-1 py-1 text-[0.8rem] text-chaff no-underline transition-colors duration-150 hover:text-ability"
+              data-testid="guest-signin-nudge"
+            >
+              [SIGN IN] to keep progress
+            </NuxtLink>
+          </template>
           <button
-            v-if="loggedIn"
+            v-else-if="loggedIn"
             class="cursor-pointer border-none bg-transparent px-1 py-1 text-[0.8rem] text-text-dim transition-colors duration-150 hover:text-audit"
             @click="logout"
           >
