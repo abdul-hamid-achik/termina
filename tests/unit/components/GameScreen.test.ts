@@ -646,9 +646,11 @@ describe('GameScreen responsive grid', () => {
 
   it('keeps TRACE on screen: it gets its own row and never scrolls', () => {
     // Losing the route costs spatial sense; TRACE is pinned and does not scroll
-    // away. The cap lives on the TRACK so DECK cannot steal the rail.
+    // away. fit-content(60%): the track sizes to TRACE's content but the 60%
+    // cap still stops it from stealing the rail — a fixed 60% share handed
+    // TRACE half the rail while holding four lines (first-playtest finding).
     expect(SFC).toMatch(
-      /\.game-grid__rail\s*\{[^}]*grid-template-rows:\s*minmax\(0,\s*60%\)\s+minmax\(0,\s*1fr\)/s,
+      /\.game-grid__rail\s*\{[^}]*grid-template-rows:\s*fit-content\(60%\)\s+minmax\(0,\s*1fr\)/s,
     )
     // Both children pinned so TRACE cannot shift DECK into the spatial slot.
     expect(SFC).toMatch(/\.rail-map\s*\{[^}]*grid-row:\s*1/s)
