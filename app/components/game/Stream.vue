@@ -296,7 +296,11 @@ function eventAriaLabel(line: CombatLine): string {
       <div v-for="beat in beats" :key="beat.cycle" class="mb-0.5">
         <!-- Cycle beat header. The recap rides INSIDE the sticky block so the
              turn's bottom line stays on screen while its detail scrolls away. -->
-        <div class="sticky top-0 z-[1] bg-bg-panel/95 select-none">
+        <!-- Fully opaque + z-[2]: at /95 the scrolling lines beneath ghosted
+             through the stuck header (double-exposure text), and the event
+             rows' fade-in transforms create stacking contexts that could
+             paint over a z-[1] header mid-animation. -->
+        <div class="sticky top-0 z-[2] bg-bg-panel select-none">
           <div class="flex items-center gap-1 px-2 py-px t-hud-xs tracking-wider text-text-muted">
             <span class="text-border">──</span>
             <span class="font-bold">CYCLE {{ beat.cycle }}</span>

@@ -564,6 +564,23 @@ export function processCycle(
       }
     }
 
+    // The Ably transport feeds the client from state.events (embedded in
+    // cycle_state), so a bridged teleport must not survive in BOTH channels —
+    // step 14's merge would then hand the feed the same teleport twice (the
+    // wire original + the bridged _tag copy converted back). Retire the wire
+    // originals once bridged. The dmz ability_used wire event STAYS: its
+    // bridge emits damage events, not a duplicate cast line.
+    if (
+      currentState.events.slice(eventsBeforeBuffTick).some((e) => e.type === 'teleport_complete')
+    ) {
+      currentState = {
+        ...currentState,
+        events: currentState.events.filter(
+          (e, i) => i < eventsBeforeBuffTick || e.type !== 'teleport_complete',
+        ),
+      }
+    }
+
     // 11. Handle deaths — check for newly dead players, attribute kills.
     // Damage dealt this cycle (attacks, abilities, DoTs) feeds assist credit.
     trackHeroDamage(gameId, currentState, allEvents)

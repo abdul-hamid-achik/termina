@@ -234,7 +234,8 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         salience: actorSalience(p.playerId, ctx),
       }
 
-    case 'ability_used':
+    case 'ability_used': {
+      const castSalience = salience(p.playerId, p.targetId, ctx)
       return {
         cycle,
         text: `${label(p.playerId)} cast ${ctx.abilityLabel(p.abilityId)}${p.targetId ? ` on ${label(p.targetId)}` : ''}`,
@@ -242,8 +243,16 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         // Source→target, not actor-only: a cast aimed at ME is my business, and
         // the story view sorts by salience — ranking it as a bystander event
         // printed the enemy's spell BELOW the damage it caused.
-        salience: salience(p.playerId, p.targetId, ctx),
+        salience: castSalience,
+        // An ally's SELF-cast (heal/buff upkeep, target === caster or no
+        // target) is housekeeping, not story — the story view drops it.
+        // Your own casts and anything aimed at another unit stay.
+        minor:
+          castSalience !== 'mine-in' &&
+          castSalience !== 'mine-out' &&
+          (!p.targetId || p.targetId === p.playerId),
       }
+    }
 
     case 'status_applied': {
       // Loud and uppercase: being disabled is the single most consequential

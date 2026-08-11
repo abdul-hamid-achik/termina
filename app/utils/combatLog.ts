@@ -52,6 +52,13 @@ export interface CombatLine {
    * between heroes, kills, abilities, etc. leave it undefined so they never merge.
    */
   dedupKey?: string
+  /**
+   * Housekeeping noise the STORY view drops entirely (verbose keeps it): a
+   * teammate buffing/healing THEMSELVES from across the map. Bots self-cast
+   * every few cycles, and in a tutorial the ally's upkeep drowned the
+   * player's own game out of their feed.
+   */
+  minor?: boolean
   /** Damage this line represents. On a collapsed run it is the run's total, so
    *  the per-cycle recap never has to re-derive it from the rendered text. */
   dmgAmount?: number
@@ -294,7 +301,8 @@ export function digestTeamfightNoise(lines: CombatLine[], threshold = 4): Combat
  * objectives loud, the farm digest last. Stable within a priority band.
  */
 export function buildTickStoryView(lines: CombatLine[]): CombatLine[] {
-  const digested = digestFarmNoise(lines)
+  // Bystander self-cast upkeep is verbose-only — see CombatLine.minor.
+  const digested = digestFarmNoise(lines.filter((l) => !l.minor))
   // Stable sort per cycle: decorate with the original index, sort, strip.
   const sorted = digested
     .map((line, i) => ({ line, i }))

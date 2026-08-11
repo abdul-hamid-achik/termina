@@ -112,7 +112,10 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
 
     <div class="flex flex-col gap-0.5">
       <div class="flex items-center gap-1.5">
-        <span class="w-5 shrink-0 text-text-dim">INTEG</span>
+        <!-- w-10, not w-5: "INTEG" is 5 mono chars (~40px) — at w-5 the bar's
+             opening bracket painted over the trailing G. BW matches for
+             bar alignment. -->
+        <span class="w-10 shrink-0 text-text-dim">INTEG</span>
         <ProgressBar
           :value="hero.integ"
           :max="hero.maxInteg"
@@ -124,7 +127,7 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
         />
       </div>
       <div class="flex items-center gap-1.5">
-        <span class="w-5 shrink-0 text-text-dim">BW</span>
+        <span class="w-10 shrink-0 text-text-dim">BW</span>
         <ProgressBar
           :value="hero.bw"
           :max="hero.maxBw"
@@ -162,7 +165,7 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
           <!-- Ability tooltip -->
           <div
             v-if="isOpen(key) && getAbilityDef(key)"
-            class="absolute bottom-full left-0 z-40 mb-1 w-56 cursor-default border border-border bg-bg-secondary p-2 text-[0.7rem] shadow-lg"
+            class="absolute top-full left-0 z-40 mt-1 w-56 cursor-default border border-border bg-bg-secondary p-2 text-[0.7rem] shadow-lg"
             :data-testid="`ability-tooltip-${key}`"
             @click.stop
           >
@@ -246,11 +249,13 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
       </div>
     </div>
 
-    <div class="mt-1 flex items-center gap-1">
-      <span class="font-bold text-gold text-glow-gold">$</span>
+    <!-- The currency is SCRIP — a dollar sign is a lexicon violation (the
+         register is dry and procedural; no fiat symbols in TERMINA). -->
+    <div class="mt-1 flex items-baseline gap-1">
       <span class="t-h2 text-gold text-glow-gold t-mono-num">{{
         hero.scrip.toLocaleString()
       }}</span>
+      <span class="font-bold text-gold/80">sc</span>
     </div>
   </div>
 </template>

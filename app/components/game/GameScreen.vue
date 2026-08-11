@@ -2456,7 +2456,12 @@ function handleReturnToMenu() {
      `auto` first track sized by the board's natural height ate the entire rail
      — Hero Status collapsed to 0px with no scrollbar to reach it. */
   display: grid;
-  grid-template-rows: minmax(0, 60%) minmax(0, 1fr);
+  /* fit-content(60%): TRACE sizes to its CONTENT up to a 60% cap. The old
+     fixed minmax(0,60%) handed TRACE more than half the rail even when it
+     held four lines (one-lane maps, early game) while DECK crammed below.
+     The cap still stops a busy 5v5 TRACE from eating the whole rail (the
+     hazard the original comment warned about with a plain `auto` track). */
+  grid-template-rows: fit-content(60%) minmax(0, 1fr);
   gap: 0.25rem;
   min-height: 0;
 }
