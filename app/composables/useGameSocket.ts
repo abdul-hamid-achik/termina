@@ -3,6 +3,7 @@ import type { ClientMessage, ServerMessage } from '~~/shared/types/protocol'
 import { useGameStore } from '~/stores/game'
 import { socketLog } from '~/utils/logger'
 import { reconnectDelay } from '~/utils/reconnect'
+import { routeServerMessage } from '~/utils/gameMessageRouter'
 
 const MAX_RECONNECT_DELAY = 30_000
 const MAX_RECONNECT_ATTEMPTS = 20
@@ -149,99 +150,10 @@ export function useGameSocket() {
         ...('cycle' in msg ? { cycle: msg.cycle } : {}),
       })
 
-      // Route to game store
-      switch (msg.type) {
-        case 'cycle_state':
-          gameStore.updateFromCycle(msg)
-          break
-        case 'action_ack':
-          if (msg.accepted) {
-            // The server holds our order for the open batch — flip the HUD's
-            // CYCLE line from OPEN to COMMITTED.
-            gameStore.markOrderCommitted()
-          } else {
-            // Reverse the optimistic COMMITTED and reopen the action slot —
-            // the server never queued this order.
-            gameStore.markOrderRejected()
-            gameStore.addAnnouncement(
-              msg.reason === 'late'
-                ? `[CYCLE] Order arrived after the batch committed — retype it for cycle ${msg.cycle ?? '?'}`
-                : '[CYCLE] Order stamped for a future cycle — refresh if this repeats',
-              'warning',
-            )
-          }
-          break
-        case 'events':
-          gameStore.addEvents(msg.events)
-          break
-        case 'announcement':
-          gameStore.addAnnouncement(msg.message, msg.level)
-          break
-        case 'error':
-          socketLog.warn('Server error', { code: msg.code, message: msg.message })
-          // NOT_ASSIGNED is terminal, not transient: the server no longer maps
-          // us to this game, so join_game and reconnect will answer the same
-          // forever and the HUD stays frozen on a board that will never tick
-          // again. `game_not_found` below is the equivalent recovery, but it
-          // only answers `request_state` — which no client ever sends — so this
-          // was the one path out and it merely toasted. Being unassigned on the
-          // post-game screen is normal (cleanup releases the assignment), so
-          // leave a finished match alone.
-          if (msg.code === 'NOT_ASSIGNED' && gameStore.phase !== 'ended') {
-            gameStore.addAnnouncement(
-              '[ERROR] This match is no longer active. Returning to lobby...',
-              'error',
-            )
-            disconnect()
-            setTimeout(() => {
-              window.location.href = '/lobby'
-            }, 2000)
-            break
-          }
-          gameStore.addAnnouncement(`[ERROR] ${msg.message}`, 'error')
-          break
-        case 'game_over':
-          gameStore.setGameOver(
-            msg.winner,
-            msg.stats,
-            msg.mmrChange,
-            msg.ranked ?? true,
-            msg.durationCycles,
-          )
-          break
-        case 'player_disconnect': {
-          // Surface the drop so the team knows they're a player down (was sent by
-          // the server but silently dropped — no case handled it).
-          const who = gameStore.allPlayers[msg.playerId]?.name ?? 'A player'
-          gameStore.addAnnouncement(`${who} disconnected`, 'warning')
-          break
-        }
-        case 'player_reconnect': {
-          // The flip side of player_disconnect — but never announce yourself.
-          if (msg.playerId !== gameStore.playerId) {
-            const who = gameStore.allPlayers[msg.playerId]?.name ?? 'A player'
-            gameStore.addAnnouncement(`${who} reconnected`, 'info')
-          }
-          break
-        }
-        case 'game_starting':
-          if (!gameStore.gameId) {
-            socketLog.info('game_starting received — setting gameId', { gameId: msg.gameId })
-            gameStore.gameId = msg.gameId
-          }
-          break
-        case 'full_state':
-          gameStore.updateFromCycle({ type: 'cycle_state', cycle: msg.cycle, state: msg.state })
-          break
-        case 'game_not_found':
-          socketLog.warn('Game not found', { gameId: msg.gameId })
-          gameStore.addAnnouncement('[ERROR] Game not found. Redirecting to lobby...', 'error')
-          disconnect()
-          setTimeout(() => {
-            window.location.href = '/lobby'
-          }, 2000)
-          break
-      }
+      // Route to game store — the store-routing half of this switch is
+      // shared with the Ably+HTTP transport (useGameChannel.ts) via
+      // routeServerMessage; only WS-specific plumbing stays here.
+      routeServerMessage(gameStore, msg, { disconnect })
 
       // Notify all registered handlers
       for (const handler of handlers) {

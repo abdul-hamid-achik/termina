@@ -66,6 +66,11 @@ export default defineNuxtConfig({
     public: {
       wsUrl: '',
       apiUrl: '',
+      // Feature flag for the Ably+HTTP realtime transport migration (spike/
+      // workflow-tick): false = legacy DO WebSocket (useGameSocket), true =
+      // Ably Realtime + POST /api/game/action (useGameChannel). Selected via
+      // useGameTransport() — see app/composables/useGameTransport.ts.
+      ablyTransport: false,
     },
     // Server-only: comma-separated allow-list of browser Origins permitted
     // credentialed CORS on /api/ (set NUXT_CORS_ALLOWED_ORIGINS to the Vercel

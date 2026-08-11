@@ -16,11 +16,12 @@ import {
 import type { GameState, ZoneRuntimeState } from '~~/shared/types/game'
 import { ULTIMATE_UNLOCK_LEVEL } from '~~/shared/constants/balance'
 
-// ── useGameSocket mock ────────────────────────────────────────────────
-// GameScreen calls useGameSocket() at setup and opens a real WebSocket in
-// onMounted. Replace it with a no-op double exposing the same shape (reactive
-// connection refs + connect/send/disconnect/onMessage) so mounting never
-// touches the network. We capture the spies so tests can assert wiring.
+// ── useGameTransport mock ────────────────────────────────────────────
+// GameScreen calls useGameTransport() at setup (the WS/Ably picker) and
+// opens a real connection in onMounted. Replace it with a no-op double
+// exposing the same shape (reactive connection refs + connect/send/
+// disconnect/onMessage) so mounting never touches the network. We capture
+// the spies so tests can assert wiring.
 const socketSpies = {
   connect: vi.fn(),
   // send() returns true when the message went out (socket open) — the happy
@@ -35,8 +36,8 @@ const socketRefs = {
   connectionLost: ref(false),
   latency: ref(20),
 }
-vi.mock('~/composables/useGameSocket', () => ({
-  useGameSocket: () => ({ ...socketRefs, ...socketSpies }),
+vi.mock('~/composables/useGameTransport', () => ({
+  useGameTransport: () => ({ ...socketRefs, ...socketSpies }),
 }))
 
 // requestAnimationFrame isn't in happy-dom by default; keep a synchronous shim
