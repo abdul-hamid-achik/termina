@@ -330,10 +330,11 @@ export const useGameStore = defineStore('game', () => {
     nextCommitAt.value = msg.nextCommitAt ?? lastCycleAt.value + CYCLE_DURATION_MS
     _updateCountdown()
     _ensureCountdownTimer()
-    // phase + teams are delta-OMITTED when unchanged (StateDelta), so they must
-    // be merge-guarded like every field below — an unconditional assign clobbers
-    // them to undefined on every steady cycle (blanks the score banner/scoreboard
-    // and corrupts any phase check). players + zones are always sent, so stay
+    // Merge-guard optional fields: the Ably path sends the full filtered
+    // state every cycle, but guarding keeps the store robust against any
+    // payload that omits a field (older server, dev/manual ticks) — an
+    // unconditional assign would clobber them to undefined and blank the
+    // score banner/scoreboard. players + zones are always sent, so stay
     // unconditional.
     if (state.phase) phase.value = state.phase
     // Fallback end-of-game path: the serverless tick publishes an explicit

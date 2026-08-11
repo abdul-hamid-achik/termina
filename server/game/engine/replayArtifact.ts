@@ -46,27 +46,6 @@ export interface LoggedAction {
   synthesized?: boolean
 }
 
-/** Integrity of a stored action log for replay honesty. */
-export interface ActionLogIntegrity {
-  /** True only when the retained log can reconstruct from cycle 1. */
-  complete: boolean
-  /** True when the log was trimmed (or is at capacity and its head is past
-   *  cycle 1 — defensive signal). */
-  truncated: boolean
-  /** True when the log source failed to read; actions will be empty. */
-  readFailed: boolean
-  entryCount: number
-  firstLoggedCycle: number | null
-  lastLoggedCycle: number | null
-  /** Frames always rebuild from a fresh createGame (cycle 0). */
-  initialSnapshotCycle: 0
-}
-
-export interface ActionLogReadResult {
-  actions: LoggedAction[]
-  integrity: ActionLogIntegrity
-}
-
 /**
  * Bumped manually when engine behavior changes enough that replays recorded
  * before the change are EXPECTED to diverge. The hash makes divergence

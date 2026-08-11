@@ -217,6 +217,52 @@ describe('useGameChannel', () => {
 
       expect(spy).toHaveBeenCalledWith('chaff', stats, undefined, false, 60)
     })
+
+    it('notifies onMessage handlers for inbound chat and ping_map messages', async () => {
+      const { connect, onMessage } = useGameChannel()
+      connect('game-1', 'player-1')
+      MockRealtime.last!.connection._setState('connected')
+
+      const received: Array<{ type: string }> = []
+      onMessage((msg) => received.push(msg))
+
+      MockRealtime.last!.channel!._receive('chat', {
+        playerId: 'player-2',
+        channel: 'team',
+        message: 'push mid',
+      })
+      MockRealtime.last!.channel!._receive('ping_map', {
+        playerId: 'player-2',
+        zone: 'rookery-anchor',
+      })
+
+      expect(received.map((m) => m.type)).toEqual(['chat', 'ping_map'])
+    })
+  })
+
+  describe('send (signal ingress)', () => {
+    it('POSTs chat to /api/game/signal instead of dropping it', async () => {
+      const { connect, send } = useGameChannel()
+      connect('game-1', 'player-1')
+      MockRealtime.last!.connection._setState('connected')
+
+      const ok = send({ type: 'chat', channel: 'team', message: 'care top' })
+      expect(ok).toBe(true)
+      await vi.waitFor(() => {
+        const call = fetchMock.mock.calls.find((c) => c[0] === '/api/game/signal')
+        expect(call).toBeDefined()
+        const body = JSON.parse((call![1] as { body: string }).body)
+        expect(body).toEqual({
+          gameId: 'game-1',
+          signal: { type: 'chat', channel: 'team', message: 'care top' },
+        })
+      })
+    })
+
+    it('returns false for a signal with no active game', () => {
+      const { send } = useGameChannel()
+      expect(send({ type: 'chat', channel: 'team', message: 'hi' })).toBe(false)
+    })
   })
 
   describe('send (action ingress)', () => {

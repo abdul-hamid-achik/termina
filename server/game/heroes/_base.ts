@@ -478,7 +478,7 @@ export function damageEnemyNpcsInZone(
   })
 
   // Preserve reference equality when nothing was in range — the cast bridge
-  // uses it to skip the diff, and StateDelta's field diff to skip a broadcast.
+  // uses it to skip the diff.
   if (!hitAny) return state
   return { ...state, waves, neutrals }
 }

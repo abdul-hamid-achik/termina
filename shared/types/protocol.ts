@@ -12,14 +12,11 @@ export type ClientMessage =
   | { type: 'action'; command: Command; forCycle?: number; clientSeq?: number }
   | { type: 'chat'; channel: 'team' | 'all'; message: string }
   | { type: 'ping_map'; zone: string }
-  | { type: 'heartbeat' }
-  | { type: 'reconnect'; gameId: string; playerId: string; lastCycle?: number }
-  | { type: 'join_game'; gameId: string }
-  | { type: 'hero_pick'; lobbyId: string; heroId: string }
-  | { type: 'hero_ban'; lobbyId: string; heroId: string }
-  | { type: 'request_state' }
-  | { type: 'spectate'; gameId: string }
-  | { type: 'unspectate' }
+// The WS-era variants (reconnect/join_game/hero_pick/hero_ban/request_state/
+// spectate/unspectate/heartbeat) died with the DO WebSocket server — on the
+// Ably+HTTP transport connection recovery is Ably's job and drafting/
+// spectating have no serverless port yet. Re-add shapes WITH their transport
+// when those features return.
 
 // ── Server → Client ──────────────────────────────────────────────
 
@@ -111,83 +108,6 @@ export interface ErrorMessage {
   message: string
 }
 
-export interface QueueUpdateMessage {
-  type: 'queue_update'
-  playersInQueue: number
-  estimatedWaitSeconds: number
-}
-
-export interface HeroPickMessage {
-  type: 'hero_pick'
-  playerId: string
-  heroId: string
-}
-
-export interface HeroBanMessage {
-  type: 'hero_ban'
-  playerId: string
-  heroId: string
-}
-
-export interface PickTurnMessage {
-  type: 'pick_turn'
-  /** The player whose turn it is to pick. */
-  playerId: string
-  username: string
-  /** Time until the server auto-picks for them (ms). */
-  timeRemainingMs: number
-}
-
-export interface BanTurnMessage {
-  type: 'ban_turn'
-  /** The player whose turn it is to ban. */
-  playerId: string
-  username: string
-  /** Time until the server auto-bans for them (ms). */
-  timeRemainingMs: number
-}
-
-export interface LobbyStateMessage {
-  type: 'lobby_state'
-  lobbyId: string
-  team: TeamId
-  players: { playerId: string; username: string; team: TeamId; heroId: string | null }[]
-  phase?: 'banning' | 'picking'
-  /** Heroes banned so far (only meaningful during/after the ban phase). */
-  bans?: string[]
-}
-
-export interface GameStartingMessage {
-  type: 'game_starting'
-  gameId: string
-}
-
-export interface GameCountdownMessage {
-  type: 'game_countdown'
-  seconds: number
-}
-
-export interface QueueRosterMessage {
-  type: 'queue_roster'
-  players: { username: string; mmrBracket: string }[]
-  total: number
-}
-
-export interface QueueFillingMessage {
-  type: 'queue_filling'
-  botsCount: number
-}
-
-export interface HeartbeatAckMessage {
-  type: 'heartbeat_ack'
-  timestamp: number
-}
-
-/** Server-side liveness probe for adapters without native ping/pong. */
-export interface HeartbeatProbeMessage {
-  type: 'heartbeat'
-}
-
 export interface ChatBroadcastMessage {
   type: 'chat'
   playerId: string
@@ -201,80 +121,14 @@ export interface PingMapBroadcastMessage {
   zone: string
 }
 
-export interface FullStateMessage {
-  type: 'full_state'
-  cycle: number
-  state: PlayerVisibleState
-}
-
-export interface GameNotFoundMessage {
-  type: 'game_not_found'
-  gameId: string
-}
-
-export interface SpectatorCycleMessage {
-  type: 'spectator_tick'
-  cycle: number
-  /**
-   * Spectators receive a `PlayerVisibleState` with all players/zones revealed
-   * — same shape as the in-game cycle_state so the renderer can be reused.
-   */
-  state: PlayerVisibleState
-}
-
-export interface SpectatorAckMessage {
-  type: 'spectator_ack'
-  gameId: string
-}
-
-/**
- * Sent instead of (or in addition to, on later cycles) a `spectator_tick` when
- * a newly-subscribed spectator has no MATURE frame to show yet — i.e. the game
- * is younger than the global broadcast delay (see
- * shared/constants/balance.ts SPECTATOR_BROADCAST_DELAY_MS). Tells the client
- * how long until the first frame arrives so the UI can show a countdown
- * instead of sitting on "waiting for first cycle" indefinitely.
- */
-export interface SpectatorDelayedMessage {
-  type: 'spectator_delayed'
-  gameId: string
-  /** Milliseconds until the first mature frame is expected to arrive. */
-  etaMs: number
-}
-
-/**
- * The final message a spectator receives for a game: delivered only after
- * every already-buffered `spectator_tick` frame has drained through the same
- * broadcast delay, so a spectator can never learn the result before players
- * genuinely could have. No stats — spectators aren't ranked participants;
- * the winner is enough to close out the view.
- */
-export interface SpectatorGameOverMessage {
-  type: 'spectator_game_over'
-  gameId: string
-  winner: TeamId
-}
-
-/** Broadcast to the surviving players when someone drops their connection. */
-export interface PlayerDisconnectMessage {
-  type: 'player_disconnect'
-  playerId: string
-}
-
-/** Broadcast to the game when a previously-dropped player reconnects in time. */
-export interface PlayerReconnectMessage {
-  type: 'player_reconnect'
-  playerId: string
-}
-
-/** The server tore down a forming lobby (e.g. a drafter never reconnected past
- *  the grace window). The client resets its lobby store back to find-match so a
- *  surviving player isn't frozen on the draft/found/starting screen. */
-export interface LobbyCancelledMessage {
-  type: 'lobby_cancelled'
-  reason: string
-}
-
+// The WS-era queue/draft (queue_update, hero_pick/ban, pick/ban_turn,
+// lobby_state, game_starting, game_countdown, queue_roster, queue_filling,
+// lobby_cancelled), spectator (spectator_tick/ack/delayed/game_over),
+// connection-lifecycle (player_disconnect/reconnect, full_state,
+// game_not_found) and heartbeat message shapes were deleted with their WS
+// producers in the all-Vercel cutover — nothing on the Ably+HTTP path ever
+// constructs them. Rebuild shapes alongside their transport when a
+// serverless draft/spectate returns.
 export type ServerMessage =
   | CycleStateMessage
   | ActionAckMessage
@@ -282,26 +136,5 @@ export type ServerMessage =
   | AnnouncementMessage
   | GameOverMessage
   | ErrorMessage
-  | QueueUpdateMessage
-  | HeroPickMessage
-  | HeroBanMessage
-  | PickTurnMessage
-  | BanTurnMessage
-  | LobbyStateMessage
-  | GameStartingMessage
-  | GameCountdownMessage
-  | QueueRosterMessage
-  | QueueFillingMessage
-  | HeartbeatAckMessage
-  | HeartbeatProbeMessage
   | ChatBroadcastMessage
   | PingMapBroadcastMessage
-  | FullStateMessage
-  | GameNotFoundMessage
-  | SpectatorCycleMessage
-  | SpectatorAckMessage
-  | SpectatorDelayedMessage
-  | SpectatorGameOverMessage
-  | PlayerDisconnectMessage
-  | PlayerReconnectMessage
-  | LobbyCancelledMessage

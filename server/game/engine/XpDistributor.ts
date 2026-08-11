@@ -13,7 +13,7 @@ import type { PlayerState, TeamId } from '~~/shared/types/game'
  * draw the share. A shared strip has several claimants, hence the array form.
  *
  * Returns the SAME object when nobody qualifies, which is the common case on a
- * per-cycle path and keeps StateDelta's reference-equality diff quiet.
+ * per-cycle path — reference equality lets downstream diffs skip cheaply.
  */
 export function awardZoneXp(
   players: Record<string, PlayerState>,

@@ -12,18 +12,16 @@ export interface RouteServerMessageOptions {
 }
 
 /**
- * The store-routing half of the server message switch. Written to be shared
- * by every transport that can produce a `ServerMessage` — the DO-era WS
- * composable (`useGameSocket.ts`) was one such transport before it was
- * deleted in the all-Vercel cutover; `useGameChannel.ts` (Ably+HTTP) is the
- * only one left, and only receives a subset of `ServerMessage` today
- * (`cycle_state` over the per-player Ably channel, `action_ack` synthesized
- * from the POST /api/game/action response). The other cases are dead code
- * on the Ably path until the server side wires their equivalent channel/
- * endpoint — see the "INTEGRATION TODO" comments in useGameChannel.ts.
+ * The store-routing half of the server message switch, shared by every
+ * transport that can produce a `ServerMessage`. `useGameChannel.ts`
+ * (Ably+HTTP) is the only transport since the all-Vercel cutover:
+ * `cycle_state`/`game_over`/`announcement`/`error`/`chat`/`ping_map` arrive
+ * over the per-player Ably channel, `action_ack` is synthesized from the
+ * POST /api/game/action response.
  *
- * Deliberately excludes anything transport-specific: heartbeats, WS
- * reconnect scheduling, HTTP request framing. Those stay in the caller.
+ * Deliberately excludes anything transport-specific (reconnect scheduling,
+ * HTTP request framing — those stay in the caller) and anything that isn't
+ * a store concern (chat/ping_map render straight into GameScreen's feed).
  */
 export function routeServerMessage(
   gameStore: GameStore,
@@ -86,36 +84,7 @@ export function routeServerMessage(
         msg.durationCycles,
       )
       break
-    case 'player_disconnect': {
-      // Surface the drop so the team knows they're a player down.
-      const who = gameStore.allPlayers[msg.playerId]?.name ?? 'A player'
-      gameStore.addAnnouncement(`${who} disconnected`, 'warning')
-      break
-    }
-    case 'player_reconnect': {
-      // The flip side of player_disconnect — but never announce yourself.
-      if (msg.playerId !== gameStore.playerId) {
-        const who = gameStore.allPlayers[msg.playerId]?.name ?? 'A player'
-        gameStore.addAnnouncement(`${who} reconnected`, 'info')
-      }
-      break
-    }
-    case 'game_starting':
-      if (!gameStore.gameId) {
-        socketLog.info('game_starting received — setting gameId', { gameId: msg.gameId })
-        gameStore.gameId = msg.gameId
-      }
-      break
-    case 'full_state':
-      gameStore.updateFromCycle({ type: 'cycle_state', cycle: msg.cycle, state: msg.state })
-      break
-    case 'game_not_found':
-      socketLog.warn('Game not found', { gameId: msg.gameId })
-      gameStore.addAnnouncement('[ERROR] Game not found. Redirecting to lobby...', 'error')
-      opts.disconnect()
-      setTimeout(() => {
-        window.location.href = '/lobby'
-      }, 2000)
-      break
+    // chat/ping_map are deliberately NOT store concerns: GameScreen's
+    // onMessage handler renders them straight into the local feed.
   }
 }

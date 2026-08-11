@@ -68,11 +68,9 @@ export function useGameChannel() {
     ) => void,
   ) {
     try {
-      // INTEGRATION TODO: /api/auth/ably-token doesn't exist on disk yet
-      // (contract: POST, returns an Ably TokenRequest JSON; clientId =
-      // playerId; subscribe capability on game:*:p:<playerId> and
-      // game:*:team:*, derived from the caller's session — no params needed
-      // on this request, same as /api/auth/ws-ticket).
+      // POST /api/auth/ably-token mints a locally-signed Ably TokenRequest
+      // (clientId = playerId; subscribe capability on game:*:p:<playerId>
+      // and game:*:team:*), derived from the caller's session — no params.
       const res = await fetch('/api/auth/ably-token', { method: 'POST' })
       if (!res.ok) {
         callback(`ably-token request failed: ${res.status}`, null)
@@ -171,11 +169,15 @@ export function useGameChannel() {
       }
       case 'game_over':
       case 'announcement':
-      case 'error': {
+      case 'error':
+      case 'chat':
+      case 'ping_map': {
         // game_over: published by the tick workflow in the same batch as the
         // final cycle_state — winner + full end-of-match scoreboard.
         // announcement/error: published by the operator panel's halt (and any
-        // future server-side notifier). All three reuse the shared router, so
+        // future server-side notifier). chat/ping_map: re-broadcast by
+        // POST /api/game/signal (GameScreen's onMessage renders them; the
+        // router deliberately has no case). All reuse the shared routing so
         // the WS-era handling (setGameOver, NOT_ASSIGNED → lobby) applies
         // verbatim.
         const msg = { ...(message.data as object), type: message.name } as ServerMessage
@@ -197,19 +199,16 @@ export function useGameChannel() {
    *  the boolean is "the request went out", not "the server accepted it";
    *  the accept/reject arrives later via the action_ack routing below. */
   function send(message: ClientMessage): boolean {
-    if (message.type !== 'action') {
-      // INTEGRATION TODO: chat/ping_map/heartbeat/etc. have no HTTP ingress
-      // endpoint in the Ably+HTTP contract yet — only POST /api/game/action
-      // is specified. Wire a dedicated endpoint (or an Ably publish) here
-      // once one exists; until then these are dropped, same as a closed WS.
-      socketLog.warn('Send dropped — no HTTP ingress for this message type yet', {
-        type: message.type,
-      })
-      return false
-    }
     if (!currentGameId) {
       socketLog.warn('Send dropped — no active game', { type: message.type })
       return false
+    }
+    if (message.type === 'chat' || message.type === 'ping_map') {
+      // Non-action signals ride their own ingress: POST /api/game/signal
+      // re-broadcasts them to the recipients' Ably channels (sender included
+      // — your own line coming back is the delivery confirmation).
+      void _postSignal(message)
+      return true
     }
     // Stamp every order with the batch it's aimed at, mirroring
     // useGameSocket's send: the cycle the player saw OPEN when they typed it.
@@ -221,13 +220,28 @@ export function useGameChannel() {
     return true
   }
 
+  async function _postSignal(message: Extract<ClientMessage, { type: 'chat' | 'ping_map' }>) {
+    try {
+      const res = await fetch('/api/game/signal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gameId: currentGameId, signal: message }),
+      })
+      if (!res.ok) {
+        socketLog.warn('Signal POST rejected', { status: res.status, type: message.type })
+        gameStore.addAnnouncement('[CHAT] Message failed to send', 'warning')
+      }
+    } catch (err) {
+      socketLog.warn('Signal POST errored', { err })
+      gameStore.addAnnouncement('[CHAT] Message failed to send', 'warning')
+    }
+  }
+
   async function _postAction(message: Extract<ClientMessage, { type: 'action' }>) {
     const gameId = currentGameId
     try {
-      // INTEGRATION TODO: /api/game/action doesn't exist on disk yet
-      // (contract: POST {gameId, command, forCycle?, clientSeq?} → responds
-      // with the ActionAckMessage shape {accepted, cycle?, slot?, replaced?,
-      // reason?, clientSeq?}).
+      // POST /api/game/action → pending_actions, drained by the next tick;
+      // responds with the same ActionAckMessage shape the WS path echoed.
       const res = await fetch('/api/game/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
