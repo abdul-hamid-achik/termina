@@ -28,7 +28,8 @@ vi.stubGlobal('createError', (opts: { statusCode: number; message: string; data?
 })
 vi.stubGlobal('getRouterParam', () => routerParam)
 
-const mockRuntime = { redisService: { tag: 'redis' } }
+const getMatchReplay = vi.fn(() => Effect.succeed(null))
+const mockRuntime = { redisService: { tag: 'redis' }, dbService: { getMatchReplay } }
 
 const createGame = vi.fn(() => Effect.succeed(undefined))
 const updateState = vi.fn(() => Effect.succeed(undefined))
@@ -267,7 +268,9 @@ describe('GET /api/replay/[gameId]/frames', () => {
 
     const result = await framesHandler(makeEvent())
     expect(createGame).toHaveBeenCalledWith(
-      expect.stringMatching(/^replay_g1_/),
+      // Reconstruction ids are unique per call (per-gameId module state must
+      // never leak between two re-runs), so only the prefix is stable.
+      expect.stringMatching(/^replay_/),
       [{ id: 'p1', name: 'p1', team: 'chaff', heroId: 'echo' }],
       { mapId: 'seawall', mode: 'tutorial' },
     )
@@ -304,7 +307,7 @@ describe('GET /api/replay/[gameId]/frames', () => {
 
     await framesHandler(makeEvent())
     expect(submitReplayAction).toHaveBeenCalledWith(
-      expect.stringMatching(/^replay_g1_/),
+      expect.stringMatching(/^replay_/),
       'p1',
       { type: 'move', zone: 'coldstore-cross' },
       true,

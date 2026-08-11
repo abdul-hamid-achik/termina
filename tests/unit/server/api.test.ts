@@ -69,6 +69,7 @@ const mockRuntime = {
   },
   dbService: {
     getPlayer: vi.fn(() => Effect.succeed(null)),
+    getMatchReplay: vi.fn(() => Effect.succeed(null)),
     getPlayerByProvider: vi.fn(() => Effect.succeed(null)),
     getLeaderboard: vi.fn(() => Effect.succeed([])),
     getSeasonLeaderboard: vi.fn(() => Effect.succeed([])),

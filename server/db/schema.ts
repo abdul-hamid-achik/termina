@@ -187,6 +187,44 @@ export const matchPlayersRelations = relations(matchPlayers, ({ one }) => ({
   player: one(players, { fields: [matchPlayers.playerId], references: [players.id] }),
 }))
 
+// ── Match Replays ─────────────────────────────────────────────────
+// The durable replay artifact. With deterministic resolution (GameState.rngSeed
+// → per-tick RNG), a replay is fully reproducible from roster metadata + the
+// action log + the seed — no per-frame storage. Written inside the durable
+// finalization path (game-server reconcileFinalization) so it inherits its
+// exactly-once/retry guarantees; the Redis copies (snapshot + action log, 8h
+// TTL) remain the fast path and this row is the archive the replay endpoints
+// fall back to.
+
+export const matchReplays = pgTable('match_replays', {
+  // Same id space as matches.id (the gameId) — replays exist only for
+  // recorded matches (practice games are never persisted at all).
+  matchId: text('match_id')
+    .primaryKey()
+    .references(() => matches.id),
+  // Bumped manually when engine behavior changes enough that old replays
+  // are expected to diverge. The hash below makes divergence DETECTABLE
+  // regardless; this is the honest label for "recorded under other rules".
+  rulesetVersion: integer('ruleset_version').notNull(),
+  // The per-game resolution seed — stitched into the re-run so crits/procs/
+  // spawns replay identically.
+  rngSeed: integer('rng_seed'),
+  /** Roster/setup metadata (SnapshotMeta shape). */
+  meta: jsonb('meta').notNull(),
+  /** The full persisted action log (LoggedAction[]). */
+  actions: jsonb('actions').notNull(),
+  /** The final ended GameState (sets converted to arrays for JSON). */
+  finalState: jsonb('final_state').notNull(),
+  /** sha256 of the stable final-state summary — lets the reconstruction
+   * verify it landed on the SAME game, and say so when it didn't. */
+  finalSummaryHash: text('final_summary_hash').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const matchReplaysRelations = relations(matchReplays, ({ one }) => ({
+  match: one(matches, { fields: [matchReplays.matchId], references: [matches.id] }),
+}))
+
 // ── Hero Stats ────────────────────────────────────────────────────
 
 export const heroStats = pgTable(
@@ -222,6 +260,8 @@ export type Player = typeof players.$inferSelect
 export type NewPlayer = typeof players.$inferInsert
 export type Match = typeof matches.$inferSelect
 export type NewMatch = typeof matches.$inferInsert
+export type MatchReplay = typeof matchReplays.$inferSelect
+export type NewMatchReplay = typeof matchReplays.$inferInsert
 export type MatchPlayer = typeof matchPlayers.$inferSelect
 export type NewMatchPlayer = typeof matchPlayers.$inferInsert
 export type MatchHistoryPlayerStats = Pick<

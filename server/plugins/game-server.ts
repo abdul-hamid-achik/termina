@@ -35,6 +35,8 @@ import {
   type SnapshotMeta,
 } from '~~/server/game/engine/StateSnapshot'
 import { flushFinalSnapshots } from '~~/server/game/engine/gracefulShutdown'
+import { readActionLog } from '~~/server/game/engine/ActionLog'
+import { buildReplayArtifact } from '~~/server/game/engine/replayArtifact'
 import { toGameEvent, type GameEngineEvent } from '~~/server/game/protocol/events'
 import {
   calculateVision,
@@ -748,14 +750,47 @@ export default defineNitroPlugin(async (nitroApp) => {
   // cleared on genuine shutdown via the Nitro close hook.
   const _keepAliveTimer = setInterval(() => {}, 10_000)
 
+  // Archive the durable replay artifact for a finished match: final snapshot +
+  // action log read from Redis (the 8h fast path), condensed into a Postgres
+  // row (match_replays). Rules:
+  //  - Redis data GONE (restart ate the 8h copies) → nothing to archive, ever:
+  //    report true so the finalization intent can complete instead of retrying
+  //    a save that can no longer succeed.
+  //  - Redis data present but the DB write failed → report false so the intent
+  //    stays pending and the boot sweep retries the archive (the insert is
+  //    ON CONFLICT DO NOTHING, so retries are free).
+  async function archiveMatchReplay(gameId: string): Promise<boolean> {
+    try {
+      const snap = await managedRuntime.runPromise(readSnapshot(redis, gameId))
+      if (!snap || !snap.meta || snap.state.phase !== 'ended') {
+        gameLog.warn('Replay archive skipped — no ended snapshot in Redis', { gameId })
+        return true
+      }
+      const { actions, integrity } = await managedRuntime.runPromise(readActionLog(redis, gameId))
+      if (integrity.readFailed) return false // transient — retry via the intent
+      if (integrity.truncated || !integrity.complete) {
+        gameLog.warn('Replay archive skipped — action log incomplete', { gameId })
+        return true
+      }
+      return await managedRuntime.runPromise(
+        db.saveMatchReplay(buildReplayArtifact(gameId, snap.state, snap.meta, actions)),
+      )
+    } catch (err) {
+      gameLog.warn('Replay archive failed', { gameId, error: String(err) })
+      return false
+    }
+  }
+
   // Reconcile one match's durable finalize intent (owner audit item 4): persist
-  // it, and delete the pending Redis mirror only once persistence actually
-  // succeeded. Used by both the live onGameOver path and the boot-time sweep
-  // below, so a replayed intent goes through the exact same idempotent logic.
+  // it (match row + derived stats + replay archive), and delete the pending
+  // Redis mirror only once EVERYTHING actually succeeded. Used by both the
+  // live onGameOver path and the boot-time sweep below, so a replayed intent
+  // goes through the exact same idempotent logic.
   async function reconcileFinalization(intent: FinalizeIntent): Promise<void> {
     try {
       const persisted = await managedRuntime.runPromise(finalizeMatchIntent(db, intent))
-      if (persisted) {
+      const replayArchived = persisted && (await archiveMatchReplay(intent.matchRecord.id))
+      if (persisted && replayArchived) {
         await managedRuntime.runPromise(deleteFinalizePending(redis, intent.matchRecord.id))
       }
     } catch (err) {

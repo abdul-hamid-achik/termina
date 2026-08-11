@@ -1,98 +1,34 @@
 import { Effect } from 'effect'
 import { getGameRuntime } from '~~/server/plugins/game-server'
-import { readSnapshot } from '~~/server/game/engine/StateSnapshot'
-import { readActionLog } from '~~/server/game/engine/ActionLog'
-import { createInMemoryStateManager } from '~~/server/game/engine/StateManager'
-import { processCycle, submitReplayAction } from '~~/server/game/engine/GameLoop'
-import type { GameState } from '~~/shared/types/game'
+import { readSnapshot, type SnapshotMeta } from '~~/server/game/engine/StateSnapshot'
+import { readActionLog, type LoggedAction } from '~~/server/game/engine/ActionLog'
+import {
+  reconstructReplay,
+  finalSummaryHash,
+  REPLAY_RULESET_VERSION,
+} from '~~/server/game/engine/replayArtifact'
 
 /**
  * Step-through replay frames — a compact per-cycle player/team summary that
  * the scrubber can render at any cycle T.
  *
  * The frames are produced by re-running every persisted action through
- * processCycle from a freshly-initialised state. Bot AI is NOT re-injected
- * because the bot's submitted actions are already in the action log — see
- * the "no registerBots" comment below.
+ * processCycle from a freshly-initialised state WITH THE ORIGINAL rngSeed
+ * stitched in — resolution is deterministic under the seed, so crits, procs
+ * and camp spawns land exactly as they did live (this used to be a documented
+ * V1 divergence; the seed closed it).
  *
- * Integrity (V1 decision):
- * - Reconstruction always starts at cycle 0 (`createGame`). A truncated
- *   action log (LTRIM discarded the head) cannot rebuild an honest timeline,
- *   so this endpoint rejects with 409 rather than serving a plausible-but-
- *   wrong scrubber.
- * - A Redis read failure is 503 (not an empty complete replay).
+ * Two sources: the Redis snapshot + log (8h fast path) or the Postgres
+ * archive (match_replays, forever). Either way the response carries
+ * `verified`: whether the reconstruction's final summary hash matches the
+ * recorded game. A false there means the engine changed since the game was
+ * recorded (see rulesetVersion) — the scrubber must say so rather than
+ * present a plausible-but-different timeline as history.
  *
- * Caveats (deliberate trade-offs for V1):
- * - World-side AI (waves, neutrals, tenant, caches) uses Math.random
- *   and will diverge from the original game. Player-side evolution (INTEG,
- *   scrip, items, K/D/A, position) follows the recorded action stream and
- *   is the only thing the scrubber UI relies on today.
- * - The replay is bounded by the action log's cycle range, so a game with
- *   no logged actions returns an empty `frames` array (still `complete`).
+ * Integrity (V1 decision): reconstruction always starts at cycle 0. A
+ * truncated action log cannot rebuild an honest timeline → 409. A Redis read
+ * failure falls through to the archive; missing both → 404.
  */
-
-interface FramePlayer {
-  id: string
-  integ: number
-  maxInteg: number
-  bw: number
-  maxBw: number
-  level: number
-  scrip: number
-  kills: number
-  deaths: number
-  assists: number
-  alive: boolean
-  zone: string
-  items: (string | null)[]
-}
-
-interface Frame {
-  cycle: number
-  teams: {
-    chaff: { kills: number; iceKills: number }
-    audit: { kills: number; iceKills: number }
-  }
-  timeOfDay: 'day' | 'night'
-  players: Record<string, FramePlayer>
-}
-
-function summarize(state: GameState): Frame {
-  const players: Record<string, FramePlayer> = {}
-  for (const [id, p] of Object.entries(state.players)) {
-    players[id] = {
-      id,
-      integ: p.integ,
-      maxInteg: p.maxInteg,
-      bw: p.bw,
-      maxBw: p.maxBw,
-      level: p.level,
-      scrip: p.scrip,
-      kills: p.kills,
-      deaths: p.deaths,
-      assists: p.assists,
-      alive: p.alive,
-      zone: p.zone,
-      items: p.items,
-    }
-  }
-  return {
-    cycle: state.cycle,
-    teams: {
-      chaff: {
-        kills: state.teams.chaff.kills,
-        iceKills: state.teams.chaff.iceKills,
-      },
-      audit: {
-        kills: state.teams.audit.kills,
-        iceKills: state.teams.audit.iceKills,
-      },
-    },
-    timeOfDay: state.timeOfDay,
-    players,
-  }
-}
-
 export default defineEventHandler(async (event) => {
   const runtime = getGameRuntime()
   if (!runtime) {
@@ -104,89 +40,84 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Game ID required' })
   }
 
-  const snap = await Effect.runPromise(readSnapshot(runtime.redisService, gameId))
-  if (!snap) {
-    throw createError({ statusCode: 404, message: 'Replay not found' })
-  }
-  if (snap.state.phase !== 'ended') {
-    throw createError({ statusCode: 403, message: 'Replay available after the game ends' })
-  }
-  if (!snap.meta) {
-    throw createError({ statusCode: 422, message: 'Replay missing setup metadata' })
-  }
+  // Resolve the artifact: Redis first, archive second.
+  let meta: SnapshotMeta
+  let actions: LoggedAction[]
+  let rngSeed: number | null
+  let recordedHash: string | null
+  let recordedRuleset: number
+  let lastRecordedCycle: number
+  let integrity: { complete: boolean; truncated: boolean; readFailed: boolean }
+  let source: 'live' | 'archive'
 
-  const { actions, integrity } = await Effect.runPromise(
-    readActionLog(runtime.redisService, gameId),
-  )
-  if (integrity.readFailed) {
-    throw createError({ statusCode: 503, message: 'Replay action log unavailable' })
-  }
-  if (integrity.truncated || !integrity.complete) {
-    throw createError({
-      statusCode: 409,
-      message: 'Replay incomplete — action log was truncated; cannot reconstruct from cycle 1',
-      data: { integrity },
-    })
+  const snap = await Effect.runPromise(readSnapshot(runtime.redisService, gameId))
+  const log = snap ? await Effect.runPromise(readActionLog(runtime.redisService, gameId)) : null
+
+  if (snap && log && !log.integrity.readFailed) {
+    if (snap.state.phase !== 'ended') {
+      throw createError({ statusCode: 403, message: 'Replay available after the game ends' })
+    }
+    if (!snap.meta) {
+      throw createError({ statusCode: 422, message: 'Replay missing setup metadata' })
+    }
+    if (log.integrity.truncated || !log.integrity.complete) {
+      throw createError({
+        statusCode: 409,
+        message: 'Replay incomplete — action log was truncated; cannot reconstruct from cycle 1',
+        data: { integrity: log.integrity },
+      })
+    }
+    source = 'live'
+    meta = snap.meta
+    actions = log.actions
+    rngSeed = snap.state.rngSeed ?? null
+    recordedHash = finalSummaryHash(snap.state)
+    recordedRuleset = REPLAY_RULESET_VERSION
+    lastRecordedCycle = snap.state.cycle
+    integrity = log.integrity
+  } else {
+    const archived = await Effect.runPromise(runtime.dbService.getMatchReplay(gameId))
+    if (!archived) {
+      // A Redis snapshot existed but its log read failed — that's transient
+      // (retry), not proof the replay is gone. Only a clean miss on BOTH
+      // sources is a real 404.
+      if (snap && log?.integrity.readFailed) {
+        throw createError({ statusCode: 503, message: 'Replay action log unavailable' })
+      }
+      throw createError({ statusCode: 404, message: 'Replay not found' })
+    }
+    source = 'archive'
+    meta = archived.meta as SnapshotMeta
+    actions = archived.actions as LoggedAction[]
+    rngSeed = archived.rngSeed
+    recordedHash = archived.finalSummaryHash
+    recordedRuleset = archived.rulesetVersion
+    lastRecordedCycle = (archived.finalState as { cycle?: number }).cycle ?? 0
+    integrity = { complete: true, truncated: false, readFailed: false }
   }
 
   // The last persisted cycle caps the replay length. Snapshots may run a few
   // ticks ahead of the action log if the log was trimmed, so use whichever
   // is bigger as an upper bound.
   const lastActionCycle = actions.reduce((max, a) => (a.cycle > max ? a.cycle : max), 0)
-  const lastCycle = Math.max(lastActionCycle, snap.state.cycle)
+  const lastCycle = Math.max(lastActionCycle, lastRecordedCycle)
 
-  // Distinct gameId for the replay so re-running doesn't poke any live
-  // game's queue. Importantly we do NOT call registerBots, so processCycle's
-  // bot-AI step short-circuits and the action log is the sole input source.
-  const replayId = `replay_${gameId}_${Date.now()}`
-  const sm = createInMemoryStateManager()
-  const setup = snap.meta.players.map((p) => ({
-    id: p.playerId,
-    name: p.playerId,
-    team: p.team,
-    heroId: p.heroId,
-  }))
-  await Effect.runPromise(
-    sm.createGame(replayId, setup, {
-      mapId: snap.meta.mapId ?? snap.state.mapId,
-      mode: snap.meta.mode ?? snap.state.mode,
-    }),
-  )
-  await Effect.runPromise(sm.updateState(replayId, (s) => ({ ...s, phase: 'playing' as const })))
+  const { frames, finalState } = await reconstructReplay(meta, actions, rngSeed, lastCycle)
 
-  // Bucket actions by their cycle for O(1) lookup as we step forward.
-  const actionsByTick = new Map<number, typeof actions>()
-  for (const a of actions) {
-    const bucket = actionsByTick.get(a.cycle) ?? []
-    bucket.push(a)
-    actionsByTick.set(a.cycle, bucket)
-  }
-
-  const frames: Frame[] = []
-  // Frame 0 = initial state.
-  const initial = await Effect.runPromise(sm.getState(replayId))
-  frames.push(summarize(initial))
-
-  let current = initial
-  for (let t = 1; t <= lastCycle; t++) {
-    const tickActions = actionsByTick.get(t) ?? []
-    for (const a of tickActions) {
-      submitReplayAction(replayId, a.playerId, a.command, a.synthesized)
-    }
-    const result = await Effect.runPromise(processCycle(replayId, current))
-    current = result.state
-    await Effect.runPromise(sm.updateState(replayId, () => current))
-    frames.push(summarize(current))
-    // Bail out early if processCycle declared the game over so we don't
-    // grind through ticks past the win.
-    if (current.phase === 'ended') break
-  }
+  // Honesty check: did the re-run land on the SAME game? False means the
+  // engine changed since this was recorded (or the seed is missing on an old
+  // artifact) — the client must label the scrubber as approximate.
+  const verified = recordedHash !== null && finalSummaryHash(finalState) === recordedHash
 
   return {
     gameId,
+    source,
     totalTicks: frames.length - 1,
     frames,
-    meta: snap.meta,
+    meta,
     integrity,
+    verified,
+    rulesetVersion: recordedRuleset,
+    currentRulesetVersion: REPLAY_RULESET_VERSION,
   }
 })

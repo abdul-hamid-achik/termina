@@ -67,6 +67,7 @@ export const REQUIRED_COLUMNS: ReadonlyArray<{ readonly table: string; readonly 
     { table: 'match_players', column: 'burns' },
     { table: 'players', column: 'season_mmr' },
     { table: 'players', column: 'tutorial_completed' },
+    { table: 'match_replays', column: 'rng_seed' },
   ]
 
 interface SchemaContractResult {

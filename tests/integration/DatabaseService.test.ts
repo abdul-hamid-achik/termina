@@ -178,6 +178,62 @@ describe('DatabaseService (real Postgres)', () => {
     })
   })
 
+  describe('saveMatchReplay + getMatchReplay', () => {
+    const artifact = {
+      matchId: 'replay-1',
+      rulesetVersion: 1,
+      rngSeed: 424242,
+      meta: { players: [{ playerId: 'p1', team: 'chaff', heroId: 'echo', mmr: 1000 }] },
+      actions: [{ cycle: 1, playerId: 'p1', command: { type: 'move', zone: 'coldstore' } }],
+      finalState: { cycle: 42, winner: 'chaff' },
+      finalSummaryHash: 'abc123',
+    }
+
+    it('archives and reads back the full reproduction triple', async () => {
+      await seedPlayer()
+      await run((s) =>
+        s.recordMatch({ id: 'replay-1', mode: 'ranked_5v5' } as never, [
+          { matchId: 'replay-1', playerId: 'p1', team: 'chaff', heroId: 'echo' } as never,
+        ]),
+      )
+      expect(await run((s) => s.saveMatchReplay(artifact as never))).toBe(true)
+
+      const read = await run((s) => s.getMatchReplay('replay-1'))
+      expect(read).not.toBeNull()
+      expect(read!.rngSeed).toBe(424242)
+      expect(read!.rulesetVersion).toBe(1)
+      expect(read!.finalSummaryHash).toBe('abc123')
+      expect(read!.actions).toEqual(artifact.actions)
+      expect((read!.finalState as { cycle: number }).cycle).toBe(42)
+    })
+
+    it('is idempotent — the finalization retry path must not error or churn', async () => {
+      await seedPlayer()
+      await run((s) =>
+        s.recordMatch({ id: 'replay-1', mode: 'ranked_5v5' } as never, [
+          { matchId: 'replay-1', playerId: 'p1', team: 'chaff', heroId: 'echo' } as never,
+        ]),
+      )
+      expect(await run((s) => s.saveMatchReplay(artifact as never))).toBe(true)
+      // Second write with DIFFERENT content: first write wins, no error.
+      expect(
+        await run((s) => s.saveMatchReplay({ ...artifact, finalSummaryHash: 'zzz' } as never)),
+      ).toBe(true)
+      const read = await run((s) => s.getMatchReplay('replay-1'))
+      expect(read!.finalSummaryHash).toBe('abc123')
+    })
+
+    it('reports false (retry-worthy) instead of throwing when the write cannot land', async () => {
+      // No matches row → the FK rejects the insert; the service must fold that
+      // into `false` so the finalization intent stays pending and retries.
+      expect(await run((s) => s.saveMatchReplay(artifact as never))).toBe(false)
+    })
+
+    it('returns null for a match with no archived replay', async () => {
+      expect(await run((s) => s.getMatchReplay('never-existed'))).toBeNull()
+    })
+  })
+
   describe('applyMatchDerivedStats', () => {
     it('applies ladder/profile stats once inside the match claim', async () => {
       await seedPlayer()

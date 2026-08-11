@@ -1,11 +1,13 @@
 import { Context, Effect, Layer } from 'effect'
 import { eq, desc, and, sql, inArray } from 'drizzle-orm'
 import { useDb, closeDb } from '~~/server/db'
+import { matchLog } from '~~/server/utils/log'
 import { PLACEMENT_GAMES } from '~~/shared/constants/ranks'
 import {
   players,
   matches,
   matchPlayers,
+  matchReplays,
   heroStats,
   playerProviders,
   seasons,
@@ -16,6 +18,8 @@ import {
   type MatchHistoryEntry,
   type NewMatch,
   type NewMatchPlayer,
+  type NewMatchReplay,
+  type MatchReplay,
   type HeroStat,
   type MatchPlayer,
   type PlayerProvider,
@@ -74,6 +78,11 @@ export interface DatabaseServiceApi {
   ) => Effect.Effect<boolean>
   readonly getMatchHistory: (playerId: string, limit?: number) => Effect.Effect<MatchHistoryEntry[]>
   readonly getMatch: (id: string) => Effect.Effect<MatchWithPlayers | null>
+  /** Archive the durable replay artifact (idempotent — first write wins).
+   *  Returns false on a DB failure so the finalization intent retries. */
+  readonly saveMatchReplay: (replay: NewMatchReplay) => Effect.Effect<boolean>
+  /** Read the archived replay artifact, or null when none was stored. */
+  readonly getMatchReplay: (matchId: string) => Effect.Effect<MatchReplay | null>
   readonly getLeaderboard: (limit?: number) => Effect.Effect<Player[]>
   readonly updateHeroStats: (
     playerId: string,
@@ -457,6 +466,35 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
       }))
 
       return { ...match, players: playersInMatch }
+    }),
+
+  saveMatchReplay: (replay) =>
+    Effect.tryPromise(async () => {
+      const db = useDb()
+      // First write wins: the durable-finalization path can legitimately run
+      // twice for the same match (crash between persist and intent-delete, then
+      // the boot sweep replays it) — the archive must not error or churn.
+      await db.insert(matchReplays).values(replay).onConflictDoNothing()
+      return true
+    }).pipe(
+      Effect.catchAll((e) => {
+        matchLog.warn('Replay archive write failed', {
+          matchId: replay.matchId,
+          error: String(e),
+        })
+        return Effect.succeed(false)
+      }),
+    ),
+
+  getMatchReplay: (matchId) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      const rows = await db
+        .select()
+        .from(matchReplays)
+        .where(eq(matchReplays.matchId, matchId))
+        .limit(1)
+      return rows[0] ?? null
     }),
 
   getLeaderboard: (limit = 100) =>
