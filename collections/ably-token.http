@@ -1,0 +1,55 @@
+@baseUrl = http://localhost:3000
+
+### Setup: register a user (creates an authenticated session)
+# @name setupAblyTokenUser
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "ably_{{$random(10000, 99999)}}",
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 200
+<<<
+
+>>>capture
+ablyTokenCookie from header Set-Cookie
+<<<
+
+### Mint Ably TokenRequest: authenticated session gets a locally-signed request
+# @name mintAblyTokenAuthed
+# @depends setupAblyTokenUser
+POST {{baseUrl}}/api/auth/ably-token
+Cookie: {{ablyTokenCookie}}
+
+>>>
+expect status 200
+expect body.keyName exists
+expect body.mac exists
+expect body.nonce exists
+expect body.clientId exists
+expect body.capability contains "subscribe"
+<<<
+
+### Logout (clear session)
+# @name logoutAblyTokenUser
+# @depends mintAblyTokenAuthed
+POST {{baseUrl}}/api/auth/logout
+Content-Type: application/json
+Cookie: {{ablyTokenCookie}}
+
+>>>
+expect status 200
+<<<
+
+### Mint Ably TokenRequest: unauthenticated request is rejected
+# @name mintAblyTokenUnauthed
+# @depends logoutAblyTokenUser
+POST {{baseUrl}}/api/auth/ably-token
+
+>>>
+expect status 401
+expect body.message contains "Authentication required"
+<<<

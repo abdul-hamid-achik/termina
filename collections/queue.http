@@ -18,10 +18,10 @@ expect status 200
 qCookie from header Set-Cookie
 <<<
 
-### Queue status: idle when not in queue
+### Queue status: idle when not in queue (Neon-backed queue, all-Vercel path)
 # @name queueStatusIdle
 # @depends setupQueueUser
-GET {{baseUrl}}/api/queue/status
+GET {{baseUrl}}/api/queue/status-neon
 Cookie: {{qCookie}}
 
 >>>
@@ -29,10 +29,10 @@ expect status 200
 expect body.status == "idle"
 <<<
 
-### Queue join: successful
+### Queue join: successful (defaults to ranked_5v5)
 # @name queueJoin
 # @depends queueStatusIdle
-POST {{baseUrl}}/api/queue/join
+POST {{baseUrl}}/api/queue/join-neon
 Content-Type: application/json
 Cookie: {{qCookie}}
 
@@ -47,20 +47,20 @@ expect body.queueSize exists
 ### Queue status: searching after join
 # @name queueStatusSearching
 # @depends queueJoin
-GET {{baseUrl}}/api/queue/status
+GET {{baseUrl}}/api/queue/status-neon
 Cookie: {{qCookie}}
 
 >>>
 expect status 200
 expect body.status == "searching"
-expect body.playersInQueue exists
-expect body.estimatedWaitSeconds exists
+expect body.queueSize exists
+expect body.botFillDue exists
 <<<
 
 ### Queue leave: successful
 # @name queueLeave
 # @depends queueStatusSearching
-POST {{baseUrl}}/api/queue/leave
+POST {{baseUrl}}/api/queue/leave-neon
 Content-Type: application/json
 Cookie: {{qCookie}}
 
@@ -72,7 +72,7 @@ expect body.success == true
 ### Queue status: idle after leaving
 # @name queueStatusIdleAfterLeave
 # @depends queueLeave
-GET {{baseUrl}}/api/queue/status
+GET {{baseUrl}}/api/queue/status-neon
 Cookie: {{qCookie}}
 
 >>>
@@ -83,7 +83,7 @@ expect body.status == "idle"
 ### Queue join: invalid game mode
 # @name queueJoinInvalidMode
 # @depends queueStatusIdleAfterLeave
-POST {{baseUrl}}/api/queue/join
+POST {{baseUrl}}/api/queue/join-neon
 Content-Type: application/json
 Cookie: {{qCookie}}
 
@@ -99,7 +99,7 @@ expect body.message contains "Invalid game mode"
 ### Queue join: valid ranked_5v5 mode
 # @name queueJoinRanked
 # @depends queueJoinInvalidMode
-POST {{baseUrl}}/api/queue/join
+POST {{baseUrl}}/api/queue/join-neon
 Content-Type: application/json
 Cookie: {{qCookie}}
 
@@ -115,7 +115,7 @@ expect body.success == true
 ### Queue join: already in queue (duplicate)
 # @name queueJoinDuplicate
 # @depends queueJoinRanked
-POST {{baseUrl}}/api/queue/join
+POST {{baseUrl}}/api/queue/join-neon
 Content-Type: application/json
 Cookie: {{qCookie}}
 
@@ -129,7 +129,7 @@ expect body.message contains "Already in queue"
 ### Cleanup: leave queue
 # @name queueCleanup
 # @depends queueJoinDuplicate
-POST {{baseUrl}}/api/queue/leave
+POST {{baseUrl}}/api/queue/leave-neon
 Content-Type: application/json
 Cookie: {{qCookie}}
 
@@ -137,30 +137,14 @@ Cookie: {{qCookie}}
 expect status 200
 <<<
 
-### Queue pick: missing body fields
-# @name queuePickMissing
-# @depends setupQueueUser
-POST {{baseUrl}}/api/queue/pick
+### Queue join: unauthenticated
+# @name queueJoinUnauthed
+POST {{baseUrl}}/api/queue/join-neon
 Content-Type: application/json
-Cookie: {{qCookie}}
 
 {}
 
 >>>
-expect status 400
-expect body.message contains "Missing lobbyId or heroId"
-<<<
-
-### Queue ban: missing body fields
-# @name queueBanMissing
-# @depends setupQueueUser
-POST {{baseUrl}}/api/queue/ban
-Content-Type: application/json
-Cookie: {{qCookie}}
-
-{}
-
->>>
-expect status 400
-expect body.message contains "Missing lobbyId or heroId"
+expect status 401
+expect body.message contains "Authentication required"
 <<<

@@ -193,6 +193,9 @@ jobs:
       TERMINA_DISABLE_RATE_LIMIT: '1'
       HOST: 127.0.0.1
       PORT: '3000'
+      # TokenRequest minting is a LOCAL HMAC signature (no Ably round trip) —
+      # a fake key exercises the real /api/auth/ably-token path end to end.
+      ABLY_API_KEY: 'fakeapp.fakekey:fake-secret-for-local-hmac-signing'
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/postgres
