@@ -34,6 +34,8 @@ export function useGameSocket() {
   let currentPlayerId: string | null = null
   let lastPingTime = 0
   let awaitingAck = false
+  // Monotonic per-connection order counter, echoed back in action_ack.
+  let actionSeq = 0
   let missedHeartbeats = 0
   const handlers: Array<(msg: ServerMessage) => void> = []
 
@@ -152,6 +154,23 @@ export function useGameSocket() {
         case 'cycle_state':
           gameStore.updateFromCycle(msg)
           break
+        case 'action_ack':
+          if (msg.accepted) {
+            // The server holds our order for the open batch — flip the HUD's
+            // CYCLE line from OPEN to COMMITTED.
+            gameStore.markOrderCommitted()
+          } else {
+            // Reverse the optimistic COMMITTED and reopen the action slot —
+            // the server never queued this order.
+            gameStore.markOrderRejected()
+            gameStore.addAnnouncement(
+              msg.reason === 'late'
+                ? `[CYCLE] Order arrived after the batch committed — retype it for cycle ${msg.cycle ?? '?'}`
+                : '[CYCLE] Order stamped for a future cycle — refresh if this repeats',
+              'warning',
+            )
+          }
+          break
         case 'events':
           gameStore.addEvents(msg.events)
           break
@@ -249,6 +268,14 @@ export function useGameSocket() {
   /** Returns true if the message went out, false if the socket isn't open
    *  (caller can then buffer/retry instead of assuming the action landed). */
   function send(message: ClientMessage): boolean {
+    // Stamp every order with the batch it's aimed at (the cycle the player saw
+    // OPEN when they typed it). The server refuses a stamp for a committed
+    // batch with an explicit action_ack 'late' instead of silently rolling the
+    // order into a batch the player didn't aim at. clientSeq correlates acks
+    // when sends race a slow socket. Callers that pre-stamp keep their stamp.
+    if (message.type === 'action' && message.forCycle === undefined && gameStore.cycle > 0) {
+      message = { ...message, forCycle: gameStore.cycle, clientSeq: ++actionSeq }
+    }
     if (ws && ws.readyState === WebSocket.OPEN) {
       socketLog.trace(`Sending: ${message.type}`, { type: message.type })
       ws.send(JSON.stringify(message))

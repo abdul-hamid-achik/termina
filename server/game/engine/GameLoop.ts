@@ -198,13 +198,35 @@ export function getFarmStats(gameId: string): Record<string, PlayerFarm> {
   return out
 }
 
+// ── Cycle clock ────────────────────────────────────────────────
+// The wall-clock shape of the batch clock, per game: which cycle is OPEN for
+// orders and when it commits. Stamped by the loop fiber each tick; read by
+// the WS layer to put nextCommitAt on cycle_state broadcasts (the HUD's CYCLE
+// countdown) and to validate forCycle-stamped orders. Manual-tick games
+// (dev/test harness) never stamp it — consumers must tolerate its absence.
+
+export interface GameClock {
+  cycle: number
+  nextCommitAt: number
+}
+
+const gameClocks = new Map<string, GameClock>()
+
+export function stampGameClock(gameId: string, cycle: number, nextCommitAt: number): void {
+  gameClocks.set(gameId, { cycle, nextCommitAt })
+}
+
+export function getGameClock(gameId: string): GameClock | null {
+  return gameClocks.get(gameId) ?? null
+}
+
 /** Submit an action for the current tick (single-instance, in-process queue). */
 function enqueueAction(
   gameId: string,
   playerId: string,
   command: Command,
   synthesized = false,
-): void {
+): { slot: string; replaced: boolean } {
   let queue = gameActionQueues.get(gameId)
   if (!queue) {
     queue = []
@@ -222,13 +244,21 @@ function enqueueAction(
       replacedWith: command.type,
     })
     queue[existing] = { playerId, command, ...(synthesized ? { synthesized: true } : {}) }
-  } else {
-    queue.push({ playerId, command, ...(synthesized ? { synthesized: true } : {}) })
+    return { slot, replaced: true }
   }
+  queue.push({ playerId, command, ...(synthesized ? { synthesized: true } : {}) })
+  return { slot, replaced: false }
 }
 
-export function submitAction(gameId: string, playerId: string, command: Command): void {
-  enqueueAction(gameId, playerId, command)
+/** Submit a player's order for the open cycle. Returns which slot it landed in
+ * and whether it replaced an earlier order in that slot — the WS layer echoes
+ * both back to the player as `action_ack`. */
+export function submitAction(
+  gameId: string,
+  playerId: string,
+  command: Command,
+): { slot: string; replaced: boolean } {
+  return enqueueAction(gameId, playerId, command)
 }
 
 /** Replay ingress preserves whether the original action was synthesized. */
@@ -752,6 +782,11 @@ function buildGameLoop(
     }
     yield* stateManager.updateState(gameId, () => newState)
 
+    // Stamp the clock: newState.cycle is now the OPEN batch, and it commits
+    // when the next tick fires. cycleIntervalMs is captured from the outer
+    // scope at run time (the schedule only starts after it's defined).
+    stampGameClock(gameId, newState.cycle, Date.now() + cycleIntervalMs)
+
     // Tutorial completion: processCycle advanced the human past the last scripted
     // step → fire the callback (the plugin persists players.tutorialCompleted) so
     // the client funnel stops routing this player to practice. Detected here, not
@@ -925,6 +960,7 @@ function buildGameLoop(
         activeGames.delete(gameId)
         recentHeroDamage.delete(gameId)
         gameFarm.delete(gameId)
+        gameClocks.delete(gameId)
         clearGameLoopHealth(gameId)
       }),
     ),
@@ -973,6 +1009,7 @@ export function stopGameLoop(gameId: string): Effect.Effect<void> {
     gameActionQueues.delete(gameId)
     recentHeroDamage.delete(gameId)
     gameFarm.delete(gameId)
+    gameClocks.delete(gameId)
   })
 }
 

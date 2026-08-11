@@ -105,6 +105,17 @@ export const useGameStore = defineStore('game', () => {
   const lastAnnouncementLevel = ref<AnnouncementLevel>('warning')
   const nextCycleIn = ref(0)
   const lastCycleAt = ref<number | null>(null)
+  // Epoch ms when the CURRENT cycle window commits — the server's authoritative
+  // clock for the persistent CYCLE n · OPEN/COMMITTED · s.s s indicator. Read
+  // from cycle_state when present; falls back to lastCycleAt + CYCLE_DURATION_MS
+  // (arrival time + one cycle) for older payloads that omit it, so the clock
+  // still runs.
+  const nextCommitAt = ref<number | null>(null)
+  // Whether an order is queued for the CURRENT cycle window. Distinct from
+  // `canAct`/`lastActionCycle` (which gate the main action slot specifically):
+  // this is the player-facing OPEN/COMMITTED flag for the persistent clock.
+  // Resets to false whenever a cycle_state with a NEW cycle number arrives.
+  const orderCommitted = ref(false)
   const scoreboard = ref<ScoreboardEntry[]>([])
   const gameOverStats = ref<Record<string, PlayerEndStats> | null>(null)
   const gameOverMmrChange = ref<number | null>(null)
@@ -239,6 +250,28 @@ export const useGameStore = defineStore('game', () => {
     }
     lastCycleAt.value = null
     nextCycleIn.value = 0
+    nextCommitAt.value = null
+  }
+
+  /**
+   * Mark that an order is queued for the current cycle window. Called
+   * optimistically by `markActionSent` (main slot) and by the socket layer on
+   * server acknowledgment — both converge on this single flag rather than each
+   * tracking their own.
+   */
+  function markOrderCommitted() {
+    orderCommitted.value = true
+  }
+
+  /**
+   * The server refused the order (action_ack accepted:false — a late/future
+   * cycle stamp). Reverse the optimistic COMMITTED and reopen the action slot,
+   * so the player retypes for the open cycle instead of staring at a
+   * COMMITTED line the server never honored.
+   */
+  function markOrderRejected() {
+    orderCommitted.value = false
+    lastActionCycle.value = -1
   }
 
   /** Buffer a command typed while waiting; it is sent on the next cycle. */
@@ -282,10 +315,18 @@ export const useGameStore = defineStore('game', () => {
 
     if (msg.cycle !== cycle.value) {
       pendingCommand.value = null
+      // A new cycle window opened — any order committed against the previous
+      // one no longer applies.
+      orderCommitted.value = false
     }
     cycle.value = msg.cycle
     // Anchor the client-side countdown to this cycle's arrival time
     lastCycleAt.value = Date.now()
+    // `nextCommitAt` is a top-level CycleStateMessage field (the server's
+    // batch-commit epoch), not part of the PlayerVisibleState payload — read
+    // it off `msg`, not `state`. Absent on older/manual-tick payloads, so fall
+    // back to this arrival time + one cycle.
+    nextCommitAt.value = msg.nextCommitAt ?? lastCycleAt.value + CYCLE_DURATION_MS
     _updateCountdown()
     _ensureCountdownTimer()
     // phase + teams are delta-OMITTED when unchanged (StateDelta), so they must
@@ -429,8 +470,15 @@ export const useGameStore = defineStore('game', () => {
   function markActionSent(description?: string, slot?: 'main' | 'item') {
     const verb = description?.trim().split(/\s+/)[0]?.toLowerCase()
     const resolved = slot ?? (verb === 'use' ? 'item' : 'main')
-    if (resolved === 'item') lastItemActionTick.value = cycle.value
-    else lastActionCycle.value = cycle.value
+    if (resolved === 'item') {
+      lastItemActionTick.value = cycle.value
+    } else {
+      lastActionCycle.value = cycle.value
+      // Optimistic: the main action slot is exactly today's "order sent this
+      // cycle" transition (drives `canAct`/AWAITING ORDERS) — the persistent
+      // clock's COMMITTED state rides the same event rather than a parallel flag.
+      markOrderCommitted()
+    }
     if (description) pendingCommand.value = description
   }
 
@@ -467,6 +515,7 @@ export const useGameStore = defineStore('game', () => {
     winner.value = null
     lastActionCycle.value = -1
     lastItemActionTick.value = -1
+    orderCommitted.value = false
     pendingCommand.value = null
     bufferedCommand.value = null
     timeOfDay.value = 'day'
@@ -505,6 +554,8 @@ export const useGameStore = defineStore('game', () => {
     lastAnnouncementLevel,
     nextCycleIn,
     lastCycleAt,
+    nextCommitAt,
+    orderCommitted,
     pendingCommand,
     bufferedCommand,
     scoreboard,
@@ -540,6 +591,8 @@ export const useGameStore = defineStore('game', () => {
     setPhase,
     setGameOver,
     markActionSent,
+    markOrderCommitted,
+    markOrderRejected,
     bufferCommand,
     consumeBufferedCommand,
     stopTickCountdown,

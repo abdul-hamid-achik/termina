@@ -4,7 +4,12 @@ import type { GameEvent, TeamId, PlayerVisibleState } from './game'
 // ── Client → Server ──────────────────────────────────────────────
 
 export type ClientMessage =
-  | { type: 'action'; command: Command }
+  // `forCycle` stamps the order with the cycle the client saw OPEN when it was
+  // typed; the server rejects it explicitly (action_ack accepted:false) if that
+  // batch has already committed ('late') or hasn't opened yet ('future') —
+  // instead of silently rolling it into a batch the player didn't aim at.
+  // `clientSeq` is an opaque correlation number echoed back in action_ack.
+  | { type: 'action'; command: Command; forCycle?: number; clientSeq?: number }
   | { type: 'chat'; channel: 'team' | 'all'; message: string }
   | { type: 'ping_map'; zone: string }
   | { type: 'heartbeat' }
@@ -21,7 +26,31 @@ export type ClientMessage =
 export interface CycleStateMessage {
   type: 'cycle_state'
   cycle: number
+  /** Epoch ms when this cycle's window commits (the next batch boundary).
+   * Drives the HUD's CYCLE clock countdown; absent on manual-tick dev games. */
+  nextCommitAt?: number
   state: PlayerVisibleState
+}
+
+/**
+ * The server's receipt for one order: which slot it landed in for the open
+ * cycle and whether it replaced an earlier order in that slot — or why it was
+ * refused. THE BATCH CLOCK IS CANON: an ack is the only honest way to tell the
+ * player "your instruction is in this batch" before the batch commits.
+ */
+export interface ActionAckMessage {
+  type: 'action_ack'
+  accepted: boolean
+  /** The cycle currently open on the server. Absent on manual-tick dev games. */
+  cycle?: number
+  /** The queue slot the order landed in ('main', 'item', ...). Accepted only. */
+  slot?: string
+  /** True when this order replaced an earlier one in the same slot this cycle. */
+  replaced?: boolean
+  /** Rejection reason: 'late' (that batch already committed) or 'future'. */
+  reason?: 'late' | 'future'
+  /** Echo of the client's correlation number, when it sent one. */
+  clientSeq?: number
 }
 
 export interface EventsMessage {
@@ -248,6 +277,7 @@ export interface LobbyCancelledMessage {
 
 export type ServerMessage =
   | CycleStateMessage
+  | ActionAckMessage
   | EventsMessage
   | AnnouncementMessage
   | GameOverMessage

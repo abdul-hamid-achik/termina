@@ -307,6 +307,61 @@ describe('useGameSocket', () => {
       expect(spy).toHaveBeenCalledWith('[ERROR] boom', 'error')
     })
 
+    it('routes an accepted action_ack to markOrderCommitted (OPEN → COMMITTED)', async () => {
+      const store = await connectWithStore()
+      const spy = vi.spyOn(store, 'markOrderCommitted')
+      MockWebSocket.last!._receive({ type: 'action_ack', accepted: true, cycle: 9, slot: 'main' })
+      expect(spy).toHaveBeenCalled()
+    })
+
+    it('surfaces a late-order rejection as a warning and reverses the optimistic COMMITTED', async () => {
+      const store = await connectWithStore()
+      const commit = vi.spyOn(store, 'markOrderCommitted')
+      const reject = vi.spyOn(store, 'markOrderRejected')
+      const toast = vi.spyOn(store, 'addAnnouncement')
+      MockWebSocket.last!._receive({
+        type: 'action_ack',
+        accepted: false,
+        reason: 'late',
+        cycle: 9,
+      })
+      expect(commit).not.toHaveBeenCalled()
+      expect(reject).toHaveBeenCalled()
+      expect(toast).toHaveBeenCalledWith(
+        expect.stringContaining('after the batch committed'),
+        'warning',
+      )
+    })
+
+    it('markOrderRejected reverses COMMITTED and reopens the action slot', async () => {
+      const store = await connectWithStore()
+      store.markActionSent('move coldstore')
+      expect(store.orderCommitted).toBe(true)
+      store.markOrderRejected()
+      expect(store.orderCommitted).toBe(false)
+      // canAct derives from lastActionCycle (plus player/alive, absent in this
+      // bare store) — the reset to the sentinel is what reopens the slot.
+      expect(store.lastActionCycle).toBe(-1)
+    })
+
+    it('stamps outgoing orders with the open cycle and a sequence number', async () => {
+      // One composable instance: `send` must come from the same call as
+      // `connect`, or it closes over a socket that was never opened.
+      const { useGameStore } = await import('../../../app/stores/game')
+      const store = useGameStore()
+      const { connect, send } = useGameSocket()
+      connect('game-1', 'player-1')
+      await vi.advanceTimersByTimeAsync(1)
+      store.cycle = 17
+      send({ type: 'action', command: { type: 'move', zone: 'coldstore' } })
+      const raw = MockWebSocket.last!.send.mock.calls.at(-1)?.[0] as string
+      expect(JSON.parse(raw)).toMatchObject({
+        type: 'action',
+        forCycle: 17,
+        clientSeq: 1,
+      })
+    })
+
     it('bails out to the lobby on NOT_ASSIGNED instead of freezing the HUD', async () => {
       // REGRESSION: NOT_ASSIGNED is terminal — the server no longer maps this
       // player to this game, so join_game and reconnect answer it forever. It

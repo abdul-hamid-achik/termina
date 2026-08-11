@@ -22,6 +22,7 @@ import { createInMemoryStateManager } from '~~/server/game/engine/StateManager'
 import {
   startGameLoop,
   stopGameLoop,
+  getGameClock,
   type GameCallbacks,
   type PlayerFarm,
 } from '~~/server/game/engine/GameLoop'
@@ -609,9 +610,13 @@ export default defineNitroPlugin(async (nitroApp) => {
         // doesn't kill a live game that happens to produce no events for a while.
         touchLiveGame(gId)
         if (isBot(playerId)) return
+        // nextCommitAt drives the HUD's CYCLE countdown — absent on manual-tick
+        // dev games, whose clock never gets stamped.
+        const clock = getGameClock(gId)
         sendToGamePeer(gId, playerId, {
           type: 'cycle_state',
           cycle: filteredState.cycle,
+          ...(clock ? { nextCommitAt: clock.nextCommitAt } : {}),
           state: filteredState,
         })
       },

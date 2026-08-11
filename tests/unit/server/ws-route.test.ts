@@ -11,7 +11,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { Effect } from 'effect'
 import { createWsTicket } from '~~/server/utils/ws-ticket'
 import { getGameRuntime, getReconnectPayload, stopDevGame } from '~~/server/plugins/game-server'
-import { submitAction } from '~~/server/game/engine/GameLoop'
+import { submitAction, getGameClock } from '~~/server/game/engine/GameLoop'
 import {
   pickHero,
   getPlayerLobby,
@@ -37,7 +37,8 @@ vi.mock('~~/server/plugins/game-server', () => ({
   stopDevGame: vi.fn(),
 }))
 vi.mock('~~/server/game/engine/GameLoop', () => ({
-  submitAction: vi.fn(),
+  submitAction: vi.fn(() => ({ slot: 'main', replaced: false })),
+  getGameClock: vi.fn(() => null),
 }))
 vi.mock('~~/server/game/matchmaking/lobby', () => ({
   pickHero: vi.fn(),
@@ -435,6 +436,74 @@ describe('ws route — action', () => {
       type: 'attack',
       target: { kind: 'terminal' },
     })
+  })
+
+  it('acknowledges an accepted order with slot, replaced and the open cycle', () => {
+    // mockReturnValueOnce (not mockReturnValue): clearAllMocks in the global
+    // beforeEach wipes call history but NOT implementations, so a sticky
+    // return here would leak a fake clock into every later action test.
+    vi.mocked(getGameClock).mockReturnValueOnce({ cycle: 42, nextCommitAt: 1_000 })
+    const { peer } = openPeerInGame('p_ack', 'game_1')
+    sendMsg(peer, {
+      type: 'action',
+      command: { type: 'attack', target: { kind: 'terminal' } },
+      forCycle: 42,
+      clientSeq: 7,
+    })
+    expect(submitAction).toHaveBeenCalled()
+    expect(lastMessage(peer)).toMatchObject({
+      type: 'action_ack',
+      accepted: true,
+      cycle: 42,
+      slot: 'main',
+      replaced: false,
+      clientSeq: 7,
+    })
+  })
+
+  it('rejects an order stamped for an already-committed cycle (late) without queueing it', () => {
+    vi.mocked(getGameClock).mockReturnValueOnce({ cycle: 42, nextCommitAt: 1_000 })
+    const { peer } = openPeerInGame('p_late', 'game_1')
+    sendMsg(peer, {
+      type: 'action',
+      command: { type: 'attack', target: { kind: 'terminal' } },
+      forCycle: 41,
+      clientSeq: 8,
+    })
+    expect(submitAction).not.toHaveBeenCalled()
+    expect(lastMessage(peer)).toMatchObject({
+      type: 'action_ack',
+      accepted: false,
+      cycle: 42,
+      reason: 'late',
+      clientSeq: 8,
+    })
+  })
+
+  it('rejects an order stamped for a cycle that has not opened yet (future)', () => {
+    vi.mocked(getGameClock).mockReturnValueOnce({ cycle: 42, nextCommitAt: 1_000 })
+    const { peer } = openPeerInGame('p_fut', 'game_1')
+    sendMsg(peer, {
+      type: 'action',
+      command: { type: 'attack', target: { kind: 'terminal' } },
+      forCycle: 43,
+    })
+    expect(submitAction).not.toHaveBeenCalled()
+    expect(lastMessage(peer)).toMatchObject({
+      type: 'action_ack',
+      accepted: false,
+      reason: 'future',
+    })
+  })
+
+  it('an unstamped order (bots, older clients, manual-tick games) queues and still gets an ack', () => {
+    // Default getGameClock mock returns null — the manual-tick case.
+    const { peer } = openPeerInGame('p_plain', 'game_1')
+    sendMsg(peer, { type: 'action', command: { type: 'attack', target: { kind: 'terminal' } } })
+    expect(submitAction).toHaveBeenCalled()
+    const ack = lastMessage(peer) as Record<string, unknown>
+    expect(ack).toMatchObject({ type: 'action_ack', accepted: true, slot: 'main' })
+    expect(ack.cycle).toBeUndefined()
   })
 
   it('drops rate-limited actions with RATE_LIMITED and never submits them', () => {

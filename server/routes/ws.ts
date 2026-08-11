@@ -1,7 +1,7 @@
 import { Effect } from 'effect'
 import type { ClientMessage } from '~~/shared/types/protocol'
 import { getGameRuntime, getReconnectPayload, stopDevGame } from '~~/server/plugins/game-server'
-import { submitAction } from '~~/server/game/engine/GameLoop'
+import { submitAction, getGameClock } from '~~/server/game/engine/GameLoop'
 import { isGameBot } from '~~/server/game/ai/BotManager'
 import { markClientInput } from '~~/server/services/LeaverSystem'
 import {
@@ -560,7 +560,39 @@ export default defineWebSocketHandler({
           gameId: ctx.gameId,
           command: parsed.command.type,
         })
-        submitAction(ctx.gameId, ctx.playerId, parsed.command)
+
+        // forCycle-stamped orders are validated against the live clock: an
+        // order aimed at a batch that already committed is dead ('late'), one
+        // aimed past the open batch is a client bug ('future'). Both are
+        // refused EXPLICITLY — silently rolling a late order into the next
+        // batch reads as "the game ate my input", the exact opposite of what
+        // the batch clock promises. Unstamped orders (bots, dev tools, older
+        // clients) keep today's behavior: queue for the open cycle.
+        const clock = getGameClock(ctx.gameId)
+        const seqEcho = parsed.clientSeq !== undefined ? { clientSeq: parsed.clientSeq } : {}
+        if (parsed.forCycle !== undefined && clock && parsed.forCycle !== clock.cycle) {
+          peer.send(
+            JSON.stringify({
+              type: 'action_ack',
+              accepted: false,
+              cycle: clock.cycle,
+              reason: parsed.forCycle < clock.cycle ? 'late' : 'future',
+              ...seqEcho,
+            }),
+          )
+          break
+        }
+        const queued = submitAction(ctx.gameId, ctx.playerId, parsed.command)
+        peer.send(
+          JSON.stringify({
+            type: 'action_ack',
+            accepted: true,
+            ...(clock ? { cycle: clock.cycle } : {}),
+            slot: queued.slot,
+            replaced: queued.replaced,
+            ...seqEcho,
+          }),
+        )
         break
       }
 

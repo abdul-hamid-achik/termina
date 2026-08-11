@@ -102,9 +102,9 @@ const stubs = {
   // the header assertions still hold under shallow stubbing.
   StatusLines: {
     name: 'StatusLines',
-    props: ['trace', 'canAct', 'nextCycleIn', 'cycle', 'netLead', 'alive'],
+    props: ['trace', 'orderCommitted', 'nextCommitAt', 'cycle', 'netLead', 'alive'],
     template:
-      "<div data-testid=\"theater-header\">{{ !alive ? 'DOWN' : canAct ? 'AWAITING ORDERS' : 'RESOLVING' }}</div>",
+      "<div data-testid=\"theater-header\">{{ !alive ? 'DOWN' : orderCommitted ? 'RESOLVING' : 'AWAITING ORDERS' }}</div>",
   },
   Stream: {
     name: 'Stream',

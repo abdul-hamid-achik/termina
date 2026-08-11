@@ -64,7 +64,12 @@ export const commandSchema = z.discriminatedUnion('type', [
 ])
 
 export const clientMessageSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('action'), command: commandSchema }),
+  z.object({
+    type: z.literal('action'),
+    command: commandSchema,
+    forCycle: z.number().int().min(0).optional(),
+    clientSeq: z.number().int().min(0).optional(),
+  }),
   z.object({
     type: z.literal('chat'),
     channel: z.enum(['team', 'all']),

@@ -37,16 +37,17 @@ const trace: TraceModel = {
 
 <template>
   <Story title="game/StatusLines">
-    <Variant title="awaiting orders">
+    <Variant title="cycle open">
       <div class="w-96 border border-border bg-bg-primary">
         <StatusLines
           :trace="trace"
           :hp-fraction="0.72"
           :alive="true"
           net-lead="CHF +1.2k"
-          :next-cycle-in="3000"
           :cycle="240"
-          :can-act="true"
+          :next-commit-at="Date.now() + 2700"
+          :order-committed="false"
+          :game-over="false"
           :enemy-count="1"
           :ally-headcount="1"
           :enemy-ice-present="false"
@@ -54,16 +55,35 @@ const trace: TraceModel = {
         />
       </div>
     </Variant>
-    <Variant title="down">
+    <Variant title="cycle committed">
+      <div class="w-96 border border-border bg-bg-primary">
+        <StatusLines
+          :trace="trace"
+          :hp-fraction="0.72"
+          :alive="true"
+          net-lead="CHF +1.2k"
+          :cycle="240"
+          :next-commit-at="Date.now() + 1400"
+          :order-committed="true"
+          :game-over="false"
+          :enemy-count="1"
+          :ally-headcount="1"
+          :enemy-ice-present="false"
+          :has-ready-ability="true"
+        />
+      </div>
+    </Variant>
+    <Variant title="cycle near-zero">
       <div class="w-96 border border-border bg-bg-primary">
         <StatusLines
           :trace="trace"
           :hp-fraction="0"
           :alive="false"
           net-lead="even"
-          :next-cycle-in="0"
           :cycle="241"
-          :can-act="false"
+          :next-commit-at="Date.now() + 80"
+          :order-committed="false"
+          :game-over="false"
           :enemy-count="2"
           :ally-headcount="0"
           :enemy-ice-present="true"

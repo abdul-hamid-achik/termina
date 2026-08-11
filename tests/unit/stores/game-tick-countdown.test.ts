@@ -14,10 +14,13 @@ function makeTeams(): { chaff: TeamState; audit: TeamState } {
   }
 }
 
-function makeCycleMessage(cycle: number): CycleStateMessage {
+function makeCycleMessage(cycle: number, nextCommitAt?: number): CycleStateMessage {
   return {
     type: 'cycle_state',
     cycle,
+    // `nextCommitAt` is a top-level CycleStateMessage field (the server's
+    // batch-commit epoch) — NOT part of the PlayerVisibleState `state` payload.
+    ...(nextCommitAt !== undefined ? { nextCommitAt } : {}),
     state: {
       phase: 'playing',
       players: {},
@@ -110,6 +113,101 @@ describe('Game Store — cycle countdown', () => {
 
     vi.advanceTimersByTime(2000)
     expect(store.nextCycleIn).toBe(0)
+  })
+})
+
+describe('Game Store — persistent cycle clock (nextCommitAt / orderCommitted)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('reads nextCommitAt straight from the cycle_state payload when present', () => {
+    const store = useGameStore()
+    const serverCommitAt = Date.now() + 1234
+
+    store.updateFromCycle(makeCycleMessage(1, serverCommitAt))
+
+    expect(store.nextCommitAt).toBe(serverCommitAt)
+  })
+
+  it('falls back to arrival time + CYCLE_DURATION_MS when the payload omits it', () => {
+    const store = useGameStore()
+
+    store.updateFromCycle(makeCycleMessage(1))
+
+    expect(store.nextCommitAt).toBe(Date.now() + CYCLE_DURATION_MS)
+  })
+
+  it('starts with orderCommitted false and markOrderCommitted flips it true', () => {
+    const store = useGameStore()
+    store.updateFromCycle(makeCycleMessage(1))
+    expect(store.orderCommitted).toBe(false)
+
+    store.markOrderCommitted()
+
+    expect(store.orderCommitted).toBe(true)
+  })
+
+  it('resets orderCommitted to false when a NEW cycle number arrives', () => {
+    const store = useGameStore()
+    store.updateFromCycle(makeCycleMessage(1))
+    store.markOrderCommitted()
+    expect(store.orderCommitted).toBe(true)
+
+    store.updateFromCycle(makeCycleMessage(2))
+
+    expect(store.orderCommitted).toBe(false)
+  })
+
+  it('does NOT reset orderCommitted on a repeat delta for the SAME cycle', () => {
+    const store = useGameStore()
+    store.updateFromCycle(makeCycleMessage(1))
+    store.markOrderCommitted()
+
+    // Another cycle_state for the identical cycle number (e.g. a resend) must
+    // not silently un-commit an order the player already queued.
+    store.updateFromCycle(makeCycleMessage(1))
+
+    expect(store.orderCommitted).toBe(true)
+  })
+
+  it('markActionSent on the main slot optimistically commits the order', () => {
+    const store = useGameStore()
+    store.updateFromCycle(makeCycleMessage(5))
+    expect(store.orderCommitted).toBe(false)
+
+    store.markActionSent('move coldstore-cross')
+
+    expect(store.orderCommitted).toBe(true)
+  })
+
+  it('markActionSent on the item slot does NOT commit the main order', () => {
+    const store = useGameStore()
+    store.updateFromCycle(makeCycleMessage(5))
+
+    store.markActionSent('use jump_shunt coldstore-cross', 'item')
+
+    expect(store.orderCommitted).toBe(false)
+  })
+
+  it('stopTickCountdown and reset clear nextCommitAt', () => {
+    const store = useGameStore()
+    store.updateFromCycle(makeCycleMessage(1))
+    expect(store.nextCommitAt).not.toBeNull()
+
+    store.stopTickCountdown()
+    expect(store.nextCommitAt).toBeNull()
+
+    store.updateFromCycle(makeCycleMessage(2))
+    store.markOrderCommitted()
+    store.reset()
+    expect(store.nextCommitAt).toBeNull()
+    expect(store.orderCommitted).toBe(false)
   })
 })
 
