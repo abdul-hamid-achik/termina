@@ -35,7 +35,32 @@ export async function tickSpike(label: string, ticks: number) {
     await sleep('4s')
     stamps.push(await stampNow(label, i))
   }
+  const summary = summarize(label, ticks, stamps)
+  await logSummary(summary)
+  return summary
+}
 
+/**
+ * Variant 2 — ABSOLUTE deadlines: naive relative sleeps measured a consistent
+ * ~1.2s of queue-scheduling overhead per cycle (p50 5204ms on the first
+ * Vercel run). Sleeping until t0 + N*4000 anchors the AVERAGE cadence to
+ * exactly 4s: overhead eats phase margin instead of stretching the interval.
+ */
+export async function tickSpikeAbsolute(label: string, ticks: number) {
+  'use workflow'
+  const t0 = await stampNow(label, -1)
+  const stamps: number[] = []
+  for (let i = 0; i < ticks; i++) {
+    await sleep(new Date(t0 + (i + 1) * 4000))
+    stamps.push(await stampNow(label, i))
+  }
+  const summary = summarize(label, ticks, stamps)
+  await logSummary(summary)
+  return summary
+}
+
+/** Pure interval math — no steps in here (steps stay in the workflow bodies). */
+function summarize(label: string, ticks: number, stamps: number[]) {
   const intervals = stamps.slice(1).map((t, i) => t - stamps[i]!)
   const sorted = [...intervals].sort((a, b) => a - b)
   const at = (q: number) => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] ?? 0
@@ -53,6 +78,5 @@ export async function tickSpike(label: string, ticks: number) {
     p95WithinBudget: at(0.95) >= 3750 && at(0.95) <= 4250,
     worstWithinHardCap: (sorted[sorted.length - 1] ?? 0) <= 5000,
   }
-  await logSummary(summary)
   return summary
 }
