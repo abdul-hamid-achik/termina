@@ -12,6 +12,7 @@ import {
   formatStatusReadout,
   formatMapReadout,
   formatScanReadout,
+  formatCycleRecap,
   formatContactsReadout,
   formatNetReadout,
   formatLookReadout,
@@ -2378,7 +2379,47 @@ describe('informational readouts', () => {
         { p1: me(), e1: enemy },
         { visibleZoneIds: [neighbour] },
       ).join('\n')
-      expect(out).toContain(`${neighbour} ⚠1`)
+      expect(out).toContain(`${neighbour}`)
+      expect(out).toContain('⚠1')
+    })
+  })
+
+  describe('formatCycleRecap', () => {
+    const me = () => makePlayer({ id: 'p1', team: 'chaff', zone: 'coldstore-t1-chaff' })
+
+    it('says clear when the zone is empty', () => {
+      const recap = formatCycleRecap(me(), { p1: me() })
+      expect(recap.here).toBe('clear')
+      expect(recap.verb).toBeNull()
+    })
+
+    it('labels STRIP when a hostile wave is inside the window', () => {
+      const recap = formatCycleRecap(
+        me(),
+        { p1: me() },
+        {
+          waves: [
+            {
+              id: 'w1',
+              team: 'audit',
+              zone: 'coldstore-t1-chaff',
+              integ: 40,
+              maxInteg: 400,
+              type: 'line',
+            },
+          ],
+        },
+      )
+      expect(recap.stripReady).toBe(true)
+      expect(recap.verb).toBe('STRIP')
+      expect(recap.verbCmd).toBe('attack wave:0')
+    })
+
+    it('names adjacent hops instead of raw ids', () => {
+      const recap = formatCycleRecap(me(), { p1: me() }, { visibleZoneIds: [] })
+      expect(recap.move).toContain('?')
+      expect(recap.move).toMatch(/Coldstore|Crossing|Anchor|Terminal/)
+      expect(recap.move).not.toContain('coldstore-t2-chaff')
     })
   })
 

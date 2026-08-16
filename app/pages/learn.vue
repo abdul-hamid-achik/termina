@@ -27,6 +27,9 @@ import {
   LINE_UNITS_PER_WAVE,
   SWEEP_UNITS_PER_WAVE,
   BREACH_WAVE_INTERVAL,
+  BREACH_DURATION_CYCLES,
+  BREACH_COOLDOWN_CYCLES,
+  BREACH_BW_COST,
   ICE_HP_T1,
   ICE_HP_T2,
   ICE_HP_T3,
@@ -54,6 +57,7 @@ import {
   WAVE_XP_SHARED,
 } from '~~/shared/constants/balance'
 import { talentUnlockLevel } from '~~/shared/constants/talents'
+import { RANK_TIERS } from '~~/shared/constants/ranks'
 import { useStartTutorial } from '~/composables/useStartTutorial'
 
 const {
@@ -108,13 +112,13 @@ const quickStart = [
   },
   {
     step: '2',
-    title: 'Pick a Hero',
-    desc: `Choose from ${heroCount} heroes, each with a passive and four actives — Q/W/E from level 1, the ultimate (R) at level ${ULTIMATE_UNLOCK_LEVEL}. Picks alternate between teams.`,
+    title: 'Get a Handle',
+    desc: `Quick-match assigns you one of ${heroCount} operators — Q/W/E from level 1, the ultimate (R) at level ${ULTIMATE_UNLOCK_LEVEL}. Bots fill empty slots after ten seconds. There is no pick/ban screen on this path.`,
   },
   {
     step: '3',
-    title: 'Move Out of Fountain',
-    desc: 'You start in your fountain. Type move base (a shortcut that always means YOUR base) to leave, then move out onto a route.',
+    title: 'Leave the Anchor',
+    desc: 'You start in your fountain (the anchor). Type move terminal — always YOUR terminal — then move coldstore onto the route.',
   },
   {
     step: '4',
@@ -160,7 +164,7 @@ const movementGuide = [
       `Fountain heals ${FOUNTAIN_HEAL_PER_CYCLE_PERCENT}% INTEG / ${FOUNTAIN_BW_PER_CYCLE_PERCENT}% BW per cycle — retreat there to recover`,
       'Fountain is only adjacent to your base (must go through base first)',
       `You can't move while dead — respawn takes ${RESPAWN_BASE_CYCLES} cycles plus ${RESPAWN_PER_LEVEL_CYCLES} per level after level ${RESPAWN_FREE_LEVELS}`,
-      'Team-relative shortcuts: move base / move fountain always go to YOUR side, whichever team you are',
+      'Team-relative shortcuts: move terminal / move anchor always go to YOUR side, whichever team you are',
       'More aliases save typing: move coldstore (or cs) → coldstore-cross, move hollow → the Tenant pit; unambiguous prefixes work too',
     ],
   },
@@ -249,7 +253,7 @@ const commands = [
   },
   {
     cmd: 'talent <10|15|20|25> <left|right>',
-    desc: 'Pick a tier talent — a one-time left/right power choice unlocked at levels 10/15/20/25',
+    desc: `Pick a talent — a one-time left/right choice. The tiers unlock at levels ${talentLevelList} (you still type talent 10|15|20|25)`,
     example: 'talent 10 left',
     shortcuts: '—',
   },
@@ -384,7 +388,7 @@ const concepts = [
   {
     term: 'Tenant & Caches',
     icon: '%',
-    desc: `Tenant (${TENANT_BASE_HP}+ INTEG) lurks in hollow and drops the Backup when killed — grab it with backup. Power-up caches spawn at cache-seawall/cache-shallows every ${CACHE_INTERVAL_CYCLES} cycles and expire after ${CACHE_DURATION_CYCLES}; grab them with cache.`,
+    desc: `Tenant (${TENANT_BASE_HP}+ INTEG) lurks in hollow and drops the Backup when killed — pick it up with backup. Power-up caches spawn at cache-seawall/cache-shallows every ${CACHE_INTERVAL_CYCLES} cycles and expire after ${CACHE_DURATION_CYCLES}; pick them up with grab.`,
   },
   {
     term: 'Win Condition',
@@ -392,14 +396,24 @@ const concepts = [
     desc: `Destroying any of a team's T3 ice exposes their Terminal (${TERMINAL_HP} INTEG) in their base. Destroy the enemy Terminal to win. Teams may also surrender after ${surrenderMinutes} minutes with a ${surrenderPercent}% vote.`,
   },
   {
-    term: 'Draft & Bans',
-    icon: 'D',
-    desc: "In 5v5 and 3v3, the draft opens with a ban phase: teams take turns removing heroes from the pool before the snake pick. Banned heroes can't be picked by either side — use bans to burn a matchup you don't want to face.",
+    term: 'BREACH',
+    icon: 'B',
+    desc: `Targets start closed. Code damage is halved into a closed target and hard control fails outright. breach <hero> opens a ${BREACH_DURATION_CYCLES}-cycle window for your whole crew (${BREACH_BW_COST} BW, ${BREACH_COOLDOWN_CYCLES}-cycle cooldown). Kinetic never needs access. If you are the one opened, breach self flushes it.`,
+  },
+  {
+    term: 'Two slots',
+    icon: '=',
+    desc: 'Each cycle has two slots: MAIN (move, attack, cast, buy, burn, tap) and RIG (use <item>). An item active and an ability can fire in the SAME cycle — that is the combo. The HUD shows MAIN and RIG as open or committed.',
+  },
+  {
+    term: 'Matchmaking',
+    icon: 'Q',
+    desc: 'The live path is quick-match: you search, bots fill after ten seconds, heroes are assigned. A 5v5 snake draft is not live yet. Party co-op puts your crew on CHAFF with bots filling the rest.',
   },
   {
     term: 'Seasons & Ranks',
     icon: 'S',
-    desc: 'The competitive ladder resets each season. Ranked games (no bots) move your seasonal rating (SR); from it you earn a rank tier — Iron → Bronze → Silver → Gold → Platinum → Diamond → Terminal. The leaderboard shows the current season; your lifetime rating is tracked separately.',
+    desc: `The competitive ladder resets each season. Ranked games (no bots) move your seasonal rating; from it you earn a rank — ${RANK_TIERS.map((t) => t.name).join(' → ')}. The leaderboard shows the current season; your lifetime rating is tracked separately.`,
   },
   {
     term: 'Parties & Co-op',

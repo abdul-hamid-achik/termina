@@ -136,7 +136,7 @@ describe('PostGame — what to work on', () => {
     const panel = wrapper.get('[data-testid="what-to-work-on"]')
     expect(adviceIds(wrapper)[0]).toBe('deaths')
     expect(panel.text()).toContain('You died 9 times')
-    expect(panel.text()).toContain('move base')
+    expect(panel.text()).toContain('move terminal')
   })
 
   it('judges farm by rate, so the same CS total reads differently at 10m and 40m', () => {

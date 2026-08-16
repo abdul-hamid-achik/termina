@@ -51,6 +51,11 @@ const trace: TraceModel = {
           :ally-headcount="1"
           :enemy-ice-present="false"
           :has-ready-ability="true"
+          :rig-open="true"
+          here="Daemon · 2 hostile waves"
+          verb="STRIP"
+          :strip-ready="true"
+          move="Coldstore Crossing · T2 ?"
         />
       </div>
     </Variant>
@@ -68,6 +73,11 @@ const trace: TraceModel = {
           :ally-headcount="1"
           :enemy-ice-present="false"
           :has-ready-ability="true"
+          :rig-open="false"
+          here="Daemon · 2 hostile waves"
+          verb="HIT"
+          :strip-ready="false"
+          move="Coldstore Crossing · T2 ?"
         />
       </div>
     </Variant>
@@ -85,6 +95,11 @@ const trace: TraceModel = {
           :ally-headcount="0"
           :enemy-ice-present="true"
           :has-ready-ability="false"
+          :rig-open="true"
+          here="clear"
+          :verb="null"
+          :strip-ready="false"
+          move="—"
         />
       </div>
     </Variant>

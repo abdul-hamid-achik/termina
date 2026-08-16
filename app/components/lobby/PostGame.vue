@@ -164,7 +164,7 @@ const advice = computed((): Advice[] => {
     out.push({
       id: 'deaths',
       observation: `You died ${s.deaths} times`,
-      command: 'move base',
+      command: 'move terminal',
       detail:
         'Watch the focus banner: the moment it flips to DANGER you are outnumbered. Retreating costs one cycle — dying costs the respawn plus everything the enemy earns for it.',
     })

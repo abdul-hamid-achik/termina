@@ -34,6 +34,9 @@ function input(over: Partial<CoachInput> = {}): CoachInput {
     castsMade: 99,
     routeVision: 8,
     routeTotal: 8,
+    codeDealer: false,
+    closedTargetHere: false,
+    hasItemActive: false,
     ...over,
   }
 }
@@ -151,6 +154,8 @@ describe('the coach', () => {
         input({ castsMade: 0, enemiesHere: 1 }),
         input({ routeVision: 1, routeTotal: 8, scrip: 200, items: [null, null] }),
         input({ attackableIce: true }),
+        input({ closedTargetHere: true, codeDealer: true, enemiesHere: 1 }),
+        input({ enemiesHere: 1, hasItemActive: true, castsMade: 99 }),
       ]
       const seen = new Set<string>()
       for (const s of situations) {
@@ -169,6 +174,22 @@ describe('the coach', () => {
 
     it('every catalogued tip has a unique id', () => {
       expect(new Set(COACH_TIP_IDS).size).toBe(COACH_TIP_IDS.length)
+    })
+
+    it('teaches BREACH when a code dealer faces a closed target', () => {
+      expect(evaluateCoach(input({ closedTargetHere: true, codeDealer: false }), {}, {})).toBeNull()
+      const tip = evaluateCoach(input({ closedTargetHere: true, codeDealer: true }), {}, {})
+      expect(tip?.id).toBe('breach')
+      expect(tip?.command).toBe('breach')
+    })
+
+    it('teaches the two slots once the player is in a fight with an item active', () => {
+      const tip = evaluateCoach(
+        input({ enemiesHere: 1, hasItemActive: true, castsMade: 99 }),
+        {},
+        {},
+      )
+      expect(tip?.id).toBe('dual_slot')
     })
   })
 })

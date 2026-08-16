@@ -35,6 +35,7 @@ import {
   formatStatusReadout,
   formatMapReadout,
   formatScanReadout,
+  formatCycleRecap,
   formatContactsReadout,
   formatNetReadout,
   formatLookReadout,
@@ -230,8 +231,8 @@ onMounted(() => {
     if (typeof localStorage !== 'undefined' && !localStorage.getItem('termina_intro_seen')) {
       localStorage.setItem('termina_intro_seen', '1')
       const intro = [
-        'Welcome to TERMINA — the city commits every four seconds. You queue ONE instruction per cycle.',
-        'You start in the fountain. Move out onto a route: type or tap  move coldstore-cross',
+        'Welcome to TERMINA — the city commits every four seconds. MAIN is your verb; RIG is use <item> — they can fire in the same cycle.',
+        'You start in the fountain. Move out onto a route: type  move coldstore',
         // Desktop has no ActionRow (R3-09 hides it on fine pointers), so the
         // shop/scoreboard verbs and the ability keys are the real affordances;
         // the button copy below only exists on touch.
@@ -239,9 +240,9 @@ onMounted(() => {
           ? `Strip enemy wave units for scrip: at or below ${stripHpPercent}% of the INTEG they spawned with, attack wave:N takes one outright.`
           : `Strip enemy wave units for scrip — the ActionRow shows STRIP when one is in the window (below ${stripHpPercent}% of its spawn INTEG), HIT when it is not.`,
         isFinePointer()
-          ? 'In the fountain/base press Esc then S for the shop (or type  buy <item>); Q/W/E/R quick-cast.'
-          : 'In the fountain/base tap [SHOP] to buy; tap Q/W/E/R below to cast.',
-        'Destroy the enemy Terminal to win. Good luck!',
+          ? 'In the fountain/anchor press Esc then S for the shop (or type  buy <item>); Q/W/E/R quick-cast.'
+          : 'In the fountain/anchor tap [SHOP] to buy; tap Q/W/E/R below to cast.',
+        'Code needs BREACH — type breach <hero> or the HUD will say so. Destroy the enemy Terminal to win.',
       ]
       for (const text of intro)
         localEvents.value.push({ cycle: gameStore.cycle, text, type: 'system' })
@@ -1470,6 +1471,19 @@ const traceModel = computed(() => {
   })
 })
 
+const EMPTY_RECAP = { here: 'clear', verb: null, verbCmd: null, stripReady: false, move: '—' }
+const cycleRecap = computed(() => {
+  const p = gameStore.player
+  if (!p) return EMPTY_RECAP
+  return formatCycleRecap(p, gameStore.allPlayers, {
+    waves: gameStore.waves,
+    ice: gameStore.ice,
+    caches: gameStore.caches,
+    visibleZoneIds: gameStore.visibleZoneIds,
+    mapId: gameStore.mapId,
+  })
+})
+
 // ── The coach ─────────────────────────────────────────────────
 // Situational teaching in the STREAM (see app/utils/coach.ts for why it lives
 // in the feed rather than over it). Everything here is bookkeeping; every
@@ -1533,7 +1547,7 @@ const coachInput = computed<CoachInput | null>(() => {
     enemiesHere: rigEnemyCount.value,
     alliesHere: Math.max(0, rigAllyHeadcount.value - 1),
     strippableWaves: zoneWaves.filter(
-      (c) => c.team !== p.team && c.integ / (c.maxInteg || c.integ) <= 0.5,
+      (c) => c.team !== p.team && c.integ / (c.maxInteg || c.integ) <= STRIP_HP_THRESHOLD,
     ).length,
     attackableIce: !!enemyIce,
     castsMade: coachCasts.value,
@@ -1543,6 +1557,25 @@ const coachInput = computed<CoachInput | null>(() => {
         ).length
       : 0,
     routeTotal: active?.total ?? 0,
+    codeDealer: (() => {
+      const hero = p.heroId ? HEROES[p.heroId] : undefined
+      if (!hero) return false
+      if (hero.attackType === 'code') return true
+      return Object.values(hero.abilities).some((a) =>
+        (a.effects ?? []).some(
+          (e) => e.type === 'damage' && (e.damageType ?? hero.attackType) === 'code',
+        ),
+      )
+    })(),
+    closedTargetHere: Object.values(gameStore.allPlayers).some(
+      (e) =>
+        e.team !== p.team &&
+        e.alive &&
+        e.zone === p.zone &&
+        !(e as { fogged?: boolean }).fogged &&
+        !e.buffs?.some((b) => b.id === 'breached'),
+    ),
+    hasItemActive: (p.items ?? []).some((id) => id != null && ITEMS[id]?.active != null),
   }
 })
 
@@ -1715,6 +1748,9 @@ const situationalActions = computed(() =>
     teams: gameStore.teams,
     cycle: gameStore.cycle,
     mode: gameStore.mode,
+    breachTarget:
+      gameStore.nearbyEnemies.find((e) => !e.buffs?.some((b) => b.id === 'breached'))?.heroId ??
+      null,
   }),
 )
 
@@ -2192,6 +2228,11 @@ function handleReturnToMenu() {
         :ally-headcount="rigAllyHeadcount"
         :enemy-ice-present="rigEnemyIcePresent"
         :has-ready-ability="rigHasReadyAbility"
+        :rig-open="gameStore.canUseItem"
+        :here="cycleRecap.here"
+        :verb="cycleRecap.verb"
+        :strip-ready="cycleRecap.stripReady"
+        :move="cycleRecap.move"
       />
     </div>
 

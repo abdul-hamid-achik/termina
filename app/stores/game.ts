@@ -106,14 +106,14 @@ export const useGameStore = defineStore('game', () => {
   const nextCycleIn = ref(0)
   const lastCycleAt = ref<number | null>(null)
   // Epoch ms when the CURRENT cycle window commits — the server's authoritative
-  // clock for the persistent CYCLE n · OPEN/COMMITTED · s.s s indicator. Read
+  // clock for the persistent CYCLE n · MAIN open/spent · RIG · s.s s indicator. Read
   // from cycle_state when present; falls back to lastCycleAt + CYCLE_DURATION_MS
   // (arrival time + one cycle) for older payloads that omit it, so the clock
   // still runs.
   const nextCommitAt = ref<number | null>(null)
   // Whether an order is queued for the CURRENT cycle window. Distinct from
   // `canAct`/`lastActionCycle` (which gate the main action slot specifically):
-  // this is the player-facing OPEN/COMMITTED flag for the persistent clock.
+  // this is the player-facing MAIN open/spent flag for the persistent clock.
   // Resets to false whenever a cycle_state with a NEW cycle number arrives.
   const orderCommitted = ref(false)
   const scoreboard = ref<ScoreboardEntry[]>([])

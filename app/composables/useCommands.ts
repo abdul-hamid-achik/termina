@@ -395,12 +395,13 @@ export function formatScanReadout(
   const adjacent = zone?.adjacentTo ?? []
   if (adjacent.length) {
     const moves = adjacent.map((id) => {
-      if (!seen.has(id)) return `${id} ?`
+      const label = `${zoneName(id)} (${id})`
+      if (!seen.has(id)) return `${label} ?`
       const hostiles = Object.values(allPlayers).filter(
         (p) =>
           p.team !== player.team && p.alive && !(p as { fogged?: boolean }).fogged && p.zone === id,
       ).length
-      return hostiles ? `${id} ⚠${hostiles}` : id
+      return hostiles ? `${label} ⚠${hostiles}` : label
     })
     lines.push(`  MOVE    ${moves.join(' · ')}`)
     lines.push(`          ⚠ = hostiles seen · ? = no feed, you are walking in blind`)
@@ -425,6 +426,105 @@ export function formatScanReadout(
   }
 
   return lines
+}
+
+/**
+ * Compact always-on recap of the current cycle — the same facts `scan` prints,
+ * shrunk to two HUD fragments so a desktop player (no ActionRow) can decide
+ * without typing a readout first.
+ */
+export interface CycleRecap {
+  here: string
+  /** STRIP / HIT / ATTACK / BURN / GRAB / ICE, or null when there is nothing to do here. */
+  verb: string | null
+  verbCmd: string | null
+  stripReady: boolean
+  move: string
+}
+
+export function formatCycleRecap(
+  player: PlayerState,
+  allPlayers: Record<string, PlayerState>,
+  opts: {
+    waves?: WaveUnitState[]
+    ice?: { zone: string; team: string; alive: boolean; integ: number; maxInteg: number }[]
+    visibleZoneIds?: readonly string[]
+    caches?: { zone: string; type?: string }[]
+    mapId?: string
+  } = {},
+): CycleRecap {
+  const { waves = [], ice = [], caches = [] } = opts
+  const seen = new Set(opts.visibleZoneIds ?? [])
+
+  const here: string[] = []
+  const enemyHeroes = Object.values(allPlayers).filter(
+    (p) =>
+      p.team !== player.team &&
+      p.alive &&
+      !(p as { fogged?: boolean }).fogged &&
+      p.zone === player.zone,
+  )
+  for (const e of enemyHeroes) {
+    here.push(HEROES[e.heroId ?? '']?.name ?? e.name)
+  }
+
+  const zoneWaves = waves.filter((c) => c.zone === player.zone && c.integ > 0)
+  const hostileWaves = zoneWaves.filter((c) => c.team !== player.team)
+  const ownWaves = zoneWaves.filter((c) => c.team === player.team)
+  const strippable = hostileWaves.filter((c) => c.integ / waveFullHp(c) <= STRIP_HP_THRESHOLD)
+  const burnable = ownWaves.filter((c) => c.integ / waveFullHp(c) <= BURN_HP_THRESHOLD)
+  if (hostileWaves.length) {
+    here.push(`${hostileWaves.length} hostile wave${hostileWaves.length === 1 ? '' : 's'}`)
+  }
+
+  const zoneIce = ice.find((t) => t.zone === player.zone && t.alive && t.team !== player.team)
+  if (zoneIce) here.push('enemy ICE')
+  const cacheHere = caches.find((c) => c.zone === player.zone)
+
+  let verb: string | null = null
+  let verbCmd: string | null = null
+  if (strippable.length) {
+    const weakest = strippable.reduce((a, b) => (a.integ <= b.integ ? a : b))
+    verb = 'STRIP'
+    verbCmd = `attack wave:${zoneWaves.indexOf(weakest)}`
+  } else if (enemyHeroes[0]) {
+    verb = 'ATTACK'
+    verbCmd = `attack hero:${enemyHeroes[0].heroId ?? enemyHeroes[0].id}`
+  } else if (hostileWaves.length) {
+    const weakest = hostileWaves.reduce((a, b) => (a.integ <= b.integ ? a : b))
+    verb = 'HIT'
+    verbCmd = `attack wave:${zoneWaves.indexOf(weakest)}`
+  } else if (zoneIce) {
+    verb = 'ICE'
+    verbCmd = `attack ice:${zoneIce.zone}`
+  } else if (cacheHere) {
+    verb = 'GRAB'
+    verbCmd = 'grab'
+  } else if (burnable[0]) {
+    verb = 'BURN'
+    verbCmd = `burn wave:${zoneWaves.indexOf(burnable[0])}`
+  }
+
+  const zone = zonesForMap(opts.mapId).find((z) => z.id === player.zone)
+  const move = (zone?.adjacentTo ?? [])
+    .map((id) => {
+      const name = zoneName(id)
+      if (!seen.has(id)) return `${name} ?`
+      const hostiles = Object.values(allPlayers).filter(
+        (p) =>
+          p.team !== player.team && p.alive && !(p as { fogged?: boolean }).fogged && p.zone === id,
+      ).length
+      return hostiles ? `${name} !` : name
+    })
+    .join(' · ')
+
+  return {
+    here: here.length ? here.join(' · ') : 'clear',
+    verb,
+    verbCmd,
+    stripReady: strippable.length > 0,
+    move: move || '—',
+  }
 }
 
 /** `who` — the contacts sheet: every visible hero, hostile and friendly, with

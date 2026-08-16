@@ -38,6 +38,11 @@ function mountLines(over: Partial<Parameters<typeof mount>[0]> = {}) {
       allyHeadcount: 1,
       enemyIcePresent: false,
       hasReadyAbility: true,
+      rigOpen: true,
+      here: 'clear',
+      verb: null,
+      stripReady: false,
+      move: 'Coldstore Crossing',
       ...(over.props as object | undefined),
     },
   })
@@ -56,6 +61,20 @@ describe('StatusLines', () => {
     const hop = wrapper.get('[data-testid="status-hop"]').text()
     expect(hop).toContain('hop 2/8')
     expect(hop).toContain('CLEAR')
+  })
+
+  it('renders the cycle recap: HERE, the verb, and named MOVE hops', () => {
+    const wrapper = mountLines({
+      props: {
+        here: '2 hostile waves',
+        verb: 'STRIP',
+        stripReady: true,
+        move: 'Coldstore Crossing ?',
+      },
+    })
+    expect(wrapper.get('[data-testid="status-here"]').text()).toContain('HERE 2 hostile waves')
+    expect(wrapper.get('[data-testid="status-verb"]').text()).toContain('STRIP')
+    expect(wrapper.get('[data-testid="status-move"]').text()).toContain('Coldstore Crossing')
   })
 
   it('does NOT render a net lead — that lives in GameStateBar only (dupe fix)', () => {
@@ -82,6 +101,11 @@ describe('StatusLines', () => {
         allyHeadcount: 1,
         enemyIcePresent: false,
         hasReadyAbility: true,
+        rigOpen: true,
+        here: 'clear',
+        verb: null,
+        stripReady: false,
+        move: '—',
       },
     })
     expect(wrapper.get('[data-testid="status-hop"]').text()).toContain('off route')
@@ -95,26 +119,25 @@ describe('StatusLines', () => {
       vi.useRealTimers()
     })
 
-    it('renders OPEN with the remaining seconds when no order is queued', () => {
+    it('renders MAIN open with the remaining seconds when no order is queued', () => {
       const wrapper = mountLines({
         props: { cycle: 184, nextCommitAt: Date.now() + 2700, orderCommitted: false },
       })
       const text = wrapper.get('[data-testid="status-clock"]').text()
       expect(text).toContain('CYCLE 184')
-      expect(text).toContain('OPEN')
+      expect(text).toContain('MAIN open')
+      expect(text).toContain('RIG open')
       expect(text).toContain('2.7s')
-      expect(text).not.toContain('COMMITTED')
     })
 
-    it('switches to COMMITTED when an order is queued for the cycle', () => {
+    it('marks MAIN spent when an order is queued for the cycle', () => {
       const wrapper = mountLines({
         props: { cycle: 184, nextCommitAt: Date.now() + 1400, orderCommitted: true },
       })
       const text = wrapper.get('[data-testid="status-clock"]').text()
       expect(text).toContain('CYCLE 184')
-      expect(text).toContain('COMMITTED')
+      expect(text).toContain('MAIN spent')
       expect(text).toContain('1.4s')
-      expect(text).not.toContain('OPEN')
     })
 
     it('counts down as wall-clock time passes', async () => {

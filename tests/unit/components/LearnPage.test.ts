@@ -56,7 +56,7 @@ function mountLearn() {
 describe('learn page', () => {
   it('teaches the live hero count, not a hardcoded one', () => {
     const text = mountLearn().text()
-    expect(text).toContain(`Choose from ${HERO_IDS.length} heroes`)
+    expect(text).toContain(`one of ${HERO_IDS.length} operators`)
     expect(text).not.toContain('Choose from 10 heroes')
   })
 
@@ -355,13 +355,35 @@ describe('learn page', () => {
     expect(text).not.toContain('Reaching levels 10, 15, 20 and 25')
   })
 
-  it('teaches the team-relative base/fountain shortcuts', () => {
+  it('teaches the team-relative terminal/anchor shortcuts', () => {
     const text = mountLearn().text()
     // The convenient alias must be discoverable — and framed as "your own side"
-    // so a audit player knows `move base` won't send them to the enemy.
-    expect(text).toContain('move base')
-    expect(text).toContain('move fountain')
+    // so an AUDIT player knows `move terminal` won't send them to the enemy.
+    expect(text).toContain('move terminal')
+    expect(text).toContain('move anchor')
     expect(text.toLowerCase()).toContain('your side')
+    expect(text).not.toMatch(/move base(?!line)/)
+    expect(text).not.toContain('move fountain')
+  })
+
+  it('does not advertise a draft or a metals ladder that is not live', () => {
+    const text = mountLearn().text()
+    expect(text).toContain('quick-match')
+    expect(text).toContain('There is no pick/ban screen')
+    expect(text).toContain('Unlisted')
+    expect(text).toContain('Landfall')
+    expect(text).not.toContain('Draft & Bans')
+    expect(text).not.toContain('Iron')
+    expect(text).not.toContain('snake pick')
+  })
+
+  it('teaches BREACH and the two action slots', () => {
+    const text = mountLearn().text()
+    expect(text).toContain('Targets start closed')
+    expect(text).toContain('Kinetic never needs access')
+    expect(text).toContain('MAIN')
+    expect(text).toContain('RIG')
+    expect(text).toMatch(/SAME cycle/)
   })
 
   it('never nests a button inside the "enter the terminal" link (invalid, breaks AT)', () => {

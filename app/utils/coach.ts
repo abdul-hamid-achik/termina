@@ -36,6 +36,8 @@ export type CoachTipId =
   | 'overextended'
   | 'push_ice'
   | 'buy_vision'
+  | 'breach'
+  | 'dual_slot'
 
 export interface CoachTip {
   id: CoachTipId
@@ -81,6 +83,12 @@ export interface CoachInput {
   routeVision: number
   /** Zones on the current route. */
   routeTotal: number
+  /** This operator deals code (AA or an ability) — BREACH matters. */
+  codeDealer: boolean
+  /** An enemy hero is in the zone and is not currently BREACHED. */
+  closedTargetHere: boolean
+  /** Inventory holds at least one item with an active. */
+  hasItemActive: boolean
 }
 
 /** What the player has already proved they know. Persisted across matches. */
@@ -208,6 +216,24 @@ const TIPS: Array<{
     text: () =>
       `[COACH] The ICE in front of you is open and nobody is defending it. Farming does not win — razing a route to its T3 is what exposes their Terminal.`,
     command: () => 'attack ice',
+  },
+  {
+    id: 'breach',
+    priority: 55,
+    when: (s) => s.alive && s.closedTargetHere && s.codeDealer,
+    proven: () => false,
+    text: () =>
+      `[COACH] Code into a closed target is halved, and hard control will not land. breach <hero> opens a five-cycle window for the whole crew.`,
+    command: () => 'breach',
+  },
+  {
+    id: 'dual_slot',
+    priority: 25,
+    when: (s) => s.alive && s.enemiesHere > 0 && s.hasItemActive && s.castsMade >= 1,
+    proven: () => false,
+    text: () =>
+      `[COACH] MAIN and RIG are separate slots. use <item> and cast q can fire in the SAME cycle — that is the combo.`,
+    command: () => 'use',
   },
 ]
 

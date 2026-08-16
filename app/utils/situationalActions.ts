@@ -30,6 +30,8 @@ export interface SituationalContext {
   cycle: number
   /** Game mode — the tutorial is exempt from the surrender cycle gate. */
   mode?: GameMode
+  /** Hero id of an unbreached enemy standing in the player's zone, if any. */
+  breachTarget?: string | null
 }
 
 /**
@@ -122,6 +124,13 @@ export function computeSituationalActions(ctx: SituationalContext): SituationalA
       cmd: 'breach self',
       label: 'FLUSH',
       aria: 'Flush your BREACH early (costs this cycle and BW)',
+    })
+  }
+  if (ctx.breachTarget) {
+    out.push({
+      cmd: `breach hero:${ctx.breachTarget}`,
+      label: 'BREACH',
+      aria: `Open access on ${ctx.breachTarget} so code and hard control land`,
     })
   }
   // Mirrors SurrenderSystem.canSurrender: the tutorial has no cycle gate, so a

@@ -17,14 +17,23 @@ const props = defineProps<{
   /** Epoch ms when the current cycle window commits, or null before the first
    *  cycle_state has arrived. */
   nextCommitAt: number | null
-  /** Whether an order is queued for the current cycle window. */
+  /** Whether the MAIN slot is already spent this cycle. */
   orderCommitted: boolean
+  /** Whether the RIG (item) slot is still open this cycle. */
+  rigOpen: boolean
   /** Stops the countdown interval — the match is over, nothing left to time. */
   gameOver: boolean
   enemyCount: number
   allyHeadcount: number
   enemyIcePresent: boolean
   hasReadyAbility: boolean
+  /** Compact HERE fragment (contacts + waves in this zone). */
+  here: string
+  /** STRIP / HIT / ATTACK / … or empty. */
+  verb: string | null
+  stripReady: boolean
+  /** Adjacent hops, named, with ? / ! markers. */
+  move: string
 }>()
 
 const hopLine = computed(() => {
@@ -104,13 +113,27 @@ const remainingSeconds = computed(() => {
       <!-- NET lives in GameStateBar (the always-on macro row) — repeating it
            here read as a bug in the first playtest. -->
     </div>
+    <div class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5" data-testid="status-here">
+      <span class="text-text-primary">HERE {{ here }}</span>
+      <span
+        v-if="verb"
+        :class="stripReady ? 'text-gold text-glow-sm' : 'text-text-dim'"
+        data-testid="status-verb"
+        >· {{ verb }}</span
+      >
+      <span class="min-w-0 truncate text-text-dim" data-testid="status-move"
+        >· MOVE {{ move }}</span
+      >
+    </div>
     <div class="flex min-w-0 justify-between gap-2 text-text-dim">
       <span class="min-w-0 break-words tabular-nums" data-testid="status-clock"
         >CYCLE {{ cycle }} ·
-        <span
-          :class="orderCommitted ? 'text-self' : 'text-text-dim'"
-          data-testid="status-clock-state"
-          >{{ orderCommitted ? 'COMMITTED' : 'OPEN' }}</span
+        <span :class="orderCommitted ? 'text-text-dim' : 'text-self'" data-testid="status-main"
+          >MAIN {{ orderCommitted ? 'spent' : 'open' }}</span
+        >
+        ·
+        <span :class="rigOpen ? 'text-self' : 'text-text-dim'" data-testid="status-rig"
+          >RIG {{ rigOpen ? 'open' : 'spent' }}</span
         >
         · {{ remainingSeconds.toFixed(1) }}s</span
       >

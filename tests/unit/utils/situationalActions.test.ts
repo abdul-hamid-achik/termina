@@ -64,6 +64,11 @@ describe('computeSituationalActions', () => {
     expect(cmds(baseCtx({ caches: [{ zone: 'seawall-t1-chaff' }] as never }))).not.toContain('grab')
   })
 
+  it('offers BREACH when an unbreached enemy hero is in the zone', () => {
+    expect(cmds(baseCtx())).not.toContain('breach hero:daemon')
+    expect(cmds(baseCtx({ breachTarget: 'daemon' }))).toContain('breach hero:daemon')
+  })
+
   it('offers FLUSH only while the player carries a BREACHED buff', () => {
     expect(cmds(baseCtx())).not.toContain('breach self')
     expect(
