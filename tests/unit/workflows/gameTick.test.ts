@@ -3,6 +3,7 @@ import {
   applyDrainedActions,
   hydrate,
   runOneTick,
+  snapshotMetaFromRoster,
   type DrainedAction,
   type LiveGamesRepo,
   type PendingActionsRepo,
@@ -230,6 +231,8 @@ describe('gameTick — runOneTick CAS idempotency guard', () => {
           damageDealt: 1234,
           iceDamageDealt: 567,
           level: 7,
+          lastHits: 12,
+          burns: 3,
         },
       } as unknown as GameState['players'],
     })
@@ -269,7 +272,15 @@ describe('gameTick — runOneTick CAS idempotency guard', () => {
     // Bot-filled game → unranked.
     expect(over.data['ranked']).toBe(false)
     const stats = over.data['stats'] as Record<string, Record<string, unknown>>
-    expect(stats['p1']).toMatchObject({ kills: 3, deaths: 1, assists: 2, scrip: 420, level: 7 })
+    expect(stats['p1']).toMatchObject({
+      kills: 3,
+      deaths: 1,
+      assists: 2,
+      scrip: 420,
+      level: 7,
+      lastHits: 12,
+      burns: 3,
+    })
     // The final cycle_state itself carries phase+winner (the client fallback).
     const cycleSpec = specs.find((s) => s.name === undefined)!
     const visible = cycleSpec.data['state'] as { phase: string; winner?: string | null }
@@ -315,5 +326,39 @@ describe('gameTick — runOneTick CAS idempotency guard', () => {
     const result = await runOneTick('g1', deps)
     expect(result.missing).toBe(true)
     expect(result.skipped).toBe(true)
+  })
+})
+
+describe('gameTick — snapshotMetaFromRoster', () => {
+  it('projects the live roster into the replay SnapshotMeta shape', () => {
+    expect(
+      snapshotMetaFromRoster(
+        {
+          players: [
+            { playerId: 'p1', team: 'chaff', heroId: 'echo', mmr: 1100 },
+            { playerId: 'bot_a', team: 'audit', heroId: 'daemon', mmr: 1000 },
+          ],
+        },
+        'one_lane',
+        'tutorial',
+      ),
+    ).toEqual({
+      players: [
+        { playerId: 'p1', team: 'chaff', heroId: 'echo', mmr: 1100 },
+        { playerId: 'bot_a', team: 'audit', heroId: 'daemon', mmr: 1000 },
+      ],
+      mapId: 'one_lane',
+      mode: 'tutorial',
+    })
+  })
+
+  it('omits map/mode when they are not set', () => {
+    const meta = snapshotMetaFromRoster(
+      { players: [{ playerId: 'p1', team: 'chaff', heroId: 'echo', mmr: 1000 }] },
+      null,
+      'casual_5v5',
+    )
+    expect(meta.mapId).toBeUndefined()
+    expect(meta.mode).toBeUndefined()
   })
 })

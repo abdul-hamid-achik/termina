@@ -3,11 +3,11 @@ import { useDb } from '~~/server/db'
 import { liveGames, pendingActions } from '~~/server/db/schema'
 import { checkRateLimit } from '~~/server/utils/RateLimiter'
 import type { ActionAckMessage } from '~~/shared/types/protocol'
-import type { Command } from '~~/shared/types/commands'
+import { parseWireCommand } from '~~/shared/utils/parseCommand'
 
 interface ActionRequestBody {
   gameId: string
-  command: Command
+  command: unknown
   forCycle?: number
   clientSeq?: number
 }
@@ -21,16 +21,9 @@ interface ActionRequestBody {
  * ActionAckMessage the old WS path echoed, so the client's ack handling
  * doesn't need to branch on transport.
  *
- * TODO (inherited gap, not introduced by the WS-era cleanup): `body.command`
- * is cast to `Command` with no runtime schema check — the DO-era ws.ts
- * validated every inbound message against server/utils/ws-schemas.ts's zod
- * `clientMessageSchema` before it ever reached the engine; that schema was
- * deleted along with ws.ts (see shared/constants/commands.ts's Trap #9 doc).
- * A malformed/malicious body currently reaches `pending_actions` (and from
- * there `processCycle`'s `validateAction`, which rejects most nonsense but
- * was never meant to be the FIRST line of defense) unchecked. Re-adding a
- * zod validator here — reusing the same Command union shape — is real,
- * scoped follow-up work.
+ * `body.command` is checked by parseWireCommand before it reaches
+ * pending_actions (Trap #9 — the wire Command union). validateAction remains
+ * the engine's semantic gate (range, BW, alive).
  *
  * Body: { gameId, command, forCycle?, clientSeq? }
  */
@@ -46,9 +39,15 @@ export default defineEventHandler(async (event): Promise<ActionAckMessage> => {
   }
 
   const body = await readBody<ActionRequestBody>(event)
-  if (!body?.gameId || !body?.command) {
+  if (!body?.gameId || body.command === undefined) {
     throw createError({ statusCode: 400, message: 'gameId and command are required' })
   }
+
+  const parsed = parseWireCommand(body.command)
+  if (!parsed.ok) {
+    throw createError({ statusCode: 400, message: parsed.reason })
+  }
+  const command = parsed.command
 
   const db = useDb()
   const rows = await db.select().from(liveGames).where(eq(liveGames.gameId, body.gameId)).limit(1)
@@ -82,7 +81,7 @@ export default defineEventHandler(async (event): Promise<ActionAckMessage> => {
   await db.insert(pendingActions).values({
     gameId: body.gameId,
     playerId,
-    command: body.command,
+    command,
     forCycle: body.forCycle ?? null,
   })
 

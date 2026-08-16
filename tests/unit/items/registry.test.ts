@@ -316,13 +316,13 @@ describe('Item Registry', () => {
   })
 
   describe('item stats', () => {
-    it('scrap_lot provides all basic stats', () => {
+    it('scrap_lot is a cheap opening stick, not a mitigation bundle', () => {
       const item = getItem('scrap_lot')!
-      expect(item.stats.integ).toBe(30)
-      expect(item.stats.bw).toBe(30)
-      expect(item.stats.attack).toBe(3)
-      expect(item.stats.plate).toBe(3)
-      expect(item.stats.ice).toBe(3)
+      expect(item.stats.integ).toBe(8)
+      expect(item.stats.bw).toBe(8)
+      expect(item.stats.attack).toBe(1)
+      expect(item.stats.plate).toBeUndefined()
+      expect(item.stats.ice).toBeUndefined()
     })
 
     it('last_word provides massive attack', () => {

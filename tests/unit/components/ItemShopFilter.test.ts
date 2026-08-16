@@ -81,8 +81,8 @@ describe('ItemShop item detail rendering', () => {
   it('lists each non-zero stat as a "+N key" chip', () => {
     const w = mountShop()
     const card = w.find('[data-testid="shop-item-scrap_lot"]')
-    expect(card.text()).toContain('+30 integ')
-    expect(card.text()).toContain('+3 attack')
+    expect(card.text()).toContain('+8 integ')
+    expect(card.text()).toContain('+1 attack')
   })
 
   it('shows a passive description for passive items', () => {

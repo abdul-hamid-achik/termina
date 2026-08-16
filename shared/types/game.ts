@@ -1,4 +1,4 @@
-import type { TargetRef } from './commands'
+import type { Command, TargetRef } from './commands'
 
 export type TeamId = 'chaff' | 'audit'
 
@@ -40,6 +40,10 @@ export interface PlayerState {
   damageDealt: number
   iceDamageDealt: number
   killStreak: number
+  /** Wave last-hits this match. Optional so fixtures can omit it; persist as 0. */
+  lastHits?: number
+  /** Allied-wave burns this match. Optional so fixtures can omit it; persist as 0. */
+  burns?: number
   buybackCost: number
   buybackCooldown?: number // cycle when buyback becomes available again
   lastActionCycle?: number // last cycle this player submitted any action (AFK detection)
@@ -187,11 +191,29 @@ export interface GameState {
    *  `hashStringToSeed` in server/game/engine/rng.ts and its use in GameLoop's
    *  processCycle. */
   rngSeed?: number
+  /**
+   * Durable action log for replay reconstruction. Appended each cycle by
+   * processCycle (humans, bots, and synthesized standing orders). Server-only
+   * — not on VisibleStateBase, so it never reaches a client view.
+   */
+  actionLog?: ActionLogEntry[]
 }
 
 /** A game's mode. 'normal' is a standard match; 'tutorial' is the guided
  *  single-player practice flow built on the one-lane map. */
 export type GameMode = 'normal' | 'tutorial'
+
+/**
+ * One recorded input for replay reconstruction. Server-only — rides on
+ * GameState.actionLog (persisted in live_games jsonb) and is stripped from
+ * every player view (not on VisibleStateBase).
+ */
+export interface ActionLogEntry {
+  cycle: number
+  playerId: string
+  command: Command
+  synthesized?: boolean
+}
 
 export interface ZoneRuntimeState {
   id: string

@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto'
 import { Effect } from 'effect'
-import type { GameMode, GameState, TeamId } from '~~/shared/types/game'
-import type { Command } from '~~/shared/types/commands'
+import type { ActionLogEntry, GameMode, GameState, TeamId } from '~~/shared/types/game'
 import type { NewMatchReplay } from '~~/server/db/schema'
 import { createInMemoryStateManager } from '~~/server/game/engine/StateManager'
 import { processCycle, submitReplayAction } from '~~/server/game/engine/GameLoop'
@@ -18,15 +17,11 @@ import { processCycle, submitReplayAction } from '~~/server/game/engine/GameLoop
  *
  * Archive-only (all-Vercel cutover): the Redis fast path (a live snapshot +
  * action log, 8h TTL) that used to back this on the DO deployment is gone
- * along with the DO-era WS game server — server/game/engine/StateSnapshot.ts
- * and ActionLog.ts (their Redis read/write halves) were deleted with it.
- * `SnapshotMeta`/`LoggedAction` below are what's left of their public shape:
- * still exactly what a match_replays row's `meta`/`actions` jsonb columns
- * hold, and what reconstructReplay needs to re-run a finished game. Nothing
- * currently WRITES a match_replays row on the Neon/Workflow path yet (see
- * server/workflows/gameTickCore.ts's finalizeGame TODO) — this module's
- * write side (buildReplayArtifact) is dormant until that lands; the read
- * side (reconstructReplay) still serves whatever archived replays exist.
+ * along with the DO-era WS game server. The write side now lives on the
+ * Neon/Workflow path: processCycle appends GameState.actionLog each cycle
+ * (persisted in live_games jsonb) and finalizeGame calls buildReplayArtifact
+ * + db.saveMatchReplay. The read side (reconstructReplay) still serves the
+ * archived row.
  */
 
 /**
@@ -39,12 +34,8 @@ export interface SnapshotMeta {
   mode?: GameMode
 }
 
-export interface LoggedAction {
-  cycle: number
-  playerId: string
-  command: Command
-  synthesized?: boolean
-}
+/** Alias of the GameState action-log entry — one shape for live + archive. */
+export type LoggedAction = ActionLogEntry
 
 /**
  * Bumped manually when engine behavior changes enough that replays recorded

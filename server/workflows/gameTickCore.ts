@@ -19,7 +19,11 @@ import {
 } from '~~/server/services/DatabaseService'
 import { processCycle, submitAction } from '~~/server/game/engine/GameLoop'
 import { filterStateForPlayer } from '~~/server/game/engine/VisionCalculator'
-import { serializeStateForTransport } from '~~/server/game/engine/replayArtifact'
+import {
+  buildReplayArtifact,
+  serializeStateForTransport,
+  type SnapshotMeta,
+} from '~~/server/game/engine/replayArtifact'
 import { registerAllHeroes } from '~~/server/game/heroes'
 import { registerBots, isBot } from '~~/server/game/ai/BotManager'
 import { playerNetWorth } from '~~/server/game/engine/ScripDistributor'
@@ -29,7 +33,7 @@ import { isGuestId } from '~~/server/utils/guest'
 import { ablyPublishBatch, type AblyBatchSpec } from '~~/server/utils/ablyRest'
 import { engineLog } from '~~/server/utils/log'
 import { gameLoggerLive } from '~~/server/utils/logger'
-import type { GameState } from '~~/shared/types/game'
+import type { GameMode, GameState } from '~~/shared/types/game'
 import type { Command } from '~~/shared/types/commands'
 import type { PlayerEndStats } from '~~/shared/types/protocol'
 
@@ -65,23 +69,12 @@ import type { PlayerEndStats } from '~~/shared/types/protocol'
  *
  * TODOs deliberately left for a follow-up (see inline comments at their
  * exact site for the full reasoning):
- *  - Replay archiving (buildReplayArtifact + db.saveMatchReplay) is NOT
- *    wired — it needs a durable action log, which on DO comes from Redis's
- *    8h copy written by the WS ingress. Nothing analogous exists here yet.
- *  - lastHits/burns are reported as 0 in match history: GameLoop's farm
- *    counters (getFarmStats) are an in-process Map that does not survive a
- *    tick landing on a fresh instance, which the task's own truths say WILL
- *    happen. Needs folding farm counters into GameState (persisted jsonb)
- *    before it can be accurate.
- *  - A failed finalization persist is logged and the live_games row is still
- *    deleted (so the workflow doesn't wedge) — unlike game-server.ts's
- *    Redis-backed "finalize:pending" durable-intent + boot sweep, there is no
- *    retry path here yet. Would need a Neon-backed pending-finalize table
- *    (no Redis on the all-Vercel path) to close.
  *  - A duplicate whole-run landing on the exact same chain boundary (cycle %
  *    CHAIN_EVERY_TICKS === 0) can start two continuations. Harmless — both
  *    continuations tick under the same CAS guard — but a `chained_at`
  *    marker column would close it outright.
+ *  - AFK detection still degrades to the disconnected branch until an
+ *    Ably-presence signal stamps lastActionCycle from a live connection.
  */
 
 // ── Durable stores ───────────────────────────────────────────────────
@@ -337,10 +330,8 @@ export async function runOneTick(gameId: string, deps: TickDeps): Promise<TickRe
         iceDamage: ps.iceDamageDealt,
         netWorth: playerNetWorth(ps),
         level: ps.level,
-        // Farm counters are an in-process Map that doesn't survive fresh
-        // instances — same TODO as persistMatch's lastHits/burns.
-        lastHits: 0,
-        burns: 0,
+        lastHits: ps.lastHits ?? 0,
+        burns: ps.burns ?? 0,
       }
     }
     for (const p of humans) {
@@ -443,14 +434,8 @@ async function persistMatch(
       netWorth: ps ? playerNetWorth(ps) : 0,
       damageDealt: ps?.damageDealt ?? 0,
       iceDamageDealt: ps?.iceDamageDealt ?? 0,
-      // TODO: GameLoop.getFarmStats is an in-process Map accumulated
-      // tick-by-tick — it does NOT survive a tick landing on a fresh
-      // instance, which is exactly the serverless truth this migration
-      // designs for. Reporting 0 rather than a number that quietly
-      // undercounts; needs farm counters folded into GameState (persisted
-      // jsonb) to fix properly.
-      lastHits: 0,
-      burns: 0,
+      lastHits: ps?.lastHits ?? 0,
+      burns: ps?.burns ?? 0,
       finalItems: (ps?.items ?? []).filter((i): i is string => i !== null),
       finalLevel: ps?.level ?? 1,
       mmrChange: mmrChanges.get(p.playerId) ?? 0,
@@ -482,10 +467,35 @@ async function persistMatch(
   await run((d) => d.applyMatchDerivedStats(gameId, derivedPlayers))
 }
 
+/** Roster + map + mode → the SnapshotMeta reconstructReplay needs. */
+export function snapshotMetaFromRoster(
+  roster: LiveGameRoster,
+  mapId: string | null | undefined,
+  mode: string,
+): SnapshotMeta {
+  return {
+    players: roster.players.map((p) => ({
+      playerId: p.playerId,
+      team: p.team,
+      heroId: p.heroId,
+      mmr: p.mmr,
+    })),
+    ...(mapId ? { mapId } : {}),
+    ...(mode === 'tutorial' || mode === 'normal' ? { mode: mode as GameMode } : {}),
+  }
+}
+
 /**
- * Finalize a finished game: persist match history (unless it's a practice/
- * tutorial game, which is never recorded — see isPracticeGame), then delete
- * the live_games + pending_actions rows so the workflow can't tick it again.
+ * Finalize a finished game: persist match history + archive the replay
+ * (unless it's a practice/tutorial game, which is never recorded — see
+ * isPracticeGame), then delete the live_games + pending_actions rows so the
+ * workflow can't tick it again.
+ *
+ * Failures THROW so the Workflow step retries: persistMatch and
+ * saveMatchReplay are both idempotent (first-write-wins), and the live_games
+ * row stays until both succeed. A swallowed error used to delete the row and
+ * lose the match + the only copy of actionLog.
+ *
  * Idempotent by construction: a missing row means a duplicate execution
  * already ran this — recordMatch/applyMatchDerivedStats are themselves
  * idempotent (see server/game/engine/matchPersistence.ts), and DELETE on an
@@ -506,22 +516,23 @@ export async function finalizeGame(gameId: string): Promise<void> {
   }
 
   if (!isPracticeGame(gameId, row.mode)) {
-    try {
-      await persistMatch(gameId, state, row.roster)
-    } catch (err) {
-      // Persistence failure must never block cleanup — a stuck live_games
-      // row means this game can never tick (or be replaced) again. See the
-      // module-level TODO: no durable "pending finalize" retry path exists
-      // yet on the all-Vercel side, unlike game-server.ts's Redis-backed one.
-      engineLog.error('[gameTick] match finalize persistence failed — record may be lost', {
-        gameId,
-        error: String(err),
-      })
+    await persistMatch(gameId, state, row.roster)
+
+    const artifact = buildReplayArtifact(
+      gameId,
+      state,
+      snapshotMetaFromRoster(row.roster, row.mapId, row.mode),
+      state.actionLog ?? [],
+    )
+    const archived = await Effect.runPromise(
+      Effect.flatMap(DatabaseService, (d) => d.saveMatchReplay(artifact)).pipe(
+        Effect.provide(DatabaseServiceLive),
+      ),
+    )
+    if (!archived) {
+      throw new Error(`[gameTick] replay archive write failed for ${gameId}`)
     }
   }
-
-  // TODO: replay archiving (buildReplayArtifact + db.saveMatchReplay) is
-  // deliberately not wired here — see the module-level doc comment.
 
   await pendingActionsRepo().deleteAll(gameId)
   await repo.delete(gameId)

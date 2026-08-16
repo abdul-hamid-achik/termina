@@ -161,22 +161,41 @@ const gameFarm = new Map<string, Map<string, PlayerFarm>>()
  * cannot disagree with the "+38g last-hit" lines the player actually watched go
  * by — which is the whole point of showing them the number.
  */
-function tallyFarm(gameId: string, events: GameEngineEvent[]): void {
-  let game = gameFarm.get(gameId)
+/**
+ * Tally farm off the emitted events. Writes BOTH the in-process Map (so
+ * getFarmStats stays the cheap per-game lookup tests use) AND PlayerState
+ * lastHits/burns (the numbers that survive a serverless tick landing on a
+ * fresh instance — they ride in the live_games jsonb).
+ */
+function tallyFarm(gameId: string, state: GameState, events: GameEngineEvent[]): GameState {
+  const deltas = new Map<string, PlayerFarm>()
   for (const e of events) {
     if (e._tag !== 'wave_strip' && e._tag !== 'wave_burn') continue
-    if (!game) {
-      game = new Map()
-      gameFarm.set(gameId, game)
-    }
-    let farm = game.get(e.playerId)
-    if (!farm) {
-      farm = { lastHits: 0, burns: 0 }
-      game.set(e.playerId, farm)
-    }
-    if (e._tag === 'wave_strip') farm.lastHits++
-    else farm.burns++
+    const d = deltas.get(e.playerId) ?? { lastHits: 0, burns: 0 }
+    if (e._tag === 'wave_strip') d.lastHits++
+    else d.burns++
+    deltas.set(e.playerId, d)
   }
+  if (deltas.size === 0) return state
+
+  let game = gameFarm.get(gameId)
+  if (!game) {
+    game = new Map()
+    gameFarm.set(gameId, game)
+  }
+  const players = { ...state.players }
+  for (const [playerId, d] of deltas) {
+    const prev = game.get(playerId) ?? { lastHits: 0, burns: 0 }
+    game.set(playerId, { lastHits: prev.lastHits + d.lastHits, burns: prev.burns + d.burns })
+    const p = players[playerId]
+    if (!p) continue
+    players[playerId] = {
+      ...p,
+      lastHits: (p.lastHits ?? 0) + d.lastHits,
+      burns: (p.burns ?? 0) + d.burns,
+    }
+  }
+  return { ...state, players }
 }
 
 /** Match-to-date farm for every player who has landed one, keyed by playerId. */
@@ -686,7 +705,23 @@ export function processCycle(
       Effect.annotateLogs({ gameId, cycle: currentState.cycle, actionCount: validActions.length }),
     )
 
-    tallyFarm(gameId, allEvents)
+    currentState = tallyFarm(gameId, currentState, allEvents)
+
+    // Append this cycle's drained actions (humans, bots, synthesized standing
+    // orders) onto the durable log. reconstructReplay re-feeds this as the
+    // sole input — Bot AI is NOT re-run on archive playback.
+    if (actions.length > 0) {
+      const logged = actions.map((a) => ({
+        cycle: currentState.cycle,
+        playerId: a.playerId,
+        command: a.command,
+        ...(a.synthesized ? { synthesized: true as const } : {}),
+      }))
+      currentState = {
+        ...currentState,
+        actionLog: [...(currentState.actionLog ?? []), ...logged],
+      }
+    }
 
     return { state: currentState, events: allEvents, rejectedActions, notices, actions }
   })

@@ -135,6 +135,30 @@ describe('the durable replay artifact', () => {
     expect(diverged, 'no alternate seed diverged — randomness never reached resolution').toBe(true)
   })
 
+  it('processCycle records submitted actions onto state.actionLog', async () => {
+    // Fresh gameId — playLive reuses `live_replay_src_${seed}` and the
+    // in-process bot/AFK registries leak across calls on that id.
+    resetWaveIdCounter()
+    const gameId = `action_log_${Date.now()}`
+    const sm = createInMemoryStateManager()
+    const setup = META.players.map((p) => ({
+      id: p.playerId,
+      name: p.playerId,
+      team: p.team,
+      heroId: p.heroId,
+    }))
+    await Effect.runPromise(sm.createGame(gameId, setup, { mapId: META.mapId, mode: META.mode }))
+    await Effect.runPromise(
+      sm.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const, rngSeed: SEED })),
+    )
+    let current = await Effect.runPromise(sm.getState(gameId))
+    submitReplayAction(gameId, 'human', { type: 'move', zone: 'coldstore-t3-chaff' })
+    const result = await Effect.runPromise(processCycle(gameId, current))
+    expect(result.state.actionLog).toEqual([
+      { cycle: 1, playerId: 'human', command: { type: 'move', zone: 'coldstore-t3-chaff' } },
+    ])
+  })
+
   it('buildReplayArtifact captures the full reproduction triple', async () => {
     const live = await playLive(SEED)
     const artifact = buildReplayArtifact('game_x', live, META, SCRIPT)

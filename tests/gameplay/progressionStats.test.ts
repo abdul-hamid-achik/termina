@@ -28,6 +28,8 @@ describe('progression: last hits and burns', () => {
     await game.tick()
 
     expect(getFarmStats(game.gameId)[HUMAN]).toEqual({ lastHits: 1, burns: 0 })
+    expect((await game.me()).lastHits).toBe(1)
+    expect((await game.me()).burns ?? 0).toBe(0)
   })
 
   it('counts a burn separately from a last hit', async () => {
@@ -44,6 +46,7 @@ describe('progression: last hits and burns', () => {
     await game.tick()
 
     expect(getFarmStats(game.gameId)[HUMAN]).toEqual({ lastHits: 0, burns: 1 })
+    expect((await game.me()).burns).toBe(1)
   })
 
   it('accumulates across ticks rather than reporting only the last one', async () => {

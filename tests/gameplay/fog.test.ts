@@ -35,6 +35,18 @@ function place(state: GameState, id: string, zone: string): GameState {
 }
 
 describe('fog of war holds at the payload boundary', () => {
+  it('the durable action log never rides a player view', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.patch((s) => ({
+      ...s,
+      actionLog: [
+        { cycle: 1, playerId: HUMAN, command: { type: 'move', zone: 'coldstore-cross' } },
+      ],
+    }))
+    const view = filterStateForPlayer(await game.state(), HUMAN)
+    expect('actionLog' in view).toBe(false)
+  })
+
   it('an enemy outside vision carries no position, scrip or items', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     const me = await game.me()

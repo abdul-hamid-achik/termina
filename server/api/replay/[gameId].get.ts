@@ -10,9 +10,8 @@ import { checkScopedRateLimit } from '~~/server/utils/RateLimiter'
  * Archive-only (all-Vercel cutover): the DO-era Redis fast path (a live
  * snapshot + action log, 8h TTL) is gone with the WS game server. The only
  * remaining source is the Postgres archive (match_replays), written at
- * finalization — see replayArtifact.ts's module doc for why nothing writes
- * one on the Neon/Workflow path yet. A game that hasn't been archived (still
- * in progress, or finished before archiving was wired up) 404s here.
+ * finalization from GameState.actionLog. A game that hasn't been archived
+ * (still in progress, or finished before archiving was wired) 404s here.
  */
 export default defineEventHandler(async (event) => {
   const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'unknown'

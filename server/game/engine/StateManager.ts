@@ -96,6 +96,8 @@ function createPlayerState(setup: PlayerSetup): PlayerState {
     damageDealt: 0,
     iceDamageDealt: 0,
     killStreak: 0,
+    lastHits: 0,
+    burns: 0,
     buybackCost: 0, // Will be calculated on death
     buybackCooldown: undefined,
     talents: {

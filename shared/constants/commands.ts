@@ -1,19 +1,14 @@
 /**
  * Command vocabulary — Trap #9 hygiene.
  *
- * The wire protocol for player actions is mirrored in three places (was four
- * — `server/utils/ws-schemas.ts`'s zod schemas were deleted with the DO-era
- * WS route in the all-Vercel cutover; its Workflow-path replacement,
- * `server/api/game/action.post.ts`, currently does NOT re-validate
- * `body.command` against a schema before writing it to `pending_actions` —
- * a known, inherited gap from that migration, not reintroduced here — see
- * its own file for the TODO). Adding a verb means updating ALL of the
- * surviving mirrors (or, for client-only readouts, listing it here so a
- * future mirror test knows it must NOT appear on the wire):
+ * The wire protocol for player actions is mirrored in four places. Adding a
+ * verb means updating ALL of them (or, for client-only readouts, listing it
+ * here so a future mirror test knows it must NOT appear on the wire):
  *
  *  1. `shared/types/commands.ts` — Command / TargetRef unions (source of truth)
  *  2. `app/composables/useCommands.ts` — parser + autocomplete
  *  3. `server/game/engine/ActionResolver.ts` — validateAction cases
+ *  4. `shared/utils/parseCommand.ts` — runtime wire check (POST /api/game/action)
  *
  * Client-only commands are parsed for local help/status/map readouts and are
  * NEVER submitted as `action` messages (GameScreen short-circuits them). They
@@ -21,7 +16,7 @@
  */
 import type { Command, TargetRef } from '~~/shared/types/commands'
 
-/** Commands handled entirely on the client — must not appear in commandSchema. */
+/** Commands handled entirely on the client — parseWireCommand rejects these. */
 export const CLIENT_ONLY_COMMAND_TYPES = [
   'help',
   'status',

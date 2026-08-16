@@ -61,12 +61,13 @@ const ironBranch: ItemDef = {
   id: 'scrap_lot',
   name: 'Scrap Lot',
   cost: 50,
+  // Opening stick, not a 10×-efficiency plate/ice bundle. 50sc buys a handful
+  // of leftover parts — a little INTEG/BW and a bit of swing, nothing that
+  // replaces a real chrome purchase.
   stats: {
-    integ: 30,
-    bw: 30,
-    attack: 3,
-    plate: 3,
-    ice: 3,
+    integ: 8,
+    bw: 8,
+    attack: 1,
   },
   consumable: false,
 }
