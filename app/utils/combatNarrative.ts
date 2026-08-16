@@ -164,12 +164,15 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
     case 'death': {
       const respawn =
         p.respawnCycle != null ? ` — respawn ${Math.max(0, num(p.respawnCycle) - cycle)}c` : ''
+      const who = label(p.playerId)
       return {
         cycle,
         // A hero dying is a headline, not chip damage: typed `kill` so it reads
         // at the same weight as the kill line it accompanies (and so the OBJ
         // filter, which is really "what changed the game", keeps it).
-        text: `${label(p.playerId)} was terminated${respawn}`,
+        // First person is "You were" — "You was terminated" is a grammar hole
+        // the first-play session hit on every death.
+        text: `${who === 'You' ? 'You were' : `${who} was`} terminated${respawn}`,
         type: 'kill',
         salience: actorSalience(p.playerId, ctx),
       }

@@ -57,10 +57,11 @@ export const TUTORIAL_FLOW: readonly TutorialStep[] = [
     unlocks: ['move'],
     // The player spawns in the fountain. Movement auto-paths one zone per
     // cycle, so a single command walks the whole way. Send them to their OWN
-    // T1 ice: the river is neutral and both enemy bots are pinned to mid, so
-    // arriving alone past your own ice gets a level-1 newcomer killed.
-    hint: '🎓 Walk to your ice — type `move coldstore-t1-chaff`. You move one zone per cycle: the clock commits every order at once, four seconds wide.',
-    help: '🎓 Still home? One command walks the whole way: `move coldstore-t1-chaff`. Watch the CYCLE clock — your order commits when it hits zero.',
+    // T2 ice — behind T1, still on the route. T1 is the first tile enemy bots
+    // dive; a level-1 walk onto T1 is a suicide (first-play finding). T2 has
+    // friendly ice cover and is not the contested lip.
+    hint: '🎓 Walk to your ice — type `move coldstore-t2-chaff`. You move one zone per cycle: the clock commits every order at once, four seconds wide. Stay behind your T1.',
+    help: '🎓 Still home? One command walks the whole way: `move coldstore-t2-chaff`. Watch the CYCLE clock — your order commits when it hits zero.',
     done: '🎓 On the route. Stay behind your own ICE — the crossing is contested ground.',
     skipNote:
       'Movement: `move <zone>` auto-paths one zone per cycle. Stay behind your own ICE — the crossing is contested.',
@@ -139,4 +140,36 @@ export function tutorialHint(step: number): string | null {
 /** Whether the player has finished the scripted flow. */
 export function isTutorialComplete(step: number): boolean {
   return step >= TUTORIAL_STEP_COUNT
+}
+
+/**
+ * Commands always available in tutorial mode, regardless of step.
+ * Lives here (not only on the server) so the HUD/coach can refuse to
+ * advertise a verb the engine will lock.
+ */
+const TUTORIAL_ALWAYS_ALLOWED: ReadonlySet<Command['type']> = new Set([
+  'status',
+  'map',
+  'scan',
+  'grab',
+  'chat',
+  'ping',
+  'missing',
+  'surrender',
+  'select_talent',
+])
+
+/** Cumulative unlocks at `step`, plus the always-allowed set. */
+export function tutorialUnlockedCommands(step: number): ReadonlySet<Command['type']> {
+  const unlocked = new Set<Command['type']>(TUTORIAL_ALWAYS_ALLOWED)
+  for (let i = 0; i <= step && i < TUTORIAL_FLOW.length; i++) {
+    for (const cmd of TUTORIAL_FLOW[i]!.unlocks) unlocked.add(cmd)
+  }
+  return unlocked
+}
+
+/** Whether a command type is allowed at the current tutorial step. */
+export function isCommandAllowedInTutorial(commandType: Command['type'], step: number): boolean {
+  if (step >= TUTORIAL_STEP_COUNT) return true
+  return tutorialUnlockedCommands(step).has(commandType)
 }

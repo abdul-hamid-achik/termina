@@ -191,10 +191,10 @@ describe('ActionRow', () => {
     wrapper.unmount()
   })
 
-  it('hides the strip under fine pointer via the R3-09 media query', () => {
+  it('hides the strip under fine pointer on WIDE screens via the R3-09 media query', () => {
     const src = readFileSync(resolve(process.cwd(), 'app/components/game/ActionRow.vue'), 'utf8')
     expect(src).toMatch(
-      /@media\s*\(\s*pointer:\s*fine\s*\)[\s\S]*?\.action-row\s*\{[\s\S]*?display:\s*none/,
+      /@media\s*\(\s*pointer:\s*fine\s*\)\s*and\s*\(\s*min-width:\s*901px\s*\)[\s\S]*?\.action-row\s*\{[\s\S]*?display:\s*none/,
     )
   })
 })

@@ -3,7 +3,6 @@ import type { GameState, TeamId, WaveUnitState } from '~~/shared/types/game'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import {
   TUTORIAL_FLOW,
-  TUTORIAL_STEP_COUNT,
   TUTORIAL_STEP_DEADLINE_CYCLES,
   TUTORIAL_SKIP_AFTER_DEADLINES,
   type TutorialStep,
@@ -41,46 +40,9 @@ export {
   TUTORIAL_STEP_COUNT,
   TUTORIAL_STEP_DEADLINE_CYCLES,
   tutorialHint,
+  tutorialUnlockedCommands,
+  isCommandAllowedInTutorial,
 } from '~~/shared/constants/tutorial'
-
-/**
- * Commands always available in tutorial mode, regardless of step: informational
- * readouts (status/map/scan), comms (chat/ping/missing), the player's own escape
- * hatch (surrender), grabbing a cache you're standing on, and — importantly —
- * selecting a talent. Talent selection is essential hero progression gated by
- * its own level requirement, so the drill sequence must never block a
- * leveled-up tutorial player from spending a talent point.
- */
-const TUTORIAL_ALWAYS_ALLOWED: ReadonlySet<Command['type']> = new Set([
-  'status',
-  'map',
-  'scan',
-  'grab',
-  'chat',
-  'ping',
-  'missing',
-  'surrender',
-  'select_talent',
-])
-
-/**
- * Commands unlocked at a given step (cumulative): every step's `unlocks` up to
- * and including the current step, plus the always-allowed informational set.
- */
-export function tutorialUnlockedCommands(step: number): ReadonlySet<Command['type']> {
-  const unlocked = new Set<Command['type']>(TUTORIAL_ALWAYS_ALLOWED)
-  for (let i = 0; i <= step && i < TUTORIAL_FLOW.length; i++) {
-    for (const cmd of TUTORIAL_FLOW[i]!.unlocks) unlocked.add(cmd)
-  }
-  return unlocked
-}
-
-/** Whether a command type is allowed at the current tutorial step. */
-export function isCommandAllowedInTutorial(commandType: Command['type'], step: number): boolean {
-  // Past the last scripted step the player is in free play — nothing is gated.
-  if (step >= TUTORIAL_STEP_COUNT) return true
-  return tutorialUnlockedCommands(step).has(commandType)
-}
 
 /** Teaching rejection message for a command that's still locked at this step. */
 export function tutorialLockMessage(step: number): string {

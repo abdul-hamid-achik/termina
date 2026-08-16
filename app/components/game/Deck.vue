@@ -28,6 +28,10 @@ interface HeroData {
 const props = defineProps<{
   hero: HeroData
   heroId?: string
+  /** Tutorial still has `cast` locked — don't paint the chips as READY. */
+  castsLocked?: boolean
+  /** Cut HUD: portrait + pools only. Abilities live on the ActionRow. */
+  compact?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -68,6 +72,7 @@ function bwCost(key: 'q' | 'w' | 'e' | 'r'): number {
 // Deliberately a bare tick count: the chips are the dense part of the HUD and
 // must not widen. The seconds go in the tooltip instead.
 function cdLabel(cd: number): string {
+  if (props.castsLocked) return '—'
   return cd <= 0 ? 'RDY' : `${cd}`
 }
 
@@ -80,6 +85,7 @@ function cooldownText(ticks: number): string {
 }
 
 function onAbilityTap(key: 'q' | 'w' | 'e' | 'r') {
+  if (props.castsLocked) return
   // On coarse pointers the first tap opens the inspection tooltip instead
   // of casting — casting requires the explicit [CAST] button inside it.
   if (!interceptActivate(key)) return
@@ -94,7 +100,11 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
 </script>
 
 <template>
-  <div class="flex flex-col gap-2 text-[0.8rem]" data-testid="hero-status">
+  <div
+    class="flex flex-col gap-2 text-[0.8rem]"
+    :class="{ 'deck-compact': compact }"
+    data-testid="hero-status"
+  >
     <div class="flex items-start gap-2">
       <HeroPortrait
         v-if="heroId"
@@ -139,7 +149,7 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
       </div>
     </div>
 
-    <div class="flex flex-col gap-1">
+    <div v-if="!compact" class="flex flex-col gap-1">
       <span class="t-caption uppercase">Abilities</span>
       <div class="flex flex-wrap gap-1.5">
         <span
@@ -148,9 +158,11 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
           :ref="(el) => registerEl(key, el)"
           class="touch-target relative inline-flex min-h-[36px] min-w-[44px] cursor-pointer items-center gap-1 border px-2 py-1 text-xs t-mono-num transition-all duration-150"
           :class="
-            hero.cooldowns[key] <= 0
-              ? 'border-ability text-ability shadow-glow-ability hover:bg-ability/15 hover:shadow-glow-ability-lg hover:scale-[1.06]'
-              : 'border-border text-text-muted opacity-70'
+            castsLocked
+              ? 'cursor-not-allowed border-border text-text-muted opacity-50'
+              : hero.cooldowns[key] <= 0
+                ? 'border-ability text-ability shadow-glow-ability hover:bg-ability/15 hover:shadow-glow-ability-lg hover:scale-[1.06]'
+                : 'border-border text-text-muted opacity-70'
           "
           :data-testid="`ability-chip-${key}`"
           @click="onAbilityTap(key)"
@@ -214,7 +226,7 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
       </div>
     </div>
 
-    <div class="flex flex-col gap-1">
+    <div v-if="!compact" class="flex flex-col gap-1">
       <span class="t-caption uppercase">Items</span>
       <div class="flex flex-wrap gap-1">
         <span
@@ -251,7 +263,7 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
 
     <!-- The currency is SCRIP — a dollar sign is a lexicon violation (the
          register is dry and procedural; no fiat symbols in TERMINA). -->
-    <div class="mt-1 flex items-baseline gap-1">
+    <div v-if="!compact" class="mt-1 flex items-baseline gap-1">
       <span class="t-h2 text-gold text-glow-gold t-mono-num">{{
         hero.scrip.toLocaleString()
       }}</span>
@@ -259,3 +271,15 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
     </div>
   </div>
 </template>
+
+<style scoped>
+.deck-compact {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0;
+}
+.deck-compact :deep(.t-h2) {
+  font-size: 0.85rem;
+}
+</style>

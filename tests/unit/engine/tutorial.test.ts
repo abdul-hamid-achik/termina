@@ -153,12 +153,12 @@ describe('tutorial flow', () => {
 
   describe('hints', () => {
     it('lock message points at the current step (what to do instead)', () => {
-      expect(tutorialLockMessage(0)).toContain('move coldstore-t1-chaff')
+      expect(tutorialLockMessage(0)).toContain('move coldstore-t2-chaff')
       expect(tutorialLockMessage(1)).toContain('attack')
     })
 
     it('tutorialHint returns the current step hint, null once complete', () => {
-      expect(tutorialHint(0)).toContain('move coldstore-t1-chaff')
+      expect(tutorialHint(0)).toContain('move coldstore-t2-chaff')
       expect(tutorialHint(TUTORIAL_STEP_COUNT)).toBeNull()
     })
 

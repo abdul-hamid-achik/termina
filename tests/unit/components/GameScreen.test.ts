@@ -644,6 +644,13 @@ describe('GameScreen responsive grid', () => {
     expect(panel).toMatch(/flex-1 overflow-auto/)
   })
 
+  it('declares a cut-HUD template that still uses no px floors', () => {
+    expect(SFC).toMatch(/data-cut/)
+    const cutDecl = /\[data-cut='1'\][^{]*\{[^}]*grid-template-rows:([^;]*);/s.exec(SFC)?.[1]
+    expect(cutDecl).toBeTruthy()
+    expect([...cutDecl!.matchAll(/minmax\(\s*(\d+)px/g)]).toEqual([])
+  })
+
   it('keeps TRACE on screen: it gets its own row and never scrolls', () => {
     // Losing the route costs spatial sense; TRACE is pinned and does not scroll
     // away. fit-content(60%): the track sizes to TRACE's content but the 60%

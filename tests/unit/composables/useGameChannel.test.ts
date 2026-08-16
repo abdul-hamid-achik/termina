@@ -305,6 +305,37 @@ describe('useGameChannel', () => {
       })
     })
 
+    it('omits forCycle when the commit window is about to close', async () => {
+      const { useGameStore } = await import('../../../app/stores/game')
+      const store = useGameStore()
+      store.cycle = 17
+      store.nextCommitAt = Date.now() + 100
+
+      fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+        if (url === '/api/game/action') {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ accepted: true, cycle: 17, slot: 'main' }),
+            _body: init?.body,
+          })
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) })
+      })
+
+      const { connect, send } = useGameChannel()
+      connect('game-1', 'player-1')
+      MockRealtime.last!.connection._setState('connected')
+      send({ type: 'action', command: { type: 'move', zone: 'coldstore' } })
+
+      await vi.waitFor(() => {
+        expect(fetchMock.mock.calls.some((c) => c[0] === '/api/game/action')).toBe(true)
+      })
+      const call = fetchMock.mock.calls.find((c) => c[0] === '/api/game/action')
+      const body = JSON.parse(call![1].body as string)
+      expect(body.forCycle).toBeUndefined()
+      expect(body.clientSeq).toBe(1)
+    })
+
     it('a rejected "late" ack calls markOrderRejected and surfaces a warning announcement', async () => {
       const { useGameStore } = await import('../../../app/stores/game')
       const store = useGameStore()

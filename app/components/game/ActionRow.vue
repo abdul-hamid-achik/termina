@@ -151,9 +151,11 @@ const STATIC_ARIA: Record<string, string> = {
 </template>
 
 <style scoped>
-/* Desktop (fine pointer): the prompt is primary — the strip hides and the
-   verbs stay reachable through Tab-completion and the help readout (R3-09). */
-@media (pointer: fine) {
+/* Desktop (fine pointer, wide): the prompt is primary — the strip hides and
+   the verbs stay reachable through Tab-completion and help (R3-09).
+   Narrow / cut screens keep the strip even with a mouse: the prompt is too
+   small to be the only verb surface (first-play finding on a split pane). */
+@media (pointer: fine) and (min-width: 901px) {
   .action-row {
     display: none;
   }

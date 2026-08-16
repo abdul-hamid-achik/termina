@@ -423,6 +423,20 @@ describe('actorSalience for single-actor events', () => {
   })
 })
 
+describe('eventToLine: death grammar', () => {
+  it('uses "You were" for the local player, "X was" for everyone else', () => {
+    expect(eventToLine(ev('death', { playerId: 'me', respawnCycle: 5 }), ctx)!.text).toMatch(
+      /^You were terminated/,
+    )
+    expect(eventToLine(ev('death', { playerId: 'me', respawnCycle: 5 }), ctx)!.text).not.toMatch(
+      /You was/,
+    )
+    expect(eventToLine(ev('death', { playerId: 'enemy1', respawnCycle: 5 }), ctx)!.text).toMatch(
+      /enemy1 was terminated/,
+    )
+  })
+})
+
 describe('eventToLine: narration coverage for every event type', () => {
   const cases: Array<[string, Record<string, unknown>, string]> = [
     ['death', { playerId: 'enemy1', respawnCycle: 5 }, 'terminated'],

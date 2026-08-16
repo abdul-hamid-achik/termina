@@ -183,6 +183,50 @@ describe('the coach', () => {
       expect(tip?.command).toBe('breach')
     })
 
+    it('stays quiet about locked tutorial verbs (buy/cast at step 0)', () => {
+      // First-play: the coach used to yell `buy edge_kit` / `cast q` while the
+      // tutorial still only unlocked `move`. The engine rejected those and
+      // the player thought the game was broken.
+      const shop = input({
+        tutorialStep: 0,
+        inShopZone: true,
+        onRoute: true,
+        cycle: 20,
+        scrip: 900,
+        items: [null, null, null, null, null, null],
+        lastHits: 99,
+        strippableWaves: 0,
+      })
+      expect(evaluateCoach({ ...shop, tutorialStep: undefined }, {}, {})?.id).toBe('spend_scrip')
+      expect(evaluateCoach(shop, {}, {})).toBeNull()
+
+      const fight = input({
+        tutorialStep: 0,
+        castsMade: 0,
+        enemiesHere: 1,
+        hpFraction: 1,
+        lastHits: 99,
+      })
+      expect(evaluateCoach({ ...fight, tutorialStep: undefined }, {}, {})?.id).toBe('use_abilities')
+      expect(evaluateCoach(fight, {}, {})).toBeNull()
+    })
+
+    it('still tells a tutorial player to leave base (move is unlocked at step 0)', () => {
+      const tip = evaluateCoach(
+        input({
+          tutorialStep: 0,
+          inShopZone: true,
+          onRoute: false,
+          cycle: 20,
+          scrip: 0,
+        }),
+        {},
+        {},
+      )
+      expect(tip?.id).toBe('leave_base')
+      expect(tip?.command).toBe('move coldstore-t2-chaff')
+    })
+
     it('teaches the two slots once the player is in a fight with an item active', () => {
       const tip = evaluateCoach(
         input({ enemiesHere: 1, hasItemActive: true, castsMade: 99 }),

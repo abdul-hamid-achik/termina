@@ -96,7 +96,11 @@ import {
 } from '~/utils/coach'
 import { LANE_ROUTES_CORE } from '~~/shared/constants/lanes'
 import { getAbilityBwCost } from '~~/shared/utils/ability'
-import { isTutorialComplete, tutorialHint } from '~~/shared/constants/tutorial'
+import {
+  isTutorialComplete,
+  tutorialHint,
+  isCommandAllowedInTutorial,
+} from '~~/shared/constants/tutorial'
 
 const gameStore = useGameStore()
 const settings = useSettingsStore()
@@ -232,7 +236,7 @@ onMounted(() => {
       localStorage.setItem('termina_intro_seen', '1')
       const intro = [
         'Welcome to TERMINA — the city commits every four seconds. MAIN is your verb; RIG is use <item> — they can fire in the same cycle.',
-        'You start in the fountain. Move out onto a route: type  move coldstore',
+        'You start in the fountain. Move out onto a route: type  move coldstore-t2-chaff',
         // Desktop has no ActionRow (R3-09 hides it on fine pointers), so the
         // shop/scoreboard verbs and the ability keys are the real affordances;
         // the button copy below only exists on touch.
@@ -261,6 +265,7 @@ onMounted(() => {
 
   measureBar()
   measureStreamBody()
+  measureCut()
 })
 
 onUnmounted(() => {
@@ -272,6 +277,7 @@ onUnmounted(() => {
   window.removeEventListener('keyup', onKeyUp)
   barObserver?.disconnect()
   streamObserver?.disconnect()
+  cutObserver?.disconnect()
 })
 
 // ── HUD lane geometry ─────────────────────────────────────────
@@ -292,6 +298,27 @@ let barObserver: ResizeObserver | null = null
 const streamWrapEl = ref<HTMLElement | null>(null)
 const streamBodyTop = ref(0)
 let streamObserver: ResizeObserver | null = null
+
+/** Cut / split-pane / phone: STREAM is the board; TRACE+DECK collapse. */
+const gameGridEl = ref<HTMLElement | null>(null)
+const cutHud = ref(false)
+let cutObserver: ResizeObserver | null = null
+
+function readCut() {
+  const el = gameGridEl.value
+  if (!el) return
+  // Unmeasured (0×0 in jsdom / first paint) must not flip the desktop HUD.
+  const w = el.clientWidth
+  const h = el.clientHeight
+  cutHud.value = w > 0 && h > 0 && (w < 760 || h < 640)
+}
+
+function measureCut() {
+  readCut()
+  if (typeof ResizeObserver === 'undefined') return
+  cutObserver = new ResizeObserver(() => readCut())
+  if (gameGridEl.value) cutObserver.observe(gameGridEl.value)
+}
 
 const hudBarStyle = computed(() => ({
   ...(hudBarHeight.value > 0 ? { '--hud-bar-h': `${hudBarHeight.value}px` } : {}),
@@ -1576,6 +1603,7 @@ const coachInput = computed<CoachInput | null>(() => {
         !e.buffs?.some((b) => b.id === 'breached'),
     ),
     hasItemActive: (p.items ?? []).some((id) => id != null && ITEMS[id]?.active != null),
+    tutorialStep: gameStore.mode === 'tutorial' ? (gameStore.tutorialStep ?? 0) : undefined,
   }
 })
 
@@ -1780,6 +1808,17 @@ const abilityButtonState = computed(() => {
     // refuses with "Ability not yet learned"). R used to render as READY at
     // level 1, so the button promised a cast the server was always going to
     // reject — and nothing on screen said why.
+    if (
+      gameStore.mode === 'tutorial' &&
+      !isCommandAllowedInTutorial('cast', gameStore.tutorialStep ?? 0)
+    ) {
+      result[upper] = {
+        ready: false,
+        label: `${upper}·—`,
+        aria: `${upper} ${name}, locked — follow the tutorial step first`,
+      }
+      continue
+    }
     if (getAbilityLevel(p.level, slot) <= 0) {
       const at = slot === 'r' ? ULTIMATE_UNLOCK_LEVEL : 1
       result[upper] = {
@@ -2011,11 +2050,13 @@ function handleReturnToMenu() {
   <!-- Active Game Screen -->
   <div
     v-else
+    ref="gameGridEl"
     class="game-grid relative bg-bg-primary"
     :style="hudBarStyle"
     data-testid="game-screen"
     :data-game-id="gameStore.gameId ?? ''"
     :data-density="settings.hud.density"
+    :data-cut="cutHud ? '1' : undefined"
   >
     <!-- Floating combat numbers, one lane each: what lands on you, and what you
          land on someone else -->
@@ -2078,9 +2119,9 @@ function handleReturnToMenu() {
       data-testid="death-overlay"
     >
       <div
-        class="anim-fade-in-up pointer-events-auto flex max-h-[90%] max-w-[min(92vw,26rem)] flex-col items-center justify-center overflow-y-auto rounded-lg border-2 border-audit bg-bg-panel p-6 text-center bloom-audit"
+        class="death-card anim-fade-in-up pointer-events-auto flex max-h-[90%] max-w-[min(92vw,26rem)] flex-col items-center justify-center overflow-y-auto rounded-lg border-2 border-audit bg-bg-panel p-6 text-center bloom-audit"
       >
-        <div class="mb-4 text-6xl text-audit text-glow-audit anim-glow-pulse">☠</div>
+        <div class="death-skull mb-4 text-6xl text-audit text-glow-audit anim-glow-pulse">☠</div>
         <p class="t-display text-audit text-glow-audit tracking-widest">PROCESS TERMINATED</p>
         <p v-if="killerName" class="t-h3 mt-5 text-text-primary">
           Killed by <span class="text-audit text-glow-audit">{{ killerName }}</span>
@@ -2250,14 +2291,18 @@ function handleReturnToMenu() {
     <div class="game-grid__rail">
       <!-- TRACE never leaves the screen: own non-scrolling grid row
            (.rail-map); DECK and the rest share what is left and scroll. -->
-      <TerminalPanel title="TRACE" class="rail-map">
+      <TerminalPanel :title="cutHud ? undefined : 'TRACE'" class="rail-map">
         <TraceRail :trace="traceModel" />
       </TerminalPanel>
 
       <!-- Everything below the board shares the remaining height and scrolls
            together, so the board itself never has to. -->
       <div class="rail-scroll">
-        <TerminalPanel title="DECK" :variant="heroDanger ? 'danger' : 'default'" class="shrink-0">
+        <TerminalPanel
+          :title="cutHud ? undefined : 'DECK'"
+          :variant="heroDanger ? 'danger' : 'default'"
+          class="shrink-0"
+        >
           <div class="relative">
             <!-- Damage flash: a stateless keyed overlay so Deck (and its
                canvas avatar + open tooltips) is NOT remounted on every hit. -->
@@ -2272,6 +2317,11 @@ function handleReturnToMenu() {
               v-if="heroData"
               :hero="heroData"
               :hero-id="gameStore.player?.heroId ?? undefined"
+              :casts-locked="
+                gameStore.mode === 'tutorial' &&
+                !isCommandAllowedInTutorial('cast', gameStore.tutorialStep ?? 0)
+              "
+              :compact="cutHud"
               @cast-ability="handleQuickAction"
             />
             <div v-else class="p-2 text-[0.8rem] text-text-dim">&gt;_ awaiting hero data...</div>
@@ -2362,7 +2412,7 @@ function handleReturnToMenu() {
       <div class="flex items-center gap-2 border-t border-border bg-bg-secondary px-2 py-1">
         <InventoryBar :items="playerItems" :buffs="playerBuffs" @use="handleItemUse" />
         <QuickBuy
-          v-if="pinnedItems.length || recommendedShopItems.length"
+          v-if="!cutHud && (pinnedItems.length || recommendedShopItems.length)"
           :pinned-items="pinnedItems"
           :scrip="playerScrip"
           :can-buy="gameStore.canBuy"
@@ -2463,7 +2513,7 @@ function handleReturnToMenu() {
 .desktop-overlay-chips {
   display: none;
 }
-@media (pointer: fine) {
+@media (pointer: fine) and (min-width: 901px) {
   .desktop-overlay-chips {
     display: flex;
     gap: 0.25rem;
@@ -2597,7 +2647,7 @@ function handleReturnToMenu() {
   justify-content: center;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1100px) {
   /* Tablet: combat log spans full width as the primary surface; Zone + net readout
      share the left column beneath it, while hero/map live in the right rail. */
   /* The content rows must be free to shrink to nothing. `.game-grid` is
@@ -2632,7 +2682,7 @@ function handleReturnToMenu() {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 720px) {
   /* Phone: single column, log still primary directly under the bar; hero/map
      rail stacks above the Zone + net readout column, each scrolling internally. */
   .game-grid {
@@ -2667,6 +2717,80 @@ function handleReturnToMenu() {
   .game-grid__cmd {
     grid-column: 1;
     grid-row: 5;
+  }
+}
+
+/* Short / cut screens (split pane, landscape phone, small laptop): keep
+   STREAM + prompt readable; shrink the death card so it doesn't eat TRACE. */
+@media (max-height: 700px) {
+  .death-card {
+    padding: 0.75rem 1rem;
+  }
+  .death-skull {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
+}
+
+@media (max-width: 720px) and (max-height: 700px) {
+  .game-grid {
+    grid-template-rows:
+      auto minmax(0, 2.1fr) minmax(0, 1.3fr)
+      minmax(0, 0.45fr) auto;
+  }
+}
+
+/* Cut HUD: STREAM is the board. TRACE+DECK become a fit-content strip so
+   the feed is not a void above three titled boxes (first-play split pane). */
+.game-grid[data-cut='1'] {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  gap: 1px;
+}
+.game-grid[data-cut='1'] .game-grid__bar {
+  grid-column: 1;
+  grid-row: 1;
+}
+.game-grid[data-cut='1'] .game-grid__log {
+  grid-column: 1;
+  grid-row: 2;
+}
+.game-grid[data-cut='1'] .game-grid__rail {
+  grid-column: 1;
+  grid-row: 3;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto;
+  max-height: none;
+  gap: 1px;
+}
+.game-grid[data-cut='1'] .rail-map {
+  grid-column: 1;
+  grid-row: 1;
+}
+.game-grid[data-cut='1'] .rail-scroll {
+  grid-column: 2;
+  grid-row: 1;
+  overflow: hidden;
+}
+.game-grid[data-cut='1'] .game-grid__war {
+  grid-column: 1;
+  grid-row: 4;
+}
+.game-grid[data-cut='1'] .game-grid__cmd {
+  grid-column: 1;
+  grid-row: 5;
+}
+@media (max-width: 520px) {
+  .game-grid[data-cut='1'] .game-grid__rail {
+    grid-template-columns: 1fr;
+  }
+  .game-grid[data-cut='1'] .rail-map,
+  .game-grid[data-cut='1'] .rail-scroll {
+    grid-column: 1;
+  }
+  .game-grid[data-cut='1'] .rail-scroll {
+    grid-row: 2;
   }
 }
 </style>

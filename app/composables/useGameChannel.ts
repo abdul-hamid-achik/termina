@@ -212,9 +212,22 @@ export function useGameChannel() {
     }
     // Stamp every order with the batch it's aimed at, mirroring
     // useGameSocket's send: the cycle the player saw OPEN when they typed it.
+    // Exception: in the last LATE_STAMP_MS of the window the tick has often
+    // already drained. A stamp for the dying cycle is dropped as 'late' and
+    // the order vanishes. Leave those unstamped so they land on whatever
+    // cycle is open when the POST arrives.
+    const LATE_STAMP_MS = 400
     let action = message
-    if (action.forCycle === undefined && gameStore.cycle > 0) {
+    const remaining =
+      gameStore.nextCommitAt != null
+        ? gameStore.nextCommitAt - Date.now()
+        : Number.POSITIVE_INFINITY
+    const stampThisCycle =
+      action.forCycle === undefined && gameStore.cycle > 0 && remaining >= LATE_STAMP_MS
+    if (stampThisCycle) {
       action = { ...action, forCycle: gameStore.cycle, clientSeq: ++actionSeq }
+    } else if (action.forCycle === undefined) {
+      action = { ...action, clientSeq: ++actionSeq }
     }
     void _postAction(action)
     return true

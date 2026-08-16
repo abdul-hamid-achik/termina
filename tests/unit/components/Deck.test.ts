@@ -61,6 +61,33 @@ describe('Deck ability chips', () => {
       wrapper.unmount()
     })
 
+    it('hides ability chips and item slots in compact (cut HUD) mode', () => {
+      const wrapper = mount(Deck, {
+        props: { hero: makeHero(), heroId: HERO_ID, compact: true },
+        attachTo: document.body,
+        global: { stubs: { HeroPortrait: true, ProgressBar: true } },
+      })
+      expect(wrapper.find('[data-testid="ability-chip-q"]').exists()).toBe(false)
+      expect(wrapper.text()).not.toContain('[empty]')
+      expect(wrapper.text()).toContain('INTEG')
+      wrapper.unmount()
+    })
+
+    it('does not paint READY or emit a cast when the tutorial still locks cast', async () => {
+      mockPointer(false)
+      const wrapper = mount(Deck, {
+        props: { hero: makeHero(), heroId: HERO_ID, castsLocked: true },
+        attachTo: document.body,
+        global: { stubs: { HeroPortrait: true, ProgressBar: true } },
+      })
+      const q = wrapper.find('[data-testid="ability-chip-q"]')
+      expect(q.text()).toContain('—')
+      expect(q.text()).not.toContain('RDY')
+      await q.trigger('click')
+      expect(wrapper.emitted('castAbility')).toBeUndefined()
+      wrapper.unmount()
+    })
+
     it('does not cast on click when on cooldown', async () => {
       mockPointer(false)
       const wrapper = mountDeck()
