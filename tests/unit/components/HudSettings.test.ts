@@ -21,8 +21,8 @@ beforeEach(() => {
   setActivePinia(createPinia())
 })
 
-describe('HudSettings (post-R3: one layout, one preference)', () => {
-  it('renders only the density control — presets, layout, banner, roster and palette are gone', () => {
+describe('HudSettings (post-R3: one layout, surviving preferences)', () => {
+  it('renders density, coach, and sound — presets, layout, banner, roster and palette are gone', () => {
     const wrapper = mountPanel()
     expect(wrapper.find('[data-testid="hud-density-comfortable"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="hud-density-compact"]').exists()).toBe(true)
@@ -32,6 +32,23 @@ describe('HudSettings (post-R3: one layout, one preference)', () => {
     expect(wrapper.find('[data-testid="hud-toggle-focusBanner"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="hud-toggle-rosterExpanded"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="hud-toggle-colorblind"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="hud-audio-toggle"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="hud-music-toggle"]').exists()).toBe(true)
+  })
+
+  it('toggles sound and music and persists them', async () => {
+    const settings = useSettingsStore()
+    const wrapper = mountPanel()
+
+    await wrapper.find('[data-testid="hud-music-toggle"]').trigger('click')
+    expect(settings.musicEnabled).toBe(false)
+
+    await wrapper.find('[data-testid="hud-audio-toggle"]').trigger('click')
+    expect(settings.audioEnabled).toBe(false)
+
+    const blob = JSON.parse(localStorage.getItem('termina:settings')!)
+    expect(blob.audioEnabled).toBe(false)
+    expect(blob.musicEnabled).toBe(false)
   })
 
   it('marks comfortable density active by default', () => {

@@ -1,6 +1,17 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import GameStateBar from '~~/app/components/game/GameStateBar.vue'
+import { useSettingsStore } from '~~/app/stores/settings'
+
+vi.mock('~/composables/useAudio', () => ({
+  useAudio: () => ({
+    playSound: vi.fn(),
+    startBed: vi.fn(),
+    stopBed: vi.fn(),
+    syncBed: vi.fn(),
+  }),
+}))
 
 const baseProps = {
   cycle: 42,
@@ -20,12 +31,26 @@ function mountBar(props: Record<string, unknown>) {
 }
 
 describe('GameStateBar', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
   it('renders core stats', () => {
     const wrapper = mountBar(baseProps)
 
     expect(wrapper.text()).toContain('42')
     expect(wrapper.text()).toContain('02:48')
     expect(wrapper.text()).toContain('1,234')
+  })
+
+  it('toggles the landing bed from the bar', async () => {
+    const settings = useSettingsStore()
+    const wrapper = mountBar(baseProps)
+    const btn = wrapper.get('[data-testid="bar-music"]')
+    expect(btn.attributes('aria-pressed')).toBe('true')
+    await btn.trigger('click')
+    expect(settings.musicEnabled).toBe(false)
+    expect(btn.attributes('aria-pressed')).toBe('false')
   })
 
   describe('tick countdown', () => {

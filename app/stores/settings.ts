@@ -41,6 +41,9 @@ function getStorage(): Storage | null {
 export const useSettingsStore = defineStore('settings', () => {
   const audioEnabled = ref(true)
   const audioVolume = ref(0.5)
+  /** Looping landing bed under play/lobby. Independent of SFX so a player can
+   *  keep the cues and kill the music. */
+  const musicEnabled = ref(true)
   const quickCastEnabled = ref(false)
   const hud = ref<HudSettings>({ ...DEFAULT_HUD })
 
@@ -58,6 +61,7 @@ export const useSettingsStore = defineStore('settings', () => {
       const data = JSON.parse(raw)
       if (typeof data.audioEnabled === 'boolean') audioEnabled.value = data.audioEnabled
       if (typeof data.audioVolume === 'number') audioVolume.value = data.audioVolume
+      if (typeof data.musicEnabled === 'boolean') musicEnabled.value = data.musicEnabled
       if (typeof data.quickCastEnabled === 'boolean') quickCastEnabled.value = data.quickCastEnabled
       // Only `density` survives. A pre-R3 blob carrying layoutMode /
       // focusBanner / teamPalette / rosterExpanded / emphasizeVitals loads
@@ -81,6 +85,7 @@ export const useSettingsStore = defineStore('settings', () => {
         JSON.stringify({
           audioEnabled: audioEnabled.value,
           audioVolume: audioVolume.value,
+          musicEnabled: musicEnabled.value,
           quickCastEnabled: quickCastEnabled.value,
           hud: hud.value,
         }),
@@ -91,7 +96,7 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   // Auto-persist on change
-  watch([audioEnabled, audioVolume, quickCastEnabled, hud], save, { deep: true })
+  watch([audioEnabled, audioVolume, musicEnabled, quickCastEnabled, hud], save, { deep: true })
 
   // Load on init
   load()
@@ -99,6 +104,7 @@ export const useSettingsStore = defineStore('settings', () => {
   return {
     audioEnabled,
     audioVolume,
+    musicEnabled,
     quickCastEnabled,
     hud,
     setHud,

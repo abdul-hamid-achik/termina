@@ -15,6 +15,13 @@ export type SoundName =
   | 'victory'
   | 'defeat'
   | 'double_cast'
+  | 'buy'
+  | 'scan'
+  | 'harden'
+  | 'strip'
+  | 'burn'
+  | 'move'
+  | 'grab'
 
 let audioCtx: AudioContext | null = null
 
@@ -302,6 +309,116 @@ const SOUNDS: Record<SoundName, SoundDef> = {
     drive: 0.3,
     masterGain: 0.75,
   },
+  // Buy: a deck handshake closing a purchase. Heavier than scrip — three
+  // FSK chips then a sub confirm — so the shop is not silent and is not a coin.
+  buy: {
+    oscs: [
+      { type: 'square', freqStart: 1320, duration: 0.028, gain: 0.1, attack: 0.001 },
+      { type: 'square', freqStart: 1760, duration: 0.03, gain: 0.09, attack: 0.001, delay: 0.032 },
+      { type: 'square', freqStart: 2200, duration: 0.034, gain: 0.08, attack: 0.001, delay: 0.068 },
+      {
+        type: 'sine',
+        freqStart: 82,
+        freqEnd: 55,
+        duration: 0.16,
+        gain: 0.14,
+        attack: 0.004,
+        delay: 0.04,
+      },
+    ],
+    crush: 18,
+    drive: 0.35,
+    masterGain: 0.8,
+  },
+  // Scan / map: a carrier opening a window. Bandpass hiss sweeps up, a thin
+  // tone locks — looking at the ground, not spending the cycle.
+  scan: {
+    oscs: [
+      { type: 'triangle', freqStart: 480, freqEnd: 960, duration: 0.16, gain: 0.1, attack: 0.004 },
+      { type: 'sine', freqStart: 1920, duration: 0.06, gain: 0.05, attack: 0.002, delay: 0.12 },
+    ],
+    noise: [
+      { duration: 0.22, gain: 0.08, cutoff: 400, cutoffEnd: 6400, filter: 'bandpass', q: 1.4 },
+    ],
+    masterGain: 0.75,
+  },
+  // Harden: ICE locking. Ring-mod clang + sub slam — team structures going
+  // invulnerable, not a buff jingle.
+  harden: {
+    oscs: [
+      {
+        type: 'square',
+        freqStart: 330,
+        freqEnd: 165,
+        duration: 0.28,
+        gain: 0.16,
+        attack: 0.002,
+        ring: 187,
+      },
+      { type: 'sine', freqStart: 62, freqEnd: 44, duration: 0.4, gain: 0.2, attack: 0.006 },
+    ],
+    noise: [{ duration: 0.12, gain: 0.1, cutoff: 2800, filter: 'bandpass', q: 1.6 }],
+    drive: 0.65,
+    masterGain: 0.9,
+  },
+  // Strip: payload taken. Brighter and longer than the generic scrip burst so
+  // a last-hit reads as the hit that paid, not as a coin.
+  strip: {
+    oscs: [
+      { type: 'square', freqStart: 1480, duration: 0.024, gain: 0.1, attack: 0.001 },
+      { type: 'square', freqStart: 1980, duration: 0.03, gain: 0.1, attack: 0.001, delay: 0.028 },
+      {
+        type: 'triangle',
+        freqStart: 880,
+        freqEnd: 1320,
+        duration: 0.09,
+        gain: 0.08,
+        attack: 0.002,
+        delay: 0.05,
+      },
+    ],
+    noise: [{ duration: 0.04, gain: 0.07, cutoff: 5000, filter: 'highpass' }],
+    crush: 22,
+    masterGain: 0.78,
+  },
+  // Burn: the same family walking DOWN — you denied the payload, you did not
+  // take it. Must never read as a strip.
+  burn: {
+    oscs: [
+      { type: 'square', freqStart: 1320, duration: 0.024, gain: 0.09, attack: 0.001 },
+      { type: 'square', freqStart: 740, duration: 0.04, gain: 0.1, attack: 0.001, delay: 0.03 },
+      {
+        type: 'sine',
+        freqStart: 196,
+        freqEnd: 98,
+        duration: 0.14,
+        gain: 0.1,
+        attack: 0.004,
+        delay: 0.04,
+      },
+    ],
+    crush: 16,
+    drive: 0.4,
+    masterGain: 0.75,
+  },
+  // Move: a hop committing. Contact click + a short pitch step so walking is
+  // not the same keystroke as submitting chat.
+  move: {
+    oscs: [
+      { type: 'triangle', freqStart: 310, freqEnd: 420, duration: 0.05, gain: 0.08, attack: 0.001 },
+    ],
+    noise: [{ duration: 0.02, gain: 0.09, cutoff: 3600, filter: 'bandpass', q: 1.8 }],
+    masterGain: 0.7,
+  },
+  // Grab: a cache handle taken. Handshake answering, shorter than ready.
+  grab: {
+    oscs: [
+      { type: 'triangle', freqStart: 524, duration: 0.07, gain: 0.12, attack: 0.003 },
+      { type: 'triangle', freqStart: 786, duration: 0.1, gain: 0.11, attack: 0.003, delay: 0.06 },
+    ],
+    crush: 24,
+    masterGain: 0.75,
+  },
 }
 
 /* A tick resolves in a single JS task, so every effect for that tick calls
@@ -314,6 +431,9 @@ const MIN_GAP: Partial<Record<SoundName, number>> = {
   damage: 0.06,
   cast: 0.05,
   scrip: 0.04,
+  strip: 0.05,
+  burn: 0.05,
+  move: 0.04,
 }
 
 /** A repeat pushed further out than this would land under the NEXT tick's
@@ -385,6 +505,299 @@ function makeNoiseBuffer(ctx: AudioContext, duration: number): AudioBuffer {
   return buffer
 }
 
+/* ── Background bed ──────────────────────────────────────────────────
+ * The city commits on a four-second clock. The bed is scored at 60 BPM so
+ * one bar IS one cycle — drone + cable hiss under a 16-beat (four-cycle)
+ * phrase in stacked fourths/fifths. It is machinery that happens to be in
+ * time, not a soundtrack congratulating anyone.
+ *
+ * Kept synth-only (no sample files). Duck the bed when real events land so
+ * it never fights a kill. */
+const BED_BEAT = 1
+const BED_PHRASE = 16
+/** Quiet on purpose: SFX carry information; this is the floor under them. */
+const BED_LEVEL = 0.22
+
+// A1 / E1 / G1 / C2 — industrial, not a major lift.
+const BASS: Array<number | null> = [
+  55,
+  null,
+  55,
+  41.25,
+  55,
+  65.41,
+  null,
+  41.25,
+  55,
+  null,
+  49,
+  41.25,
+  55,
+  49,
+  41.25,
+  null,
+]
+const PAD: Array<[number, number] | null> = [
+  [110, 164.81],
+  null,
+  null,
+  null,
+  [130.81, 196],
+  null,
+  null,
+  null,
+  [110, 164.81],
+  null,
+  null,
+  null,
+  [98, 146.83],
+  null,
+  null,
+  null,
+]
+const LEAD: Array<number | null> = [
+  220,
+  null,
+  null,
+  null,
+  null,
+  null,
+  261.63,
+  null,
+  164.81,
+  null,
+  null,
+  null,
+  null,
+  196,
+  null,
+  null,
+]
+
+interface BedGraph {
+  master: GainNode
+  duck: GainNode
+  mix: GainNode
+  oscs: OscillatorNode[]
+  sources: AudioBufferSourceNode[]
+  timer: ReturnType<typeof setTimeout> | null
+  nextBeat: number
+  beatIndex: number
+}
+
+let bed: BedGraph | null = null
+
+function bedWanted(): boolean {
+  const settings = useSettingsStore()
+  return Boolean(settings.audioEnabled && settings.musicEnabled)
+}
+
+function applyBedGain(now?: number) {
+  if (!bed || !audioCtx) return
+  const settings = useSettingsStore()
+  const on = settings.audioEnabled && settings.musicEnabled
+  const target = on ? settings.audioVolume * BED_LEVEL : 0
+  const t = now ?? audioCtx.currentTime
+  bed.master.gain.cancelScheduledValues(t)
+  bed.master.gain.setTargetAtTime(target, t, 0.12)
+}
+
+function duckBed(now: number) {
+  if (!bed) return
+  const duck = bed.duck.gain
+  duck.cancelScheduledValues(now)
+  duck.setValueAtTime(Math.min(duck.value || 1, 0.38), now)
+  duck.setTargetAtTime(1, now + 1.05, 0.42)
+}
+
+function playBedTone(
+  ctx: AudioContext,
+  dest: AudioNode,
+  at: number,
+  freq: number,
+  duration: number,
+  gain: number,
+  type: OscillatorType,
+  ring?: number,
+) {
+  const osc = ctx.createOscillator()
+  const g = ctx.createGain()
+  osc.type = type
+  osc.frequency.setValueAtTime(freq, at)
+  g.gain.setValueAtTime(0, at)
+  g.gain.linearRampToValueAtTime(gain, at + 0.012)
+  g.gain.exponentialRampToValueAtTime(0.0001, at + duration)
+  if (ring) {
+    const carrier = ctx.createOscillator()
+    const ringGain = ctx.createGain()
+    carrier.type = 'sine'
+    carrier.frequency.setValueAtTime(ring, at)
+    ringGain.gain.setValueAtTime(0, at)
+    carrier.connect(ringGain.gain)
+    osc.connect(ringGain)
+    ringGain.connect(g)
+    carrier.start(at)
+    carrier.stop(at + duration + 0.02)
+  } else {
+    osc.connect(g)
+  }
+  g.connect(dest)
+  osc.start(at)
+  osc.stop(at + duration + 0.02)
+}
+
+function scheduleBedBeat(graph: BedGraph, beat: number, at: number) {
+  if (!audioCtx) return
+  const dest = graph.mix
+  const bass = BASS[beat]
+  if (bass) playBedTone(audioCtx, dest, at, bass, 0.82, 0.07, 'sine')
+  const pad = PAD[beat]
+  if (pad) {
+    playBedTone(audioCtx, dest, at, pad[0], 3.7, 0.028, 'triangle')
+    playBedTone(audioCtx, dest, at, pad[1], 3.7, 0.022, 'triangle')
+  }
+  const lead = LEAD[beat]
+  if (lead) playBedTone(audioCtx, dest, at, lead, 0.38, 0.03, 'square', 73)
+}
+
+function pumpBed() {
+  if (!bed || !audioCtx) return
+  const horizon = audioCtx.currentTime + 0.25
+  while (bed.nextBeat < horizon) {
+    scheduleBedBeat(bed, bed.beatIndex % BED_PHRASE, bed.nextBeat)
+    bed.beatIndex += 1
+    bed.nextBeat += BED_BEAT
+  }
+  bed.timer = setTimeout(pumpBed, 80)
+}
+
+function startBed() {
+  if (import.meta.server) return
+  if (!bedWanted()) {
+    stopBed()
+    return
+  }
+  try {
+    const ctx = getContext()
+    if (ctx.state === 'suspended') ctx.resume()
+    if (bed) {
+      applyBedGain()
+      return
+    }
+
+    const mix = ctx.createGain()
+    mix.gain.value = 1
+    const duck = ctx.createGain()
+    duck.gain.value = 1
+    const master = ctx.createGain()
+    master.gain.value = 0
+    mix.connect(duck)
+    duck.connect(master)
+    master.connect(ctx.destination)
+
+    const oscs: OscillatorNode[] = []
+    const sources: AudioBufferSourceNode[] = []
+
+    // Mains hum — two quiet sines a fifth apart.
+    for (const [freq, gain] of [
+      [55, 0.09],
+      [82.5, 0.045],
+    ] as const) {
+      const osc = ctx.createOscillator()
+      const g = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(freq, ctx.currentTime)
+      g.gain.value = gain
+      osc.connect(g)
+      g.connect(mix)
+      osc.start()
+      oscs.push(osc)
+    }
+
+    // Cable hiss: looping noise through a slow-opening bandpass.
+    const hiss = ctx.createBufferSource()
+    hiss.buffer = makeNoiseBuffer(ctx, 4)
+    hiss.loop = true
+    const hissFilter = ctx.createBiquadFilter()
+    hissFilter.type = 'bandpass'
+    hissFilter.frequency.setValueAtTime(900, ctx.currentTime)
+    hissFilter.Q.setValueAtTime(0.7, ctx.currentTime)
+    const hissGain = ctx.createGain()
+    hissGain.gain.value = 0.035
+    const lfo = ctx.createOscillator()
+    const lfoGain = ctx.createGain()
+    lfo.type = 'sine'
+    lfo.frequency.setValueAtTime(0.07, ctx.currentTime)
+    lfoGain.gain.value = 420
+    lfo.connect(lfoGain)
+    lfoGain.connect(hissFilter.frequency)
+    hiss.connect(hissFilter)
+    hissFilter.connect(hissGain)
+    hissGain.connect(mix)
+    hiss.start()
+    lfo.start()
+    sources.push(hiss)
+    oscs.push(lfo)
+
+    bed = {
+      master,
+      duck,
+      mix,
+      oscs,
+      sources,
+      timer: null,
+      nextBeat: ctx.currentTime + 0.05,
+      beatIndex: 0,
+    }
+    applyBedGain()
+    pumpBed()
+  } catch {
+    // Audio API not available
+  }
+}
+
+function stopBed() {
+  if (!bed) return
+  const graph = bed
+  bed = null
+  if (graph.timer != null) clearTimeout(graph.timer)
+  try {
+    const now = audioCtx?.currentTime ?? 0
+    graph.master.gain.cancelScheduledValues(now)
+    graph.master.gain.setTargetAtTime(0, now, 0.04)
+    for (const osc of graph.oscs) {
+      try {
+        osc.stop()
+      } catch {
+        /* already stopped */
+      }
+    }
+    for (const src of graph.sources) {
+      try {
+        src.stop()
+      } catch {
+        /* already stopped */
+      }
+    }
+  } catch {
+    // Audio API not available
+  }
+}
+
+/** Rebuild / tear down the bed from the current settings (mount + toggles). */
+function syncBed() {
+  if (bedWanted()) startBed()
+  else stopBed()
+}
+
+/** Test hook: drop the shared graph so suites do not leak oscillators. */
+export function resetAudioGraph() {
+  stopBed()
+  audioCtx = null
+  lastStart.clear()
+  activity.length = 0
+}
+
 export function useAudio() {
   const settings = useSettingsStore()
 
@@ -411,8 +824,11 @@ export function useAudio() {
       if (t0 - now > MAX_STAGGER) return
       lastStart.set(name, t0)
 
-      // Event cues set the duck; ambient cues read it.
-      if (!AMBIENT.has(name)) activity.push(t0)
+      // Event cues set the duck; ambient cues read it. The bed ducks with them.
+      if (!AMBIENT.has(name)) {
+        activity.push(t0)
+        duckBed(t0)
+      }
 
       const master = ctx.createGain()
       const duck = AMBIENT.has(name) ? ambientDuck(t0) : 1
@@ -521,5 +937,8 @@ export function useAudio() {
 
   return {
     playSound,
+    startBed,
+    stopBed,
+    syncBed,
   }
 }

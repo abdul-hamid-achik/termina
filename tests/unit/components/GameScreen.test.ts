@@ -50,7 +50,12 @@ vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
 // ── audio + layout doubles ────────────────────────────────────────────
 // The real useAudio needs an AudioContext; record the cue names instead. The
 // tick loop says a great deal through sound, so several tests assert on it.
-const audio = vi.hoisted(() => ({ playSound: vi.fn() }))
+const audio = vi.hoisted(() => ({
+  playSound: vi.fn(),
+  startBed: vi.fn(),
+  stopBed: vi.fn(),
+  syncBed: vi.fn(),
+}))
 vi.mock('~/composables/useAudio', () => ({ useAudio: () => audio }))
 
 // R3-09 — CommandInput is stubbed (no real input focus), but GameScreen still

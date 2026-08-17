@@ -20,6 +20,7 @@ import Scoreboard from '~/components/game/Scoreboard.vue'
 import TalentPicker from '~/components/game/TalentPicker.vue'
 import TutorialHint from '~/components/game/TutorialHint.vue'
 import ScanOverlay from '~/components/game/ScanOverlay.vue'
+import FxBurst, { type FxKind } from '~/components/game/FxBurst.vue'
 import PostGame from '~/components/lobby/PostGame.vue'
 import TerminalPanel from '~/components/ui/TerminalPanel.vue'
 import { useGameStore } from '~/stores/game'
@@ -107,7 +108,7 @@ const gameStore = useGameStore()
 const settings = useSettingsStore()
 const gameSocket = useGameTransport()
 const commands = useCommands()
-const { playSound } = useAudio()
+const { playSound, startBed, stopBed, syncBed } = useAudio()
 const { connected, reconnecting, connectionLost, latency } = gameSocket
 
 // Local combat log for parsed errors + game events
@@ -277,7 +278,13 @@ onMounted(() => {
   measureBar()
   measureStreamBody()
   measureCut()
+  startBed()
 })
+
+watch(
+  () => [settings.audioEnabled, settings.musicEnabled, settings.audioVolume] as const,
+  () => syncBed(),
+)
 
 onUnmounted(() => {
   unsubOnMessage()
@@ -286,6 +293,7 @@ onUnmounted(() => {
   resetRejectionEscalation()
   window.removeEventListener('keydown', onKeyDown)
   window.removeEventListener('keyup', onKeyUp)
+  stopBed()
   barObserver?.disconnect()
   streamObserver?.disconnect()
   cutObserver?.disconnect()
@@ -565,7 +573,17 @@ function hitStrength(amount: number, maxInteg: number): number {
 // inset flare on a transparent overlay: nothing that carries text moves.
 const impactKey = ref(0)
 const impactLevel = ref<'light' | 'strong'>('light')
+const fxBursts = ref<Array<{ id: number; kind: FxKind }>>([])
+let fxSeq = 0
 let lastImpactAt = 0
+
+function triggerFx(kind: FxKind) {
+  const id = ++fxSeq
+  fxBursts.value = [...fxBursts.value, { id, kind }].slice(-6)
+  setTimeout(() => {
+    fxBursts.value = fxBursts.value.filter((f) => f.id !== id)
+  }, 700)
+}
 /** Multiple hits land in the same cycle; without a floor they retrigger the
  *  flare on top of itself and it reads as a strobe rather than as impact. */
 const IMPACT_RETRIGGER_MS = 250
@@ -628,6 +646,7 @@ watch(
   () => gameStore.cycle,
   () => {
     playSound('cycle')
+    triggerFx('cycle')
     // Reveal beat: bump the pulse key so the Theater header flashes as the
     // tick's resolution lands.
     tickPulseKey.value++
@@ -713,16 +732,23 @@ watch(
         // cue used to hang off `scrip_change`, whose only emitter is a win
         // sentinel carrying an empty playerId, so last-hitting was silent.
         case 'wave_strip':
+          if (e.payload.playerId === pid) {
+            playSound('strip')
+            triggerFx('strip')
+            pushDamageFloat(Number(e.payload.scripAwarded), 'scrip')
+            coachLastHits.value++
+          }
+          break
         case 'wave_burn':
           if (e.payload.playerId === pid) {
-            playSound('scrip')
+            playSound('burn')
             pushDamageFloat(Number(e.payload.scripAwarded), 'scrip')
             coachLastHits.value++
           }
           break
         case 'neutral_killed':
           // The camp's bounty is not on the wire, so the cue carries no number.
-          if (e.payload.playerId === pid) playSound('scrip')
+          if (e.payload.playerId === pid) playSound('grab')
           break
         case 'level_up':
           if (e.payload.playerId === pid) {
@@ -739,6 +765,7 @@ watch(
         case 'kill':
           if (e.payload.killerId === pid) {
             playSound('kill')
+            triggerFx('kill')
             triggerImpact('light')
             kdaPopKey.value++
           } else if (Array.isArray(e.payload.assisters) && e.payload.assisters.includes(pid)) {
@@ -754,11 +781,13 @@ watch(
           const myTeam = gameStore.player?.team
           if (myTeam && e.payload.team === myTeam) {
             playSound('ice_lost')
+            triggerFx('ice')
             const where = zoneLabel(String(e.payload.zone))
             gameStore.addAnnouncement(`Ice lost — ${where}`, 'warning')
           } else {
             // Audible to everyone — ice are global events.
             playSound('ice_fall')
+            triggerFx('ice')
             if (myTeam && e.payload.killerTeam === myTeam) triggerImpact('light')
           }
           break
@@ -1455,8 +1484,16 @@ function handleCommand(cmd: string) {
     // landing cues (damage floats, impact flare) still come from the cycle events.
     // Offensive orders get the meatier `cast` whoosh; everything else — move,
     // buy, ward, burn — used to send in total silence.
-    if (command.type === 'cast' || command.type === 'attack') playSound('cast')
-    else if (command.type === 'buy') notePurchase(command.item, 'sent')
+    if (command.type === 'cast' || command.type === 'attack') {
+      playSound('cast')
+      triggerFx('cast')
+    } else if (command.type === 'buy') notePurchase(command.item, 'sent')
+    else if (command.type === 'move') playSound('move')
+    else if (command.type === 'harden') {
+      playSound('harden')
+      triggerFx('harden')
+    } else if (command.type === 'grab') playSound('grab')
+    else if (command.type === 'burn') playSound('burn')
     else playSound('submit')
   } else if (error) {
     localEvents.value.push({
@@ -1477,7 +1514,8 @@ function notePurchase(itemId: string, state: 'sent' | 'queued') {
   const cost = def?.cost
   pendingBuyId.value = itemId
   pendingBuyKey.value++
-  playSound('submit')
+  playSound('buy')
+  triggerFx('buy')
   const costBit = cost != null ? ` −${cost}sc` : ''
   gameStore.addAnnouncement(
     state === 'queued' ? `${name} queued${costBit} — next cycle` : `${name}${costBit}`,
@@ -1698,6 +1736,8 @@ function openLook(mode: 'map' | 'scan') {
         })
       : [formatMapReadout(me, gameStore.mapId)]
   showLook.value = true
+  playSound('scan')
+  triggerFx('scan')
 }
 
 function handleLookCommand(cmd: string) {
@@ -2118,6 +2158,7 @@ function handleReturnToMenu() {
          land on someone else -->
     <DamageFloat :floats="selfFloats" anchor="self" />
     <DamageFloat :floats="targetFloats" anchor="target" />
+    <FxBurst v-for="fx in fxBursts" :key="fx.id" :kind="fx.kind" :seq="fx.id" />
 
     <!-- Impact flare: the hit punch that used to translate this whole grid —
          command input included — and expose the page background at the edges -->

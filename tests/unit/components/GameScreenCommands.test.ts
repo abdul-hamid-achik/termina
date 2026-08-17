@@ -40,7 +40,12 @@ vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
 // ── audio + layout doubles ────────────────────────────────────────────
 // The real useAudio needs an AudioContext; record the cue names instead. The
 // cycle loop says a great deal through sound, so several tests assert on it.
-const audio = vi.hoisted(() => ({ playSound: vi.fn() }))
+const audio = vi.hoisted(() => ({
+  playSound: vi.fn(),
+  startBed: vi.fn(),
+  stopBed: vi.fn(),
+  syncBed: vi.fn(),
+}))
 vi.mock('~/composables/useAudio', () => ({ useAudio: () => audio }))
 
 // R3-09 — CommandInput is stubbed (no real input focus), but GameScreen still
@@ -631,10 +636,25 @@ describe('GameScreen commands', () => {
       await wrapper.vm.$nextTick()
       expect(wrapper.get('[data-testid="look-overlay"]').exists()).toBe(true)
       expect(wrapper.get('[data-testid="scan-overlay"]').text()).toContain('map')
+      expect(audio.playSound).toHaveBeenCalledWith('scan')
+      expect(wrapper.find('[data-testid="fx-scan"]').exists()).toBe(true)
 
       wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'scan')
       await wrapper.vm.$nextTick()
       expect(wrapper.get('[data-testid="scan-overlay"]').text()).toContain('scan')
+      wrapper.unmount()
+    })
+
+    it('plays the buy cue and gold bloom when a purchase lands', async () => {
+      seedActiveGame({ players: rosterAt('rookery-anchor') })
+      const wrapper = mountGameScreen()
+
+      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'buy scrap_lot')
+      await wrapper.vm.$nextTick()
+
+      expect(socketSpies.send).toHaveBeenCalled()
+      expect(audio.playSound).toHaveBeenCalledWith('buy')
+      expect(wrapper.find('[data-testid="fx-buy"]').exists()).toBe(true)
       wrapper.unmount()
     })
 

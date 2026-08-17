@@ -1,6 +1,16 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import GameStateBar from '~~/app/components/game/GameStateBar.vue'
+
+vi.mock('~/composables/useAudio', () => ({
+  useAudio: () => ({
+    playSound: vi.fn(),
+    startBed: vi.fn(),
+    stopBed: vi.fn(),
+    syncBed: vi.fn(),
+  }),
+}))
 import { makeTeamState, makeTerminal } from '~~/app/stories/fixtures'
 
 /**
@@ -25,6 +35,10 @@ function mountBar(props: Record<string, unknown>) {
     global: { stubs: { HeroPortrait: true } },
   })
 }
+
+beforeEach(() => {
+  setActivePinia(createPinia())
+})
 
 describe('GameStateBar day/night clock', () => {
   it('labels the daytime phase and renders the remaining-day clock', () => {

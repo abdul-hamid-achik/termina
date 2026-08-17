@@ -47,7 +47,12 @@ vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
 // ── audio + layout doubles ────────────────────────────────────────────
 // The real useAudio needs an AudioContext; record the cue names instead. The
 // cycle loop says a great deal through sound, so several tests assert on it.
-const audio = vi.hoisted(() => ({ playSound: vi.fn() }))
+const audio = vi.hoisted(() => ({
+  playSound: vi.fn(),
+  startBed: vi.fn(),
+  stopBed: vi.fn(),
+  syncBed: vi.fn(),
+}))
 vi.mock('~/composables/useAudio', () => ({ useAudio: () => audio }))
 
 // R3-09 — CommandInput is stubbed (no real input focus), but GameScreen still
@@ -468,7 +473,8 @@ describe('GameScreen overlays', () => {
         },
       ])
 
-      expect(audio.playSound).toHaveBeenCalledWith('scrip')
+      expect(audio.playSound).toHaveBeenCalledWith('strip')
+      expect(wrapper.find('[data-testid="fx-strip"]').exists()).toBe(true)
       const float = wrapper.find('[data-testid="damage-float-scrip"]')
       expect(float.exists()).toBe(true)
       expect(float.text()).toBe('+41sc')
@@ -492,7 +498,8 @@ describe('GameScreen overlays', () => {
         },
       ])
 
-      expect(audio.playSound.mock.calls.filter(([n]) => n === 'scrip')).toHaveLength(2)
+      expect(audio.playSound).toHaveBeenCalledWith('burn')
+      expect(audio.playSound).toHaveBeenCalledWith('grab')
       // The camp's bounty isn't on the wire, so only the burn floats a number.
       expect(wrapper.findAll('[data-testid="damage-float-scrip"]')).toHaveLength(1)
       wrapper.unmount()
@@ -510,7 +517,7 @@ describe('GameScreen overlays', () => {
         },
       ])
 
-      expect(audio.playSound).not.toHaveBeenCalledWith('scrip')
+      expect(audio.playSound).not.toHaveBeenCalledWith('strip')
       expect(wrapper.find('[data-testid="damage-float-scrip"]').exists()).toBe(false)
       wrapper.unmount()
     })
@@ -621,7 +628,7 @@ describe('GameScreen overlays', () => {
       await wrapper.vm.$nextTick()
 
       expect(socketSpies.send).toHaveBeenCalled()
-      expect(audio.playSound).toHaveBeenCalledWith('submit')
+      expect(audio.playSound).toHaveBeenCalledWith('move')
       wrapper.unmount()
     })
 

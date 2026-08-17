@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import HeroPortrait from '~/components/avatars/HeroPortrait.vue'
+import { useSettingsStore } from '~/stores/settings'
+import { useAudio } from '~/composables/useAudio'
 import { DAY_DURATION_CYCLES, NIGHT_DURATION_CYCLES } from '~~/shared/constants/balance'
 import { FACTION_META } from '~~/shared/constants/world'
 import type { TeamState, TerminalState } from '~~/shared/types/game'
@@ -56,6 +58,21 @@ function formatTimeRemaining(cycle: number, timeOfDay: string): string {
 }
 
 // ── Macro row (team score / net worth / ice / Core INTEG) ──────
+const settings = useSettingsStore()
+const { syncBed } = useAudio()
+
+const musicOn = computed(() => settings.audioEnabled && settings.musicEnabled)
+
+function toggleMusic() {
+  if (!settings.audioEnabled) {
+    settings.audioEnabled = true
+    settings.musicEnabled = true
+  } else {
+    settings.musicEnabled = !settings.musicEnabled
+  }
+  syncBed()
+}
+
 const lead = computed(() => scripLead(props.netWorthChaff ?? 0, props.netWorthAudit ?? 0))
 
 function terminalPct(a: TerminalState | undefined): number {
@@ -111,6 +128,22 @@ function terminalPct(a: TerminalState | undefined): number {
       >
       <span v-else-if="connected" class="text-chaff text-glow-sm">[ONLINE {{ latency }}ms]</span>
       <span v-else class="text-text-muted">[OFFLINE]</span>
+      <span class="text-border">|</span>
+      <button
+        type="button"
+        class="border px-1.5 py-0 text-[0.68rem] font-bold tracking-wider transition-colors"
+        :class="
+          musicOn
+            ? 'border-chaff/60 text-chaff text-glow-chaff'
+            : 'border-border text-text-dim hover:text-text-primary'
+        "
+        data-testid="bar-music"
+        :aria-pressed="musicOn"
+        :title="musicOn ? 'Mute the landing bed' : 'Play the landing bed'"
+        @click="toggleMusic"
+      >
+        ♪
+      </button>
     </div>
 
     <!-- Row 2: always-on team macro state -->

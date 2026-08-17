@@ -8,8 +8,11 @@ import { useLobbyStore } from '~~/app/stores/lobby'
 // lobby.vue plays through the Web Audio synth (absent in happy-dom) —
 // replaced with a spy so the audio cues become assertable.
 const playSound = vi.fn()
+const startBed = vi.fn()
+const stopBed = vi.fn()
+const syncBed = vi.fn()
 vi.mock('~/composables/useAudio', () => ({
-  useAudio: () => ({ playSound }),
+  useAudio: () => ({ playSound, startBed, stopBed, syncBed }),
 }))
 
 import LobbyPage from '~~/app/pages/lobby.vue'

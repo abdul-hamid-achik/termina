@@ -27,6 +27,7 @@ describe('Settings Store', () => {
 
       expect(store.audioEnabled).toBe(true)
       expect(store.audioVolume).toBe(0.5)
+      expect(store.musicEnabled).toBe(true)
       expect(store.quickCastEnabled).toBe(false)
     })
   })
@@ -42,6 +43,7 @@ describe('Settings Store', () => {
       expect(saved).toEqual({
         audioEnabled: true,
         audioVolume: 0.5,
+        musicEnabled: true,
         quickCastEnabled: false,
         hud: { density: 'comfortable', coach: true },
       })
@@ -51,6 +53,7 @@ describe('Settings Store', () => {
       const store = useSettingsStore()
       store.audioEnabled = false
       store.audioVolume = 0.8
+      store.musicEnabled = false
       store.quickCastEnabled = true
       store.save()
 
@@ -58,6 +61,7 @@ describe('Settings Store', () => {
       expect(saved).toEqual({
         audioEnabled: false,
         audioVolume: 0.8,
+        musicEnabled: false,
         quickCastEnabled: true,
         hud: { density: 'comfortable', coach: true },
       })
@@ -71,6 +75,7 @@ describe('Settings Store', () => {
         JSON.stringify({
           audioEnabled: false,
           audioVolume: 0.3,
+          musicEnabled: false,
           quickCastEnabled: true,
         }),
       )
@@ -80,6 +85,7 @@ describe('Settings Store', () => {
 
       expect(store.audioEnabled).toBe(false)
       expect(store.audioVolume).toBe(0.3)
+      expect(store.musicEnabled).toBe(false)
       expect(store.quickCastEnabled).toBe(true)
     })
 

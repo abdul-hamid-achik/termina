@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 import { useLobbyStore } from '~/stores/lobby'
 import { useGameStore } from '~/stores/game'
+import { useSettingsStore } from '~/stores/settings'
 import { useQueuePolling } from '~/composables/useQueuePolling'
 import { useAudio } from '~/composables/useAudio'
 import { useStartTutorial } from '~/composables/useStartTutorial'
@@ -14,9 +15,10 @@ definePageMeta({ middleware: 'auth', ssr: false })
 const authStore = useAuthStore()
 const lobbyStore = useLobbyStore()
 const gameStore = useGameStore()
+const settings = useSettingsStore()
 const router = useRouter()
 
-const { playSound } = useAudio()
+const { playSound, startBed, stopBed, syncBed } = useAudio()
 
 // All-Vercel: quick-match queue state is driven entirely over HTTP polling
 // (queueNeon + status-neon, via useQueuePolling below) — there is no WS push
@@ -153,11 +155,17 @@ watch(
 // Recover queue state if we landed on /lobby after a page refresh: check
 // status-neon once and resume polling if still searching.
 onMounted(async () => {
+  startBed()
   if (!authStore.user?.id) return
   if (lobbyStore.queueStatus === 'idle') {
     await recoverQueueState()
   }
 })
+
+watch(
+  () => [settings.audioEnabled, settings.musicEnabled, settings.audioVolume] as const,
+  () => syncBed(),
+)
 
 async function recoverQueueState() {
   try {
@@ -200,6 +208,7 @@ watch(
 )
 
 onUnmounted(() => {
+  stopBed()
   queuePolling.stop()
   lobbyStore.$dispose()
 })

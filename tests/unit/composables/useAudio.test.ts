@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
-import { useAudio } from '~/composables/useAudio'
+import { resetAudioGraph, useAudio } from '~/composables/useAudio'
 import type { SoundName } from '~/composables/useAudio'
 import { useSettingsStore } from '~/stores/settings'
 
@@ -27,8 +27,11 @@ function makeGain() {
       setValueAtTime: vi.fn(),
       linearRampToValueAtTime: vi.fn(),
       exponentialRampToValueAtTime: vi.fn(),
+      setTargetAtTime: vi.fn(),
+      cancelScheduledValues: vi.fn(),
     },
     connect: vi.fn(),
+    disconnect: vi.fn(),
   }
 }
 
@@ -39,6 +42,7 @@ function makeFilter() {
       setValueAtTime: vi.fn(),
       exponentialRampToValueAtTime: vi.fn(),
     },
+    Q: { setValueAtTime: vi.fn() },
     connect: vi.fn(),
   }
 }
@@ -46,6 +50,7 @@ function makeFilter() {
 function makeBufferSource() {
   return {
     buffer: null,
+    loop: false,
     connect: vi.fn(),
     start: vi.fn(),
     stop: vi.fn(),
@@ -80,13 +85,15 @@ vi.mock('~/stores/settings', () => ({
   useSettingsStore: vi.fn(() => ({
     audioEnabled: true,
     audioVolume: 0.5,
+    musicEnabled: false,
   })),
 }))
 
-function enableAudio(volume = 0.5) {
+function enableAudio(volume = 0.5, music = false) {
   vi.mocked(useSettingsStore).mockReturnValue({
     audioEnabled: true,
     audioVolume: volume,
+    musicEnabled: music,
   } as ReturnType<typeof useSettingsStore>)
 }
 
@@ -111,12 +118,18 @@ describe('useAudio', () => {
     })
     mockAudioCtx.state = 'running'
     mockAudioCtx.currentTime = 0
+    resetAudioGraph()
+  })
+
+  afterEach(() => {
+    resetAudioGraph()
   })
 
   it('does nothing when audio is disabled', () => {
     vi.mocked(useSettingsStore).mockReturnValue({
       audioEnabled: false,
       audioVolume: 0.5,
+      musicEnabled: false,
     } as ReturnType<typeof useSettingsStore>)
 
     const { playSound } = useAudio()
@@ -160,6 +173,13 @@ describe('useAudio', () => {
       'victory',
       'defeat',
       'double_cast',
+      'buy',
+      'scan',
+      'harden',
+      'strip',
+      'burn',
+      'move',
+      'grab',
     ]
 
     for (const name of sounds) {
@@ -206,10 +226,13 @@ describe('useAudio', () => {
     expect(mockAudioCtx.resume).toHaveBeenCalled()
   })
 
-  it('returns playSound function', () => {
+  it('returns playSound and bed controls', () => {
     const result = useAudio()
     expect(result).toHaveProperty('playSound')
     expect(typeof result.playSound).toBe('function')
+    expect(typeof result.startBed).toBe('function')
+    expect(typeof result.stopBed).toBe('function')
+    expect(typeof result.syncBed).toBe('function')
   })
 
   it('defines the ice_lost and respawn cues', () => {
@@ -365,6 +388,47 @@ describe('useAudio', () => {
       mockAudioCtx.createGain.mockReturnValueOnce(later)
       playSound('kill')
       expect(later.gain.value).toBe(first.gain.value)
+    })
+  })
+
+  describe('landing bed', () => {
+    it('does not start when music is off', () => {
+      enableAudio(0.5, false)
+      useAudio().startBed()
+      // Drones + LFO would create oscillators; a no-op start must not.
+      expect(mockAudioCtx.createOscillator).not.toHaveBeenCalled()
+    })
+
+    it('starts a looping bed when music is on', () => {
+      enableAudio(0.5, true)
+      useAudio().startBed()
+      expect(mockAudioCtx.createOscillator).toHaveBeenCalled()
+      expect(mockAudioCtx.createBufferSource).toHaveBeenCalled()
+      const src = mockAudioCtx.createBufferSource.mock.results[0]!.value as ReturnType<
+        typeof makeBufferSource
+      >
+      expect(src.loop).toBe(true)
+      expect(src.start).toHaveBeenCalled()
+    })
+
+    it('tears the bed down on stop', () => {
+      enableAudio(0.5, true)
+      const { startBed, stopBed } = useAudio()
+      startBed()
+      const osc = mockAudioCtx.createOscillator.mock.results[0]!.value as ReturnType<typeof makeOsc>
+      stopBed()
+      expect(osc.stop).toHaveBeenCalled()
+    })
+
+    it('syncBed follows the music flag', () => {
+      enableAudio(0.5, false)
+      const { syncBed } = useAudio()
+      syncBed()
+      expect(mockAudioCtx.createOscillator).not.toHaveBeenCalled()
+
+      enableAudio(0.5, true)
+      syncBed()
+      expect(mockAudioCtx.createOscillator).toHaveBeenCalled()
     })
   })
 })

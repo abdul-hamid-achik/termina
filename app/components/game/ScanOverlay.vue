@@ -28,10 +28,11 @@ function hop(zone: ZoneDisplay) {
 
 <template>
   <div
-    class="flex max-h-[85vh] w-full max-w-lg flex-col border border-border bg-bg-primary"
+    class="relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden border border-border bg-bg-primary"
     data-testid="scan-overlay"
     :data-mode="mode"
   >
+    <div class="anim-fx-scan pointer-events-none absolute inset-0 z-10" aria-hidden="true" />
     <div class="flex items-center justify-between border-b border-border px-3 py-1.5">
       <span class="font-mono text-[0.85rem] font-bold tracking-wider text-ability">
         &gt;_ {{ mode === 'map' ? 'MAP' : 'SCAN' }}
