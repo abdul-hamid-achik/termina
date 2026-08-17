@@ -39,9 +39,19 @@ const queueMode = ref<QueueMode>('ranked_5v5')
 // the toggles can't advertise a map size that a zone-set edit has since changed.
 const modeOptions = (
   [
-    { id: 'ranked_5v5', label: 'RANKED 5v5', players: 10, blurb: 'The full draft.' },
-    { id: 'quick_3v3', label: 'QUICK 3v3', players: 6, blurb: 'Smaller map, smaller team.' },
-    { id: '1v1', label: '1v1 DUEL', players: 2, blurb: 'One lane, one opponent.' },
+    {
+      id: 'ranked_5v5',
+      label: 'RANKED 5v5',
+      players: 10,
+      blurb: 'The full map. Heroes assigned — no pick screen. Two crews, five each.',
+    },
+    {
+      id: 'quick_3v3',
+      label: 'QUICK 3v3',
+      players: 6,
+      blurb: 'Smaller map, smaller team. Two crews, three each.',
+    },
+    { id: '1v1', label: '1v1 DUEL', players: 2, blurb: 'One route, one opponent.' },
   ] as const satisfies readonly { id: QueueMode; label: string; players: number; blurb: string }[]
 ).map((m) => {
   const zones = zonesForMap(mapIdForMode(m.id))
@@ -212,7 +222,7 @@ onUnmounted(() => {
             <div class="flex flex-col items-center gap-4 p-6">
               <p class="text-base text-text-primary">&gt;_ ready to work a route</p>
               <!-- Mode picker: the small maps exist and are the gentler entry —
-                   without this the only reachable format is the 10-slot draft. -->
+                   without this the only reachable format is the 10-slot quick-match. -->
               <div
                 class="flex w-full flex-col gap-1.5"
                 role="radiogroup"
@@ -247,7 +257,6 @@ onUnmounted(() => {
               </div>
               <p class="text-[0.8rem] text-text-dim" data-testid="mode-blurb">
                 {{ modeOptions.find((m) => m.id === queueMode)?.blurb }}
-                Two crews. Five each.
               </p>
               <div
                 v-if="lobbyStore.lastError"

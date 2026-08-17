@@ -47,17 +47,19 @@ const STACK = [
     <div
       v-for="(d, i) in STACK"
       :key="d.name"
-      class="flex items-baseline gap-2.5 border-l-2 py-1.5 pl-3"
+      class="flex flex-col gap-0.5 border-l-2 py-1.5 pl-3 md:flex-row md:items-baseline md:gap-2.5"
       :class="i === STACK.length - 1 ? 'border-chaff' : 'border-border'"
     >
-      <span
-        class="w-[5.5rem] shrink-0 text-[0.78rem] font-bold tracking-widest"
-        :class="i === STACK.length - 1 ? 'text-chaff' : 'text-text-primary'"
-        >{{ d.name }}</span
-      >
-      <span class="w-[5.5rem] shrink-0 text-[0.66rem] uppercase tracking-wider text-text-muted">{{
-        d.depth
-      }}</span>
+      <div class="flex items-baseline gap-2.5">
+        <span
+          class="w-[5.5rem] shrink-0 text-[0.78rem] font-bold tracking-widest"
+          :class="i === STACK.length - 1 ? 'text-chaff' : 'text-text-primary'"
+          >{{ d.name }}</span
+        >
+        <span class="w-[5.5rem] shrink-0 text-[0.66rem] uppercase tracking-wider text-text-muted">{{
+          d.depth
+        }}</span>
+      </div>
       <span class="text-[0.76rem] leading-relaxed text-text-dim">{{ d.line }}</span>
     </div>
   </figure>

@@ -39,7 +39,7 @@ function logout() {
 <template>
   <div class="flex min-h-screen flex-col scanline-overlay">
     <header
-      class="flex items-center justify-between border-b border-border bg-bg-secondary px-4 py-2 max-sm:flex-col max-sm:gap-2"
+      class="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-bg-secondary px-4 py-2"
     >
       <NuxtLink to="/" aria-label="Termina home" class="text-chaff no-underline">
         <pre aria-hidden="true" class="m-0 text-[0.55rem] leading-tight max-sm:text-[0.45rem]">

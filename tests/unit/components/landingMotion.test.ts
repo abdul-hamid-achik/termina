@@ -76,6 +76,16 @@ describe('ScrambleText', () => {
     expect(cls).toContain('font-mono')
     expect(cls).toContain('tabular-nums')
   })
+
+  it('stays on one reserved line by default, and wraps at spaces when asked', () => {
+    const single = mount(ScrambleText, { props: { text: TEXT } })
+    expect(single.classes()).toContain('whitespace-pre')
+    expect(single.classes()).not.toContain('whitespace-pre-wrap')
+
+    const wrapping = mount(ScrambleText, { props: { text: TEXT, wrap: true } })
+    expect(wrapping.classes()).toContain('whitespace-pre-wrap')
+    expect(wrapping.classes()).not.toContain('whitespace-pre')
+  })
 })
 
 describe('MarqueeStrip', () => {

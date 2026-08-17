@@ -219,7 +219,7 @@ const {
     </p>
 
     <!-- Hero selector -->
-    <div class="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+    <div class="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-6">
       <button
         v-for="h in filteredHeroes"
         :key="h.id"
@@ -255,7 +255,7 @@ const {
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_360px]">
       <!-- Kit -->
       <section class="flex flex-col gap-2">
-        <div class="flex items-baseline gap-2 border-b border-border pb-1">
+        <div class="flex flex-wrap items-baseline gap-2 border-b border-border pb-1">
           <h2 class="text-[0.95rem] font-bold text-text-primary">
             {{ CAST[selectedId as HeroId].realName }}
           </h2>

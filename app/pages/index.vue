@@ -75,7 +75,7 @@ const pillars = [
         <h1 class="sr-only">TERMINA — a text-based MOBA</h1>
         <pre
           aria-hidden="true"
-          class="m-0 text-[0.5rem] leading-[1.15] text-chaff text-glow md:text-[0.7rem]"
+          class="m-0 max-w-full text-[clamp(0.28rem,2.4vw,0.7rem)] leading-[1.15] text-chaff text-glow"
         >
 ████████╗███████╗██████╗ ███╗   ███╗██╗███╗   ██╗ █████╗
 ╚══██╔══╝██╔════╝██╔══██╗████╗ ████║██║████╗  ██║██╔══██╗
@@ -87,14 +87,21 @@ const pillars = [
 
         <!-- The tagline decodes on arrival. The delays cascade the two lines so
              they resolve in reading order rather than racing each other. -->
-        <p class="text-base tracking-wide text-chaff">
-          <ScrambleText text=">_ where every command is a kill" :speed="900" :delay="200" />
+        <p class="max-w-full px-2 text-base tracking-wide text-chaff">
+          <ScrambleText wrap text=">_ where every command is a kill" :speed="900" :delay="200" />
         </p>
-        <p class="max-w-[460px] text-[0.8rem] leading-relaxed text-text-dim">
+        <!-- Two lines + wrap: ScrambleText is whitespace-pre by default and
+             this section is overflow-hidden for the glyph field. A single
+             64-char line clips on a cut pane. -->
+        <p class="max-w-[460px] px-2 text-[0.8rem] leading-relaxed text-text-dim">
+          <ScrambleText wrap text="A 5v5 MOBA of pure strategy." :speed="800" :delay="700" />
+        </p>
+        <p class="max-w-[460px] px-2 text-[0.8rem] leading-relaxed text-text-dim">
           <ScrambleText
-            text="A 5v5 MOBA of pure strategy. No download, no reflexes, no queue."
-            :speed="1100"
-            :delay="700"
+            wrap
+            text="No download, no reflexes, no queue."
+            :speed="800"
+            :delay="1100"
           />
         </p>
       </ParallaxLayer>

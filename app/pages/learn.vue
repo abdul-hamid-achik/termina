@@ -107,8 +107,8 @@ const burnXp = Math.floor(WAVE_XP * BURN_XP_RATIO)
 const quickStart = [
   {
     step: '1',
-    title: 'Queue Up',
-    desc: "Click FIND MATCH in the lobby. You'll be matched into a 5v5 game (bots fill empty slots after 10s).",
+    title: 'Practice First',
+    desc: 'Click PRACTICE VS BOTS. One route, verbs unlock as you go, no account required. FIND MATCH is the lobby queue for later — it is not the first walk.',
   },
   {
     step: '2',
@@ -118,7 +118,7 @@ const quickStart = [
   {
     step: '3',
     title: 'Leave the Anchor',
-    desc: 'You start in your fountain (the anchor). Type move terminal — always YOUR terminal — then move coldstore onto the route.',
+    desc: 'You start in your fountain (the anchor). Type move terminal — always YOUR terminal — then move coldstore-t2-chaff onto the route behind your first ICE. Walking onto T1 on cycle one is how you die.',
   },
   {
     step: '4',
@@ -663,7 +663,7 @@ const postureGroups = POSTURE_ORDER.map((posture) => ({
         <span class="text-ability">[KEYS]</span> and the keys below become live. Click the prompt to
         type again.
       </p>
-      <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <div
           v-for="k in keybinds"
           :key="k.key"

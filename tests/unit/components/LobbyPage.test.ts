@@ -171,6 +171,24 @@ describe('lobby page', () => {
       wrapper.unmount()
     })
 
+    it('does not advertise a draft, and does not pin every mode at five a side', async () => {
+      const wrapper = mountLobby()
+      await flushPromises()
+
+      expect(wrapper.text().toLowerCase()).not.toContain('the full draft')
+      expect(wrapper.get('[data-testid="mode-blurb"]').text()).toMatch(/five each/)
+      expect(wrapper.get('[data-testid="mode-blurb"]').text()).toMatch(/no pick screen/)
+
+      await wrapper.get('[data-testid="mode-quick_3v3"]').trigger('click')
+      expect(wrapper.get('[data-testid="mode-blurb"]').text()).toMatch(/three each/)
+      expect(wrapper.get('[data-testid="mode-blurb"]').text()).not.toMatch(/five each/)
+
+      await wrapper.get('[data-testid="mode-1v1"]').trigger('click')
+      expect(wrapper.get('[data-testid="mode-blurb"]').text()).toMatch(/one opponent/)
+      expect(wrapper.get('[data-testid="mode-blurb"]').text()).not.toMatch(/five each/)
+      wrapper.unmount()
+    })
+
     it('advertises each map size from the zone set the mode actually resolves to', async () => {
       const wrapper = mountLobby()
       await flushPromises()

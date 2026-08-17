@@ -366,6 +366,14 @@ describe('learn page', () => {
     expect(text).not.toContain('move fountain')
   })
 
+  it('sends a newcomer to practice, not FIND MATCH, and off the fountain via T2', () => {
+    const text = mountLearn().text()
+    expect(text).toContain('Practice First')
+    expect(text).toContain('PRACTICE VS BOTS')
+    expect(text).toContain('move coldstore-t2-chaff')
+    expect(text).toContain('Walking onto T1 on cycle one is how you die')
+  })
+
   it('does not advertise a draft or a metals ladder that is not live', () => {
     const text = mountLearn().text()
     expect(text).toContain('quick-match')

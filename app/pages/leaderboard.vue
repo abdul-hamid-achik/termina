@@ -81,90 +81,92 @@ const meId = computed(() => (user.value?.id as string | undefined) ?? null)
         >
       </div>
 
-      <table v-else class="w-full border-collapse text-xs">
-        <caption class="sr-only">
-          Top players ranked by rating
-        </caption>
-        <thead>
-          <tr>
-            <th
-              scope="col"
-              class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
-            >
-              #
-            </th>
-            <th
-              scope="col"
-              class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
-            >
-              Player
-            </th>
-            <th
-              scope="col"
-              class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
-            >
-              Rating
-            </th>
-            <th
-              scope="col"
-              class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
-            >
-              Rank
-            </th>
-            <th
-              scope="col"
-              class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
-            >
-              W
-            </th>
-            <th
-              scope="col"
-              class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
-            >
-              L
-            </th>
-            <th
-              scope="col"
-              class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
-            >
-              Win%
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="p in players"
-            :key="p.id"
-            :class="{ 'bg-ability/10 font-bold': p.id === meId }"
-            :data-self="p.id === meId ? 'true' : undefined"
-          >
-            <td class="border-b border-border/50 px-1.5 py-1 text-text-dim">{{ p.rank }}</td>
-            <th scope="row" class="border-b border-border/50 px-1.5 py-1 text-left font-normal">
-              <span
-                v-if="p.guildTag"
-                class="mr-1 border border-ability/50 px-1 font-mono text-[0.6rem] text-ability"
-                data-testid="leaderboard-guild-tag"
-                >{{ p.guildTag }}</span
+      <div v-else class="overflow-x-auto">
+        <table class="w-full border-collapse text-xs">
+          <caption class="sr-only">
+            Top players ranked by rating
+          </caption>
+          <thead>
+            <tr>
+              <th
+                scope="col"
+                class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
               >
-              <NuxtLink :to="`/profile/${p.id}`" class="text-ability">{{ p.username }}</NuxtLink>
-              <span v-if="p.id === meId" class="ml-1 text-[0.65rem] text-chaff">
-                &lt; you<span class="sr-only"> (this is your rank)</span>
-              </span>
-            </th>
-            <td class="border-b border-border/50 px-1.5 py-1 font-bold text-gold">{{ p.mmr }}</td>
-            <td
-              class="border-b border-border/50 px-1.5 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-ability"
+                #
+              </th>
+              <th
+                scope="col"
+                class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
+              >
+                Player
+              </th>
+              <th
+                scope="col"
+                class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
+              >
+                Rating
+              </th>
+              <th
+                scope="col"
+                class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
+              >
+                Rank
+              </th>
+              <th
+                scope="col"
+                class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
+              >
+                W
+              </th>
+              <th
+                scope="col"
+                class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
+              >
+                L
+              </th>
+              <th
+                scope="col"
+                class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
+              >
+                Win%
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="p in players"
+              :key="p.id"
+              :class="{ 'bg-ability/10 font-bold': p.id === meId }"
+              :data-self="p.id === meId ? 'true' : undefined"
             >
-              {{ p.rankName }}
-            </td>
-            <td class="border-b border-border/50 px-1.5 py-1 text-chaff">{{ p.wins }}</td>
-            <td class="border-b border-border/50 px-1.5 py-1 text-audit">
-              {{ p.gamesPlayed - p.wins }}
-            </td>
-            <td class="border-b border-border/50 px-1.5 py-1">{{ p.winRate }}%</td>
-          </tr>
-        </tbody>
-      </table>
+              <td class="border-b border-border/50 px-1.5 py-1 text-text-dim">{{ p.rank }}</td>
+              <th scope="row" class="border-b border-border/50 px-1.5 py-1 text-left font-normal">
+                <span
+                  v-if="p.guildTag"
+                  class="mr-1 border border-ability/50 px-1 font-mono text-[0.6rem] text-ability"
+                  data-testid="leaderboard-guild-tag"
+                  >{{ p.guildTag }}</span
+                >
+                <NuxtLink :to="`/profile/${p.id}`" class="text-ability">{{ p.username }}</NuxtLink>
+                <span v-if="p.id === meId" class="ml-1 text-[0.65rem] text-chaff">
+                  &lt; you<span class="sr-only"> (this is your rank)</span>
+                </span>
+              </th>
+              <td class="border-b border-border/50 px-1.5 py-1 font-bold text-gold">{{ p.mmr }}</td>
+              <td
+                class="border-b border-border/50 px-1.5 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-ability"
+              >
+                {{ p.rankName }}
+              </td>
+              <td class="border-b border-border/50 px-1.5 py-1 text-chaff">{{ p.wins }}</td>
+              <td class="border-b border-border/50 px-1.5 py-1 text-audit">
+                {{ p.gamesPlayed - p.wins }}
+              </td>
+              <td class="border-b border-border/50 px-1.5 py-1">{{ p.winRate }}%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </TerminalPanel>
   </div>
 </template>

@@ -33,8 +33,14 @@ const props = withDefaults(
     delay?: number
     /** Re-run whenever `text` changes (headings that swap between sections). */
     replayOnChange?: boolean
+    /**
+     * Allow the reserved string to wrap at spaces. Off by default — wrapping
+     * changes the box the overlay has to cover. On for landing taglines that
+     * otherwise clip inside overflow-hidden hero sections.
+     */
+    wrap?: boolean
   }>(),
-  { speed: 420, delay: 0, replayOnChange: true },
+  { speed: 420, delay: 0, replayOnChange: true, wrap: false },
 )
 
 // Box-drawing and operator glyphs only — they share the monospace advance width
@@ -115,7 +121,10 @@ const sizer = computed(() => props.text)
 </script>
 
 <template>
-  <span class="relative inline-block whitespace-pre font-mono tabular-nums">
+  <span
+    class="relative inline-block max-w-full font-mono tabular-nums"
+    :class="wrap ? 'whitespace-pre-wrap' : 'whitespace-pre'"
+  >
     <!-- The only copy assistive tech sees. `sr-only` clips rather than hiding,
          so it stays in the accessibility tree; `invisible` below does not. -->
     <span class="sr-only">{{ text }}</span>
