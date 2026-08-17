@@ -163,6 +163,14 @@ Zones are defined in `shared/constants/zones.ts` with `adjacentTo` arrays. Movem
 Production is **all-Vercel** (the DigitalOcean split was demolished after cutover — no `infra/` Pulumi program, no Dockerfile, no DOCR image, no `deploy.yml` anymore):
 
 - **Vercel** hosts everything: the Nuxt frontend (SSR + `/api/*` routes, same-origin — no cross-origin proxy needed) at `www.terminamoba.com`, backed by **Neon Postgres** (via the Vercel Marketplace integration). `NUXT_PUBLIC_API_URL` exists only for a hypothetical future origin split and is empty in prod.
+- **Git auto-build is `preview` only** (`vercel.json`). A push to `main` does not create a deployment. Ship production by promoting the Preview artifact, then merging for history:
+
+  ```bash
+  vercel promote <preview-deployment-url> --scope the-lacanians --yes
+  git switch main && git merge --ff-only preview && git push origin main
+  ```
+
+  Promote does not rebuild. If Preview baked `NUXT_PUBLIC_*` or other build-time env that Production must not serve, use `vercel deploy --prod --scope the-lacanians` from that SHA. Changelog / `AGENTS.md` / `CLAUDE.md` / `.github` commits are skipped by `ignoreCommand`.
 - **Vercel Workflow DevKit** (`workflow/nuxt` module) drives each game's 4s tick — see the Game Loop Pipeline section above. `POST /api/game/start-workflow` (internal, `WORKFLOW_START_KEY`-gated) or the tutorial/practice/matchmaking paths (`server/game/liveGame.ts`'s `startLiveGame`) create the `live_games` row and kick off the first tick.
 - **Ably** is the realtime transport (Realtime for client subscriptions, REST for server-side publish) — see the Realtime Flow section above. Requires `ABLY_API_KEY`.
 - **Matchmaking** is Neon-backed (`server/game/matchmaking/queueNeon.ts`, `queue_entries` table) — event-driven match formation (no background sweep; a Vercel serverless function can't keep one warm). The Redis sorted-set queue and its WS-pushed lobby/draft flow (`lobby.ts`) are gone; a quick-match goes straight from "searching" to a running game with bots autofilled and heroes round-robin-assigned, no pick screen. A Neon-backed draft is an open follow-up, not yet built.
