@@ -4,26 +4,29 @@ import {
   TUTORIAL_FLOW,
   TUTORIAL_STEP_COUNT,
   tutorialHint,
+  tutorialTryCommand,
   isTutorialComplete,
 } from '~~/shared/constants/tutorial'
 
 /**
- * In-game tutorial banner: shows the current step's hint + a compact checklist
- * of the staggered command unlocks (move → attack → cast → buy). Driven purely
- * by `step` (the broadcast `tutorialStep`) so it's trivially storyable/testable;
- * GameScreen renders it only when `gameStore.mode === 'tutorial'`.
+ * Live tutorial strip. Renders at the top of the FEED so the current drill
+ * stays on screen while the log scrolls — the navbar only has room for the
+ * cycle clock.
  */
 const props = defineProps<{
   /** Current tutorial step (0-based). >= TUTORIAL_STEP_COUNT means free play. */
   step: number
 }>()
 
+const emit = defineEmits<{
+  command: [cmd: string]
+}>()
+
 const complete = computed(() => isTutorialComplete(props.step))
-const hint = computed(() => tutorialHint(props.step))
-// Clamp for the progress readout so "4/4" shows on the completion state.
+const hint = computed(() => tutorialHint(props.step)?.replace(/^🎓\s*/, '') ?? '')
+const tryCmd = computed(() => tutorialTryCommand(props.step))
 const progress = computed(() => Math.min(props.step, TUTORIAL_STEP_COUNT))
 
-/** Per-verb checklist state: done (past), current (active), or upcoming. */
 const items = computed(() =>
   TUTORIAL_FLOW.map((s, i) => ({
     verb: s.id,
@@ -34,12 +37,12 @@ const items = computed(() =>
 
 <template>
   <div
-    class="flex flex-col gap-1 border-b border-ability/40 bg-ability/5 px-3 py-1.5 font-mono text-[0.8rem]"
+    class="flex flex-col gap-1 border-b border-ability/40 bg-ability/5 px-2 py-1.5 font-mono text-[0.78rem]"
     data-testid="tutorial-hint"
     role="status"
     aria-live="polite"
   >
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
       <span
         class="shrink-0 text-[0.66rem] font-bold uppercase tracking-wider text-ability text-glow-sm"
       >
@@ -48,8 +51,6 @@ const items = computed(() =>
       <span class="shrink-0 text-[0.7rem] text-text-dim" data-testid="tutorial-progress">
         {{ progress }}/{{ TUTORIAL_STEP_COUNT }}
       </span>
-
-      <!-- Per-verb checklist -->
       <span class="flex flex-wrap items-center gap-1.5">
         <span
           v-for="item in items"
@@ -70,11 +71,24 @@ const items = computed(() =>
       </span>
     </div>
 
-    <!-- The step's teaching TEXT rides in the STREAM as a [TUTORIAL] line
-         (see GameScreen's tutorialStep watcher) — the banner keeps only the
-         fixed checklist, so it never covers the top bar. -->
     <p v-if="complete" class="min-w-0 text-chaff" data-testid="tutorial-complete">
       ✓ Practice complete — wrapping up.
     </p>
+    <p
+      v-else-if="hint"
+      class="min-w-0 leading-snug text-text-primary"
+      data-testid="tutorial-hint-text"
+    >
+      {{ hint }}
+    </p>
+    <button
+      v-if="tryCmd && !complete"
+      type="button"
+      class="self-start border border-ability/50 bg-ability/10 px-1.5 py-0.5 text-[0.7rem] text-ability hover:bg-ability/20"
+      data-testid="tutorial-try"
+      @click="emit('command', tryCmd)"
+    >
+      try: {{ tryCmd }}
+    </button>
   </div>
 </template>

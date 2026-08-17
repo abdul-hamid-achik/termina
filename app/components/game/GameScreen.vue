@@ -19,6 +19,7 @@ import QuickBuy from '~/components/game/QuickBuy.vue'
 import Scoreboard from '~/components/game/Scoreboard.vue'
 import TalentPicker from '~/components/game/TalentPicker.vue'
 import TutorialHint from '~/components/game/TutorialHint.vue'
+import ScanOverlay from '~/components/game/ScanOverlay.vue'
 import PostGame from '~/components/lobby/PostGame.vue'
 import TerminalPanel from '~/components/ui/TerminalPanel.vue'
 import { useGameStore } from '~/stores/game'
@@ -121,6 +122,9 @@ const localEvents = ref<
 // ── Shop & Scoreboard state ──────────────────────────────────
 const showShop = ref(false)
 const showScoreboard = ref(false)
+const showLook = ref(false)
+const lookMode = ref<'map' | 'scan'>('scan')
+const lookReadout = ref<string[]>([])
 
 // ── Focus trap wiring for the shop/scoreboard dialogs (WAI-ARIA APG) ────
 // Registered before the "reclaim the prompt" watch below so its nextTick()
@@ -129,8 +133,10 @@ const showScoreboard = ref(false)
 // coarse pointer (no such refocus) the opener now correctly gets focus back.
 const scoreboardDialogRef = ref<HTMLElement | null>(null)
 const shopDialogRef = ref<HTMLElement | null>(null)
+const lookDialogRef = ref<HTMLElement | null>(null)
 const scoreboardDialogActive = computed(() => showScoreboard.value && !!gameStore.teams)
 const shopDialogActive = computed(() => showShop.value)
+const lookDialogActive = computed(() => showLook.value)
 const scoreboardFocusTrap = useFocusTrap(scoreboardDialogRef, scoreboardDialogActive, {
   onClose: () => {
     showScoreboard.value = false
@@ -139,6 +145,11 @@ const scoreboardFocusTrap = useFocusTrap(scoreboardDialogRef, scoreboardDialogAc
 const shopFocusTrap = useFocusTrap(shopDialogRef, shopDialogActive, {
   onClose: () => {
     showShop.value = false
+  },
+})
+const lookFocusTrap = useFocusTrap(lookDialogRef, lookDialogActive, {
+  onClose: () => {
+    showLook.value = false
   },
 })
 
@@ -391,7 +402,7 @@ function onKeyDown(e: KeyboardEvent) {
   // Pure routing (unit-tested in gameKeys); this only dispatches the side effect.
   const action = routeGameKey(e.key, {
     isInputFocused: target.tagName === 'INPUT' || target.tagName === 'TEXTAREA',
-    overlayOpen: showShop.value || showScoreboard.value,
+    overlayOpen: showShop.value || showScoreboard.value || showLook.value,
     inCmdInput: !!target.closest('.cmd-input-wrapper'),
   })
   if (action.type === 'none') return
@@ -400,6 +411,7 @@ function onKeyDown(e: KeyboardEvent) {
     case 'closeOverlay':
       showShop.value = false
       showScoreboard.value = false
+      showLook.value = false
       break
     case 'autocomplete':
       break // CommandInput owns autocomplete; we just suppressed the default Tab
@@ -446,9 +458,9 @@ function focusPromptIfDesktop() {
 // Reclaim the prompt when the last overlay closes (shop, scoreboard). The
 // close can come from Esc, the SHOP/SCORE toggle, the dialog backdrop, or
 // death clearing them — one watch covers all of them.
-watch([showShop, showScoreboard], ([shop, score], [wasShop, wasScore]) => {
-  const closedSomething = (wasShop && !shop) || (wasScore && !score)
-  if (closedSomething && !shop && !score) focusPromptIfDesktop()
+watch([showShop, showScoreboard, showLook], ([shop, score, look], [wasShop, wasScore, wasLook]) => {
+  const closedSomething = (wasShop && !shop) || (wasScore && !score) || (wasLook && !look)
+  if (closedSomething && !shop && !score && !look) focusPromptIfDesktop()
 })
 
 /** Arrows resolve against the drawn grid, so the miss is reported in its terms. */
@@ -1344,24 +1356,10 @@ function handleCommand(cmd: string) {
           for (const line of formatLookReadout(me, gameStore.waves, gameStore.neutrals)) {
             localEvents.value.push({ cycle: gameStore.cycle, text: line, type: 'system' })
           }
-        } else if (command.type === 'scan') {
-          // The "what can I do right now" readout — multi-line, and every line
-          // it prints is a command the player can type back verbatim.
-          for (const line of formatScanReadout(me, gameStore.allPlayers, {
-            waves: gameStore.waves,
-            neutrals: gameStore.neutrals,
-            ice: gameStore.ice,
-            visibleZoneIds: gameStore.visibleZoneIds,
-            caches: gameStore.caches,
-            mapId: gameStore.mapId,
-          })) {
-            localEvents.value.push({ cycle: gameStore.cycle, text: line, type: 'system' })
-          }
+        } else if (command.type === 'scan' || command.type === 'map') {
+          openLook(command.type)
         } else {
-          const text =
-            command.type === 'status'
-              ? formatStatusReadout(me)
-              : formatMapReadout(me, gameStore.mapId)
+          const text = formatStatusReadout(me)
           localEvents.value.push({ cycle: gameStore.cycle, text, type: 'system' })
         }
       }
@@ -1651,25 +1649,28 @@ watch(
   },
 )
 
-// ── Tutorial hints ride IN the feed ──────────────────────────
-// Owner call from the first playtest: the banner keeps only the fixed
-// progress checklist; the step's teaching TEXT lands in the STREAM as a
-// [TUTORIAL] line when the step changes — same in-world channel the
-// [COACH] uses, and it stops the banner from covering the top bar.
-watch(
-  () => gameStore.tutorialStep,
-  (step, prev) => {
-    if (gameStore.mode !== 'tutorial' || step === undefined || step === prev) return
-    const hint = tutorialHint(step)
-    if (!hint) return
-    localEvents.value.push({
-      cycle: gameStore.cycle,
-      text: `[TUTORIAL] ${hint.replace(/^🎓\s*/, '')}`,
-      type: 'system',
-    })
-  },
-  { immediate: true },
-)
+function openLook(mode: 'map' | 'scan') {
+  const me = gameStore.player
+  if (!me) return
+  lookMode.value = mode
+  lookReadout.value =
+    mode === 'scan'
+      ? formatScanReadout(me, gameStore.allPlayers, {
+          waves: gameStore.waves,
+          neutrals: gameStore.neutrals,
+          ice: gameStore.ice,
+          visibleZoneIds: gameStore.visibleZoneIds,
+          caches: gameStore.caches,
+          mapId: gameStore.mapId,
+        })
+      : [formatMapReadout(me, gameStore.mapId)]
+  showLook.value = true
+}
+
+function handleLookCommand(cmd: string) {
+  showLook.value = false
+  handleCommand(cmd)
+}
 
 // ── [MOVE] picker ────────────────────────────────────────────
 // The same one-tap-to-move list the trace era's picker draws, reachable from the
@@ -2239,9 +2240,6 @@ function handleReturnToMenu() {
         :compact="cutHud"
       />
 
-      <!-- Tutorial banner: current step's hint + the staggered-unlock checklist -->
-      <TutorialHint v-if="gameStore.mode === 'tutorial'" :step="gameStore.tutorialStep ?? 0" />
-
       <!-- Desktop-only shop/scoreboard openers (fine pointer): the ActionRow
            that carries SHOP/SCORE is display:none there (R3-09), and the
            keyboard-only paths (Esc then S / hold Tab) were undiscoverable.
@@ -2307,7 +2305,16 @@ function handleReturnToMenu() {
       <!-- `ref` here reaches Stream's root; the overlay lanes need the scrolling
            BODY's position, which sits below Stream's own filter row. -->
       <div ref="streamWrapEl" class="flex h-full min-h-0 flex-col">
-        <Stream :events="combatEvents" :idle-hint="streamIdleHint" :pin-beats="!cutHud" />
+        <Stream
+          :events="combatEvents"
+          :idle-hint="streamIdleHint"
+          :pin-beats="!cutHud"
+          @inspect="openLook"
+        >
+          <template v-if="gameStore.mode === 'tutorial'" #banner>
+            <TutorialHint :step="gameStore.tutorialStep ?? 0" @command="handleCommand" />
+          </template>
+        </Stream>
       </div>
     </TerminalPanel>
 
@@ -2381,6 +2388,32 @@ function handleReturnToMenu() {
           [tap outside or here to close]
         </button>
       </div>
+    </div>
+
+    <!-- map / scan: a brief look at the ground. Free — does not spend the cycle. -->
+    <div
+      v-if="showLook"
+      ref="lookDialogRef"
+      class="absolute inset-0 z-30 flex items-center justify-center bg-bg-overlay/80 p-2"
+      data-testid="look-overlay"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="lookMode === 'map' ? 'Map' : 'Scan'"
+      @click.self="showLook = false"
+      @keydown="lookFocusTrap.onKeydown"
+    >
+      <ScanOverlay
+        :mode="lookMode"
+        :zone-name="
+          gameStore.player ? (ZONE_MAP[gameStore.player.zone]?.name ?? gameStore.player.zone) : '—'
+        "
+        :readout="lookReadout"
+        :moves="movePickerZones"
+        :attacks="lookMode === 'scan' ? situationalActions : []"
+        :trace="traceModel"
+        @close="showLook = false"
+        @command="handleLookCommand"
+      />
     </div>
 
     <!-- Item Shop overlay -->

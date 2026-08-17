@@ -109,6 +109,8 @@ const stubs = {
     props: ['events'],
     template: '<div data-testid="stream" />',
   },
+  ScanOverlay: true,
+  TutorialHint: true,
   KillFeed: true,
   Deck: true,
   // The rail trace (hop depth + contacts + terminals) — the board is gone.

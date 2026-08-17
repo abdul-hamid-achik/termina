@@ -259,8 +259,8 @@ const commands = [
   },
   {
     cmd: 'status / map / scan',
-    desc: 'Print a quick readout (your stats / reachable zones / visible enemies). Free — costs no cycle',
-    example: 'status',
+    desc: 'status prints your line. map and scan open a brief overlay of the ground around you — hops, contacts, and the verbs that hit what is here. Free — costs no cycle',
+    example: 'scan',
     shortcuts: '—',
   },
   {

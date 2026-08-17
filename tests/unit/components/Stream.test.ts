@@ -139,6 +139,12 @@ describe('Stream', () => {
       expect(wrapper.find('.sticky').exists()).toBe(false)
     })
 
+    it('offers a MAP chip that asks the parent to open the look overlay', async () => {
+      const wrapper = mount(Stream, { props: { events: [] } })
+      await wrapper.get('[data-testid="log-map"]').trigger('click')
+      expect(wrapper.emitted('inspect')).toEqual([['map']])
+    })
+
     it('skips blank lines so they do not mint empty cycle headers', () => {
       const wrapper = mount(Stream, {
         props: {

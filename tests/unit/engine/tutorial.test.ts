@@ -17,6 +17,7 @@ import { STARTING_SCRIP } from '~~/shared/constants/balance'
 import {
   TUTORIAL_STEP_DEADLINE_CYCLES,
   TUTORIAL_SKIP_AFTER_DEADLINES,
+  tutorialTryCommand,
 } from '~~/shared/constants/tutorial'
 import { ONE_LANE_ZONES } from '~~/shared/constants/maps'
 import { ZONE_MAP } from '~~/shared/constants/zones'
@@ -160,6 +161,11 @@ describe('tutorial flow', () => {
     it('tutorialHint returns the current step hint, null once complete', () => {
       expect(tutorialHint(0)).toContain('move coldstore-t2-chaff')
       expect(tutorialHint(TUTORIAL_STEP_COUNT)).toBeNull()
+    })
+
+    it('tutorialTryCommand pulls the first backticked verb from the hint', () => {
+      expect(tutorialTryCommand(0)).toBe('move coldstore-t2-chaff')
+      expect(tutorialTryCommand(TUTORIAL_STEP_COUNT)).toBeNull()
     })
 
     it('the last-hit hint teaches the explicit wave syntax, not bare attack', () => {

@@ -137,6 +137,14 @@ export function tutorialHint(step: number): string | null {
   return TUTORIAL_FLOW[step]?.hint ?? null
 }
 
+/** The first backticked command in the current hint — what the feed bar offers. */
+export function tutorialTryCommand(step: number): string | null {
+  const hint = tutorialHint(step)
+  if (!hint) return null
+  const match = hint.match(/`([^`]+)`/)
+  return match?.[1] ?? null
+}
+
 /** Whether the player has finished the scripted flow. */
 export function isTutorialComplete(step: number): boolean {
   return step >= TUTORIAL_STEP_COUNT

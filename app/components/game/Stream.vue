@@ -21,8 +21,12 @@ const props = withDefaults(
 )
 
 function isCoachLine(text: string): boolean {
-  return text.startsWith('[TUTORIAL]') || text.startsWith('[COACH]') || /^\s*try:/.test(text)
+  return text.startsWith('[TUTORIAL]') || text.startsWith('[COACH]')
 }
+
+const emit = defineEmits<{
+  inspect: [kind: 'map']
+}>()
 
 const logEl = ref<HTMLElement>()
 const pinned = ref(false)
@@ -251,6 +255,16 @@ function eventAriaLabel(line: CombatLine): string {
     >
       <span class="mr-auto font-bold tracking-wider text-text-dim">&gt;_ FEED</span>
       <button
+        type="button"
+        class="border border-transparent px-1 py-px font-mono tracking-wider text-text-muted hover:text-text-dim"
+        data-testid="log-map"
+        title="Look at the ground around you (map)"
+        aria-label="Open the map overlay"
+        @click="emit('inspect', 'map')"
+      >
+        MAP
+      </button>
+      <button
         v-for="f in FILTERS"
         :key="f.id"
         class="border px-1 py-px font-mono tracking-wider transition-colors"
@@ -293,14 +307,9 @@ function eventAriaLabel(line: CombatLine): string {
       </button>
     </div>
 
-    <button
-      v-if="pinned"
-      type="button"
-      class="absolute inset-x-0 top-6 z-[1] cursor-pointer border-b border-border bg-bg-secondary px-2 py-0.5 text-center t-hud-sm text-text-dim"
-      @click="togglePin"
-    >
-      [scroll pinned — click to resume]
-    </button>
+    <div v-if="$slots.banner" class="shrink-0">
+      <slot name="banner" />
+    </div>
 
     <div
       ref="logEl"
@@ -308,6 +317,14 @@ function eventAriaLabel(line: CombatLine): string {
       data-testid="stream-body"
       @scroll="handleScroll"
     >
+      <button
+        v-if="pinned"
+        type="button"
+        class="sticky top-0 z-[3] w-full cursor-pointer border-b border-border bg-bg-secondary px-2 py-0.5 text-center t-hud-sm text-text-dim"
+        @click="togglePin"
+      >
+        [scroll pinned — click to resume]
+      </button>
       <div v-for="beat in beats" :key="beat.cycle" class="mb-0.5">
         <!-- Cycle beat header. The recap rides INSIDE the sticky block so the
              turn's bottom line stays on screen while its detail scrolls away. -->

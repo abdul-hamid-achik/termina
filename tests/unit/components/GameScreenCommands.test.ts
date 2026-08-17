@@ -107,6 +107,12 @@ const stubs = {
     props: ['events'],
     template: '<div data-testid="stream" />',
   },
+  ScanOverlay: {
+    name: 'ScanOverlay',
+    props: ['mode', 'zoneName', 'readout', 'moves', 'attacks', 'trace'],
+    template: '<div data-testid="scan-overlay">{{ mode }}</div>',
+  },
+  TutorialHint: true,
   KillFeed: true,
   Deck: true,
   // The rail trace (hop depth + contacts + terminals) — the board is gone.
@@ -614,6 +620,21 @@ describe('GameScreen commands', () => {
       wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'status')
 
       expect(store.announcements).toHaveLength(before)
+      wrapper.unmount()
+    })
+
+    it('opens the look overlay on map and scan without burning the cycle', async () => {
+      seedActiveGame()
+      const wrapper = mountGameScreen()
+
+      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'map')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.get('[data-testid="look-overlay"]').exists()).toBe(true)
+      expect(wrapper.get('[data-testid="scan-overlay"]').text()).toContain('map')
+
+      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'scan')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.get('[data-testid="scan-overlay"]').text()).toContain('scan')
       wrapper.unmount()
     })
 
