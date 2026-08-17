@@ -59,3 +59,9 @@ tests/e2e/junit.xml
 histoire-*.png
 .vercel
 /.swc
+
+# Vercel Workflow local run cache (locks, events, step traces)
+.workflow-data/
+
+# Local agent hook droppings — not part of the product
+.github/hooks/
