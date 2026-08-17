@@ -8,9 +8,13 @@ import { mockPointer, restorePointer, tapOutside } from './helpers/pointer'
 // trauma_patch has an active ("Heal"), scrap_lot is stats-only (no active)
 const DEFAULT_ITEMS: (string | null)[] = ['trauma_patch', 'scrap_lot', null, null, null, null]
 
-function mountBar(items = DEFAULT_ITEMS, buffs: BuffState[] = []) {
+function mountBar(
+  items = DEFAULT_ITEMS,
+  buffs: BuffState[] = [],
+  extra: { pendingId?: string | null } = {},
+) {
   return mount(InventoryBar, {
-    props: { items, buffs },
+    props: { items, buffs, ...extra },
     attachTo: document.body,
   })
 }
@@ -56,6 +60,15 @@ describe('InventoryBar', () => {
       expect(tooltip.exists()).toBe(true)
       expect(tooltip.text()).toContain('[Click or press 1]')
       expect(wrapper.find('[data-testid="inventory-use-0"]').exists()).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('gilds the first empty slot while a buy is pending', () => {
+      mockPointer(false)
+      const wrapper = mountBar(DEFAULT_ITEMS, [], { pendingId: 'camtap' })
+      const pending = wrapper.get('[data-testid="inventory-slot-2"]')
+      expect(pending.text()).toContain('CAMTAP')
+      expect(pending.classes().join(' ')).toMatch(/gold/)
       wrapper.unmount()
     })
 

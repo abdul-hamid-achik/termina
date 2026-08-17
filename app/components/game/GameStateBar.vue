@@ -90,7 +90,9 @@ function terminalPct(a: TerminalState | undefined): number {
       <span class="text-border">|</span>
       <span class="inline-flex gap-1">
         <span class="t-caption">Scrip</span>
-        <span class="text-gold text-glow-gold font-bold">{{ formatScrip(scrip) }}</span>
+        <span :key="scrip" class="anim-pop text-gold text-glow-gold font-bold">{{
+          formatScrip(scrip)
+        }}</span>
       </span>
       <span class="text-border">|</span>
       <span class="inline-flex gap-1">

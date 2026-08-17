@@ -21,6 +21,9 @@ const props = defineProps<{
   pinnedItems: string[]
   /** Item ids recommended for the local player's hero role, in priority order. */
   recommendedItems?: string[]
+  /** Just-bought / queued item — the card pops so the shop isn't silent. */
+  acquiredId?: string | null
+  acquiredKey?: number
 }>()
 
 const emit = defineEmits<{
@@ -140,11 +143,13 @@ function formatStats(def: ItemDef): string[] {
         :data-testid="`shop-item-${item.id}`"
         class="flex flex-col gap-0.5 border p-1.5 text-xs transition-[border-color] duration-150"
         :class="[
-          atStackCap(item)
-            ? 'border-chaff bg-chaff/5'
-            : item.cost <= scrip
-              ? 'border-border-glow cursor-pointer hover:border-gold'
-              : 'border-border opacity-60',
+          item.id === acquiredId
+            ? 'anim-pop border-gold bg-gold/10'
+            : atStackCap(item)
+              ? 'border-chaff bg-chaff/5'
+              : item.cost <= scrip
+                ? 'border-border-glow cursor-pointer hover:border-gold'
+                : 'border-border opacity-60',
         ]"
         @click="item.cost <= scrip && !atStackCap(item) && emit('buy', item.id)"
       >

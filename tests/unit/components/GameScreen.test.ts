@@ -645,6 +645,11 @@ describe('GameScreen responsive grid', () => {
     expect([...cutDecl!.matchAll(/minmax\(\s*(\d+)px/g)]).toEqual([])
   })
 
+  it('puts TRACE and Deck above the feed on the cut HUD', () => {
+    expect(SFC).toMatch(/\[data-cut='1'\] \.game-grid__rail \{[^}]*grid-row:\s*2/s)
+    expect(SFC).toMatch(/\[data-cut='1'\] \.game-grid__log \{[^}]*grid-row:\s*3/s)
+  })
+
   it('keeps TRACE on screen: it gets its own row and never scrolls', () => {
     // Losing the route costs spatial sense; TRACE is pinned and does not scroll
     // away. fit-content(60%): the track sizes to TRACE's content but the 60%

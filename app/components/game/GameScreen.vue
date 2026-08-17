@@ -1383,12 +1383,20 @@ function handleCommand(cmd: string) {
     const isSpecial =
       command.type === 'buyback' || command.type === 'surrender' || command.type === 'select_talent'
     if (!isSpecial && gameStore.isAlive && !gameStore.canAct) {
+      const already = gameStore.bufferedCommand === cmd
       gameStore.bufferCommand(cmd)
-      localEvents.value.push({
-        cycle: gameStore.cycle,
-        text: `[QUEUED] ${cmd} — will send next cycle`,
-        type: 'system',
-      })
+      if (command.type === 'buy') {
+        if (!already) notePurchase(command.item, 'queued')
+        return
+      }
+      if (!already) {
+        localEvents.value.push({
+          cycle: gameStore.cycle,
+          text: `[QUEUED] ${cmd} — will send next cycle`,
+          type: 'system',
+        })
+        playSound('submit')
+      }
       return
     }
     // Pre-flight validation mirroring server rules — don't waste the one
@@ -1448,6 +1456,7 @@ function handleCommand(cmd: string) {
     // Offensive orders get the meatier `cast` whoosh; everything else — move,
     // buy, ward, burn — used to send in total silence.
     if (command.type === 'cast' || command.type === 'attack') playSound('cast')
+    else if (command.type === 'buy') notePurchase(command.item, 'sent')
     else playSound('submit')
   } else if (error) {
     localEvents.value.push({
@@ -1458,6 +1467,30 @@ function handleCommand(cmd: string) {
     gameStore.addAnnouncement(error, 'warning')
   }
 }
+
+const pendingBuyId = ref<string | null>(null)
+const pendingBuyKey = ref(0)
+
+function notePurchase(itemId: string, state: 'sent' | 'queued') {
+  const def = ITEMS[itemId]
+  const name = def?.name ?? itemId
+  const cost = def?.cost
+  pendingBuyId.value = itemId
+  pendingBuyKey.value++
+  playSound('submit')
+  const costBit = cost != null ? ` −${cost}sc` : ''
+  gameStore.addAnnouncement(
+    state === 'queued' ? `${name} queued${costBit} — next cycle` : `${name}${costBit}`,
+    'info',
+  )
+}
+
+watch(
+  () => gameStore.player?.items,
+  (items) => {
+    if (pendingBuyId.value && items?.includes(pendingBuyId.value)) pendingBuyId.value = null
+  },
+)
 
 function handleBuyItem(itemId: string) {
   handleCommand(`buy ${itemId}`)
@@ -2458,6 +2491,8 @@ function handleReturnToMenu() {
           :owned-items="playerItems"
           :pinned-items="pinnedItems"
           :recommended-items="recommendedShopItems"
+          :acquired-id="pendingBuyId"
+          :acquired-key="pendingBuyKey"
           @buy="handleBuyItem"
           @pin="pinItem"
           @unpin="unpinItem"
@@ -2471,7 +2506,12 @@ function handleReturnToMenu() {
         v-if="!cutHud || playerItems.some(Boolean)"
         class="flex items-center gap-2 border-t border-border bg-bg-secondary px-2 py-1"
       >
-        <InventoryBar :items="playerItems" :buffs="playerBuffs" @use="handleItemUse" />
+        <InventoryBar
+          :items="playerItems"
+          :buffs="playerBuffs"
+          :pending-id="pendingBuyId"
+          @use="handleItemUse"
+        />
         <QuickBuy
           v-if="!cutHud && (pinnedItems.length || recommendedShopItems.length)"
           :pinned-items="pinnedItems"
@@ -2691,6 +2731,10 @@ function handleReturnToMenu() {
    top of the STREAM panel's title and FEED filter row. */
 .game-grid :deep(.announcement-toast) {
   top: calc(var(--stream-body-top, calc(var(--hud-bar-h, 4.25rem) + 0.5rem)) + 0.25rem);
+  z-index: 60;
+}
+.game-grid[data-cut='1'] :deep(.announcement-toast) {
+  top: 0.45rem;
 }
 
 /* Death is up to 108 seconds long. A 70%-opaque full-bleed scrim that also ate
@@ -2745,18 +2789,12 @@ function handleReturnToMenu() {
 }
 
 @media (max-width: 720px) {
-  /* Phone: single column, log still primary directly under the bar; hero/map
-     rail stacks above the Zone + net readout column, each scrolling internally. */
+  /* Phone: identity first (TRACE + Deck), then the feed. The log used to sit
+     under the bar and push hop/contacts/self below the fold. */
   .game-grid {
     grid-template-columns: 1fr;
-    /* Weights, measured at 390x844 with the command block at its tallest (items
-       + quick buy + a pending talent choice): the rail — TRACE *and* DECK, i.e.
-       where you are, who is in contact, and your own INTEG/BW/abilities — was
-       on 1.1fr and landed at 109px, while the three-line status advisory beside
-       it was on 1fr and took 99px. The rail carries the match state and gets the
-       weight to match; the advisory keeps enough for its wrapped lines. */
     grid-template-rows:
-      auto minmax(0, 1.7fr) minmax(0, 1.9fr)
+      auto minmax(0, 1.3fr) minmax(0, 1.9fr)
       minmax(0, 0.75fr) auto;
     gap: 1px;
   }
@@ -2764,11 +2802,11 @@ function handleReturnToMenu() {
     grid-column: 1;
     grid-row: 1;
   }
-  .game-grid__log {
+  .game-grid__rail {
     grid-column: 1;
     grid-row: 2;
   }
-  .game-grid__rail {
+  .game-grid__log {
     grid-column: 1;
     grid-row: 3;
   }
@@ -2797,34 +2835,33 @@ function handleReturnToMenu() {
 @media (max-width: 720px) and (max-height: 700px) {
   .game-grid {
     grid-template-rows:
-      auto minmax(0, 2.1fr) minmax(0, 1.3fr)
+      auto minmax(0, 1.3fr) minmax(0, 2.1fr)
       minmax(0, 0.45fr) auto;
   }
 }
 
-/* Cut HUD: STREAM is the board. TRACE then DECK stack full-width — a
-   side-by-side rail lets Deck's intrinsic width crush TRACE to a sliver
-   of letters (first-play split pane). */
+/* Cut HUD: hop / contacts / self first, then the feed. TRACE+DECK stack
+   full-width — a side-by-side rail crushed TRACE to a sliver of letters. */
 .game-grid[data-cut='1'] {
   grid-template-columns: 1fr;
-  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
   gap: 1px;
 }
 .game-grid[data-cut='1'] .game-grid__bar {
   grid-column: 1;
   grid-row: 1;
 }
-.game-grid[data-cut='1'] .game-grid__log {
-  grid-column: 1;
-  grid-row: 2;
-}
 .game-grid[data-cut='1'] .game-grid__rail {
   grid-column: 1;
-  grid-row: 3;
+  grid-row: 2;
   display: flex;
   flex-direction: column;
   max-height: none;
   gap: 1px;
+}
+.game-grid[data-cut='1'] .game-grid__log {
+  grid-column: 1;
+  grid-row: 3;
 }
 .game-grid[data-cut='1'] .rail-map,
 .game-grid[data-cut='1'] .rail-scroll {

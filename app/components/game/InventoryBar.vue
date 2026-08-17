@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ITEMS } from '~~/shared/constants/items'
 import type { ItemDef } from '~~/shared/types/items'
 import type { BuffState } from '~~/shared/types/game'
@@ -8,7 +8,26 @@ import { useTapInspect } from '~/composables/useTapInspect'
 const props = defineProps<{
   items: (string | null)[]
   buffs: BuffState[]
+  /** Item just bought / queued — first empty slot gilds until it lands. */
+  pendingId?: string | null
 }>()
+
+const poppedSlot = ref<number | null>(null)
+watch(
+  () => props.items.slice(),
+  (now, prev) => {
+    if (!prev) return
+    const i = now.findIndex((id, idx) => id && id !== prev[idx])
+    poppedSlot.value = i >= 0 ? i : null
+  },
+)
+
+const pendingSlot = computed(() => {
+  if (!props.pendingId) return null
+  if (props.items.includes(props.pendingId)) return null
+  const empty = props.items.findIndex((id) => !id)
+  return empty >= 0 ? empty : null
+})
 
 const emit = defineEmits<{
   use: [slotIndex: number, itemId: string]
@@ -106,13 +125,19 @@ function formatStats(def: ItemDef): string[] {
       :ref="(el) => registerEl(slotKey(slot.index), el)"
       class="touch-target relative flex h-9 w-16 shrink-0 items-center justify-center border font-mono text-[0.65rem] transition-[border-color] duration-100 select-none"
       :class="[
+        poppedSlot === slot.index ? 'anim-pop border-gold bg-gold/10 text-gold' : '',
+        pendingSlot === slot.index && poppedSlot !== slot.index
+          ? 'border-dashed border-gold bg-gold/5 text-gold'
+          : '',
         slot.itemId
           ? slot.cooldown > 0
             ? 'border-border bg-bg-secondary text-text-dim cursor-not-allowed'
             : slot.def?.active
               ? 'border-ability bg-bg-secondary text-text-primary cursor-pointer hover:bg-ability/10'
               : 'border-border bg-bg-secondary text-text-primary'
-          : 'border-dashed border-border bg-transparent text-text-dim',
+          : pendingSlot === slot.index
+            ? ''
+            : 'border-dashed border-border bg-transparent text-text-dim',
       ]"
       :data-testid="`inventory-slot-${slot.index}`"
       :role="slot.def ? 'button' : undefined"
@@ -141,6 +166,11 @@ function formatStats(def: ItemDef): string[] {
         </div>
       </template>
 
+      <template v-else-if="pendingSlot === slot.index && pendingId">
+        <span class="truncate px-0.5 text-center leading-tight text-gold">
+          {{ abbreviate(ITEMS[pendingId]?.name ?? pendingId) }}
+        </span>
+      </template>
       <template v-else>
         <span class="text-[0.6rem]">--</span>
       </template>
