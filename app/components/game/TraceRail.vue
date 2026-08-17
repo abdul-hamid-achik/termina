@@ -10,7 +10,11 @@ import type { TeamId } from '~~/shared/types/game'
  * can show: how deep you are, who is in contact, and whether the terminals
  * still stand.
  */
-const props = defineProps<{ trace: TraceModel }>()
+const props = defineProps<{
+  trace: TraceModel
+  /** Cut HUD: skip blind other-route lines; wrap terminals so they don't collide. */
+  compact?: boolean
+}>()
 
 function teamTextClass(team: TeamId): string {
   return team === 'chaff' ? 'text-chaff' : 'text-audit'
@@ -61,7 +65,10 @@ function routeStatus(r: { hostiles: number; seen: number; total: number }): {
     <!-- Your route, as depth. Its own contact count is shown too: the route you
          are standing on is the one whose hostiles matter most, and it was the
          only line that never reported them. -->
-    <div class="flex items-baseline gap-2" data-testid="trace-current">
+    <div
+      class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5"
+      data-testid="trace-current"
+    >
       <span :class="currentRouteClass">▸ {{ currentLine }}</span>
       <span v-if="trace.currentRoute" class="text-text-dim">{{ depthBar }}</span>
       <span
@@ -70,11 +77,26 @@ function routeStatus(r: { hostiles: number; seen: number; total: number }): {
         :data-testid="`trace-route-${activeRoute.route}-status`"
         >· {{ activeRoute.hostiles }} hostile</span
       >
+      <template v-if="compact">
+        <span
+          v-for="t in trace.terminals"
+          :key="`inline-${t.team}`"
+          class="whitespace-nowrap text-text-dim"
+          :class="[teamTextClass(t.team), { 'line-through': !t.alive }]"
+        >
+          {{ FACTION_META[t.team].short }}
+          <template v-if="t.alive">{{ t.integ }}/{{ t.maxInteg }}</template>
+          <template v-else>DOWN</template>
+        </span>
+      </template>
     </div>
 
-    <!-- The other routes, one line each -->
+    <!-- The other routes, one line each. Compact skips blind ones — on a
+         one-lane map they are three lines of "no feed" that say nothing. -->
     <div
-      v-for="r in trace.routes.filter((r) => !r.active)"
+      v-for="r in trace.routes.filter(
+        (r) => !r.active && (!compact || r.hostiles > 0 || r.seen > 0),
+      )"
       :key="r.route"
       class="flex items-baseline gap-2 text-text-dim"
       :data-testid="`trace-route-${r.route}`"
@@ -106,10 +128,15 @@ function routeStatus(r: { hostiles: number; seen: number; total: number }): {
     </div>
 
     <!-- Both terminals -->
-    <div class="mt-1 flex gap-3 border-t border-border/50 pt-1" data-testid="trace-terminals">
+    <div
+      v-if="!compact"
+      class="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 border-t border-border/50 pt-1"
+      data-testid="trace-terminals"
+    >
       <span
         v-for="t in trace.terminals"
         :key="t.team"
+        class="whitespace-nowrap"
         :class="[teamTextClass(t.team), { 'line-through': !t.alive }]"
         :data-testid="`trace-terminal-${t.team}`"
       >

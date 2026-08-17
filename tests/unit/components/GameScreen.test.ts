@@ -347,8 +347,8 @@ describe('GameScreen', () => {
       store.updateFromCycle(makeCycleMessage({ players: roster }))
       const wrapper = mountGameScreen()
 
-      const r = wrapper.findAll('.hud-action-btn').find((b) => b.text().startsWith('R'))
-      expect(r?.text()).toBe(`R·L${ULTIMATE_UNLOCK_LEVEL}`)
+      const r = wrapper.find('[data-testid="action-r"]')
+      expect(r.text()).toBe(`[R·L${ULTIMATE_UNLOCK_LEVEL}]`)
       expect(r?.attributes('aria-label')).toContain(`unlocks at level ${ULTIMATE_UNLOCK_LEVEL}`)
       expect(r?.attributes('aria-disabled')).toBe('true')
       wrapper.unmount()
@@ -360,9 +360,9 @@ describe('GameScreen', () => {
       seedActiveGame()
       const wrapper = mountGameScreen()
 
-      const r = wrapper.findAll('.hud-action-btn').find((b) => b.text().startsWith('R'))
-      expect(r?.text()).not.toContain(`L${ULTIMATE_UNLOCK_LEVEL}`)
-      expect(r?.attributes('aria-label')).not.toContain('unlocks at level')
+      const r = wrapper.find('[data-testid="action-r"]')
+      expect(r.text()).not.toContain(`L${ULTIMATE_UNLOCK_LEVEL}`)
+      expect(r.attributes('aria-label')).not.toContain('unlocks at level')
       wrapper.unmount()
     })
 
@@ -370,15 +370,13 @@ describe('GameScreen', () => {
       seedActiveGame()
       const wrapper = mountGameScreen()
 
-      const btns = wrapper.findAll('.hud-action-btn')
-      const shop = btns.find((b) => b.text() === 'SHOP')
-      const score = btns.find((b) => b.text() === 'SCORE')
-      expect(shop?.attributes('aria-label')).toBe('Toggle shop')
-      expect(shop?.attributes('aria-pressed')).toBe('false')
-      expect(score?.attributes('aria-pressed')).toBe('false')
-      // ability buttons carry a descriptive label (name + state)
-      const q = btns.find((b) => b.text().startsWith('Q'))
-      expect(q?.attributes('aria-label')).toBeTruthy()
+      const shop = wrapper.find('[data-testid="action-shop"]')
+      const score = wrapper.find('[data-testid="action-score"]')
+      expect(shop.attributes('aria-label')).toBe('Toggle shop')
+      expect(shop.attributes('aria-pressed')).toBe('false')
+      expect(score.attributes('aria-pressed')).toBe('false')
+      const q = wrapper.find('[data-testid="action-q"]')
+      expect(q.attributes('aria-label')).toBeTruthy()
       wrapper.unmount()
     })
 
@@ -389,9 +387,9 @@ describe('GameScreen', () => {
       const wrapper = mountGameScreen()
 
       // The fixture hero has W on a 2-tick cooldown.
-      const w = wrapper.findAll('.hud-action-btn').find((b) => b.text().startsWith('W'))
-      expect(w?.text()).toBe('W·2')
-      expect(w?.attributes('aria-label')).toContain('on cooldown 2 cycles, about 8 seconds')
+      const w = wrapper.find('[data-testid="action-w"]')
+      expect(w.text()).toBe('[W·2]')
+      expect(w.attributes('aria-label')).toContain('on cooldown 2 cycles, about 8 seconds')
       wrapper.unmount()
     })
 
@@ -399,8 +397,8 @@ describe('GameScreen', () => {
       seedActiveGame()
       const wrapper = mountGameScreen()
 
-      const shopBtn = wrapper.findAll('.hud-action-btn').find((b) => b.text() === 'SHOP')
-      await shopBtn!.trigger('click')
+      const shopBtn = wrapper.find('[data-testid="action-shop"]')
+      await shopBtn.trigger('click')
 
       const dialog = wrapper.find('[role="dialog"][aria-label="Item shop"]')
       expect(dialog.exists()).toBe(true)
@@ -467,7 +465,7 @@ describe('GameScreen', () => {
       // identifiers that appear nowhere else in the UI, and no way to act on them.
       seedMap('coldstore-t1-chaff')
       const wrapper = mountGameScreen()
-      const moveBtn = wrapper.findAll('button').find((b) => b.text() === 'MOVE')!
+      const moveBtn = wrapper.find('[data-testid="action-move"]')
 
       expect(wrapper.find('[data-testid="move-picker"]').exists()).toBe(false)
       await moveBtn.trigger('click')
@@ -483,10 +481,7 @@ describe('GameScreen', () => {
     it('[MOVE] picker actually moves', async () => {
       seedMap('coldstore-t1-chaff')
       const wrapper = mountGameScreen()
-      await wrapper
-        .findAll('button')
-        .find((b) => b.text() === 'MOVE')!
-        .trigger('click')
+      await wrapper.find('[data-testid="action-move"]').trigger('click')
 
       socketSpies.send.mockClear()
       await wrapper.find('[data-testid="move-picker-coldstore-cross"]').trigger('click')
@@ -503,10 +498,7 @@ describe('GameScreen', () => {
     it('offers only on-map zones in the picker on a subset map', async () => {
       seedMap('coldstore-cross', { mapId: 'one_lane' })
       const wrapper = mountGameScreen()
-      await wrapper
-        .findAll('button')
-        .find((b) => b.text() === 'MOVE')!
-        .trigger('click')
+      await wrapper.find('[data-testid="action-move"]').trigger('click')
 
       const picker = wrapper.find('[data-testid="move-picker"]')
       // coldstore-cross's GLOBAL neighbours are coldstore-t1-chaff, coldstore-t1-audit, cache-seawall and

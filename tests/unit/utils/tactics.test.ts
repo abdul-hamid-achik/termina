@@ -44,6 +44,18 @@ describe('recommendAction', () => {
       label === 'DANGER' ? 'danger' : label === 'CLEAR' || label === 'FAVORED' ? 'safe' : 'warn',
   })
 
+  it('does not call a missing hero "dead"', () => {
+    const r = recommendAction({
+      alive: false,
+      hpFraction: 0,
+      threat: threat('CLEAR'),
+      hasReadyAbility: false,
+      hasHero: false,
+    })
+    expect(r).toContain('Waiting for the first cycle')
+    expect(r).not.toContain('Dead')
+  })
+
   it('prioritises being dead above everything', () => {
     const r = recommendAction({
       alive: false,

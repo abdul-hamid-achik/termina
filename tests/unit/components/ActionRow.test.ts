@@ -91,6 +91,26 @@ describe('ActionRow', () => {
     }
     await wrapper.find('[data-testid="action-atk"]').trigger('click')
     expect(wrapper.emitted('command')).toEqual([['ATK']])
+    expect(wrapper.find('[data-testid="action-atk"]').text()).toContain('[ATK]')
+  })
+
+  it('gilds the accent verb so the next tap is obvious', () => {
+    const wrapper = mountRow()
+    wrapper.unmount()
+    const accented = mount(ActionRow, {
+      props: {
+        moveZones: [],
+        situational: [],
+        abilities: {},
+        abilityArias: {},
+        shopOpen: false,
+        scoreboardOpen: false,
+        canBuy: false,
+        accent: 'MOVE',
+      },
+    })
+    expect(accented.find('[data-testid="action-move"]').classes().join(' ')).toContain('text-chaff')
+    accented.unmount()
   })
 
   it('STRIP emits attack wave:<index> for the lowest-INTEG HOSTILE unit', () => {

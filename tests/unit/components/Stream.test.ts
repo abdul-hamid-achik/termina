@@ -108,7 +108,16 @@ describe('Stream', () => {
     it('should show empty state when no events', () => {
       const wrapper = mount(Stream, { props: { events: [] } })
 
-      expect(wrapper.text()).toContain('awaiting events')
+      expect(wrapper.get('[data-testid="stream-idle"]').text()).toContain(
+        'commits every four seconds',
+      )
+    })
+
+    it('uses the idle hint when the feed is empty', () => {
+      const wrapper = mount(Stream, {
+        props: { events: [], idleHint: 'Walk to your ice — type move coldstore-t2-chaff.' },
+      })
+      expect(wrapper.get('[data-testid="stream-idle"]').text()).toContain('move coldstore-t2-chaff')
     })
   })
 })

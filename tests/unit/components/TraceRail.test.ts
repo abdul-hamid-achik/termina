@@ -31,6 +31,25 @@ describe('TraceRail', () => {
     expect(wrapper.get('[data-testid="trace-current"]').text()).toContain('hop 2/8')
   })
 
+  it('skips blind other-route lines in compact mode', () => {
+    const wrapper = mount(TraceRail, {
+      props: {
+        compact: true,
+        trace: buildTrace({
+          playerZone: 'coldstore-t2-chaff',
+          playerTeam: 'chaff',
+          contacts: [],
+          terminals: TERMINALS,
+        }),
+      },
+    })
+    expect(wrapper.get('[data-testid="trace-current"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="trace-route-seawall"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="trace-route-shallows"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="trace-terminals"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="trace-current"]').text()).toMatch(/CHF/)
+  })
+
   it('renders one line per other route', () => {
     const wrapper = mountRail('coldstore-t2-chaff')
     expect(wrapper.find('[data-testid="trace-route-seawall"]').exists()).toBe(true)

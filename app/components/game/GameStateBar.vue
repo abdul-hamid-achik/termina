@@ -27,6 +27,8 @@ const props = defineProps<{
   netWorthAudit?: number
   /** Bumped by the parent when the local player scores a kill → KDA pop. */
   kdaPopKey?: number
+  /** Cut HUD: one row. Macro lives on TRACE. */
+  compact?: boolean
 }>()
 
 // The bar shows no cycle countdown — the combat log's theater header is the
@@ -81,7 +83,7 @@ function terminalPct(a: TerminalState | undefined): number {
       <span class="inline-flex items-center gap-1" :title="dayNightTitle">
         <span v-if="timeOfDay === 'day'" class="text-gold text-glow-gold">Day</span>
         <span v-else class="text-self text-glow-sm">Night</span>
-        <span v-if="dayNightCycle !== undefined && timeOfDay" class="t-caption">
+        <span v-if="!compact && dayNightCycle !== undefined && timeOfDay" class="t-caption">
           ({{ formatTimeRemaining(dayNightCycle, timeOfDay) }})
         </span>
       </span>
@@ -111,7 +113,7 @@ function terminalPct(a: TerminalState | undefined): number {
 
     <!-- Row 2: always-on team macro state -->
     <div
-      v-if="teams"
+      v-if="teams && !compact"
       class="flex items-center gap-3 overflow-x-auto border-t border-border/50 bg-bg-primary/40 px-3 py-1 text-[0.72rem] whitespace-nowrap t-mono-num"
       data-testid="macro-strip"
     >

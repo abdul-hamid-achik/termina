@@ -31,6 +31,8 @@ const props = defineProps<{
   scoreboardOpen: boolean
   /** Whether the player can buy right now (gilds the SHOP button). */
   canBuy: boolean
+  /** The verb the player should press this cycle (tutorial / strip). */
+  accent?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -76,14 +78,15 @@ const STATIC_ARIA: Record<string, string> = {
       <button
         v-for="cmd in ['ATK', 'Q', 'W', 'E', 'R', 'MOVE', 'SHOP', 'SCORE']"
         :key="cmd"
-        class="hud-action-btn min-h-[44px] min-w-[44px] whitespace-nowrap border border-border bg-bg-secondary px-2.5 py-1.5 font-mono t-hud-sm font-bold text-text-primary transition-all active:bg-border active:scale-95"
+        class="hud-action-btn min-h-9 min-w-9 whitespace-nowrap border border-border bg-bg-primary px-2 py-1 font-mono t-hud-sm text-text-primary transition-colors active:bg-border"
         :class="{
           'border-gold text-gold': cmd === 'SHOP' && canBuy,
-          'border-ability text-ability shadow-glow-ability':
+          'border-ability text-ability':
             ['Q', 'W', 'E', 'R'].includes(cmd) && abilities[cmd]?.ready,
           'cursor-not-allowed border-border/50 text-text-dim opacity-50':
             ['Q', 'W', 'E', 'R'].includes(cmd) && !abilities[cmd]?.ready,
-          'border-self text-self': cmd === 'SCORE',
+          'border-self text-self': cmd === 'SCORE' && scoreboardOpen,
+          'border-chaff text-chaff': accent === cmd,
         }"
         :disabled="['Q', 'W', 'E', 'R'].includes(cmd) && !abilities[cmd]?.ready"
         :title="cmd === 'SHOP' ? 'Shop — click, or press Esc then S' : undefined"
@@ -103,7 +106,7 @@ const STATIC_ARIA: Record<string, string> = {
         :data-testid="`action-${cmd.toLowerCase()}`"
         @click="onStatic(cmd)"
       >
-        {{ ['Q', 'W', 'E', 'R'].includes(cmd) ? abilities[cmd]?.label : cmd }}
+        [{{ ['Q', 'W', 'E', 'R'].includes(cmd) ? (abilities[cmd]?.label ?? cmd) : cmd }}]
       </button>
     </div>
 

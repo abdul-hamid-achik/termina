@@ -232,7 +232,7 @@ describe('GameScreen commands', () => {
       const wrapper = mountGameScreen()
       commandInputFocus.mockClear()
 
-      const shopBtn = wrapper.findAll('.hud-action-btn').find((b) => b.text() === 'SHOP')
+      const shopBtn = wrapper.find('[data-testid="action-shop"]')
       await shopBtn!.trigger('click')
       await wrapper.vm.$nextTick()
       expect(wrapper.find('[role="dialog"][aria-label="Item shop"]').exists()).toBe(true)
@@ -266,7 +266,7 @@ describe('GameScreen commands', () => {
 
       seedActiveGame()
       const wrapper = mountGameScreen()
-      const shopBtn = wrapper.findAll('.hud-action-btn').find((b) => b.text() === 'SHOP')
+      const shopBtn = wrapper.find('[data-testid="action-shop"]')
       await shopBtn!.trigger('click')
       await wrapper.vm.$nextTick()
       commandInputFocus.mockClear()
@@ -576,7 +576,7 @@ describe('GameScreen commands', () => {
       seedActiveGame()
       const wrapper = mountGameScreen()
 
-      const shop = wrapper.findAll('.hud-action-btn').find((b) => b.text() === 'SHOP')
+      const shop = wrapper.find('[data-testid="action-shop"]')
       expect(shop?.attributes('title')).toContain('Esc then S')
       wrapper.unmount()
     })

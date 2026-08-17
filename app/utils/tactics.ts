@@ -49,6 +49,8 @@ export interface RecommendationContext {
   threat: ZoneThreat
   /** At least one ability is off cooldown. */
   hasReadyAbility: boolean
+  /** False before the first cycle_state — do not call that "dead". */
+  hasHero?: boolean
 }
 
 /**
@@ -57,6 +59,7 @@ export interface RecommendationContext {
  * reads at a glance on a 4-second tick.
  */
 export function recommendAction(ctx: RecommendationContext): string {
+  if (ctx.hasHero === false) return 'Waiting for the first cycle'
   if (!ctx.alive) return 'Dead — wait for respawn or buy back'
   if (ctx.hpFraction <= 0.3) return 'Low INTEG — retreat and heal'
   switch (ctx.threat.label) {

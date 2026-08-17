@@ -99,6 +99,18 @@ describe('GameStateBar core INTEG', () => {
     expect(w.html()).toContain('text-warn')
   })
 
+  it('drops the macro row in compact (cut) mode', () => {
+    const w = mountBar({
+      compact: true,
+      teams: { chaff: makeTeamState('chaff'), audit: makeTeamState('audit') },
+      timeOfDay: 'day',
+      dayNightCycle: 0,
+    })
+    expect(w.find('[data-testid="macro-strip"]').exists()).toBe(false)
+    expect(w.text()).toContain('Day')
+    expect(w.text()).not.toContain('20:00')
+  })
+
   it('omits the Terminal readout when no terminals are supplied', () => {
     const w = mountBar({
       teams: { chaff: makeTeamState('chaff'), audit: makeTeamState('audit') },

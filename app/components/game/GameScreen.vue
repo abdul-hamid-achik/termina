@@ -320,6 +320,28 @@ function measureCut() {
   if (gameGridEl.value) cutObserver.observe(gameGridEl.value)
 }
 
+/** Empty-feed copy: the next verb, not a dead wait. */
+const streamIdleHint = computed(() => {
+  if (gameStore.mode === 'tutorial') {
+    const hint = tutorialHint(gameStore.tutorialStep ?? 0)
+    if (hint) return hint.replace(/^🎓\s*/, '')
+  }
+  return 'The city commits every four seconds. Type a verb — or tap MOVE.'
+})
+
+/** Which ActionRow key the player should press this cycle. */
+const actionAccent = computed(() => {
+  if (gameStore.mode === 'tutorial') {
+    const step = gameStore.tutorialStep ?? 0
+    if (step === 0) return 'MOVE'
+    if (step === 1 || step === 2 || step === 3) return 'ATK'
+    if (step === 4) return 'Q'
+    if (step === 5 || step === 6) return 'SHOP'
+  }
+  if (cycleRecap.value.stripReady) return 'ATK'
+  return null
+})
+
 const hudBarStyle = computed(() => ({
   ...(hudBarHeight.value > 0 ? { '--hud-bar-h': `${hudBarHeight.value}px` } : {}),
   ...(streamBodyTop.value > 0 ? { '--stream-body-top': `${streamBodyTop.value}px` } : {}),
@@ -2214,6 +2236,7 @@ function handleReturnToMenu() {
         :net-worth-chaff="gameStore.netWorth.chaff"
         :net-worth-audit="gameStore.netWorth.audit"
         :kda-pop-key="kdaPopKey"
+        :compact="cutHud"
       />
 
       <!-- Tutorial banner: current step's hint + the staggered-unlock checklist -->
@@ -2274,15 +2297,17 @@ function handleReturnToMenu() {
         :verb="cycleRecap.verb"
         :strip-ready="cycleRecap.stripReady"
         :move="cycleRecap.move"
+        :compact="cutHud"
+        :has-hero="!!gameStore.player"
       />
     </div>
 
     <!-- Center stage: the stream owns the full column. -->
-    <TerminalPanel title="STREAM" class="game-grid__log min-h-0">
+    <TerminalPanel :title="cutHud ? undefined : 'STREAM'" class="game-grid__log min-h-0">
       <!-- `ref` here reaches Stream's root; the overlay lanes need the scrolling
            BODY's position, which sits below Stream's own filter row. -->
       <div ref="streamWrapEl" class="flex h-full min-h-0 flex-col">
-        <Stream :events="combatEvents" />
+        <Stream :events="combatEvents" :idle-hint="streamIdleHint" />
       </div>
     </TerminalPanel>
 
@@ -2292,12 +2317,12 @@ function handleReturnToMenu() {
       <!-- TRACE never leaves the screen: own non-scrolling grid row
            (.rail-map); DECK and the rest share what is left and scroll. -->
       <TerminalPanel :title="cutHud ? undefined : 'TRACE'" class="rail-map">
-        <TraceRail :trace="traceModel" />
+        <TraceRail :trace="traceModel" :compact="cutHud" />
       </TerminalPanel>
 
       <!-- Everything below the board shares the remaining height and scrolls
            together, so the board itself never has to. -->
-      <div class="rail-scroll">
+      <div v-if="heroData || !cutHud" class="rail-scroll">
         <TerminalPanel
           :title="cutHud ? undefined : 'DECK'"
           :variant="heroDanger ? 'danger' : 'default'"
@@ -2409,7 +2434,10 @@ function handleReturnToMenu() {
 
     <div class="game-grid__cmd flex min-h-0 flex-col justify-end">
       <!-- Inventory Bar (above command input) -->
-      <div class="flex items-center gap-2 border-t border-border bg-bg-secondary px-2 py-1">
+      <div
+        v-if="!cutHud || playerItems.some(Boolean)"
+        class="flex items-center gap-2 border-t border-border bg-bg-secondary px-2 py-1"
+      >
         <InventoryBar :items="playerItems" :buffs="playerBuffs" @use="handleItemUse" />
         <QuickBuy
           v-if="!cutHud && (pinnedItems.length || recommendedShopItems.length)"
@@ -2429,6 +2457,7 @@ function handleReturnToMenu() {
         :shop-open="showShop"
         :scoreboard-open="showScoreboard"
         :can-buy="gameStore.canBuy"
+        :accent="actionAccent"
         @command="handleActionRowCommand"
       />
 

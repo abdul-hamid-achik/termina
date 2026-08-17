@@ -56,6 +56,13 @@ describe('StatusLines', () => {
     vi.unstubAllGlobals()
   })
 
+  it('hides the hop line in compact mode — TRACE already has it', () => {
+    const wrapper = mountLines({ props: { compact: true } })
+    expect(wrapper.find('[data-testid="status-hop"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="status-here"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="status-clock"]').exists()).toBe(true)
+  })
+
   it('renders the hop status line (route, threat, recommendation)', () => {
     const wrapper = mountLines()
     const hop = wrapper.get('[data-testid="status-hop"]').text()

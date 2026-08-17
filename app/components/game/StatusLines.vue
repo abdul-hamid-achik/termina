@@ -34,6 +34,10 @@ const props = defineProps<{
   stripReady: boolean
   /** Adjacent hops, named, with ? / ! markers. */
   move: string
+  /** Cut HUD: TRACE already has the hop line — keep HERE + the clock. */
+  compact?: boolean
+  /** False before the first cycle_state lands. */
+  hasHero?: boolean
 }>()
 
 const hopLine = computed(() => {
@@ -44,6 +48,7 @@ const hopLine = computed(() => {
     hpFraction: props.hpFraction,
     threat,
     hasReadyAbility: props.hasReadyAbility,
+    hasHero: props.hasHero,
   })
   const route = active
     ? `${active.name.toUpperCase()} hop ${active.depth + 1}/${active.total}`
@@ -106,7 +111,10 @@ const remainingSeconds = computed(() => {
     class="flex flex-col gap-0.5 border-b border-border px-2 py-1 font-mono t-hud-sm"
     data-testid="status-lines"
   >
-    <div class="flex min-w-0 flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+    <div
+      v-if="!compact"
+      class="flex min-w-0 flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5"
+    >
       <span class="min-w-0 flex-1 break-words text-chaff" data-testid="status-hop">{{
         hopLine
       }}</span>

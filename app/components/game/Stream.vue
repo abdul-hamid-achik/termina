@@ -8,6 +8,8 @@ import { formatTickClock } from '~/utils/gameClock'
 
 const props = defineProps<{
   events: CombatLine[]
+  /** Shown when the feed is empty — the next verb, not a dead wait. */
+  idleHint?: string
 }>()
 
 const logEl = ref<HTMLElement>()
@@ -369,8 +371,13 @@ function eventAriaLabel(line: CombatLine): string {
         </div>
       </div>
 
-      <div v-if="!events.length" class="p-2 text-[0.8rem] text-text-dim">
-        &gt;_ awaiting events...
+      <div
+        v-if="!events.length"
+        class="p-2 font-mono text-[0.8rem] leading-relaxed text-text-dim"
+        data-testid="stream-idle"
+      >
+        <span class="text-ability">&gt;_</span>
+        {{ idleHint || 'The city commits every four seconds. Type a verb.' }}
       </div>
       <div v-else-if="!beats.length" class="p-2 t-hud-xs text-text-dim">
         &gt;_ no events match this filter
