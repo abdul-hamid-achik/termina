@@ -105,22 +105,51 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
     :class="{ 'deck-compact': compact }"
     data-testid="hero-status"
   >
-    <div class="flex items-start gap-2">
+    <div class="flex min-w-0 items-start gap-2">
       <HeroPortrait
         v-if="heroId"
         :hero-id="heroId"
-        :size="48"
+        :size="compact ? 36 : 48"
         :class="{ 'opacity-50': !hero.alive }"
       />
-      <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span class="t-h2 text-self text-glow-sm t-mono-num">{{ hero.name }}</span>
-        <span class="t-caption text-gold t-mono-num">Lv.{{ hero.level }}</span>
-        <span class="t-caption text-zone">@ {{ hero.zone }}</span>
-        <span v-if="!hero.alive" class="t-h3 text-audit text-glow anim-glow-pulse">[DEAD]</span>
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <span class="t-h2 text-self text-glow-sm t-mono-num">{{ hero.name }}</span>
+          <span class="t-caption text-gold t-mono-num">Lv.{{ hero.level }}</span>
+          <span class="t-caption min-w-0 truncate text-zone">@ {{ hero.zone }}</span>
+          <span v-if="!hero.alive" class="t-h3 text-audit text-glow anim-glow-pulse">[DEAD]</span>
+        </div>
+        <div v-if="compact" class="mt-0.5 flex min-w-0 flex-col gap-px">
+          <div class="flex min-w-0 items-center gap-1.5">
+            <span class="w-10 shrink-0 text-text-dim">INTEG</span>
+            <ProgressBar
+              :value="hero.integ"
+              :max="hero.maxInteg"
+              color="chaff"
+              :width="8"
+              :danger-below="0.25"
+              :label="`${hero.name} INTEG`"
+              show-label
+              :show-percent="false"
+            />
+          </div>
+          <div class="flex min-w-0 items-center gap-1.5">
+            <span class="w-10 shrink-0 text-text-dim">BW</span>
+            <ProgressBar
+              :value="hero.bw"
+              :max="hero.maxBw"
+              color="BW"
+              :width="8"
+              :label="`${hero.name} BW`"
+              show-label
+              :show-percent="false"
+            />
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="flex flex-col gap-0.5">
+    <div v-if="!compact" class="flex flex-col gap-0.5">
       <div class="flex items-center gap-1.5">
         <!-- w-10, not w-5: "INTEG" is 5 mono chars (~40px) — at w-5 the bar's
              opening bracket painted over the trailing G. BW matches for
@@ -240,8 +269,8 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
       </div>
     </div>
 
-    <div v-if="shownBuffs.length" class="flex flex-col gap-1">
-      <span class="t-caption uppercase">Buffs</span>
+    <div v-if="shownBuffs.length" class="flex flex-col gap-1" :class="{ 'mt-0': compact }">
+      <span v-if="!compact" class="t-caption uppercase">Buffs</span>
       <div class="flex flex-wrap gap-2">
         <span
           v-for="buff in shownBuffs"
@@ -274,10 +303,8 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
 
 <style scoped>
 .deck-compact {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.15rem 0;
+  gap: 0.35rem;
+  padding: 0.1rem 0;
 }
 .deck-compact :deep(.t-h2) {
   font-size: 0.85rem;

@@ -255,6 +255,20 @@ describe('eventToLine: previously-orphaned events get real text', () => {
     expect(sell.text).toContain('Item(scrap_lot)')
     expect(sell.text).toContain('+25')
   })
+
+  it("marks someone else's shop receipt as minor so the story view can drop it", () => {
+    const theirs = eventToLine(
+      ev('item_purchased', { playerId: 'enemy1', itemId: 'camtap', cost: 75 }),
+      ctx,
+    )!
+    expect(theirs.minor).toBe(true)
+    const mine = eventToLine(
+      ev('item_purchased', { playerId: 'me', itemId: 'camtap', cost: 75 }),
+      ctx,
+    )!
+    expect(mine.minor).toBeFalsy()
+    expect(buildTickStoryView([theirs, mine]).map((l) => l.text)).toEqual([mine.text])
+  })
   it('keeps the exact victory phrasing for the core', () => {
     const line = eventToLine(ev('terminal_destroyed', { team: 'audit', killerTeam: 'chaff' }), ctx)!
     expect(line.type).toBe('victory')

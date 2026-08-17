@@ -50,6 +50,23 @@ describe('TraceRail', () => {
     expect(wrapper.get('[data-testid="trace-current"]').text()).toMatch(/CHF/)
   })
 
+  it('skips quiet other-route lines in compact mode even when they have vision', () => {
+    const wrapper = mount(TraceRail, {
+      props: {
+        compact: true,
+        trace: buildTrace({
+          playerZone: 'coldstore-t2-chaff',
+          playerTeam: 'chaff',
+          contacts: [],
+          terminals: TERMINALS,
+          visibleZoneIds: ['seawall-t1-chaff', 'shallows-t1-chaff'],
+        }),
+      },
+    })
+    expect(wrapper.find('[data-testid="trace-route-seawall"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="trace-route-shallows"]').exists()).toBe(false)
+  })
+
   it('renders one line per other route', () => {
     const wrapper = mountRail('coldstore-t2-chaff')
     expect(wrapper.find('[data-testid="trace-route-seawall"]').exists()).toBe(true)

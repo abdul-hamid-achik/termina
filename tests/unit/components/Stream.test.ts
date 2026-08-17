@@ -119,6 +119,35 @@ describe('Stream', () => {
       })
       expect(wrapper.get('[data-testid="stream-idle"]').text()).toContain('move coldstore-t2-chaff')
     })
+
+    it('renders a [TUTORIAL] line as a callout without scrambling it', () => {
+      const wrapper = mount(Stream, {
+        props: {
+          events: [makeEvent({ text: '[TUTORIAL] Stay behind your T1.', type: 'system' })],
+        },
+      })
+      const row = wrapper.get('[data-testid="log-event"]')
+      expect(row.text()).toContain('[TUTORIAL]')
+      expect(row.text()).toContain('Stay behind your T1.')
+      expect(row.classes()).toContain('border-ability/40')
+    })
+
+    it('does not pin beat headers when pinBeats is off', () => {
+      const wrapper = mount(Stream, {
+        props: { events: [makeEvent({ cycle: 4 })], pinBeats: false },
+      })
+      expect(wrapper.find('.sticky').exists()).toBe(false)
+    })
+
+    it('skips blank lines so they do not mint empty cycle headers', () => {
+      const wrapper = mount(Stream, {
+        props: {
+          events: [makeEvent({ cycle: 2, text: '   ' }), makeEvent({ cycle: 3, text: 'hit' })],
+        },
+      })
+      expect(wrapper.text()).not.toContain('CYCLE 2')
+      expect(wrapper.text()).toContain('CYCLE 3')
+    })
   })
 })
 

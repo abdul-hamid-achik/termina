@@ -91,12 +91,11 @@ function routeStatus(r: { hostiles: number; seen: number; total: number }): {
       </template>
     </div>
 
-    <!-- The other routes, one line each. Compact skips blind ones — on a
-         one-lane map they are three lines of "no feed" that say nothing. -->
+    <!-- The other routes, one line each. Compact only keeps a line that is
+         actually threatened — "clear 1/8" on two distant routes ate the
+         identity strip on a cut pane. -->
     <div
-      v-for="r in trace.routes.filter(
-        (r) => !r.active && (!compact || r.hostiles > 0 || r.seen > 0),
-      )"
+      v-for="r in trace.routes.filter((r) => !r.active && (!compact || r.hostiles > 0))"
       :key="r.route"
       class="flex items-baseline gap-2 text-text-dim"
       :data-testid="`trace-route-${r.route}`"

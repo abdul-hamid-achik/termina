@@ -2307,7 +2307,7 @@ function handleReturnToMenu() {
       <!-- `ref` here reaches Stream's root; the overlay lanes need the scrolling
            BODY's position, which sits below Stream's own filter row. -->
       <div ref="streamWrapEl" class="flex h-full min-h-0 flex-col">
-        <Stream :events="combatEvents" :idle-hint="streamIdleHint" />
+        <Stream :events="combatEvents" :idle-hint="streamIdleHint" :pin-beats="!cutHud" />
       </div>
     </TerminalPanel>
 
@@ -2769,8 +2769,9 @@ function handleReturnToMenu() {
   }
 }
 
-/* Cut HUD: STREAM is the board. TRACE+DECK become a fit-content strip so
-   the feed is not a void above three titled boxes (first-play split pane). */
+/* Cut HUD: STREAM is the board. TRACE then DECK stack full-width — a
+   side-by-side rail lets Deck's intrinsic width crush TRACE to a sliver
+   of letters (first-play split pane). */
 .game-grid[data-cut='1'] {
   grid-template-columns: 1fr;
   grid-template-rows: auto minmax(0, 1fr) auto auto auto;
@@ -2787,19 +2788,16 @@ function handleReturnToMenu() {
 .game-grid[data-cut='1'] .game-grid__rail {
   grid-column: 1;
   grid-row: 3;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto;
+  display: flex;
+  flex-direction: column;
   max-height: none;
   gap: 1px;
 }
-.game-grid[data-cut='1'] .rail-map {
-  grid-column: 1;
-  grid-row: 1;
+.game-grid[data-cut='1'] .rail-map,
+.game-grid[data-cut='1'] .rail-scroll {
+  min-width: 0;
 }
 .game-grid[data-cut='1'] .rail-scroll {
-  grid-column: 2;
-  grid-row: 1;
   overflow: hidden;
 }
 .game-grid[data-cut='1'] .game-grid__war {
@@ -2809,17 +2807,5 @@ function handleReturnToMenu() {
 .game-grid[data-cut='1'] .game-grid__cmd {
   grid-column: 1;
   grid-row: 5;
-}
-@media (max-width: 520px) {
-  .game-grid[data-cut='1'] .game-grid__rail {
-    grid-template-columns: 1fr;
-  }
-  .game-grid[data-cut='1'] .rail-map,
-  .game-grid[data-cut='1'] .rail-scroll {
-    grid-column: 1;
-  }
-  .game-grid[data-cut='1'] .rail-scroll {
-    grid-row: 2;
-  }
 }
 </style>

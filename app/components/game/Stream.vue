@@ -6,11 +6,23 @@ import { buildTickStoryView, buildTickRecaps } from '~/utils/combatLog'
 import type { CombatLine, CombatLineType, Salience } from '~/utils/combatLog'
 import { formatTickClock } from '~/utils/gameClock'
 
-const props = defineProps<{
-  events: CombatLine[]
-  /** Shown when the feed is empty — the next verb, not a dead wait. */
-  idleHint?: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    events: CombatLine[]
+    /** Shown when the feed is empty — the next verb, not a dead wait. */
+    idleHint?: string
+    /**
+     * Pin each cycle header while its beat scrolls. Off on the cut HUD: the
+     * feed is short and sticky headers slice wrapped [TUTORIAL] lines in half.
+     */
+    pinBeats?: boolean
+  }>(),
+  { pinBeats: true },
+)
+
+function isCoachLine(text: string): boolean {
+  return text.startsWith('[TUTORIAL]') || text.startsWith('[COACH]') || /^\s*try:/.test(text)
+}
 
 const logEl = ref<HTMLElement>()
 const pinned = ref(false)
@@ -83,6 +95,7 @@ interface Beat {
 const beats = computed<Beat[]>(() => {
   const out: Beat[] = []
   for (const line of visibleEvents.value) {
+    if (!line.text.trim()) continue
     const last = out[out.length - 1]
     if (last && last.cycle === line.cycle) last.lines.push(line)
     else out.push({ cycle: line.cycle, lines: [line] })
@@ -302,7 +315,7 @@ function eventAriaLabel(line: CombatLine): string {
              through the stuck header (double-exposure text), and the event
              rows' fade-in transforms create stacking contexts that could
              paint over a z-[1] header mid-animation. -->
-        <div class="sticky top-0 z-[2] bg-bg-panel select-none">
+        <div class="z-[2] bg-bg-primary select-none" :class="pinBeats ? 'sticky top-0' : ''">
           <div class="flex items-center gap-1 px-2 py-px t-hud-xs tracking-wider text-text-muted">
             <span class="text-border">──</span>
             <span class="font-bold">CYCLE {{ beat.cycle }}</span>
@@ -329,45 +342,61 @@ function eventAriaLabel(line: CombatLine): string {
           :key="`${beat.cycle}-${i}`"
           data-testid="log-event"
           :aria-label="eventAriaLabel(event)"
-          class="anim-fade-in-up border-l-2 border-l-transparent px-2 py-px t-mono-num hover:bg-white/[0.03]"
-          :class="[borderColors[event.type], ...salienceClasses(event.salience, event.type)]"
-          :style="{ animationDelay: `${Math.min(i, 8) * 35}ms` }"
+          class="overflow-hidden border-l-2 border-l-transparent px-2 py-px t-mono-num hover:bg-white/[0.03]"
+          :class="[
+            borderColors[event.type],
+            ...salienceClasses(event.salience, event.type),
+            isCoachLine(event.text)
+              ? 'my-0.5 border border-ability/40 bg-ability/10 py-1 text-ability'
+              : 'anim-fade-in-up',
+          ]"
+          :style="
+            isCoachLine(event.text) ? undefined : { animationDelay: `${Math.min(i, 8) * 35}ms` }
+          "
         >
-          <span v-if="event.salience === 'mine-in'" class="mr-1 t-hud-xs font-bold text-audit"
-            >&#9656;YOU</span
-          >
-          <span
-            v-else-if="event.salience === 'mine-out' && event.type !== 'farm'"
-            class="mr-1 t-hud-xs font-bold text-self"
-            >&#9656;YOU</span
-          >
-          <span
-            class="mr-1 t-hud-xs font-bold"
-            :class="
-              event.type === 'kill'
-                ? 'text-glow-audit'
-                : event.type === 'scrip'
-                  ? 'text-glow-gold'
-                  : ''
-            "
-            :style="{ color: typeColor(event.type) }"
-            >{{ typePrefix(event.type) }}</span
-          >
-          <HeroPortrait
-            v-if="event.type === 'kill' && event.killerHeroId"
-            :hero-id="event.killerHeroId"
-            :size="16"
-            class="mr-1 inline-flex align-middle"
-          />
-          <span :class="emphasisByType[event.type]" :style="{ color: typeColor(event.type) }">
-            <StreamLine :text="event.text" />
-          </span>
-          <HeroPortrait
-            v-if="event.type === 'kill' && event.victimHeroId"
-            :hero-id="event.victimHeroId"
-            :size="16"
-            class="ml-1 inline-flex align-middle"
-          />
+          <template v-if="isCoachLine(event.text)">
+            <span class="mr-1 t-hud-xs font-bold text-ability">[TUTORIAL]</span>
+            <span class="whitespace-pre-wrap text-text-primary">{{
+              event.text.replace(/^\[TUTORIAL\]\s*/, '').replace(/^\[COACH\]\s*/, '')
+            }}</span>
+          </template>
+          <template v-else>
+            <span v-if="event.salience === 'mine-in'" class="mr-1 t-hud-xs font-bold text-audit"
+              >&#9656;YOU</span
+            >
+            <span
+              v-else-if="event.salience === 'mine-out' && event.type !== 'farm'"
+              class="mr-1 t-hud-xs font-bold text-self"
+              >&#9656;YOU</span
+            >
+            <span
+              class="mr-1 t-hud-xs font-bold"
+              :class="
+                event.type === 'kill'
+                  ? 'text-glow-audit'
+                  : event.type === 'scrip'
+                    ? 'text-glow-gold'
+                    : ''
+              "
+              :style="{ color: typeColor(event.type) }"
+              >{{ typePrefix(event.type) }}</span
+            >
+            <HeroPortrait
+              v-if="event.type === 'kill' && event.killerHeroId"
+              :hero-id="event.killerHeroId"
+              :size="16"
+              class="mr-1 inline-flex align-middle"
+            />
+            <span :class="emphasisByType[event.type]" :style="{ color: typeColor(event.type) }">
+              <StreamLine :text="event.text" />
+            </span>
+            <HeroPortrait
+              v-if="event.type === 'kill' && event.victimHeroId"
+              :hero-id="event.victimHeroId"
+              :size="16"
+              class="ml-1 inline-flex align-middle"
+            />
+          </template>
         </div>
       </div>
 

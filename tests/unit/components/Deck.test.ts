@@ -70,6 +70,8 @@ describe('Deck ability chips', () => {
       expect(wrapper.find('[data-testid="ability-chip-q"]').exists()).toBe(false)
       expect(wrapper.text()).not.toContain('[empty]')
       expect(wrapper.text()).toContain('INTEG')
+      expect(wrapper.text()).toContain('Lv.5')
+      expect(wrapper.text()).toContain('@ mid-lane')
       wrapper.unmount()
     })
 

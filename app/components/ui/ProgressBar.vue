@@ -39,6 +39,8 @@ const props = withDefaults(
     color?: ProgressBarColor
     width?: number
     showLabel?: boolean
+    /** Drop the trailing (n%) — cut HUD identity strip has no room. */
+    showPercent?: boolean
     /** Accessible name for the bar (e.g. "Echo INTEG"); exposed via aria-label. */
     label?: string
     /** Ratio (0–1); at/below it the bar warns in `dangerColor` and pulses. 0 = off. */
@@ -50,6 +52,7 @@ const props = withDefaults(
     color: 'chaff',
     width: 20,
     showLabel: false,
+    showPercent: true,
     dangerBelow: 0,
     dangerColor: 'audit',
   },
@@ -101,8 +104,8 @@ const percentage = computed(() => {
     >
     <span aria-hidden="true" class="text-text-dim">]</span>
     <span v-if="showLabel" aria-hidden="true" class="text-text-primary text-xs">
-      {{ value }}/{{ max }}
-      <span class="text-text-dim">({{ percentage }}%)</span>
+      {{ value }}/{{ max
+      }}<span v-if="showPercent" class="text-text-dim"> ({{ percentage }}%)</span>
     </span>
   </span>
 </template>

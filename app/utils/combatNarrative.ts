@@ -298,21 +298,29 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         salience: actorSalience(p.playerId, ctx),
       }
 
-    case 'item_purchased':
+    case 'item_purchased': {
+      const buySalience = actorSalience(p.playerId, ctx)
       return {
         cycle,
         text: `${label(p.playerId)} acquired ${ctx.itemName(str(p.itemId))} (-${num(p.cost)}sc)`,
         type: 'scrip',
-        salience: actorSalience(p.playerId, ctx),
+        salience: buySalience,
+        // Bots shop every other cycle. Story view drops anyone else's receipt
+        // so the first minute is not a shopping list.
+        minor: buySalience !== 'mine-out',
       }
+    }
 
-    case 'item_sold':
+    case 'item_sold': {
+      const sellSalience = actorSalience(p.playerId, ctx)
       return {
         cycle,
         text: `${label(p.playerId)} sold ${ctx.itemName(str(p.itemId))} (+${num(p.refund)}sc)`,
         type: 'scrip',
-        salience: actorSalience(p.playerId, ctx),
+        salience: sellSalience,
+        minor: sellSalience !== 'mine-out',
       }
+    }
 
     case 'ward_placed':
       return {
