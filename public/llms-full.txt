@@ -1,0 +1,84 @@
+# Termina
+
+> Termina is a free, text-based 5v5 multiplayer MOBA played in the browser through a terminal-style interface: every command is one typed line, and the game resolves every instruction at once on a 4-second cycle.
+
+Site: https://www.terminamoba.com/
+Status: early-stage (alpha). Free of charge; accounts, stats and rankings may be reset at any time (see the Terms of Service).
+
+## What Termina is
+
+Termina is a strategy game for players who like MOBA depth but want it accessible and at their own pace. You play through a browser UI styled as a terminal (monochrome green CRT look). There is no aiming and no download: you type orders such as `move coldstore-cross` or `cast q hero:daemon`, and reading the board beats reflexes. A guided tutorial teaches the basics, and you can start a practice match against bots at any time.
+
+The setting is TERMINA, a cable-landing city where twelve transoceanic trunks come out of the sea and stop. Its districts are LANDING, ROOKERY, COLDSTORE and SHALLOWS, and the three routes across the ground are SEAWALL, COLDSTORE and SHALLOWS. Two crews contest the routes: CHAFF (came up off the street) and AUDIT (Quorum's corporate response division). Quorum is also the terrain: the ICE (defensive structures), the wave traffic and the clock are all Quorum's.
+
+## How a match works
+
+- Cycles: the game runs on 4-second cycles. The city commits every instruction at once, in no order, and resolution is deterministic.
+- Win condition: destroy the enemy Terminal. It is firewalled until any one of that team's three T3 ICE (BLACK ICE) falls, and the ICE on a route must fall in order, T1, then T2, then T3.
+- Orders: each cycle a player gets one main order (move, attack, cast and so on), plus separate slots for item use, talent picks, buyback and surrender. A move or an attack order stands until replaced.
+- Breach: damage from code into a closed hero is halved and hard control fails; the `breach` command opens a target for a short window.
+- Strip and burn: enemy wave units at or below 35% of their spawn INTEG (integrity) go down to any swing, and same-cycle claimants split the payload; you can burn your own wave at or below 50% to deny the enemy.
+- Economy: scrip is the currency, earned from passive income, wave strips, kills, assists and structures. Items are bought in your own base or fountain (anchor), and buyback gives an instant respawn for scrip.
+- Objectives: ICE, the Tenant (a neutral boss in the Hollow that drops BACKUP, an in-place revive buff), caches, and vision tools (camtap and sniffer). Fog of war applies.
+- Fair play: a player idle for 30 cycles (about 2 minutes) is replaced by a bot for the rest of the match; every action is validated server-side and clients only receive vision-filtered state.
+- Surrender: a vote needing 60% of a team's human players, available from cycle 225 (about 15 minutes); the tutorial has no minimum.
+
+## Features
+
+- 18 heroes ("operators"), each a handle with distinct abilities. Roles: carry, support, assassin, tank, mage, offlaner. Names: Echo, Sentry, Daemon, Kernel, Regex, Socket, Proxy, Malloc, Cipher, Firewall, Null, Lambda, Mutex, Ping, Cron, Traceroute, Thread, Cache.
+- Four postures describe how a hero plays: BREACH (create the opening), HOLD (keep what the crew has), ROAM (be where the fight is not), HARDLINE (win the long grind).
+- Talent trees: each hero has four binary talent choices. The tiers are named 10, 15, 20 and 25, but unlock at hero levels 3, 6, 9 and 12.
+- 47 items across five cyberware classes (STREET, CHROME, HARDWARE, DECK, WETWARE), with passives and actives.
+- Heroes are assigned round-robin; there is no pick/ban draft (yet).
+- Queues: ranked 5v5, quick 3v3, 1v1 duel, and practice games against bots. Bots fill empty slots after about ten seconds.
+- Ranked play with a season leaderboard; players qualify after 3 ranked placement matches.
+- Account sign-in with username and password (email optional, enables password recovery), or GitHub or Discord.
+
+## Pricing
+
+Termina is free of charge in its current alpha. The repository contains no paid tiers, subscriptions or payment processing.
+
+## Pages
+
+- Home: https://www.terminamoba.com/
+- How to play: https://www.terminamoba.com/learn
+- Dry Run (heroes, abilities, talents, practice console): https://www.terminamoba.com/cast
+- Item shop: https://www.terminamoba.com/items
+- Lore: https://www.terminamoba.com/lore
+- Leaderboard: https://www.terminamoba.com/leaderboard
+- Terms of Service: https://www.terminamoba.com/terms
+- Privacy Policy: https://www.terminamoba.com/privacy
+- Short index: https://www.terminamoba.com/llms.txt
+- Sitemap: https://www.terminamoba.com/sitemap.xml
+
+## FAQ
+
+**Is Termina free?**
+Yes. The Terms of Service describe it as free of charge, early-stage (alpha) software.
+
+**Do I need to download anything?**
+No. It runs in the browser.
+
+**Do I need fast reflexes?**
+No. Orders are typed lines that commit simultaneously every 4 seconds, so decisions matter more than aim or click speed.
+
+**How do I learn to play?**
+Start the guided tutorial or a practice match against bots, read the [how-to-play guide](https://www.terminamoba.com/learn), and try every hero in the [Dry Run](https://www.terminamoba.com/cast).
+
+**What modes are available?**
+Ranked 5v5, quick 3v3, a 1v1 duel, and practice games against bots.
+
+**How do I win a match?**
+Destroy the enemy Terminal. It is protected until one of that team's three T3 ICE falls, and each route's ICE falls in order T1, T2, T3.
+
+**Can I pick my hero?**
+Not currently: heroes are assigned round-robin and there is no pick/ban draft yet. You can preview every hero in the Dry Run.
+
+**What happens if I go AFK?**
+After 30 idle cycles (about 2 minutes) a bot takes over your slot for the rest of the match.
+
+**Is my progress permanent?**
+Not guaranteed. In alpha, game data including accounts, stats and rankings may be reset without notice.
+
+**What are the main commands?**
+`move <zone>`, `attack [target]`, `cast <q|w|e|r> [target]`, `buy <item>`, `sell <item>`, `use <item>`, `burn`, `tap <zone>`, `grab`, `backup`, `harden`, `buyback`, `talent <tier> <left|right>`, `surrender confirm`, and `chat all|team <message>`. The full list is in the how-to-play guide.

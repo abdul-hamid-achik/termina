@@ -1,0 +1,27 @@
+# Termina
+
+> Termina is a free, text-based 5v5 multiplayer MOBA played in the browser through a terminal-style interface: every command is one typed line, and the game resolves every instruction at once on a 4-second cycle.
+
+Termina is early-stage (alpha) software. You type orders (move, attack, cast, buy) instead of aiming, so reading the board matters more than reflexes. The setting is TERMINA, a cable-landing city where two crews, CHAFF and AUDIT, contest three routes. There is nothing to download: jump into a practice match against bots, or queue for ranked 5v5, quick 3v3 or 1v1.
+
+## Learn the game
+
+- [How to play](https://www.terminamoba.com/learn): quick start, movement, commands, targeting and the concepts that win games on the cycle clock
+- [Dry Run (heroes)](https://www.terminamoba.com/cast): all 18 operators, their abilities and talent trees, with an in-browser practice console
+- [Item shop](https://www.terminamoba.com/items): every item by category, with recommended builds by role
+- [Lore](https://www.terminamoba.com/lore): the world of TERMINA, its districts, crews and the batch clock
+
+## Play and compete
+
+- [Home](https://www.terminamoba.com/): overview and entry point to practice and ranked play
+- [Leaderboard](https://www.terminamoba.com/leaderboard): top players by rating for the current season
+
+## Legal
+
+- [Terms of Service](https://www.terminamoba.com/terms)
+- [Privacy Policy](https://www.terminamoba.com/privacy)
+
+## Optional
+
+- [Full product description for LLMs](https://www.terminamoba.com/llms-full.txt)
+- [Sitemap](https://www.terminamoba.com/sitemap.xml)

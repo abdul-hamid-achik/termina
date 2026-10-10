@@ -1,0 +1,15 @@
+# Termina: public pages are crawlable; auth, app and API surfaces are not.
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /lobby
+Disallow: /play
+Disallow: /login
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /profile/settings
+Disallow: /replay/
+
+Sitemap: https://www.terminamoba.com/sitemap.xml

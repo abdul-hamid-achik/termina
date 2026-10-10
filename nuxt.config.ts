@@ -22,6 +22,8 @@ export default defineNuxtConfig({
   routeRules: {
     '/terms': { prerender: true },
     '/privacy': { prerender: true },
+    // Crawl files: emitted as static assets at build time.
+    '/sitemap.xml': { prerender: true },
   },
 
   // Tailwind v4 is wired via its Vite plugin (the @nuxtjs/tailwindcss module is
