@@ -1,3 +1,4 @@
+import { LETHAL_PRESSURE_CYCLES } from '~~/shared/constants/balance'
 import { isNpcSourceId, npcKind } from './combatLog'
 
 // Shared tactical derivations for the current zone — used by the rig line and StatusLines
@@ -16,9 +17,6 @@ export interface ZoneThreat {
 const LOW_INTEG_FRACTION = 0.35
 /** A fight is only FAVORED for a hero above this INTEG fraction. */
 const FAVORED_MIN_FRACTION = 0.5
-/** Cycles of last cycle's incoming damage that would finish you — at or under
- *  this many, you are being burst down whatever the headcount says. */
-const LETHAL_PRESSURE_CYCLES = 3
 /** Wave / ICE fire is "sustained" — and the fight is no longer yours — once a
  *  single cycle of it costs this fraction of max INTEG... */
 const SUSTAINED_NPC_FRACTION = 0.15
@@ -68,6 +66,9 @@ export interface ThreatContext {
   friendlyWavesHere?: number
   /** The enemy-ICE share of last cycle's incoming damage. */
   iceIncomingLastCycle?: number
+  /** INTEG the zone is predicted to take off you NEXT cycle (dangerPreview's
+   *  predictIncoming) — the forward-looking half of the burst rule. */
+  predictedIncoming?: number
 }
 
 /** Inside an enemy ICE's zone, hostile units here, at ≤ half INTEG — AND the ICE
@@ -91,6 +92,19 @@ function diveExposed(
     ctx.hpFraction !== undefined &&
     ctx.hpFraction <= DIVE_EXPOSED_FRACTION
   )
+}
+
+/** True when the zone's predicted fire next cycle is at least your INTEG: you
+ *  will not survive standing here. Last cycle's damage lags a fresh stack by a
+ *  cycle (12 units arrived → 550 → 10); the prediction does not. */
+function lethalNextCycle(ctx: { predictedIncoming?: number; integ?: number }): boolean {
+  const predicted = ctx.predictedIncoming ?? 0
+  return predicted > 0 && ctx.integ !== undefined && predicted >= ctx.integ
+}
+
+/** The threat line for a lethal zone — the number, and what to do. */
+export function leaveNowAction(predicted: number): string {
+  return `~${predicted} incoming next cycle — leave now`
 }
 
 /** True when last cycle's incoming damage, repeated, finishes you within
@@ -134,6 +148,7 @@ export function computeThreat(
   ctx: ThreatContext = {},
 ): ZoneThreat {
   if (ctx.alive === false) return { label: 'DOWN', tone: 'danger' }
+  if (lethalNextCycle(ctx)) return { label: 'DANGER', tone: 'danger' }
   const low = ctx.hpFraction !== undefined && ctx.hpFraction <= LOW_INTEG_FRACTION
   // Under their ICE with their wave at half INTEG is DANGER whatever the hero
   // headcount says — an even 1v1 there is not even.
@@ -214,6 +229,8 @@ export interface RecommendationContext {
   enemyWavesHere?: number
   /** Living friendly wave units in the zone. */
   friendlyWavesHere?: number
+  /** Predicted INTEG loss next cycle in this zone (dangerPreview). */
+  predictedIncoming?: number
 }
 
 /** Is the sustained NPC fire mostly the enemy ICE? Judged from the damage
@@ -235,6 +252,7 @@ function iceIsTheFire(ctx: RecommendationContext): boolean {
 export function recommendAction(ctx: RecommendationContext): string {
   if (ctx.hasHero === false) return 'Waiting for the first cycle'
   if (!ctx.alive) return 'Dead — wait for respawn or buy back'
+  if (lethalNextCycle(ctx)) return leaveNowAction(ctx.predictedIncoming!)
   if (ctx.hpFraction <= LOW_INTEG_FRACTION) return 'Low INTEG — retreat and heal'
   // Healthy-looking but melting: the bar lags the burst by a cycle.
   if (underLethalPressure(ctx)) return 'Under heavy fire — retreat now'
@@ -368,6 +386,8 @@ export function zoneVerdict(input: {
   enemyWavesHere?: number
   /** Living friendly wave units in the zone. */
   friendlyWavesHere?: number
+  /** Predicted INTEG loss next cycle here (dangerPreview's predictIncoming). */
+  predictedIncoming?: number
   hasReadyAbility: boolean
 }): ZoneVerdict {
   const { me } = input
@@ -394,6 +414,7 @@ export function zoneVerdict(input: {
     enemyWavesHere: input.enemyWavesHere,
     friendlyWavesHere: input.friendlyWavesHere,
     iceIncomingLastCycle: input.iceIncomingLastCycle,
+    predictedIncoming: input.predictedIncoming,
   }
   const threat = computeThreat(enemiesHere.length, allyHeadcount, input.enemyIcePresent, ctx)
   const action = recommendAction({
@@ -409,6 +430,7 @@ export function zoneVerdict(input: {
     enemyIcePresent: input.enemyIcePresent,
     enemyWavesHere: input.enemyWavesHere,
     friendlyWavesHere: input.friendlyWavesHere,
+    predictedIncoming: input.predictedIncoming,
   })
   return { threat, action, enemyCount: enemiesHere.length, allyHeadcount }
 }

@@ -147,6 +147,7 @@ describe('runOneTick — per-player feedback publish', () => {
         channel: 'game:g1:p:p1',
         name: 'announcement',
         data: { message: 'Cannot move while rooted', level: 'warning' },
+        id: expect.stringMatching(/^game:g1:p:p1:\d+:announcement\.0$/),
       },
     ])
   })
@@ -174,6 +175,7 @@ describe('runOneTick — per-player feedback publish', () => {
         channel: 'game:g1:p:p1',
         name: 'announcement',
         data: { message: '🎓 Nice — that was a strip.', level: 'info' },
+        id: expect.stringMatching(/^game:g1:p:p1:\d+:announcement\.0$/),
       },
     ])
   })

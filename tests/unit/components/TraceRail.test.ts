@@ -158,3 +158,116 @@ describe('TraceRail', () => {
     expect(early).toBeGreaterThan(late)
   })
 })
+
+describe('TraceRail unit stacks (round 5)', () => {
+  const many = (n: number, zone: string) =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `w${i}`,
+      team: 'audit' as const,
+      zone,
+      integ: 300,
+      type: 'line' as const,
+    }))
+  const rail = (playerZone: string, compact = false) =>
+    mount(TraceRail, {
+      props: {
+        compact,
+        trace: buildTrace({
+          playerZone,
+          playerTeam: 'chaff',
+          contacts: [],
+          terminals: TERMINALS,
+          visibleZoneIds: ['coldstore-t2-audit', 'coldstore-cross'],
+          waves: many(12, 'coldstore-t2-audit'),
+        }),
+      },
+    })
+
+  it('a route with no heroes but a 12-unit stack is not "clear"', () => {
+    const text = rail('seawall-t1-chaff').get('[data-testid="trace-route-coldstore-status"]').text()
+    expect(text).toContain('12 hostile units @ Coldstore T2 (AUDIT)')
+    expect(text).not.toContain('clear')
+  })
+
+  it('shows the stack on the route you stand on', () => {
+    const text = rail('coldstore-cross').get('[data-testid="trace-route-coldstore-status"]').text()
+    expect(text).toContain('12 hostile units @ Coldstore T2 (AUDIT)')
+  })
+
+  // Round-5 review: the active line went amber for ANY visible enemy unit —
+  // i.e. all through normal laning. Only a real stack (or an enemy hero) alerts.
+  it('a normal wave on your own route does not turn the active line amber', () => {
+    const at = (n: number) =>
+      mount(TraceRail, {
+        props: {
+          trace: buildTrace({
+            playerZone: 'coldstore-cross',
+            playerTeam: 'chaff',
+            contacts: [],
+            terminals: TERMINALS,
+            visibleZoneIds: ['coldstore-t2-audit', 'coldstore-cross'],
+            waves: many(n, 'coldstore-cross'),
+          }),
+        },
+      })
+        .get('[data-testid="trace-current"]')
+        .find('[data-testid="trace-route-coldstore-status"]')
+    expect(at(4).exists()).toBe(false)
+    expect(at(5).exists()).toBe(true)
+    expect(at(5).classes()).toContain('text-warn')
+  })
+
+  it('keeps a big stack visible on the compact rail', () => {
+    expect(
+      rail('seawall-t1-chaff', true).find('[data-testid="trace-route-coldstore"]').exists(),
+    ).toBe(true)
+  })
+})
+
+describe('traceModel unit stacks (round 5)', () => {
+  const unit = (zone: string, team: TeamId, i: number, id = `w-${zone}-${i}`) => ({
+    id,
+    team,
+    zone,
+    integ: 300,
+    type: 'line' as const,
+  })
+  const many = (n: number, zone: string, team: TeamId = 'audit') =>
+    Array.from({ length: n }, (_, i) => unit(zone, team, i))
+
+  it('reports the biggest hostile stack in a SEEN zone of each route', () => {
+    const model = buildTrace({
+      playerZone: 'seawall-t1-chaff',
+      playerTeam: 'chaff',
+      contacts: [],
+      terminals: TERMINALS,
+      visibleZoneIds: ['coldstore-t2-audit', 'coldstore-t1-audit'],
+      waves: [
+        ...many(12, 'coldstore-t2-audit'),
+        ...many(3, 'coldstore-t1-audit'),
+        ...many(4, 'coldstore-t2-audit', 'chaff'),
+        { ...unit('coldstore-t2-audit', 'audit', 99), integ: 0 },
+        unit('coldstore-t2-audit', 'audit', 98, 'wave-tut-1'),
+      ],
+    })
+    const coldstore = model.routes.find((r) => r.route === 'coldstore')!
+    expect(coldstore.stack).toEqual({
+      zone: 'coldstore-t2-audit',
+      zoneName: 'Coldstore T2 (AUDIT)',
+      units: 12,
+    })
+    expect(model.routes.find((r) => r.route === 'shallows')!.stack).toBeNull()
+  })
+
+  it('never reports units in a zone the team cannot see', () => {
+    const model = buildTrace({
+      playerZone: 'seawall-t1-chaff',
+      playerTeam: 'chaff',
+      contacts: [],
+      terminals: TERMINALS,
+      visibleZoneIds: [],
+      waves: many(12, 'coldstore-t2-audit'),
+    })
+    expect(model.routes.find((r) => r.route === 'coldstore')!.stack).toBeNull()
+  })
+})

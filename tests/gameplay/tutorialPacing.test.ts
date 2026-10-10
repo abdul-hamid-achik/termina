@@ -9,7 +9,6 @@ import {
   TUTORIAL_IDLE_END_CYCLES,
   TUTORIAL_IDLE_END_NOTICE,
 } from '~~/shared/constants/tutorial'
-import { APPROACH_HOLD_INTEG_RATIO } from '~~/shared/constants/balance'
 import { tutorialGameOverSummary } from '~~/server/workflows/gameTickCore'
 import { tutorialMasteryAchieved } from '~~/server/game/modes/tutorial'
 
@@ -227,7 +226,9 @@ describe('the ICE drill under the approach hold', () => {
           alive: true,
           // The order was typed at 120 — 80 cycles ago, past the skip window.
           lastActionCycle: 120,
-          integ: Math.floor(s.players[HUMAN]!.maxInteg * APPROACH_HOLD_INTEG_RATIO * 0.8),
+          // Low enough that the drill ICE's shot alone would hold a normal game's
+          // walk (ActionResolver.approachHold) — the tutorial is exempt.
+          integ: Math.floor(s.players[HUMAN]!.maxInteg * 0.28),
           moveTarget: ICE_DRILL_ZONE,
           attackTarget: { kind: 'ice', zone: ICE_DRILL_ZONE },
         },

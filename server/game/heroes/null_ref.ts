@@ -22,7 +22,7 @@ import {
   updatePlayer,
   updatePlayers,
 } from './_base'
-import { hasTalentCastEffect } from '~~/server/game/engine/EffectiveStats'
+import { hasTalentCastEffect } from '~~/shared/utils/effectiveStats'
 
 // ── Scaling Values ────────────────────────────────────────────────
 

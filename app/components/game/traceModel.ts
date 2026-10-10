@@ -1,6 +1,7 @@
 import { LANE_ROUTES_CORE } from '~~/shared/constants/lanes'
 import { ZONE_MAP } from '~~/shared/constants/zones'
-import type { TerminalState, TeamId } from '~~/shared/types/game'
+import { isTrainingWave } from '~~/shared/constants/tutorial'
+import type { TerminalState, TeamId, WaveUnitState } from '~~/shared/types/game'
 
 /**
  * The trace model (C1a / R3-07): your route as hop depth, one summary line
@@ -34,6 +35,10 @@ export interface RouteLine {
   total: number
   /** Hostile contacts visible anywhere on the route. */
   hostiles: number
+  /** The biggest stack of hostile wave units in one SEEN zone of the route
+   *  (null when none is seen). A route whose heroes are home but whose enemy
+   *  T2 holds 12 units is not "clear" — that stack did 540 in one cycle. */
+  stack?: { zone: string; zoneName: string; units: number } | null
   /** How many of this route's zones the team currently has vision on. Zero
    *  means the line is reporting nothing, not reporting safety — the UI must
    *  not render "quiet" for ground you cannot see. */
@@ -95,6 +100,8 @@ export function buildTrace(input: {
   /** Zone ids the player's team currently has vision on. Omitted (undefined)
    *  means "unknown" and every route reports as unseen rather than clear. */
   visibleZoneIds?: readonly string[]
+  /** The visible lane waves — the hostile ones are counted per seen zone. */
+  waves?: readonly WaveUnitState[]
 }): TraceModel {
   const { playerZone, playerTeam, terminals: terminalByTeam } = input
   const visible = new Set(input.visibleZoneIds ?? [])
@@ -120,12 +127,23 @@ export function buildTrace(input: {
   const routes: RouteLine[] = orderedRoutes.map((route) => {
     const path = LANE_ROUTES_CORE[route]![playerTeam]!
     const hostiles = contacts.filter((c) => c.hostile && path.includes(c.zone)).length
+    let stack: RouteLine['stack'] = null
+    for (const zone of path) {
+      if (!visible.has(zone)) continue
+      const units = (input.waves ?? []).filter(
+        (w) => w.zone === zone && w.team !== playerTeam && w.integ > 0 && !isTrainingWave(w),
+      ).length
+      if (units > (stack?.units ?? 0)) {
+        stack = { zone, zoneName: ZONE_MAP[zone]?.name ?? zone, units }
+      }
+    }
     return {
       route,
       name: routeName(route, playerTeam),
       depth: route === currentRoute ? hopIndex : 0,
       total: path.length,
       hostiles,
+      stack,
       seen: path.filter((z) => visible.has(z)).length,
       active: route === currentRoute,
     }
@@ -172,6 +190,9 @@ export interface ZoneDisplay {
   cacheType?: string
   /** Tenant state, set only on the Hollow: up or dead + respawn. */
   tenant?: { alive: boolean; respawnIn: number }
+  /** Predicted INTEG loss next cycle if you stand here — set only when it is
+   *  dangerous against your INTEG (dangerPreview). */
+  danger?: number
 }
 
 /** Adjacent zone displays in topology order (was asciiMapModel's helper). */

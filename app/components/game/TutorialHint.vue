@@ -32,6 +32,10 @@ const props = defineProps<{
   /** Visible waves: a `wave:N` chip names a unit actually there (or the walk
    *  to one) — never a command the server would reject. */
   waves?: readonly WaveUnitState[]
+  /** Predicted fire next cycle if the chip's order is sent, when dangerous
+   *  (GameScreen's dangerPreview) — the chip sends on tap, so the warning has
+   *  to be on it. Warns, never blocks. */
+  dangerFor?: (cmd: string) => number | null
 }>()
 
 const emit = defineEmits<{
@@ -56,6 +60,9 @@ const tryCmd = computed(() =>
     waves: props.waves,
     ice: props.ice,
   }),
+)
+const tryDanger = computed(() =>
+  tryCmd.value && props.dangerFor ? props.dangerFor(tryCmd.value) : null,
 )
 const progress = computed(() => Math.min(props.step, TUTORIAL_STEP_COUNT))
 
@@ -118,9 +125,15 @@ const items = computed(() =>
       type="button"
       class="self-start border border-ability/50 bg-ability/10 px-1.5 py-0.5 text-[0.7rem] text-ability hover:bg-ability/20"
       data-testid="tutorial-try"
+      :aria-label="
+        tryDanger ? `try: ${tryCmd} — warning: about ${tryDanger} incoming next cycle` : undefined
+      "
       @click="emit('command', tryCmd)"
     >
-      try: {{ tryCmd }}
+      try: {{ tryCmd
+      }}<span v-if="tryDanger" class="text-warn" data-testid="tutorial-try-danger">
+        ⚠ ~{{ tryDanger }}</span
+      >
     </button>
   </div>
 </template>

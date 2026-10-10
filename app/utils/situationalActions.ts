@@ -17,6 +17,9 @@ export interface SituationalAction {
   cmd: string
   label: string
   aria: string
+  /** Predicted INTEG loss next cycle for the zone this verb keeps you in —
+   *  set by GameScreen only when it is dangerous (dangerPreview). */
+  danger?: number
 }
 
 /** The slice of game state that decides which contextual actions are offerable. */

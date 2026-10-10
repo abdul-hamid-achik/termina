@@ -782,3 +782,149 @@ describe('GameScreen commands', () => {
     })
   })
 })
+
+describe('GameScreen danger preview (round 5)', () => {
+  const stack = (n: number, zone: string) =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `w-audit-${i}`,
+      team: 'audit' as const,
+      zone,
+      integ: 300,
+      type: 'line' as const,
+    }))
+  /** p1 (chaff, 500 INTEG — its plate is its hero's EFFECTIVE plate, level growth
+   *  + items, as the engine reads it) at `zone`, 12 audit units at T1 AUDIT, cycle 240. */
+  function seedStack(zone: string) {
+    const players = rosterAt(zone)
+    players.p1 = { ...players.p1!, integ: 500, maxInteg: 600 }
+    const zones: Record<string, ZoneRuntimeState> = {}
+    for (const z of ['coldstore-cross', 'coldstore-t1-audit', 'coldstore-t2-audit'])
+      zones[z] = makeZone(z)
+    for (const p of Object.values(players)) zones[p.zone] ??= makeZone(p.zone)
+    return seedActiveGame({ players, zones, waves: stack(12, 'coldstore-t1-audit') })
+  }
+  function feed(wrapper: ReturnType<typeof mountGameScreen>): string[] {
+    const events = wrapper.findComponent({ name: 'Stream' }).props('events') as Array<{
+      text: string
+    }>
+    return events.map((e) => e.text)
+  }
+
+  it('an order sent into the stack still goes out, with the warning in the stream', async () => {
+    seedStack('coldstore-cross')
+    const wrapper = mountGameScreen()
+    wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move coldstore-t1-audit')
+    await wrapper.vm.$nextTick()
+    expect(socketSpies.send).toHaveBeenCalledWith({
+      type: 'action',
+      command: { type: 'move', zone: 'coldstore-t1-audit' },
+    })
+    // cycle 241 → line attack 48, mitigated by p1's effective plate → 44 × 12 = 528.
+    expect(feed(wrapper)).toContain(
+      '⚠ Coldstore T1 (AUDIT): 12 enemy units (~528/cycle) — you have 500 — lethal',
+    )
+    wrapper.unmount()
+  })
+
+  it('the move picker tags the adjacent stack with its predicted fire', async () => {
+    seedStack('coldstore-cross')
+    const wrapper = mountGameScreen()
+    await wrapper.find('[data-testid="action-move"]').trigger('click')
+    const tag = wrapper.find('[data-testid="move-picker-coldstore-t1-audit-danger"]')
+    expect(tag.exists()).toBe(true)
+    expect(tag.text()).toBe('⚠ ~528')
+    wrapper.unmount()
+  })
+
+  it('the STRIP verb in the stack carries the warning before the tap', async () => {
+    seedStack('coldstore-t1-audit')
+    const store = useGameStore()
+    const waves = stack(12, 'coldstore-t1-audit').map((w, i) => (i === 0 ? { ...w, integ: 50 } : w))
+    store.updateFromCycle(
+      makeCycleMessage({ players: store.allPlayers, zones: store.visibleZones, waves }),
+    )
+    const wrapper = mountGameScreen()
+    await wrapper.vm.$nextTick()
+    const strip = wrapper.find('[data-testid^="situational-attack wave:"]')
+    expect(strip.exists()).toBe(true)
+    expect(strip.text()).toContain('⚠ ~528')
+    wrapper.unmount()
+  })
+
+  it('hands the tutorial try: chip the same danger judge', async () => {
+    const store = seedStack('coldstore-t1-audit')
+    store.mode = 'tutorial'
+    const wrapper = mount(GameScreen, {
+      attachTo: document.body,
+      global: {
+        stubs: {
+          ...stubs,
+          Stream: {
+            name: 'Stream',
+            props: ['events'],
+            template: '<div data-testid="stream"><slot name="banner" /></div>',
+          },
+          TutorialHint: { name: 'TutorialHint', props: ['dangerFor'], template: '<div />' },
+        },
+      },
+    })
+    await wrapper.vm.$nextTick()
+    const judge = wrapper.findComponent({ name: 'TutorialHint' }).props('dangerFor') as (
+      c: string,
+    ) => number | null
+    expect(judge('attack wave:0')).toBe(528)
+    // A bare `burn` (the BURN verb) resolves its unit at send time — still this zone.
+    expect(judge('burn')).toBe(528)
+    expect(judge('move coldstore-cross')).toBeNull()
+    wrapper.unmount()
+  })
+
+  // Round-5 review: a buffered order warned when typed AND again when the next
+  // cycle flushed it — one order, two identical ⚠ lines.
+  it('a buffered order warns ONCE — when typed, not again when it is sent', async () => {
+    const store = seedStack('coldstore-cross')
+    const wrapper = mountGameScreen()
+    store.markActionSent('status') // this cycle's main slot is spent
+    wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move coldstore-t1-audit')
+    await wrapper.vm.$nextTick()
+    expect(store.bufferedCommand).toBe('move coldstore-t1-audit')
+    expect(feed(wrapper).filter((t) => t.startsWith('⚠ '))).toHaveLength(1)
+
+    store.updateFromCycle(
+      makeCycleMessage({
+        cycle: store.cycle + 1,
+        players: store.allPlayers,
+        zones: store.visibleZones,
+        waves: stack(12, 'coldstore-t1-audit'),
+      }),
+    )
+    await wrapper.vm.$nextTick()
+    expect(socketSpies.send).toHaveBeenCalledWith({
+      type: 'action',
+      command: { type: 'move', zone: 'coldstore-t1-audit' },
+    })
+    expect(feed(wrapper).filter((t) => t.startsWith('⚠ '))).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('a quiet order prints no warning', async () => {
+    seedStack('coldstore-cross')
+    const wrapper = mountGameScreen()
+    wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move coldstore-cross')
+    await wrapper.vm.$nextTick()
+    expect(feed(wrapper).some((t) => t.startsWith('⚠ '))).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('standing in a lethal stack, the threat line says the number and to leave', async () => {
+    seedStack('coldstore-cross')
+    const wrapper = mountGameScreen()
+    // The hero steps into the stack on the next cycle.
+    seedStack('coldstore-t1-audit')
+    await wrapper.vm.$nextTick()
+    expect(feed(wrapper).some((t) => t.startsWith('~528 incoming next cycle — leave now'))).toBe(
+      true,
+    )
+    wrapper.unmount()
+  })
+})

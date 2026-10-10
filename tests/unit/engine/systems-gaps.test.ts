@@ -4,7 +4,7 @@ import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeTenant } from '~~/server/game/map/spawner'
 import { buyback, calculateBuybackCost, canBuyback } from '~~/server/game/engine/BuybackSystem'
 import { processSpecialActions, type PlayerAction } from '~~/server/game/engine/GameLoop'
-import { getEffectiveAttack, getTalentStatBonus } from '~~/server/game/engine/EffectiveStats'
+import { getEffectiveAttack, getTalentStatBonus } from '~~/shared/utils/effectiveStats'
 import { TALENT_TREES } from '~~/shared/constants/talents'
 import { pickupBackup, processTenantDamage } from '~~/server/game/engine/TenantAI'
 import {

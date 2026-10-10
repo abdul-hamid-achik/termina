@@ -28,19 +28,26 @@ import {
   getTalentStatBonus,
   getItemStatBonuses,
   hasTalentCastEffect,
-} from './EffectiveStats'
+} from '~~/shared/utils/effectiveStats'
 import { areAdjacent, findPath } from '~~/server/game/map/topology'
 import { isCommandAllowedInTutorial, tutorialLockMessage } from '~~/server/game/modes/tutorial'
 import { isBot } from '~~/server/game/ai/BotManager'
 import { isTrainingWave } from '~~/shared/constants/tutorial'
-import { isShopZoneFor } from '~~/shared/constants/zones'
+import { isShopZoneFor, ZONE_MAP } from '~~/shared/constants/zones'
 import {
   calculateKineticDamage,
   calculateCodeDamage,
   getIncomingDamageMultiplier,
   isDamageImmune,
-} from './DamageCalculator'
+} from '~~/shared/utils/damageCalc'
 import { computeSpitePlateReflect } from './CombatResolver'
+import { filterStateForPlayer } from './VisionCalculator'
+import {
+  describeHopSources,
+  holdsWalk,
+  predictHopDamage,
+  type HopDamage,
+} from '~~/shared/utils/hopDamage'
 import { placeWard, canAttackIce } from '~~/server/game/map/zones'
 import { HEROES } from '~~/shared/constants/heroes'
 import { stampEventZones, type GameEngineEvent } from '~~/server/game/protocol/events'
@@ -61,7 +68,6 @@ import { ITEMS } from '~~/shared/constants/items'
 import {
   WAVE_XP,
   SILT_DWELLERS,
-  APPROACH_HOLD_INTEG_RATIO,
   type SiltDwellerType,
   WAVE_SCRIP_MIN,
   WAVE_SCRIP_MAX,
@@ -649,17 +655,71 @@ function underEnemyIce(state: GameState, team: TeamId, zone: string): boolean {
 const INTEG_HEAL_ACTIVES: ReadonlySet<string> = new Set(['trauma_patch'])
 
 /**
- * Safe-by-default structure walk (playtest 3: a held `attack ice:` walk carried
- * a 250/598 hero straight into enemy ICE). Run by GameLoop for a hero whose
- * walk would CONTINUE this cycle (no order typed): when the held order is an
- * ICE / Terminal approach, the next hop steps from cover INTO a zone under a
- * living enemy ICE (the only structure that shoots a hero — a Terminal does
- * not), and INTEG is at or below APPROACH_HOLD_INTEG_RATIO, the walk holds one
- * hop short. A valid `use` of an INTEG-healing active in this cycle's `actions`
- * waives the hold (the heal resolves after this check). The caller drops the
- * walk and the held attack and sends `message` — once, since nothing is held
- * after. A TYPED order never comes through here, so retyping the attack pushes
- * in anyway. Already inside such a zone, the walk goes on (it is past the line).
+ * What one cycle in `zone` throws at hero `p` — the shared prediction
+ * (shared/utils/hopDamage, the SAME code the client's danger preview runs),
+ * fed only the walker's own view: filterStateForPlayer's fog rule decides which
+ * wave units, Silt dwellers and enemy heroes count, so a hold can never leak a
+ * stack or a position the player's cycle_state does not show. ICE and THE
+ * TENANT are public. Wave damage is read at `state.cycle` — inside
+ * processCycle that is already the cycle being resolved, the value WaveAI uses.
+ */
+export function predictedHopDamage(
+  state: GameState,
+  p: PlayerState,
+  zone: string,
+  drawsIceAggro: boolean,
+): HopDamage {
+  if (!hasAnythingHostile(state, p, zone)) {
+    return { damage: 0, units: 0, ice: false, heroes: 0, neutrals: 0, tenant: false }
+  }
+  const view = filterStateForPlayer(state, p.id)
+  return predictHopDamage(
+    {
+      cycle: state.cycle,
+      waves: view.waves,
+      neutrals: view.neutrals,
+      ice: state.ice ?? [],
+      tenant: state.tenant,
+      players: view.players,
+    },
+    p,
+    zone,
+    drawsIceAggro,
+  )
+}
+
+/** Cheap pre-check before building the walker's view: nothing in the raw zone
+ *  could hurt anyone (a zero answer reveals nothing). */
+function hasAnythingHostile(state: GameState, p: PlayerState, zone: string): boolean {
+  return (
+    (zone === 'hollow' && state.tenant?.alive === true) ||
+    underEnemyIce(state, p.team, zone) ||
+    (state.waves ?? []).some((w) => w.zone === zone && w.team !== p.team && w.integ > 0) ||
+    (state.neutrals ?? []).some((n) => n.zone === zone && n.alive) ||
+    Object.values(state.players ?? {}).some((e) => e.team !== p.team && e.alive && e.zone === zone)
+  )
+}
+
+/** A zone's player-facing name ("Coldstore T1 (AUDIT)") — never the raw id. */
+function zoneName(zone: string): string {
+  return ZONE_MAP[zone]?.name ?? zone
+}
+
+/**
+ * Safe-by-default structure walk. Run by GameLoop for a hero whose walk would
+ * CONTINUE this cycle (no order typed): when the held order is an ICE /
+ * Terminal approach and the next hop's predicted fire (predictedHopDamage) is
+ * at least APPROACH_HOLD_DAMAGE_RATIO of the walker's CURRENT INTEG, the walk
+ * holds one hop short. Playtest 3 held on INTEG% alone; playtest 4 walked a
+ * FULL-INTEG hero into 4 escalated units + ICE (550 → 72 → dead) and into a
+ * 12-unit stack (540 in one cycle) — the threat, not the gauge, is what kills.
+ *
+ * A valid `use` of an INTEG-healing active in this cycle's `actions` waives the
+ * hold (the heal resolves after this check). The caller drops the walk and the
+ * held attack and sends `message` — once, since nothing is held after. A TYPED
+ * order never comes through here, so retyping the attack pushes in anyway.
+ * Already standing under an enemy ICE, the walk goes on (it is past the line —
+ * stopping there is worse).
  *
  * Pure on state (the hop is the resolver's own BFS), so a replay — which runs
  * the same continuation step on the same state — holds at the same hop.
@@ -671,10 +731,15 @@ export function approachHold(
   actions: readonly PlayerAction[] = [],
 ): { message: string } | null {
   const p = state.players[playerId]
-  if (!p || !p.alive || !p.moveTarget) return null
+  if (!p || !p.alive || !p.moveTarget || !(p.integ > 0)) return null
   const target = p.attackTarget
   if (target?.kind !== 'ice' && target?.kind !== 'terminal') return null
-  if (!(p.maxInteg > 0) || p.integ / p.maxInteg > APPROACH_HOLD_INTEG_RATIO) return null
+  const nextHop = findPath(p.zone, p.moveTarget, (id) => !!state.zones[id])[1]
+  if (!nextHop) return null
+  if (underEnemyIce(state, p.team, p.zone)) return null
+  const drawsIceAggro = target.kind === 'ice' && target.zone === nextHop
+  const threat = predictedHopDamage(state, p, nextHop, drawsIceAggro)
+  if (!holdsWalk(threat.damage, p.integ)) return null
   const healing = actions.some(
     (a) =>
       a.playerId === playerId &&
@@ -684,13 +749,11 @@ export function approachHold(
       validateAction(state, a) === null,
   )
   if (healing) return null
-  const nextHop = findPath(p.zone, p.moveTarget, (id) => !!state.zones[id])[1]
-  if (!nextHop || !underEnemyIce(state, p.team, nextHop)) return null
-  if (underEnemyIce(state, p.team, p.zone)) return null
-  const pct = Math.round((p.integ / p.maxInteg) * 100)
   const order = target.kind === 'ice' ? `attack ice:${target.zone}` : 'attack terminal'
   return {
-    message: `Holding at ${p.zone}: INTEG ${pct}% — retype \`${order}\` to push in anyway`,
+    message:
+      `Holding at ${zoneName(p.zone)}: ${describeHopSources(threat)} hit for ~${threat.damage}/cycle ` +
+      `in ${zoneName(nextHop)}, you have ${p.integ} — retype \`${order}\` to push in`,
   }
 }
 

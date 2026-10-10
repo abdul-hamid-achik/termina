@@ -1,6 +1,14 @@
 import { ref } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 
+/** Minting the guest session itself failed — reported as the guest path, not
+ *  as a practice-start failure (login fallback, 429 stays put). */
+class GuestSessionError extends Error {
+  constructor(readonly inner: unknown) {
+    super('guest session failed')
+  }
+}
+
 /**
  * Shared "Practice vs bots" launcher. Spins up a guided one-lane tutorial vs
  * bots and jumps straight in, bypassing matchmaking. Lives in one place so the
@@ -42,7 +50,15 @@ export function useStartTutorial() {
     // Only after the game exists is the old game/lobby state dropped, so a
     // failed launch leaves the ended-session panel (and its error) on screen.
     const auth = useAuthStore()
+    const knownBefore = auth.sessionUserId()
     await auth.fetchUser()
+    // Signed out before AND after a fresh read: the practice POST is a known
+    // 401 (it used to be fired anyway and retried — a red line in the console
+    // on every first visit). Mint the guest first. Only when BOTH reads say
+    // "no session": a tab that held a session and now reads none may just have
+    // had the read fail, and minting a guest would overwrite a real sign-in —
+    // that case keeps the old path, the practice 401 is its proof.
+    if (!knownBefore && !auth.sessionUserId()) await mintGuest()
     const res = await $fetch<{ gameId: string; playerId?: string }>('/api/game/practice', {
       method: 'POST',
       body,
@@ -54,6 +70,30 @@ export function useStartTutorial() {
     await navigateTo(`/play?${params.toString()}`)
   }
 
+  /** A throwaway guest session (server/api/auth/guest.post.ts), then the
+   *  reactive session refresh so the header/store see the guest at once. */
+  async function mintGuest() {
+    try {
+      await $fetch('/api/auth/guest', { method: 'POST' })
+      await useUserSession().fetch()
+    } catch (err: unknown) {
+      throw new GuestSessionError(err)
+    }
+  }
+
+  /** A guest session could not be minted: say why, and offer the login page
+   *  unless it is only the guest limiter (retrying login won't beat it). */
+  async function guestFailed(guestErr: unknown) {
+    const ge = guestErr as { statusCode?: number; data?: { message?: string }; message?: string }
+    error.value = ge?.data?.message ?? ge?.message ?? 'Could not start a guest practice game.'
+    // `next` rather than `redirect`: there is no URL that starts a practice
+    // game (the launcher POSTs), so login re-fires this call once a real
+    // session exists instead of dropping the player on a page.
+    if (ge?.statusCode !== 429) {
+      await navigateTo({ path: '/login', query: { next: 'practice' } })
+    }
+  }
+
   async function start(heroId?: string | MouseEvent) {
     if (starting.value) return
     starting.value = true
@@ -61,34 +101,26 @@ export function useStartTutorial() {
     try {
       await launch(heroId)
     } catch (err: unknown) {
+      if (err instanceof GuestSessionError) {
+        await guestFailed(err.inner)
+        return
+      }
       const e = err as { statusCode?: number; data?: { message?: string }; message?: string }
       if (e?.statusCode === 401) {
         // No account is not a dead end — an anonymous visitor gets a throwaway
-        // guest session (server/api/auth/guest.post.ts: no DB row, nothing
-        // persisted) and the launch retries once. Signing in is only needed to
-        // KEEP progress, not to try the game — that's the whole point of the
-        // funnel fix this composable exists for.
+        // guest session (no DB row, nothing persisted) and the launch retries
+        // once. Signing in is only needed to KEEP progress, not to try the
+        // game. A signed-out tab mints the guest up front (launch); this is
+        // the backstop for a session that vanished between the read and the
+        // POST.
         try {
-          await $fetch('/api/auth/guest', { method: 'POST' })
-          // Refresh the reactive session so the header/store see the new
-          // (guest) user immediately, same as any other login path.
-          await useUserSession().fetch()
+          await mintGuest()
           await launch(heroId)
-          return
-        } catch (guestErr: unknown) {
-          const ge = guestErr as {
-            statusCode?: number
-            data?: { message?: string }
-            message?: string
-          }
-          error.value = ge?.data?.message ?? ge?.message ?? 'Could not start a guest practice game.'
-          // `next` rather than `redirect`: there is no URL that starts a
-          // practice game (the launcher POSTs), so login re-fires this call
-          // once a real session exists instead of dropping the player on a
-          // page. Skip the bounce on a rate limit — retrying login won't help
-          // faster than just waiting out the guest-session limiter.
-          if (ge?.statusCode !== 429) {
-            await navigateTo({ path: '/login', query: { next: 'practice' } })
+        } catch (retryErr: unknown) {
+          if (retryErr instanceof GuestSessionError) await guestFailed(retryErr.inner)
+          else {
+            const r = retryErr as { data?: { message?: string }; message?: string }
+            error.value = r?.data?.message ?? r?.message ?? 'Could not start a guest practice game.'
           }
         }
         return

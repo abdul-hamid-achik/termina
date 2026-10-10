@@ -29,6 +29,11 @@ describe('server auth middleware — method + path gating', () => {
     getUserSession.mockResolvedValue(null)
   })
 
+  it("lets nuxt-auth-utils' own /api/_auth/session through without a session (it answers {} itself)", async () => {
+    currentPath = '/api/_auth/session'
+    await expect(authHandler(ev('GET'))).resolves.toBeUndefined()
+  })
+
   it('keeps a public player profile GET public', async () => {
     currentPath = '/api/player/alice'
     await expect(authHandler(ev('GET'))).resolves.toBeUndefined()

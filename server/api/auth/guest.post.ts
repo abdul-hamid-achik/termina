@@ -13,13 +13,22 @@ import { checkScopedRateLimit } from '~~/server/utils/RateLimiter'
  * or signs in gets a real, persisted identity from that point on.
  */
 export default defineEventHandler(async (event) => {
+  // 6 random bytes → 12 hex chars: enough entropy that two guests never
+  // collide on a playerId, short enough to read as a handle in the UI.
+  // Never downgrade a signed-in account to a guest: a racing "start practice"
+  // in another tab must not overwrite the real session. Return it unchanged.
+  const existing = (await getUserSession(event))?.user as
+    | { id?: string; username?: string; guest?: boolean }
+    | undefined
+  if (existing?.id && !existing.guest) {
+    return { user: { id: existing.id, username: existing.username, guest: false } }
+  }
+
   const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'unknown'
   if (!checkScopedRateLimit('guestSession', ip)) {
     throw createError({ statusCode: 429, message: 'Too many guest sessions — try again shortly' })
   }
 
-  // 6 random bytes → 12 hex chars: enough entropy that two guests never
-  // collide on a playerId, short enough to read as a handle in the UI.
   const suffix = randomBytes(6).toString('hex')
   const id = `guest_${suffix}`
   const username = `GUEST-${suffix.slice(0, 4).toUpperCase()}`

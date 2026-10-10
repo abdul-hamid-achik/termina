@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { resolveKineticHit, computeSpitePlateReflect } from '~~/server/game/engine/CombatResolver'
 import type { PlayerState } from '~~/shared/types/game'
 import { HEROES } from '~~/shared/constants/heroes'
-import { calculateKineticDamage } from '~~/server/game/engine/DamageCalculator'
-import { getEffectivePlate } from '~~/server/game/engine/EffectiveStats'
+import { calculateKineticDamage } from '~~/shared/utils/damageCalc'
+import { getEffectivePlate } from '~~/shared/utils/effectiveStats'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   const echo = HEROES.echo!

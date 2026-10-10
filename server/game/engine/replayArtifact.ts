@@ -63,8 +63,11 @@ export type LoggedAction = ActionLogEntry
  *   at low INTEG (approachHold); one level_up event per level (no level
  *   power_spike); tutorial skip clock starts at the first order for the opening
  *   and ICE drills.
+ * 6 (2026-10-10): the approach hold reads the PREDICTED fire of the next hop
+ *   (enemy units + ICE that would shoot the walker, vs current INTEG) instead
+ *   of INTEG%; a wave felled by ICE pays presence XP to the ICE crew there.
  */
-export const REPLAY_RULESET_VERSION = 5
+export const REPLAY_RULESET_VERSION = 6
 
 /** Per-player scrubber summary — the projection the replay UI renders. */
 export interface FramePlayer {

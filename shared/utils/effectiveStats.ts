@@ -3,9 +3,10 @@
  * attack / plate / ice are worth once hero growth, items, talents,
  * and engine-consumed buffs are accounted for.
  *
- * IMPORTANT: this module must NOT import hero modules or './_base' — _base
- * imports this file, so adding either would create an import cycle
- * (_base -> EffectiveStats -> hero -> _base).
+ * Lives in shared/ so the client's danger preview (shared/utils/hopDamage)
+ * reads the SAME numbers the engine does. It must stay pure and import only
+ * shared/ code — never a server module (hero files, _base): _base imports this
+ * file, and the client bundles it.
  *
  * The per-stack constants mirror the helpers exported by the hero files
  * (mutex getDeadlock*, traceroute getHopCountMultiplier,

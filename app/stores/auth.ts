@@ -11,6 +11,12 @@ export const useAuthStore = defineStore('auth', () => {
     await fetchSession()
   }
 
+  /** The tab's current session player id (null when signed out). Read off the
+   *  session ref itself — the store unwraps `user`, so callers can't. */
+  function sessionUserId(): string | null {
+    return typeof user.value?.id === 'string' ? user.value.id : null
+  }
+
   /**
    * Make the tab agree with the CURRENT session before anything is keyed by a
    * player id. The session cookie changes under a tab: a guest who signs in on
@@ -37,7 +43,7 @@ export const useAuthStore = defineStore('auth', () => {
         // it is really gone.
       }
     }
-    const id = typeof user.value?.id === 'string' ? user.value.id : null
+    const id = sessionUserId()
     const game = useGameStore()
     if (opts.fresh || (game.playerId !== null && game.playerId !== id)) {
       game.reset()
@@ -139,6 +145,7 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     isAuthenticated,
     fetchUser,
+    sessionUserId,
     refreshIdentity,
     login,
     loginOAuth,

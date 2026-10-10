@@ -186,6 +186,14 @@ describe('index (landing) page', () => {
       // REGRESSION: this used to navigateTo('/lobby') on any non-401 failure.
       // The player pressed PRACTICE, arrived somewhere they did not ask for with
       // no message, and could only read that as "the button is broken".
+      // Signed in: "already in a match" is an account's state — a signed-out
+      // visitor mints a guest before the practice POST (round 5).
+      vi.stubGlobal('useUserSession', () => ({
+        loggedIn: ref(true),
+        user: ref({ id: 'p1' }),
+        fetch: vi.fn(),
+        clear: vi.fn(),
+      }))
       mockFetch.mockRejectedValue({
         statusCode: 409,
         data: { message: "You're already in a match" },

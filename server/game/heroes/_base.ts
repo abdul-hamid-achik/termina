@@ -4,17 +4,24 @@ import type { TargetRef } from '~~/shared/types/commands'
 import type { AbilityDef, DamageType } from '~~/shared/types/hero'
 import { HEROES } from '~~/shared/constants/heroes'
 import {
+  absorbShield,
+  applyIncomingHit,
   calculateEffectiveDamage,
   getIncomingDamageMultiplier,
+  isBreached,
   isDamageImmune,
-} from '~~/server/game/engine/DamageCalculator'
-import { getEffectivePlate, getEffectiveIce } from '~~/server/game/engine/EffectiveStats'
+} from '~~/shared/utils/damageCalc'
+import { getEffectivePlate, getEffectiveIce } from '~~/shared/utils/effectiveStats'
 import { getTalentTree } from '~~/shared/constants/talents'
 import { getAbilityLevel } from '~~/shared/constants/balance'
 import { abilityBwTable, abilityTargetError } from '~~/shared/utils/ability'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import { isTrainingWave } from '~~/shared/constants/tutorial'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
+
+// The mitigation helpers live in shared/utils/damageCalc; hero modules keep
+// reaching them through _base.
+export { absorbShield, isBreached }
 
 // ── Typed Errors ──────────────────────────────────────────────────
 /* eslint-disable unicorn/throw-new-error */
@@ -167,15 +174,6 @@ const HARD_CONTROL_SET: ReadonlySet<string> = new Set(HARD_CONTROL_BUFF_IDS)
 
 export function isHardControlBuffId(id: string): boolean {
   return HARD_CONTROL_SET.has(id)
-}
-
-/**
- * True when the hero is open to code damage / hard control. Friendly fire does
- * not exist — only the breaching crew can damage a breached hero, so this needs
- * no attacker-team parameter (invariant guarded by tests).
- */
-export function isBreached(player: PlayerState): boolean {
-  return player.buffs.some((b) => b.id === 'breached' && b.cyclesRemaining > 0)
 }
 
 /** One hard-control effect that fizzled on a CLOSED (non-breached) target. */
@@ -366,89 +364,16 @@ export function getAllEnemyPlayers(state: GameState, player: PlayerState): Playe
 // ── Damage Application ────────────────────────────────────────────
 
 /**
- * Run damage through a buff list's 'shield' buff (if any).
- * Returns the post-absorption buff list and the damage remaining.
- * Shared by ability damage (dealDamage) and the basic-attack path.
+ * Apply one hit to a hero through the full mitigation chain — the single
+ * implementation lives in shared/utils/damageCalc (applyIncomingHit) so the
+ * danger prediction (shared/utils/hopDamage) runs the very same chain.
  */
-export function absorbShield(
-  buffs: BuffState[],
-  damage: number,
-): { buffs: BuffState[]; remaining: number } {
-  if (damage <= 0 || !buffs.some((b) => b.id === 'shield' && b.stacks > 0)) {
-    return { buffs, remaining: damage }
-  }
-  // Consume the shield POOL sequentially across every 'shield' buff (a hero can
-  // hold more than one — e.g. an item shield + an ability shield). The old
-  // find()-based code only sized off the FIRST shield: it then either subtracted
-  // the damage from ALL shields (over-absorb) or deleted ALL shields (lost the
-  // untouched ones). Sequential consumption drains each in turn, drops only
-  // fully-spent shields, and is byte-for-byte identical in the single-shield case.
-  let remaining = damage
-  const out = buffs
-    .map((b) => {
-      if (b.id !== 'shield' || remaining <= 0 || b.stacks <= 0) return b
-      const used = Math.min(b.stacks, remaining)
-      remaining -= used
-      return { ...b, stacks: b.stacks - used }
-    })
-    .filter((b) => !(b.id === 'shield' && b.stacks <= 0))
-  return { buffs: out, remaining }
-}
-
 export function dealDamage(
   target: PlayerState,
   rawDamage: number,
   damageType: DamageType,
 ): PlayerState {
-  // Immunity (Proxy R / Eul's invulnerable; BKB airgap; Ethereal/Ghost
-  // kinetic) ignores the hit entirely — no INTEG lost, buff left for cycleBuffs to
-  // expire (NOT consumed like phaseShift).
-  if (isDamageImmune(target, damageType)) return target
-
-  // BREACH access gate: code damage into a CLOSED target is halved. Kinetic and
-  // black never need access. Order: AFTER isDamageImmune, BEFORE plate/ice
-  // mitigation, so the half multiplies with vuln amps later in this chain
-  // (0.5 × 1.4 ethereal = 0.7× raw before mitigation). No attacker-team param —
-  // friendly fire does not exist (only the breaching crew can ever hit them).
-  let incoming = rawDamage
-  if (damageType === 'code' && !isBreached(target)) {
-    incoming = Math.round(rawDamage * 0.5)
-  }
-
-  // Effective stats include items, talents, and engine-consumed buffs
-  const effective = calculateEffectiveDamage(incoming, damageType, {
-    plate: getEffectivePlate(target),
-    ice: getEffectiveIce(target),
-  })
-  // Check for Kernel passive (hardened: 10% reduction)
-  const hardenedReduction = hasBuff(target, 'hardened') ? 0.9 : 1
-  let remaining = Math.round(effective * hardenedReduction)
-
-  // Target-side vuln debuffs amplify incoming damage (magic-vuln for code:
-  // regex Q / Veil / Phase Shim; thread Yield for all types). Applied before
-  // shield so the shield soaks the amplified amount ("takes more damage").
-  remaining = Math.round(remaining * getIncomingDamageMultiplier(target, damageType))
-
-  // Phase Shift (Echo W) dodges the hit ENTIRELY — check BEFORE shield so a
-  // dodged hit doesn't spend the shield (matches the basic-attack path order in
-  // ActionResolver and Phase Shift's "dodge the attack" contract).
-  if (hasBuff(target, 'phaseShift')) {
-    return removeBuff(target, 'phaseShift')
-  }
-
-  // Check for shield buff
-  const shield = target.buffs.find((b) => b.id === 'shield')
-  if (shield && shield.stacks > 0) {
-    const absorbed = absorbShield(target.buffs, remaining)
-    if (absorbed.remaining === 0) {
-      return { ...target, buffs: absorbed.buffs }
-    }
-    remaining = absorbed.remaining
-    target = { ...target, buffs: absorbed.buffs }
-  }
-
-  const newInteg = Math.max(0, target.integ - remaining)
-  return { ...target, integ: newInteg, alive: newInteg > 0 }
+  return applyIncomingHit(target, rawDamage, damageType)
 }
 
 /** Amp Stack (Arcane Power): +15% to all code damage the owner deals. */

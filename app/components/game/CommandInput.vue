@@ -17,6 +17,7 @@ import type { ItemDef } from '~~/shared/types/items'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import { pathDistance } from '~~/shared/pathfinding'
 import { structureWalkNote, structureZone } from '~~/shared/utils/structureRules'
+import { commandDanger, type DangerState } from '~/utils/dangerPreview'
 
 const props = withDefaults(
   defineProps<{
@@ -71,6 +72,10 @@ const props = withDefaults(
     terminals?: { chaff: TerminalState; audit: TerminalState } | null
     /** Both teams — how long an enemy Harden still holds (structureWalkNote). */
     teams?: { chaff: TeamState; audit: TeamState } | null
+    /** What the danger line reads — GameScreen's ONE vision-filtered
+     *  DangerState (waves, Silt dwellers, ICE, THE TENANT, heroes), so the
+     *  prompt warns on exactly what the move picker and the stream do. */
+    dangerState?: DangerState | null
   }>(),
   {
     placeholder: 'Enter command...',
@@ -372,6 +377,23 @@ const preview = computed(() => {
   if (labels[command.type]) return { type: 'valid' as const, text: labels[command.type] }
 
   return { type: 'valid' as const, text: `>> ${command.type}` }
+})
+
+/**
+ * The danger preview (round 5): a valid order that walks the hero INTO, or
+ * keeps it IN, a zone whose fire next cycle is large against current INTEG
+ * gets a second line — "⚠ Coldstore T2 (AUDIT): 12 enemy units (~540/cycle)
+ * — you have 550". It warns; it never blocks (Enter still sends — the server's
+ * walk hold is the block). Kept apart from `preview` so the valid line and its
+ * Enter-sends rule are untouched.
+ */
+const danger = computed<string | null>(() => {
+  const p = props.player
+  const s = props.dangerState
+  if (!p || !s || preview.value?.type !== 'valid') return null
+  const { command } = parse(input.value.trim(), p.team, p.zone)
+  if (!command) return null
+  return commandDanger(command, s)?.text ?? null
 })
 
 /**
@@ -693,6 +715,14 @@ onUnmounted(() => {
       }"
     >
       {{ preview.text }}
+    </div>
+    <div
+      v-if="danger"
+      data-testid="command-danger"
+      aria-live="polite"
+      class="px-3 py-0.5 font-mono text-[0.7rem] text-warn"
+    >
+      {{ danger }}
     </div>
 
     <!-- Buffered command notice — typed while waiting, sends next cycle -->

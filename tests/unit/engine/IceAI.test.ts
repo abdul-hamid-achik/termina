@@ -5,8 +5,8 @@ import type { GameState, PlayerState, WaveUnitState } from '~~/shared/types/game
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { ICE_ATTACK } from '~~/shared/constants/balance'
-import { calculateKineticDamage } from '~~/server/game/engine/DamageCalculator'
-import { getEffectivePlate } from '~~/server/game/engine/EffectiveStats'
+import { calculateKineticDamage } from '~~/shared/utils/damageCalc'
+import { getEffectivePlate } from '~~/shared/utils/effectiveStats'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {

@@ -125,10 +125,17 @@ const STATIC_ARIA: Record<string, string> = {
         class="hud-action-btn min-h-[44px] whitespace-nowrap border border-chaff/50 bg-bg-secondary px-2 py-1 font-mono t-hud-sm text-chaff transition-all active:bg-border active:scale-95"
         :class="{ 'opacity-60': z.fogged }"
         :data-testid="`move-picker-${z.id}`"
-        :aria-label="`Move to ${z.name}`"
+        :aria-label="
+          z.danger
+            ? `Move to ${z.name} — warning: about ${z.danger} incoming next cycle`
+            : `Move to ${z.name}`
+        "
         @click="pickMove(z.id)"
       >
-        ▸ {{ z.name }}
+        ▸ {{ z.name
+        }}<span v-if="z.danger" class="text-warn" :data-testid="`move-picker-${z.id}-danger`">
+          ⚠ ~{{ z.danger }}</span
+        >
       </button>
     </div>
 
@@ -144,10 +151,15 @@ const STATIC_ARIA: Record<string, string> = {
         :key="a.cmd"
         class="hud-action-btn min-h-[44px] whitespace-nowrap border border-ability/40 bg-bg-secondary px-2 py-1 font-mono t-hud-sm text-ability transition-all active:bg-border active:scale-95"
         :data-testid="`situational-${a.cmd}`"
-        :aria-label="a.aria"
+        :aria-label="
+          a.danger ? `${a.aria} — warning: about ${a.danger} incoming next cycle` : a.aria
+        "
         @click="emit('command', a.cmd)"
       >
-        {{ a.label }}
+        {{ a.label
+        }}<span v-if="a.danger" class="text-warn" :data-testid="`situational-${a.cmd}-danger`">
+          ⚠ ~{{ a.danger }}</span
+        >
       </button>
     </div>
   </div>

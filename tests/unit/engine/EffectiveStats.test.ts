@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getEffectiveAttack, getEffectivePlate } from '~~/server/game/engine/EffectiveStats'
+import { getEffectiveAttack, getEffectivePlate } from '~~/shared/utils/effectiveStats'
 import type { BuffState, PlayerState } from '~~/shared/types/game'
 
 // heroId null → getEffectiveAttack uses its 50 fallback and getEffectivePlate

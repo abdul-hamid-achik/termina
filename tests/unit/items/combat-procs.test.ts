@@ -11,8 +11,8 @@ import {
   getEffectivePlate,
   getEffectiveIce,
   getItemStatBonuses,
-} from '~~/server/game/engine/EffectiveStats'
-import { calculateKineticDamage, calculateCodeDamage } from '~~/server/game/engine/DamageCalculator'
+} from '~~/shared/utils/effectiveStats'
+import { calculateKineticDamage, calculateCodeDamage } from '~~/shared/utils/damageCalc'
 import { HEROES } from '~~/shared/constants/heroes'
 import {
   NULL_POINTER_CRIT_MULTIPLIER,

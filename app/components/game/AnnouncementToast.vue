@@ -87,6 +87,29 @@ onUnmounted(() => {
   if (timer) clearTimeout(timer)
 })
 
+/** .toast-pop-leave-active's 0.4s, plus a frame of slack. */
+const LEAVE_MS = 450
+
+/**
+ * The leave ends on a timer, not on `transitionend`. Vue swaps leave-from →
+ * leave-to inside a double requestAnimationFrame and only THEN waits for the
+ * transition — rAF does not run in a hidden / background / automation tab, so
+ * a rejection toast hidden there sat in the DOM for minutes as
+ * `toast-pop-leave-active toast-pop-leave-from` (round-5 playtest). An explicit
+ * `done` makes the removal independent of frames; under reduced motion there
+ * is nothing to wait for at all.
+ */
+function onLeave(_el: Element, done: () => void) {
+  const reduce =
+    typeof window !== 'undefined' &&
+    window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
+  if (reduce) {
+    done()
+    return
+  }
+  setTimeout(done, LEAVE_MS)
+}
+
 // error/kill read as audit, objective as scrip, info as a neutral blue, and
 // ordinary rejections as amber warnings.
 const toneClass = computed(() => {
@@ -120,7 +143,7 @@ const display = computed(() => shown.value.replace(/^\[ERROR\]\s*/, ''))
 </script>
 
 <template>
-  <Transition name="toast-pop">
+  <Transition name="toast-pop" @leave="onLeave">
     <div
       v-if="visible"
       class="announcement-toast pointer-events-none absolute left-1/2 top-3 z-50 -translate-x-1/2"

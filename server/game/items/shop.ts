@@ -23,7 +23,7 @@ import {
   calculateCodeDamage,
   getIncomingDamageMultiplier,
   isDamageImmune,
-} from '~~/server/game/engine/DamageCalculator'
+} from '~~/shared/utils/damageCalc'
 
 /**
  * Buff id that carries an item's active cooldown. The single source of truth for

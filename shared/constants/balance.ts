@@ -409,13 +409,32 @@ export const BURN_XP_RATIO = 0.5
 export const STRIP_HP_THRESHOLD = 0.35
 
 /**
- * Safe-by-default structure walks (playtest 3): a HELD `attack ice:` /
- * `attack terminal` walk does not take the hop INTO a zone under a living enemy
- * ICE (a Terminal never shoots heroes) while the walker's INTEG is at or below this
- * fraction of max — it holds one hop short and says so. A typed order is never
- * held (retyping pushes in). See ActionResolver.approachHold.
+ * Safe-by-default structure walks: a HELD `attack ice:` / `attack terminal`
+ * walk does not take the next hop when what that zone will throw at the walker
+ * in ONE cycle — the enemy units, ICE, Silt dwellers, THE TENANT and visible
+ * heroes the walker can see (shared/utils/hopDamage — the ONE prediction the
+ * client preview also runs, with the engine's own targeting priorities and
+ * mitigation, at the current wave escalation) — is at least this
+ * fraction of their CURRENT INTEG. It holds one hop short and says so. A typed
+ * order is never held (retyping pushes in). See ActionResolver.approachHold.
+ *
+ * Playtest 4: the old rule only read INTEG% (≤35%), so a FULL-INTEG hero walked
+ * into 4 escalated units + ICE (~300/cycle at 550 → 72 → dead), and once into
+ * a 12-unit stack (540 in one cycle). At half its current INTEG per cycle a
+ * hero is dead in two cycles — too fast for a player on a 4s clock to react.
+ * 0.5, not 0.6: the playtest-4 stack predicts ~292 against 550 (53%), and that
+ * walk — dead the next cycle — is the one the hold exists to stop.
  */
-export const APPROACH_HOLD_INTEG_RATIO = 0.35
+export const APPROACH_HOLD_DAMAGE_RATIO = 0.5
+
+/**
+ * The client's danger WARNING (⚠ in the prompt, the move picker, the stream)
+ * and the threat line's burst rule: a predicted / last-cycle incoming that,
+ * repeated this many cycles, finishes you. Looser than the walk hold above on
+ * purpose — the warning only informs, the hold takes the walk away. Both read
+ * the same prediction (shared/utils/hopDamage).
+ */
+export const LETHAL_PRESSURE_CYCLES = 3
 
 // ── Assist System ────────────────────────────────────────────────
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { TraceModel } from '~/components/game/traceModel'
+import type { RouteLine, TraceModel } from '~/components/game/traceModel'
 import { FACTION_META } from '~~/shared/constants/world'
 import type { TeamId } from '~~/shared/types/game'
 
@@ -43,17 +43,38 @@ const depthBar = computed(() => {
   return `${'┄'.repeat(behind)}├┤${'┄'.repeat(ahead)}`
 })
 
+/** "12 hostile units @ Coldstore T2 (AUDIT)" — the route's biggest seen stack. */
+function stackText(r: RouteLine): string {
+  return r.stack
+    ? `${r.stack.units} hostile unit${r.stack.units === 1 ? '' : 's'} @ ${r.stack.zoneName}`
+    : ''
+}
+
+/** A stack bigger than one wave (3 line + 1 sweep) is worth a line of its own
+ *  even on the compact rail: waves have piled up there. */
+const STACK_ALERT_UNITS = 5
+
+/** Whether a route line is worth an alert: an enemy hero on it, or a real unit
+ *  stack. A normal wave (≤4 units) is ordinary laning, not news — the ACTIVE
+ *  line used to go amber for any visible enemy unit, i.e. all game long. */
+function routeAlerts(r: RouteLine): boolean {
+  return r.hostiles > 0 || (r.stack?.units ?? 0) >= STACK_ALERT_UNITS
+}
+
 /**
  * What a route line is allowed to claim. Absence of contacts is NOT safety:
  * a route you hold no vision on reports zero hostiles exactly like a warded,
  * confirmed-empty one. "no feed" says the line is blind; "clear" is only
- * spoken for ground the team can actually see.
+ * spoken for ground the team can actually see — and never over a unit stack.
  */
-function routeStatus(r: { hostiles: number; seen: number; total: number }): {
+function routeStatus(r: RouteLine): {
   text: string
   tone: 'hostile' | 'blind' | 'clear'
 } {
-  if (r.hostiles) return { text: `${r.hostiles} hostile`, tone: 'hostile' }
+  if (r.hostiles || r.stack) {
+    const parts = [r.hostiles ? `${r.hostiles} hostile` : '', stackText(r)].filter(Boolean)
+    return { text: parts.join(' · '), tone: 'hostile' }
+  }
   if (r.seen === 0) return { text: 'no feed', tone: 'blind' }
   if (r.seen < r.total) return { text: `clear ${r.seen}/${r.total}`, tone: 'clear' }
   return { text: 'clear', tone: 'clear' }
@@ -72,10 +93,10 @@ function routeStatus(r: { hostiles: number; seen: number; total: number }): {
       <span :class="currentRouteClass">▸ {{ currentLine }}</span>
       <span v-if="trace.currentRoute" class="text-text-dim">{{ depthBar }}</span>
       <span
-        v-if="activeRoute?.hostiles"
+        v-if="activeRoute && routeAlerts(activeRoute)"
         class="text-warn"
         :data-testid="`trace-route-${activeRoute.route}-status`"
-        >· {{ activeRoute.hostiles }} hostile</span
+        >· {{ routeStatus(activeRoute).text }}</span
       >
       <template v-if="compact">
         <span
@@ -95,7 +116,7 @@ function routeStatus(r: { hostiles: number; seen: number; total: number }): {
          actually threatened — "clear 1/8" on two distant routes ate the
          identity strip on a cut pane. -->
     <div
-      v-for="r in trace.routes.filter((r) => !r.active && (!compact || r.hostiles > 0))"
+      v-for="r in trace.routes.filter((r) => !r.active && (!compact || routeAlerts(r)))"
       :key="r.route"
       class="flex items-baseline gap-2 text-text-dim"
       :data-testid="`trace-route-${r.route}`"

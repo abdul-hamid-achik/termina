@@ -140,3 +140,50 @@ describe('AnnouncementToast', () => {
     })
   })
 })
+
+// Round 5: a hidden toast stayed in the DOM for minutes as
+// `toast-pop-leave-active toast-pop-leave-from` — Vue's CSS leave waits on
+// requestAnimationFrame, which never runs in a background/automation tab. The
+// REAL <Transition> (VTU stubs it by default, which would pass either way).
+describe('AnnouncementToast leave transition', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    // A tab that never paints: rAF callbacks never run.
+    vi.stubGlobal('requestAnimationFrame', () => 0)
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  async function shownThenHidden(reduceMotion: boolean) {
+    vi.stubGlobal('matchMedia', (q: string) => ({
+      matches: reduceMotion && q.includes('prefers-reduced-motion'),
+      media: q,
+    }))
+    const wrapper = mount(AnnouncementToast, {
+      props: { text: 'Target is not in your zone', seq: 0, durationMs: 1000 },
+      global: { stubs: { transition: false } },
+      attachTo: document.body,
+    })
+    await wrapper.setProps({ seq: 1 })
+    expect(wrapper.find('.announcement-toast').exists()).toBe(true)
+    vi.advanceTimersByTime(1001)
+    await wrapper.vm.$nextTick()
+    return wrapper
+  }
+
+  it('removes the node once the leave time has passed, with no animation frame', async () => {
+    const wrapper = await shownThenHidden(false)
+    vi.advanceTimersByTime(500)
+    await wrapper.vm.$nextTick()
+    expect(document.querySelector('.announcement-toast')).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('removes it at once under reduced motion', async () => {
+    const wrapper = await shownThenHidden(true)
+    expect(document.querySelector('.announcement-toast')).toBeNull()
+    wrapper.unmount()
+  })
+})

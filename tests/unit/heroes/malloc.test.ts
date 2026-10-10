@@ -10,7 +10,7 @@ import {
 } from '~~/server/game/heroes/_base'
 // Register malloc hero and import helpers
 import { getHeapGrowthBonus } from '~~/server/game/heroes/malloc'
-import { getEffectiveAttack, getTalentStatBonus } from '~~/server/game/engine/EffectiveStats'
+import { getEffectiveAttack, getTalentStatBonus } from '~~/shared/utils/effectiveStats'
 import { TALENT_TREES } from '~~/shared/constants/talents'
 
 // ── Test Helpers ──────────────────────────────────────────────────

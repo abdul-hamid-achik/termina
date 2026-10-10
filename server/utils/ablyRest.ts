@@ -43,26 +43,64 @@ export interface AblyBatchSpec {
   channel: string
   data: unknown
   name?: string
+  /** Client-supplied message id — Ably's idempotent publishing drops a second
+   *  publish of the same id, so a retry can never deliver a message twice. */
+  id?: string
 }
+
+/**
+ * Give every spec a DETERMINISTIC message id: `${channel}:${cycle}:${name}.${n}`,
+ * `n` the ordinal of that (channel, name) pair within the batch (a cycle can
+ * carry several `announcement` lines to one player). The final tick retries its
+ * publish inline after a timeout — and a timed-out POST may have been accepted
+ * by Ably — so a retry must resend the SAME ids for Ably to drop the duplicate
+ * cycle_state + game_over. Each spec is its own batchspec (one message), so
+ * each id is individually idempotent. Pure: the same batch for the same cycle
+ * gets the same ids.
+ */
+export function stampMessageIds(specs: readonly AblyBatchSpec[], cycle: number): AblyBatchSpec[] {
+  const seen = new Map<string, number>()
+  return specs.map((s) => {
+    const name = s.name ?? 'cycle_state'
+    const key = `${s.channel}:${cycle}:${name}`
+    const n = seen.get(key) ?? 0
+    seen.set(key, n + 1)
+    return { ...s, id: `${key}.${n}` }
+  })
+}
+
+/**
+ * A batch publish rides inside the 4s tick step, AFTER the cycle has
+ * committed. Unbounded, a hung POST held the whole workflow loop — and every
+ * client's clock — until the runtime's own socket timeout (minutes). Bounded,
+ * a slow publish fails fast: publishCommitted logs it and the next tick sends
+ * the full state again (the final tick retries inline).
+ */
+const PUBLISH_TIMEOUT_MS = 2_500
 
 /**
  * Publish to many channels in one HTTP round trip via Ably's REST batch
  * endpoint — a tick's fog-filtered per-player payloads (10 in a live 5v5)
  * become one POST instead of ten. See Ably's batch publish spec: each entry
  * is `{ channels: string | string[], messages: Message | Message[] }`.
+ * Throws on a non-2xx answer, a network error, or after `timeoutMs`.
  */
-export async function ablyPublishBatch(specs: AblyBatchSpec[]): Promise<void> {
+export async function ablyPublishBatch(
+  specs: AblyBatchSpec[],
+  opts: { fetchImpl?: typeof fetch; timeoutMs?: number } = {},
+): Promise<void> {
   if (specs.length === 0) return
   const auth = ablyAuthHeader()
   if (!auth) return
   const body = specs.map((s) => ({
     channels: [s.channel],
-    messages: { name: s.name ?? 'cycle_state', data: s.data },
+    messages: { ...(s.id ? { id: s.id } : {}), name: s.name ?? 'cycle_state', data: s.data },
   }))
-  const res = await fetch(`${ABLY_REST_HOST}/messages`, {
+  const res = await (opts.fetchImpl ?? fetch)(`${ABLY_REST_HOST}/messages`, {
     method: 'POST',
     headers: { authorization: auth, 'content-type': 'application/json' },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(opts.timeoutMs ?? PUBLISH_TIMEOUT_MS),
   })
   if (!res.ok) throw new Error(`ably batch publish ${res.status}`)
 }

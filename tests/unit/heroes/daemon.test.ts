@@ -8,7 +8,7 @@ import {
   hasBuff,
   getBuffStacks,
 } from '~~/server/game/heroes/_base'
-import { hasTalentCastEffect } from '~~/server/game/engine/EffectiveStats'
+import { hasTalentCastEffect } from '~~/shared/utils/effectiveStats'
 import { TALENT_TREES } from '~~/shared/constants/talents'
 // Register daemon hero
 import '../../../server/game/heroes/daemon'

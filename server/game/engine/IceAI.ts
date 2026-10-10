@@ -1,7 +1,8 @@
 import type { GameState, IceState } from '~~/shared/types/game'
-import { ICE_ATTACK } from '~~/shared/constants/balance'
+import { ICE_ATTACK, WAVE_XP_SHARED } from '~~/shared/constants/balance'
 import { isTrainingWave } from '~~/shared/constants/tutorial'
 import { resolveKineticHit } from './CombatResolver'
+import { awardZoneXp } from './XpDistributor'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 export interface IceAction {
@@ -160,6 +161,15 @@ export function applyIceActions(
       if (target && target.integ > 0) {
         const newInteg = Math.max(0, target.integ - action.damage)
         waves = waves.map((c) => (c.id === targetId ? { ...c, integ: newInteg } : c))
+        // Presence XP for the ICE's crew standing here — the third way a wave
+        // dies (after a hero strip and a wave-on-wave kill), and in a losing
+        // lane the main one: a defender holding at their own ICE used to earn
+        // nothing while the ICE did the killing. An ICE only ever shoots
+        // across teams, so its crew is by construction the unit's enemy.
+        if (newInteg === 0) {
+          const iceTeam = state.ice.find((t) => t.zone === action.iceZone)?.team
+          if (iceTeam) players = awardZoneXp(players, target.zone, iceTeam, WAVE_XP_SHARED)
+        }
       }
     }
   }

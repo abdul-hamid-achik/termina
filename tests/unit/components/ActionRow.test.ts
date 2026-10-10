@@ -179,6 +179,37 @@ describe('ActionRow', () => {
     expect(wrapper.find('[data-testid="move-picker"]').exists()).toBe(false)
   })
 
+  it('tags a dangerous move with its predicted fire — and still sends it (warn, never block)', async () => {
+    const wrapper = mountRow({
+      moveZones: [
+        { ...makeZone('coldstore-t1-audit', 'Coldstore T1 (AUDIT)'), danger: 540 },
+        makeZone('coldstore-cross', 'Coldstore Crossing'),
+      ],
+    })
+    await wrapper.find('[data-testid="action-move"]').trigger('click')
+    const hot = wrapper.find('[data-testid="move-picker-coldstore-t1-audit"]')
+    expect(hot.text()).toContain('⚠ ~540')
+    expect(hot.attributes('aria-label')).toContain('about 540 incoming next cycle')
+    expect(wrapper.find('[data-testid="move-picker-coldstore-cross-danger"]').exists()).toBe(false)
+    await hot.trigger('click')
+    expect(wrapper.emitted('command')).toContainEqual(['move coldstore-t1-audit'])
+  })
+
+  it('a situational verb that keeps you in a lethal zone is tagged before the tap', async () => {
+    const wrapper = mountRow({
+      situational: [
+        { cmd: 'attack wave:2', label: 'STRIP', aria: 'Strip a wave unit', danger: 540 },
+        { cmd: 'tap', label: 'TAP', aria: 'Place a camtap' },
+      ],
+    })
+    const strip = wrapper.find('[data-testid="situational-attack wave:2"]')
+    expect(strip.text()).toBe('STRIP ⚠ ~540')
+    expect(strip.attributes('aria-label')).toContain('about 540 incoming next cycle')
+    expect(wrapper.find('[data-testid="situational-tap-danger"]').exists()).toBe(false)
+    await strip.trigger('click')
+    expect(wrapper.emitted('command')).toEqual([['attack wave:2']])
+  })
+
   it('emits the situational command string (STRIP) on tap', async () => {
     const wrapper = mountRow({
       situational: [

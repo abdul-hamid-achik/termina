@@ -18,8 +18,8 @@ import {
   MAX_WAVE_UNITS_PER_ZONE_PER_TEAM,
   waveUnitAttack,
 } from '~~/shared/constants/balance'
-import { calculateKineticDamage } from '~~/server/game/engine/DamageCalculator'
-import { getEffectivePlate } from '~~/server/game/engine/EffectiveStats'
+import { calculateKineticDamage } from '~~/shared/utils/damageCalc'
+import { getEffectivePlate } from '~~/shared/utils/effectiveStats'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {

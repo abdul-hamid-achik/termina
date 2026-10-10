@@ -72,6 +72,7 @@ import { skippedDrillFromNotice } from '~/utils/tutorialTry'
 import { useStartTutorial } from '~/composables/useStartTutorial'
 import { getTalentTree } from '~~/shared/constants/talents'
 import type { IceState, TerminalState } from '~~/shared/types/game'
+import type { Command } from '~~/shared/types/commands'
 import { uiLog } from '~/utils/logger'
 import { collapseStructureDamage, isNpcSourceId, type CombatLine } from '~/utils/combatLog'
 import {
@@ -89,6 +90,8 @@ import {
 import { pathDistance } from '~~/shared/pathfinding'
 import { formatTenant, ticksToClock } from '~/utils/strategy'
 import { incomingDamageBreakdownLastCycle, zoneVerdict } from '~/utils/tactics'
+import { commandDanger, isDangerous, predictIncoming } from '~/utils/dangerPreview'
+import type { DangerState } from '~/utils/dangerPreview'
 import { arrowTargetZone } from '~/utils/arrowMove'
 import { computeSituationalActions, stripTargetString } from '~/utils/situationalActions'
 import {
@@ -785,7 +788,7 @@ watch(
     tickPulseKey.value++
     const buffered = gameStore.consumeBufferedCommand()
     if (buffered) {
-      handleCommand(buffered)
+      handleCommand(buffered, { fromBuffer: true })
     }
   },
 )
@@ -1420,7 +1423,11 @@ function getIceTier(zoneId: string): number {
 
 // ── Command handling ───────────────────────────────────────────
 
-function handleCommand(cmd: string) {
+/** The buffered order whose danger warning was already printed when it was
+ *  typed — its flush at the next cycle must not print it a second time. */
+let dangerWarnedFor: string | null = null
+
+function handleCommand(cmd: string, opts: { fromBuffer?: boolean } = {}) {
   // A bare `attack` / `atk` auto-targets the lowest-INTEG enemy hero in your zone
   // (a MOBA right-click) so you don't have to type the full target. Waves stay
   // explicit (attack wave:N) so auto-target never steals a last-hit.
@@ -1627,6 +1634,7 @@ function handleCommand(cmd: string) {
           text: `[QUEUED] ${cmd} — will send next cycle`,
           type: 'system',
         })
+        dangerWarnedFor = warnDanger(command) ? cmd : null
         playSound('submit')
       }
       return
@@ -1670,6 +1678,9 @@ function handleCommand(cmd: string) {
     }
     uiLog.debug('Command sent', { type: command.type })
     gameStore.markActionSent(cmd)
+    // One order, one warning: a buffered order already warned when typed.
+    if (!(opts.fromBuffer && dangerWarnedFor === cmd)) warnDanger(command)
+    dangerWarnedFor = null
     // Remember (or drop) the walk order. `keepsWalk` is the rule GameLoop
     // applies (shared/utils/standingOrders): a deliberate order replaces the
     // walk and no arrival is owed any more — except the out-of-band verbs and
@@ -1700,6 +1711,22 @@ function handleCommand(cmd: string) {
   } else if (error) {
     rejectLocally(error)
   }
+}
+
+/**
+ * The danger preview, recorded as the order goes (round 5). The prompt shows
+ * it before Enter and the tap surfaces (move picker, ActionRow verbs, the
+ * try: chip) carry a `⚠ ~N` tag before the tap; this line puts the same words
+ * in the stream so the warning is on record. It cannot undo the order — the
+ * cycle's one main slot is spent — and it never blocks (the server's walk
+ * hold is the block).
+ */
+function warnDanger(command: Command): boolean {
+  const state = dangerState.value
+  if (!state) return false
+  const d = commandDanger(command, state)
+  if (d) localEvents.value.push({ cycle: gameStore.cycle, text: d.text, type: 'system' })
+  return d !== null
 }
 
 /** A refusal decided on this side of the wire: a marked stream line + the toast. */
@@ -1807,6 +1834,7 @@ const traceModel = computed(() => {
     contacts,
     terminals: terminals.value ?? { chaff: FALLBACK_TERMINAL, audit: FALLBACK_TERMINAL },
     visibleZoneIds: gameStore.visibleZoneIds,
+    waves: gameStore.waves,
   })
 })
 
@@ -1992,9 +2020,17 @@ function handleLookCommand(cmd: string) {
 // The same one-tap-to-move list the trace era's picker draws, reachable from the
 // action bar (which is on screen at every breakpoint, unlike the map).
 const showMovePicker = ref(false)
-const movePickerZones = computed(() =>
-  buildAdjacentZones(gameStore.player?.zone ?? '', mapZones.value),
-)
+// Each adjacent zone carries its danger (round 5): the picker sends on tap,
+// so the predicted fire has to be on the button, not only in the prompt.
+const movePickerZones = computed(() => {
+  const p = gameStore.player
+  const s = dangerState.value
+  return buildAdjacentZones(p?.zone ?? '', mapZones.value).map((z) => {
+    if (!p || !s || !p.alive) return z
+    const total = predictIncoming(z.id, s).total
+    return isDangerous(total, p.integ) ? { ...z, danger: total } : z
+  })
+})
 
 function pickMoveZone(zoneId: string) {
   showMovePicker.value = false
@@ -2105,6 +2141,23 @@ function handleQuickAction(cmd: string) {
 // buttons, shown only when actually available so the row stays contextual.
 // Which contextual actions the player can take now — pure rules extracted to a
 // unit-tested util (computeSituationalActions).
+/**
+ * The predicted fire an order would walk into / keep you in, when dangerous
+ * (dangerPreview) — for the surfaces that send on tap (ActionRow verbs, the
+ * tutorial's try: chip), which never pass through the prompt's preview line.
+ * A bare `burn` / `attack` resolves its target at send time; either way the
+ * hero stays in the zone, so any in-zone wave ref judges it the same.
+ */
+function dangerOf(cmd: string): number | null {
+  const p = gameStore.player
+  const s = dangerState.value
+  if (!p || !s) return null
+  const bare = cmd.trim().toLowerCase()
+  const text = bare === 'burn' ? 'burn wave:0' : bare === 'attack' || bare === 'atk' ? '' : cmd
+  const { command } = commands.parse(text, p.team, p.zone)
+  return command ? (commandDanger(command, s)?.incoming.total ?? null) : null
+}
+
 const situationalActions = computed(() =>
   computeSituationalActions({
     player: gameStore.player,
@@ -2118,6 +2171,9 @@ const situationalActions = computed(() =>
     breachTarget:
       gameStore.nearbyEnemies.find((e) => !e.buffs?.some((b) => b.id === 'breached'))?.heroId ??
       null,
+  }).map((a) => {
+    const danger = dangerOf(a.cmd)
+    return danger ? { ...a, danger } : a
   }),
 )
 
@@ -2258,6 +2314,33 @@ const abilityArias = computed(() => {
 // ONE verdict for the rig line and the HUD hop line (StatusLines): the old
 // pair each ran a headcount-only computeThreat, so a hero at 24% INTEG with
 // two enemies on them read "FAVORED", and a dead one did too.
+/** What the danger preview reads — the HUD's own vision-filtered state. */
+const dangerState = computed<DangerState | null>(() => {
+  const p = gameStore.player
+  if (!p) return null
+  const zones = gameStore.visibleZones
+  return {
+    me: p,
+    waves: gameStore.waves,
+    neutrals: gameStore.neutrals,
+    ice: gameStore.ice,
+    tenant: gameStore.tenant,
+    players: gameStore.allPlayers,
+    cycle: gameStore.cycle,
+    hasZone: Object.keys(zones).length > 0 ? (id) => !!zones[id] : undefined,
+  }
+})
+
+/** Fire predicted on YOU next cycle where you stand. A standing order on the
+ *  ICE or an enemy hero keeps drawing the ICE (IceAI priority 1). */
+const predictedHere = computed(() => {
+  const p = gameStore.player
+  const s = dangerState.value
+  if (!p || !s || !p.alive) return 0
+  const order = p.attackTarget?.kind
+  return predictIncoming(p.zone, s, { drawsIceAggro: order === 'ice' || order === 'hero' }).total
+})
+
 const rigVerdict = computed(() => {
   const p = gameStore.player
   if (!p) return null
@@ -2276,6 +2359,7 @@ const rigVerdict = computed(() => {
     friendlyWavesHere: gameStore.waves.filter(
       (w) => w.zone === p.zone && w.team === p.team && w.integ > 0,
     ).length,
+    predictedIncoming: predictedHere.value,
     hasReadyAbility: ['Q', 'W', 'E', 'R'].some((s) => abilityButtonState.value[s]?.ready),
   })
 })
@@ -2772,6 +2856,7 @@ function handleReturnToMenu() {
               :ice="gameStore.ice"
               :team="gameStore.player?.team"
               :waves="gameStore.waves"
+              :danger-for="dangerOf"
               @command="handleCommand"
             />
           </template>
@@ -3002,6 +3087,7 @@ function handleReturnToMenu() {
         :ice="gameStore.ice"
         :terminals="gameStore.terminals"
         :teams="gameStore.teams"
+        :danger-state="dangerState"
         :situation-key="`${gameStore.isAlive ? 'up' : 'down'}:${gameStore.tutorialStep ?? ''}`"
         @submit="submitFromPrompt"
         @reject="handlePromptRejection"

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import { resolveAbility, resolvePassive, applyBuff, hasBuff } from '~~/server/game/heroes/_base'
-import { getTalentStatBonus } from '~~/server/game/engine/EffectiveStats'
+import { getTalentStatBonus } from '~~/shared/utils/effectiveStats'
 import { TALENT_TREES } from '~~/shared/constants/talents'
 // Register kernel hero
 import '../../../server/game/heroes/kernel'

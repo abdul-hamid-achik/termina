@@ -131,3 +131,30 @@ describe('TutorialHint', () => {
     )
   })
 })
+
+describe('TutorialHint try: chip danger (round 5)', () => {
+  it('tags the chip with the predicted fire its order walks into — and still sends it', async () => {
+    const seen: string[] = []
+    const wrapper = mount(TutorialHint, {
+      props: {
+        step: 0,
+        dangerFor: (cmd: string) => {
+          seen.push(cmd)
+          return 540
+        },
+      },
+    })
+    const chip = wrapper.get('[data-testid="tutorial-try"]')
+    expect(seen).toContain('move coldstore-t2-chaff')
+    expect(wrapper.get('[data-testid="tutorial-try-danger"]').text()).toBe('⚠ ~540')
+    expect(chip.attributes('aria-label')).toContain('about 540 incoming next cycle')
+    await chip.trigger('click')
+    expect(wrapper.emitted('command')).toEqual([['move coldstore-t2-chaff']])
+  })
+
+  it('no tag when the judge says safe', () => {
+    const wrapper = mount(TutorialHint, { props: { step: 0, dangerFor: () => null } })
+    expect(wrapper.find('[data-testid="tutorial-try-danger"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="tutorial-try"]').attributes('aria-label')).toBeUndefined()
+  })
+})

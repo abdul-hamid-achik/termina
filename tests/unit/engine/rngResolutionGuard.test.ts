@@ -35,7 +35,9 @@ function bareRandomCalls(src: string): string[] {
 const RESOLUTION_FILES = [
   'server/game/engine/GameLoop.ts',
   'server/game/engine/ActionResolver.ts',
-  'server/game/engine/DamageCalculator.ts',
+  'shared/utils/damageCalc.ts',
+  'shared/utils/effectiveStats.ts',
+  'shared/utils/hopDamage.ts',
   'server/game/engine/CombatResolver.ts',
   'server/game/engine/WaveAI.ts',
   'server/game/engine/IceAI.ts',

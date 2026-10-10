@@ -564,3 +564,39 @@ describe('zoneVerdict: inside enemy ICE with their wave', () => {
     expect(verdict({ integ: 400 }).threat.label).toBe('CONTESTED')
   })
 })
+
+describe('the predicted fire next cycle (round 5: 12 units, 550 → 10)', () => {
+  const me = { id: 'me', zone: 'cs', alive: true, integ: 550, maxInteg: 550, team: 'chaff' }
+  const at = (predictedIncoming: number | undefined, over: Partial<typeof me> = {}) =>
+    zoneVerdict({
+      me: { ...me, ...over },
+      allies: [],
+      enemies: [],
+      enemyIcePresent: false,
+      incomingLastCycle: 0,
+      enemyWavesHere: 12,
+      predictedIncoming,
+      hasReadyAbility: true,
+    })
+
+  it('a lethal prediction at full INTEG is DANGER with the number and "leave now"', () => {
+    const v = at(560)
+    expect(v.threat).toEqual({ label: 'DANGER', tone: 'danger' })
+    expect(v.action).toBe('~560 incoming next cycle — leave now')
+  })
+
+  it('exactly your INTEG is lethal; one under is not', () => {
+    expect(at(550).action).toContain('leave now')
+    expect(at(549).action).not.toContain('leave now')
+    expect(at(549).threat.label).not.toBe('DANGER')
+  })
+
+  it('without a prediction the verdict is unchanged', () => {
+    expect(at(undefined).threat.label).toBe('CLEAR')
+    expect(at(0).action).not.toContain('incoming')
+  })
+
+  it('dead outranks it', () => {
+    expect(at(900, { alive: false }).threat.label).toBe('DOWN')
+  })
+})

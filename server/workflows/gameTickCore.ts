@@ -31,7 +31,12 @@ import { playerNetWorth } from '~~/server/game/engine/ScripDistributor'
 import { calculateMmrChange, teamAverageMmr } from '~~/server/game/matchmaking/elo'
 import { shouldApplyDerivedMatchStats } from '~~/server/game/engine/matchPersistence'
 import { isGuestId } from '~~/server/utils/guest'
-import { ablyPublishBatch, ablyPresence, type AblyBatchSpec } from '~~/server/utils/ablyRest'
+import {
+  ablyPublishBatch,
+  ablyPresence,
+  stampMessageIds,
+  type AblyBatchSpec,
+} from '~~/server/utils/ablyRest'
 import {
   isAfkCheckCycle,
   presenceCandidates,
@@ -107,7 +112,15 @@ let _db: ReturnType<typeof drizzle<typeof schema>> | null = null
 
 function db(): ReturnType<typeof drizzle<typeof schema>> {
   if (!_db) {
-    _client = postgres(process.env.DATABASE_URL!, { prepare: false, max: 5 })
+    // connect_timeout / idle_timeout as server/db/index.ts: without them a cold
+    // Neon connect is bounded only by postgres.js's 30s default — inside a 4s
+    // tick step, one slow connect freezes every player's clock.
+    _client = postgres(process.env.DATABASE_URL!, {
+      prepare: false,
+      max: 5,
+      connect_timeout: 10,
+      idle_timeout: 20,
+    })
     _db = drizzle(_client, { schema })
   }
   return _db
@@ -604,7 +617,14 @@ export async function runOneTick(
       })
     }
   }
-  await publishCommitted(deps, gameId, next.cycle, specs, next.phase === 'ended')
+  // Stamped ONCE, before any attempt: every retry resends the same ids.
+  await publishCommitted(
+    deps,
+    gameId,
+    next.cycle,
+    stampMessageIds(specs, next.cycle),
+    next.phase === 'ended',
+  )
 
   return { ended: next.phase === 'ended', cycle: next.cycle, skipped: false }
 }

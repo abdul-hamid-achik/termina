@@ -1,5 +1,5 @@
 import type { PlayerState } from '~~/shared/types/game'
-import { isDamageImmune } from './DamageCalculator'
+import { isDamageImmune } from '~~/shared/utils/damageCalc'
 import { dealDamage, hasBuff } from '../heroes/_base'
 
 /**
@@ -18,8 +18,9 @@ import { dealDamage, hasBuff } from '../heroes/_base'
  * intended; a phaseShift hero couldn't dodge a ice shot.
  *
  * This wrapper routes every NPC→hero kinetic hit through `_base.dealDamage`
- * (the single canonical mitigation implementation, also used by hero
- * abilities/passives) and reports how much INTEG was actually lost so callers can
+ * (which delegates to shared/utils/damageCalc's applyIncomingHit — the single
+ * canonical mitigation implementation, also used by hero abilities/passives and
+ * by the danger prediction, shared/utils/hopDamage) and reports how much INTEG was actually lost so callers can
  * emit accurate damage events. `_base.dealDamage` remains the lower-level
  * target-only primitive; this is the NPC-facing convenience.
  */

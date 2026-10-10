@@ -17,7 +17,9 @@ const PUBLIC_EXACT_PATHS = new Set([
   '/favicon.ico',
 ])
 
-const PUBLIC_PREFIXES = ['/api/auth/', '/api/replay/', '/_nuxt/']
+// `/api/_auth/` is nuxt-auth-utils' own session endpoint: it answers `{}` for a
+// visitor with no session, so gating it here only produced a console 401.
+const PUBLIC_PREFIXES = ['/api/auth/', '/api/_auth/', '/api/replay/', '/_nuxt/']
 
 // One-segment /api/player/* routes that are NOT public profiles (they are
 // session-scoped). Everything else matching the single-segment shape is an

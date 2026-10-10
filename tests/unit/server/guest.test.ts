@@ -55,6 +55,8 @@ vi.stubGlobal('createError', (opts: { statusCode: number; message: string }) => 
   throw err
 })
 vi.stubGlobal('getRequestIP', () => '203.0.113.5')
+let existingSession: { user?: Record<string, unknown> } | null = null
+vi.stubGlobal('getUserSession', async () => existingSession ?? {})
 vi.stubGlobal(
   'setUserSession',
   async (_event: H3Event, payload: { user: Record<string, unknown> }) => {
@@ -78,6 +80,7 @@ describe('POST /api/auth/guest', () => {
     sessionCalls = []
     rateLimitCalls = []
     rateLimitAllowed = true
+    existingSession = null
   })
   afterEach(() => {
     vi.restoreAllMocks()
@@ -112,5 +115,20 @@ describe('POST /api/auth/guest', () => {
     await expect(guestHandler(makeEvent())).rejects.toThrow()
     expect(thrownError?.statusCode).toBe(429)
     expect(sessionCalls).toHaveLength(0)
+  })
+  it('never overwrites a signed-in account with a guest (returns the account unchanged)', async () => {
+    existingSession = { user: { id: 'local_abc', username: 'alice', guest: false } }
+    const result = (await guestHandler(makeEvent())) as { user: { id: string; guest?: boolean } }
+    expect(sessionCalls).toHaveLength(0)
+    expect(result.user.id).toBe('local_abc')
+    expect(result.user.guest).toBeFalsy()
+    // A signed-in user's racing call must not spend the per-IP guest budget.
+    expect(rateLimitCalls).toHaveLength(0)
+  })
+
+  it('an existing GUEST session is replaced by a fresh guest as before', async () => {
+    existingSession = { user: { id: 'guest_aaaaaaaaaaaa', guest: true } }
+    await guestHandler(makeEvent())
+    expect(sessionCalls).toHaveLength(1)
   })
 })

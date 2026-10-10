@@ -553,6 +553,34 @@ describe('runOneTick — a lost publish after the winning CAS (Ably blip)', () =
     expect(t.publish).toHaveBeenCalledTimes(2)
   })
 
+  // Round-5 review: a retry after a timed-out POST that Ably DID accept would
+  // resend cycle_state + game_over. Every message carries a deterministic id,
+  // so Ably's idempotent publishing drops the resend.
+  it('the final-tick retry resends the SAME message ids — unique within the batch', async () => {
+    const ended = makeGameState({ cycle: 6, phase: 'ended', winner: 'chaff' })
+    const t = makeDeps({
+      rows: [makeRow({ cycle: 5 })],
+      cas: makeRow({ cycle: 6 }),
+      next: ended,
+      extra: { publishRetryDelayMs: 0 },
+    })
+    const sent: Array<Array<string | undefined>> = []
+    t.publish.mockImplementation(async (specs: Array<{ id?: string }>) => {
+      sent.push(specs.map((s) => s.id))
+      if (sent.length === 1) throw new Error('aborted after Ably accepted')
+    })
+
+    await runOneTick('g1', t.deps)
+
+    expect(sent).toHaveLength(2)
+    const [first, retry] = sent
+    expect(first!.every((id) => typeof id === 'string' && id.length > 0)).toBe(true)
+    expect(new Set(first).size).toBe(first!.length)
+    expect(retry).toEqual(first)
+    expect(first!.some((id) => id!.includes(':6:game_over'))).toBe(true)
+    expect(first!.some((id) => id!.includes(':6:cycle_state'))).toBe(true)
+  })
+
   it('gives up after a few attempts on the final tick but still reports ended (finalize must run)', async () => {
     const ended = makeGameState({ cycle: 6, phase: 'ended', winner: 'chaff' })
     const t = makeDeps({

@@ -363,3 +363,64 @@ describe('CommandInput keyboard driving', () => {
     wrapper.unmount()
   })
 })
+
+describe('CommandInput danger preview (round 5)', () => {
+  const stack = (n: number, zone: string) =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `w-audit-${i}`,
+      team: 'audit' as const,
+      zone,
+      integ: 300,
+      type: 'line' as const,
+    }))
+  /** GameScreen hands the prompt its ONE DangerState; mirror that here. */
+  function dangerMount(over: Partial<PlayerState>, waves: ReturnType<typeof stack>, cycle: number) {
+    const player = makeShopPlayer(over)
+    return mountInput(player, {
+      waves,
+      cycle,
+      dangerState: { me: player, waves, ice: [], players: {}, cycle },
+    })
+  }
+
+  it('warns under a valid move into a lethal stack — and Enter still sends', async () => {
+    const wrapper = dangerMount(
+      { zone: 'coldstore-cross', integ: 550, plate: 6 },
+      stack(12, 'coldstore-t1-audit'),
+      199,
+    )
+    await wrapper.find('input').setValue('move coldstore-t1-audit')
+    const danger = wrapper.find('[data-testid="command-danger"]')
+    expect(danger.exists()).toBe(true)
+    expect(danger.text()).toBe('⚠ Coldstore T1 (AUDIT): 12 enemy units (~528/cycle) — you have 550')
+    // The valid line is unchanged and the order is not blocked.
+    expect(wrapper.find('[data-testid="command-preview"]').text()).toContain('>> Move to')
+    await wrapper.find('input').trigger('keydown', { key: 'Enter' })
+    expect(wrapper.emitted('submit')?.[0]).toEqual(['move coldstore-t1-audit'])
+    wrapper.unmount()
+  })
+
+  it('warns for `attack wave:0` inside the stack you already stand in', async () => {
+    const wrapper = dangerMount(
+      { zone: 'coldstore-cross', integ: 300, plate: 0 },
+      stack(12, 'coldstore-cross'),
+      0,
+    )
+    await wrapper.find('input').setValue('attack wave:0')
+    expect(wrapper.find('[data-testid="command-danger"]').text()).toContain(
+      'Coldstore Crossing: 12 enemy units (~216/cycle) — you have 300',
+    )
+    wrapper.unmount()
+  })
+
+  it('says nothing for a move into a quiet zone', async () => {
+    const wrapper = dangerMount(
+      { zone: 'coldstore-cross', integ: 550 },
+      stack(2, 'coldstore-t1-audit'),
+      0,
+    )
+    await wrapper.find('input').setValue('move coldstore-t1-audit')
+    expect(wrapper.find('[data-testid="command-danger"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+})

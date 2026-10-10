@@ -19,7 +19,7 @@ import {
   getEffectivePlate,
   getTalentStatBonus,
   hasTalentCastEffect,
-} from '~~/server/game/engine/EffectiveStats'
+} from '~~/shared/utils/effectiveStats'
 import { filterStateForPlayer } from '~~/server/game/engine/VisionCalculator'
 import type { WaveUnitState, GameState, PlayerState } from '~~/shared/types/game'
 import { HEROES } from '~~/shared/constants/heroes'

@@ -246,7 +246,8 @@ Expert in the server-side game loop and combat systems.
 - `ActionResolver.ts` — `validateAction`, `resolveActions` (phase order in the Game Loop Pipeline section above). Every consumed-but-ineffective order must push a one-line reason to `rejected` — never a bare `continue`
 - `StateManager.ts` — `createPlayerState`, `createInitialGameState`, in-memory Effect service
 - `VisionCalculator.ts` — `filterStateForPlayer`, fog-of-war per team
-- `DamageCalculator.ts` — kinetic/code/black damage formulas (plate/ice mitigation)
+- `shared/utils/damageCalc.ts` — kinetic/code/black damage formulas + `applyIncomingHit`, THE hero mitigation chain (`_base.dealDamage` delegates to it); `shared/utils/effectiveStats.ts` — effective attack/plate/ice (growth + items + talents + buffs). Shared so the client can run them
+- `shared/utils/hopDamage.ts` — THE damage prediction (`predictHopDamage`: waves, ICE, Silt dwellers, THE TENANT, visible heroes) read by BOTH the server walk hold (`ActionResolver.approachHold`, fed the walker's `filterStateForPlayer` view) and the client danger preview (`app/utils/dangerPreview.ts`, fed its fog-filtered state); the two thresholds (`holdsWalk` 0.5 of INTEG, `warnsOfDanger` ×`LETHAL_PRESSURE_CYCLES`) sit side by side there. Never fork the formula
 - R4 combat lexicon: damage types kinetic/code/black; mitigation plate/ice; pools INTEG/BW; immunity AIRGAP; access state BREACH (code halved into closed targets; hard control fails until breached)
 - `CombatResolver.ts` — `resolveKineticHit` unified NPC→hero damage path (wraps `_base.dealDamage`); `computeSpitePlateReflect` single reflect formula
 - `TerminalSystem.ts` — the win condition: `resolveTerminalAttack` (derives vulnerability from live ICE state, so a T3 and the Terminal can fall in the same cycle), `checkTerminalWin`
@@ -362,7 +363,7 @@ Expert in writing and maintaining Vitest (unit/integration/component) and Cairnt
 
 **Key files**:
 
-- `tests/unit/engine/` — GameLoop, ActionResolver, StateManager, VisionCalculator, DamageCalculator
+- `tests/unit/engine/` — GameLoop, ActionResolver, StateManager, VisionCalculator, DamageCalculator (now `shared/utils/damageCalc`); `tests/unit/shared/hopDamageParity.test.ts` locks client preview === server hold
 - `tests/unit/heroes/` — per-hero stat and ability validation
 - `tests/unit/services/` — LeaverSystem (AFK detection)
 - `tests/unit/workflows/` — `gameTick`/`gameTickCore` (CAS idempotency, chain boundary, action drain)

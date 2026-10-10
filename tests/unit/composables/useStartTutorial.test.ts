@@ -105,6 +105,62 @@ describe('useStartTutorial', () => {
     expect(error.value).toBeNull()
   })
 
+  it('a signed-out visitor gets the guest session FIRST — practice is never POSTed into a 401', async () => {
+    // Round 5: the console showed POST /api/game/practice → 401 on every first
+    // visit; the outcome was known from the session read.
+    let sessionUser: { id: string } | null = null
+    const sessionFetch = vi.fn()
+    vi.stubGlobal('useUserSession', () => ({
+      user: {
+        get value() {
+          return sessionUser
+        },
+      },
+      fetch: sessionFetch,
+    }))
+    const calls: string[] = []
+    mockFetch.mockImplementation((url: string) => {
+      calls.push(url)
+      if (url === '/api/auth/guest') {
+        sessionUser = { id: 'guest_new' }
+        return Promise.resolve({ user: { id: 'guest_new', guest: true } })
+      }
+      if (url === '/api/game/practice') {
+        return sessionUser ? Promise.resolve({ gameId: 'g7' }) : Promise.reject({ statusCode: 401 })
+      }
+      throw new Error(`unexpected $fetch call: ${url}`)
+    })
+    const { start, error } = useStartTutorial()
+
+    await start()
+
+    expect(calls).toEqual(['/api/auth/guest', '/api/game/practice'])
+    expect(mockNavigateTo).toHaveBeenCalledWith('/play?gameId=g7&tutorial=1&playerId=guest_new')
+    expect(error.value).toBeNull()
+  })
+
+  it('a tab that HAD a session does not mint a guest just because the re-read came back empty', async () => {
+    // The read can fail; a guest minted then would overwrite a real sign-in.
+    let sessionUser: { id: string } | null = { id: 'p1' }
+    vi.stubGlobal('useUserSession', () => ({
+      user: {
+        get value() {
+          return sessionUser
+        },
+      },
+      fetch: vi.fn(async () => {
+        sessionUser = null
+      }),
+    }))
+    mockFetch.mockResolvedValue({ gameId: 'g8', playerId: 'p1' })
+    const { start } = useStartTutorial()
+
+    await start()
+
+    expect(mockFetch).not.toHaveBeenCalledWith('/api/auth/guest', expect.anything())
+    expect(mockFetch).toHaveBeenCalledWith('/api/game/practice', { method: 'POST', body: {} })
+  })
+
   it('falls back to /login when guest-session minting itself fails', async () => {
     vi.stubGlobal('useUserSession', () => ({ user: { value: null }, fetch: vi.fn() }))
     mockFetch.mockImplementation((url: string) => {
