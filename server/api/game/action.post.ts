@@ -4,6 +4,11 @@ import { liveGames } from '~~/server/db/schema'
 import { checkRateLimit } from '~~/server/utils/RateLimiter'
 import type { ActionAckMessage } from '~~/shared/types/protocol'
 import { parseWireCommand } from '~~/shared/utils/parseCommand'
+import {
+  GAME_SESSION_CHANGED,
+  GAME_SESSION_CHANGED_MESSAGE,
+  isFormerGuestOf,
+} from '~~/server/utils/guest'
 
 interface ActionRequestBody {
   gameId: string
@@ -58,6 +63,17 @@ export default defineEventHandler(async (event): Promise<ActionAckMessage> => {
 
   const assigned = row.roster.players.some((p) => p.playerId === playerId)
   if (!assigned) {
+    // The session was a guest when this practice game started and has since
+    // signed in (here or in another tab): the game is the guest's, the session
+    // is not. Say THAT — a bare 403 read as "order failed to reach the server"
+    // and the client looped "retype it" forever (playtest 2, 43-44.png).
+    if (isFormerGuestOf(session, row.roster)) {
+      throw createError({
+        statusCode: 409,
+        message: GAME_SESSION_CHANGED_MESSAGE,
+        data: { code: GAME_SESSION_CHANGED },
+      })
+    }
     throw createError({ statusCode: 403, message: 'Not assigned to this game' })
   }
 

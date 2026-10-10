@@ -1,4 +1,7 @@
 import type { Command } from '~~/shared/types/commands'
+import type { IceState, TeamId } from '~~/shared/types/game'
+import { ZONE_MAP } from '~~/shared/constants/zones'
+import { structureRefusal } from '~~/shared/utils/structureRules'
 
 /**
  * Tutorial flow data — the ordered drills a new player is walked through.
@@ -84,6 +87,45 @@ export function isTrainingWave(wave: { id: string }): boolean {
  * the notice).
  */
 export const TUTORIAL_FIRST_MOVE_ZONE = 'coldstore-t2-chaff'
+
+/**
+ * The ICE the last drill sends the player at: the enemy T1 on the tutorial's
+ * one lane — the nearest enemy ICE, and the only one that is not covered by a
+ * tier in front of it. One constant so the hint, the try button and the
+ * server's notices name the same zone.
+ */
+export const ICE_DRILL_ZONE = 'coldstore-t1-audit'
+
+/**
+ * The ICE the drill sends the player at, judged on the LIVE ice: waves can raze
+ * the drill ICE before the step opens, and then every line naming it pointed at
+ * a dead tower ("No standing ice…") with nothing about the next tier. Prefers
+ * ICE_DRILL_ZONE; otherwise the first enemy ICE an order from range would be
+ * accepted for (structureRefusal — the server's own rule), on the drill's lane
+ * first, lowest tier first. Falls back to ICE_DRILL_ZONE when nothing qualifies
+ * (or the ice has not hydrated yet). The drill completes on damage to ANY ICE.
+ */
+export function liveIceDrillZone(ice: readonly IceState[] | undefined, team: TeamId): string {
+  const accepts = (zone: string) =>
+    structureRefusal(ice ?? [], null, team, { kind: 'ice', zone }, { fromRange: true }) === null
+  if (!ice?.length || accepts(ICE_DRILL_ZONE)) return ICE_DRILL_ZONE
+  const lane = ZONE_MAP[ICE_DRILL_ZONE]?.lane
+  const rank = (zone: string) => {
+    const z = ZONE_MAP[zone]
+    return (z?.lane === lane ? 0 : 100) + (z?.tier ?? 99)
+  }
+  const next = ice
+    .filter((t) => t.alive && t.team !== team && accepts(t.zone))
+    .sort(
+      (a, b) => rank(a.zone) - rank(b.zone) || (a.zone < b.zone ? -1 : a.zone > b.zone ? 1 : 0),
+    )[0]
+  return next?.zone ?? ICE_DRILL_ZONE
+}
+
+/** `text` with the drill ICE replaced by the live one (liveIceDrillZone). */
+export function withIceDrillZone(text: string, zone: string): string {
+  return zone === ICE_DRILL_ZONE ? text : text.replaceAll(ICE_DRILL_ZONE, zone)
+}
 
 /** The notice pushed while the opening walk is still on home ground. */
 export const TUTORIAL_ENROUTE_NOTICE = `🎓 On your way — the order stands. You keep walking toward \`${TUTORIAL_FIRST_MOVE_ZONE}\`, one zone per cycle; no need to retype it.`
@@ -193,13 +235,35 @@ export const TUTORIAL_FLOW: readonly TutorialStep[] = [
   {
     id: 'ice',
     unlocks: [],
-    hint: '🎓 The objective: push WITH your wave and hit their ICE — `attack ice:coldstore-t1-audit`. It falls zone by zone; behind the last of it, their TERMINAL.',
-    help: '🎓 Don’t tank the ICE alone — arrive with your wave, then `attack ice:coldstore-t1-audit`. One clean hit completes the drill.',
+    // `attack ice:<zone>` from range is a standing order: walk there, swing on
+    // arrival (ActionResolver.approachStructure). For the drill the enemy crew
+    // is held and a friendly unit escorts the player (modes/tutorial.ts
+    // upkeepIceDrill) — a newbie reading under four units and the ICE died.
+    hint: `🎓 The objective: their ICE. \`attack ice:${ICE_DRILL_ZONE}\` walks you there and swings on arrival — for this drill a wave unit escorts you on the lane and their crew is held at their posts. Behind the last ICE stands their TERMINAL.`,
+    help: `🎓 One order does it: \`attack ice:${ICE_DRILL_ZONE}\` — you walk there and swing on arrival while your escort draws the fire. Already standing at it? Type it now.`,
     done: '🎓 That’s the war: take the payload, burn the rest, place eyes, and trade INTEG into ICE until the TERMINAL is open. Practice complete.',
     skipNote:
-      'The objective: `attack ice:<zone>` with a wave beside you; ICE, then more ICE, then the TERMINAL.',
+      'The objective: `attack ice:<zone>` walks you to an enemy ICE and swings on arrival — push with a wave beside you. ICE, then more ICE, then the TERMINAL.',
   },
 ]
+
+/** A drill's stable id. */
+export type TutorialStepId = TutorialStep['id']
+
+/**
+ * The graduation line for a run that skipped drills: names each one and invites
+ * the retry, so "practice over" never reads like a pass. Null for a clean run.
+ */
+export function tutorialSkipNotice(skipped: readonly TutorialStepId[]): string | null {
+  if (skipped.length === 0) return null
+  const names = skipped.map((id) => id.toUpperCase())
+  const list =
+    names.length === 1
+      ? `the ${names[0]} drill`
+      : `the ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]} drills`
+  const one = names.length === 1
+  return `🎓 Practice over — ${list} timed out and ${one ? 'was' : 'were'} skipped. Run practice again to master ${one ? 'it' : 'them'}.`
+}
 
 /** The number of scripted steps in the tutorial. */
 export const TUTORIAL_STEP_COUNT = TUTORIAL_FLOW.length

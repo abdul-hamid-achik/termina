@@ -251,9 +251,9 @@ describe('waves: last-hit & burn economy', () => {
     // Passive income can still tick in, so assert no LAST-HIT reward specifically.
     expect(game.lastEvents.some((e) => e._tag === 'wave_strip')).toBe(false)
     expect((await game.me()).scrip - scripBefore).toBeLessThan(20)
-    expect(game.lastRejected.some((r) => r.playerId === HUMAN && /own wave/i.test(r.reason))).toBe(
-      true,
-    )
+    expect(
+      game.lastRejected.some((r) => r.playerId === HUMAN && /is YOUR unit/.test(r.reason)),
+    ).toBe(true)
   })
 
   it('`attack wave:0` in a creepless zone is refused instead of eating the tick', async () => {

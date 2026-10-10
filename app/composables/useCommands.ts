@@ -6,12 +6,16 @@ import type {
   TeamId,
   WaveUnitState,
   SiltDwellerState,
+  IceState,
+  TerminalState,
+  TeamState,
 } from '~~/shared/types/game'
 import type { ItemDef } from '~~/shared/types/items'
 import type { AbilityDef } from '~~/shared/types/hero'
 import { isShopZoneFor, ZONE_IDS, ZONE_MAP, ZONES } from '~~/shared/constants/zones'
 import { zonesForMap } from '~~/shared/constants/maps'
 import { findPath } from '~~/shared/pathfinding'
+import { structureRefusal, structureZone } from '~~/shared/utils/structureRules'
 import { HEROES, isHeroId } from '~~/shared/constants/heroes'
 import { scripLead, formatScripShort, sparkline } from '~/utils/strategy'
 import { getTalentTree, talentUnlockLevel } from '~~/shared/constants/talents'
@@ -30,6 +34,7 @@ import {
   BREACH_BW_COST,
   waveUnitMaxHp,
 } from '~~/shared/constants/balance'
+import { WAVE_UNIT_LABELS } from '~~/shared/constants/world'
 
 export interface Suggestion {
   text: string
@@ -58,6 +63,13 @@ export interface GameContext {
   cycle?: number
   /** Game mode — the tutorial is exempt from the surrender cycle gate. */
   mode?: GameMode
+  /** Every ICE (broadcast unfogged) — lets the pre-flight refuse a structure
+   *  attack the server would refuse (tier order, own ICE, Hardened). */
+  ice?: IceState[]
+  /** Both Terminals (broadcast unfogged) — the firewalled/destroyed refusal. */
+  terminals?: { chaff: TerminalState; audit: TerminalState } | null
+  /** Both teams' state — when an enemy Harden expires (structureWalkNote). */
+  teams?: { chaff: TeamState; audit: TeamState } | null
 }
 
 /**
@@ -283,6 +295,39 @@ function wavesInZoneWithIndex(
 }
 
 /**
+ * Whose unit a wave is, in the crew's own unit name: "enemy guard" / "YOUR
+ * mule". `wave:N` counts BOTH crews' units in the zone, so an index shown
+ * without its owner is how `attack wave:1` ended up aimed at the player's own
+ * unit (playtest2 #9).
+ */
+function waveOwnerLabel(wave: WaveUnitState, myTeam: string): string {
+  const unit = WAVE_UNIT_LABELS[wave.team]?.[wave.type] ?? wave.type
+  return `${wave.team === myTeam ? 'YOUR' : 'enemy'} ${unit}`
+}
+
+/** "enemy guard 40/400" — owner, unit, INTEG against what it spawned with. */
+function waveSummary(wave: WaveUnitState, myTeam: string): string {
+  return `${waveOwnerLabel(wave, myTeam)} ${Math.ceil(wave.integ)}/${waveFullHp(wave)}`
+}
+
+/**
+ * Tag every `wave:N` in a line of text (a server coaching notice: "Swing now:
+ * `attack wave:0`") with the owner of the unit that index resolves to right
+ * now — "`attack wave:0` (enemy guard)". An index with no unit is left alone.
+ */
+export function annotateWaveRefs(
+  text: string,
+  player: Pick<PlayerState, 'zone' | 'team'>,
+  waves: WaveUnitState[],
+): string {
+  const inZone = waves.filter((c) => c.zone === player.zone)
+  return text.replace(/(`?[a-z]*\s*wave:(\d+)`?)/g, (match, _whole, idx: string) => {
+    const wave = inZone[Number(idx)]
+    return wave ? `${match} (${waveOwnerLabel(wave, player.team)})` : match
+  })
+}
+
+/**
  * The neutral camps standing in a zone, paired with the index `neutral:<i>`
  * resolves to. Mirrors `wavesInZoneWithIndex` / the server's
  * `neutralInZoneByIndex`: the index counts every camp in the zone in server
@@ -400,9 +445,14 @@ export function formatScanReadout(
     targets.push(`attack hero:${e.heroId ?? e.id}`)
   }
 
-  const zoneWaves = waves.filter((c) => c.zone === player.zone && c.integ > 0)
+  // `wave:N` counts EVERY unit in the zone, corpses included (the server's
+  // waveInZoneByIndex) — index into that list, filter the living separately.
+  const zoneAll = waves.filter((c) => c.zone === player.zone)
+  const zoneWaves = zoneAll.filter((c) => c.integ > 0)
   const hostileWaves = zoneWaves.filter((c) => c.team !== player.team)
   const ownWaves = zoneWaves.filter((c) => c.team === player.team)
+  const ref = (verb: string, c: WaveUnitState) =>
+    `${verb} wave:${zoneAll.indexOf(c)} (${waveOwnerLabel(c, player.team)})`
   if (hostileWaves.length) {
     here.push(`${hostileWaves.length} hostile wave${hostileWaves.length === 1 ? '' : 's'}`)
     // A unit inside the strip window goes down to ANY swing, so it is the one
@@ -419,12 +469,12 @@ export function formatScanReadout(
     // index must come from the zone list, not the global array.
     const pool = strippable.length ? strippable : hostileWaves
     const weakest = pool.reduce((a, b) => (a.integ <= b.integ ? a : b))
-    targets.push(`attack wave:${zoneWaves.indexOf(weakest)}`)
+    targets.push(ref('attack', weakest))
   }
   if (ownWaves.length) {
     const burnable = ownWaves.filter((c) => c.integ / waveFullHp(c) <= BURN_HP_THRESHOLD)
     here.push(`${ownWaves.length} of yours`)
-    if (burnable.length) targets.push(`burn wave:${zoneWaves.indexOf(burnable[0]!)}`)
+    if (burnable.length) targets.push(ref('burn', burnable[0]!))
   }
 
   const zoneIce = ice.find((t) => t.zone === player.zone && t.alive && t.team !== player.team)
@@ -532,7 +582,10 @@ export function formatCycleRecap(
     here.push(HEROES[e.heroId ?? '']?.name ?? e.name)
   }
 
-  const zoneWaves = waves.filter((c) => c.zone === player.zone && c.integ > 0)
+  // Index into EVERY unit in the zone (server waveInZoneByIndex): numbering
+  // only the living shifted a command past a corpse onto the next unit.
+  const zoneAll = waves.filter((c) => c.zone === player.zone)
+  const zoneWaves = zoneAll.filter((c) => c.integ > 0)
   const hostileWaves = zoneWaves.filter((c) => c.team !== player.team)
   const ownWaves = zoneWaves.filter((c) => c.team === player.team)
   const strippable = hostileWaves.filter((c) => c.integ / waveFullHp(c) <= STRIP_HP_THRESHOLD)
@@ -550,14 +603,14 @@ export function formatCycleRecap(
   if (strippable.length) {
     const weakest = strippable.reduce((a, b) => (a.integ <= b.integ ? a : b))
     verb = 'STRIP'
-    verbCmd = `attack wave:${zoneWaves.indexOf(weakest)}`
+    verbCmd = `attack wave:${zoneAll.indexOf(weakest)}`
   } else if (enemyHeroes[0]) {
     verb = 'ATTACK'
     verbCmd = `attack hero:${enemyHeroes[0].heroId ?? enemyHeroes[0].id}`
   } else if (hostileWaves.length) {
     const weakest = hostileWaves.reduce((a, b) => (a.integ <= b.integ ? a : b))
     verb = 'HIT'
-    verbCmd = `attack wave:${zoneWaves.indexOf(weakest)}`
+    verbCmd = `attack wave:${zoneAll.indexOf(weakest)}`
   } else if (zoneIce) {
     verb = 'ICE'
     verbCmd = `attack ice:${zoneIce.zone}`
@@ -566,7 +619,7 @@ export function formatCycleRecap(
     verbCmd = 'grab'
   } else if (burnable[0]) {
     verb = 'BURN'
-    verbCmd = `burn wave:${zoneWaves.indexOf(burnable[0])}`
+    verbCmd = `burn wave:${zoneAll.indexOf(burnable[0])}`
   }
 
   const zone = zonesForMap(opts.mapId).find((z) => z.id === player.zone)
@@ -655,13 +708,17 @@ export function formatLookReadout(
   const friendly = inZone.filter((c) => c.team === player.team && c.integ > 0)
   const camps = neutrals.filter((n) => n.zone === player.zone && n.alive)
   const lines: string[] = []
+  // Both crews are numbered in ONE list — say whose each index is.
+  const list = (ws: WaveUnitState[]) =>
+    ws.map((c) => `wave:${inZone.indexOf(c)} ${waveSummary(c, player.team)}`).join(', ')
   if (hostile.length)
     lines.push(
-      `LOOK · ${hostile.length} hostile wave${hostile.length === 1 ? '' : 's'}: ` +
-        hostile.map((c) => `wave:${inZone.indexOf(c)} ${Math.floor(c.integ)}hp`).join(', '),
+      `LOOK · ${hostile.length} hostile wave${hostile.length === 1 ? '' : 's'}: ${list(hostile)}`,
     )
   if (friendly.length)
-    lines.push(`LOOK · ${friendly.length} friendly wave${friendly.length === 1 ? '' : 's'}`)
+    lines.push(
+      `LOOK · ${friendly.length} friendly wave${friendly.length === 1 ? '' : 's'}: ${list(friendly)}`,
+    )
   if (camps.length) lines.push(`LOOK · camp: ${camps.map((c) => c.type).join(', ')}`)
   if (!lines.length) lines.push(`LOOK · nothing standing in ${zoneName(player.zone)}`)
   return lines
@@ -924,8 +981,22 @@ export function validateCommand(command: Command, context: GameContext): string 
           return `${t.name} is not in your zone`
         }
       }
-      if (t.kind === 'ice' && t.zone !== player.zone) {
-        return 'Must be in the ice’s zone to attack it'
+      // ICE / Terminal: refused for exactly what the server refuses, in its
+      // words (shared/utils/structureRules) — from any zone. Out of zone the
+      // order is a walk there (approachStructure), gated as the walk is.
+      if (t.kind === 'ice' || t.kind === 'terminal') {
+        // Skipped until the structures have hydrated (the store starts empty)
+        // — an empty list would read as "no standing ice" everywhere.
+        const zone = structureZone(player.team, t)
+        if (context.ice?.length && (t.kind === 'ice' || context.terminals)) {
+          const refusal = structureRefusal(context.ice, context.terminals, player.team, t, {
+            fromRange: zone !== null && zone !== player.zone,
+          })
+          if (refusal) return refusal
+        }
+        if (zone && zone !== player.zone) {
+          return validateCommand({ type: 'move', zone }, context)
+        }
       }
       if (t.kind === 'tenant' && player.zone !== TENANT_ZONE) {
         return `Must be in the ${TENANT_ZONE} to attack Tenant`
@@ -945,12 +1016,6 @@ export function validateCommand(command: Command, context: GameContext): string 
         const inZone = context.neutrals.filter((n) => n.zone === player.zone)
         const neutral = inZone[t.index]
         if (!neutral || !neutral.alive) return `No neutral wave at index ${t.index}`
-      }
-      if (t.kind === 'terminal') {
-        const enemyBase = player.team === 'chaff' ? 'landing-terminal' : 'rookery-terminal'
-        if (player.zone !== enemyBase) {
-          return `Must be in the enemy base (${enemyBase}) to attack their Terminal`
-        }
       }
       return null
     }
@@ -1582,9 +1647,7 @@ export function useCommands() {
           const denyable = wave.integ <= waveFullHp(wave) * BURN_HP_THRESHOLD
           out.push({
             text: ref,
-            description: `${wave.type} (INTEG: ${Math.ceil(wave.integ)}/${waveFullHp(wave)})${
-              denyable ? ' — denyable' : ''
-            }`,
+            description: `${waveSummary(wave, player.team)}${denyable ? ' — denyable' : ''}`,
           })
         }
       }
@@ -1808,7 +1871,7 @@ export function useCommands() {
         if (!ref.includes(partial)) continue
         suggestions.push({
           text: ref,
-          description: `${wave.type} enemy (INTEG: ${Math.ceil(wave.integ)}/${waveFullHp(wave)})`,
+          description: waveSummary(wave, context.player.team),
         })
       }
     }

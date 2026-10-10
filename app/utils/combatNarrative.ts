@@ -14,6 +14,7 @@
  * Core falling is a "core dumped". Kept parseable — not obfuscated.
  */
 import type { GameEvent } from '~~/shared/types/game'
+import type { TargetType } from '~~/shared/types/hero'
 import { isStructureTarget, npcKind, teamLabel, type CombatLine, type Salience } from './combatLog'
 import { buffLabel } from './buffs'
 import { WARD_LABELS } from '~~/shared/constants/world'
@@ -39,6 +40,11 @@ export interface NarrativeContext {
   /** Whether an ability id deals damage (its def carries a damage effect). Lets
    *  the feed tell the caster a damaging cast landed nothing. Optional. */
   abilityDealsDamage?: (abilityId: unknown) => boolean
+  /** The ability's definition (heroes.ts): its targeting and description. Lets
+   *  a self-targeted cast say what it gave the caster. Optional. */
+  abilityInfo?: (
+    abilityId: unknown,
+  ) => { targetType: TargetType; description: string; grants?: boolean } | undefined
 }
 
 const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v) || 0)
@@ -91,6 +97,32 @@ function actorSalience(playerId: unknown, ctx: NarrativeContext): Salience {
   if (me && playerId === me) return 'mine-out'
   if (ctx.myTeam && ctx.teamOf(playerId) === ctx.myTeam) return 'ally'
   return 'world'
+}
+
+/**
+ * MY self-targeted cast, said as what it gave me (`grants`: a buff / shield /
+ * heal / reveal effect): "Phase Shift up — phase out
+ * to dodge the next incoming attack". Derived from the ability definition (its
+ * targetType and description), never hardcoded per hero. A self-targeted
+ * ability typed at someone else still lands on the caster — say so, because
+ * "You cast Phase Shift on Socket" read as a whiff at Socket (playtest2 84.png).
+ * Null when the ability is not self-targeted or its definition is unknown.
+ */
+function selfCastOutcome(p: Record<string, unknown>, ctx: NarrativeContext): string | null {
+  const info = ctx.abilityInfo?.(p.abilityId)
+  if (!info || info.targetType !== 'self') return null
+  const first = (info.description.split(/(?<=\.)\s/)[0] ?? '').replace(/\.$/, '').trim()
+  if (!first) return null
+  const what = first.charAt(0).toLowerCase() + first.slice(1)
+  const target = p.targetId
+  const misaimed =
+    typeof target === 'string' && target !== '' && target !== ctx.playerId
+      ? ` (self-targeted: it went on you, not ${ctx.entityLabel(target)})`
+      : ''
+  // A buff / shield / heal / sight is something you now HAVE ("… up"); a
+  // self-cast like a recall mark is something you DID.
+  const name = ctx.abilityLabel(p.abilityId)
+  return info.grants ? `${name} up — ${what}${misaimed}` : `You cast ${name} — ${what}${misaimed}`
 }
 
 /** Gold-change reasons already narrated by a dedicated line — suppressed as noise. */
@@ -264,9 +296,13 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 
     case 'ability_used': {
       const castSalience = salience(p.playerId, p.targetId, ctx)
+      const selfOutcome =
+        ctx.playerId && p.playerId === ctx.playerId ? selfCastOutcome(p, ctx) : null
       return {
         cycle,
-        text: `${label(p.playerId)} cast ${ctx.abilityLabel(p.abilityId)}${p.targetId ? ` on ${label(p.targetId)}` : ''}`,
+        text:
+          selfOutcome ??
+          `${label(p.playerId)} cast ${ctx.abilityLabel(p.abilityId)}${p.targetId ? ` on ${label(p.targetId)}` : ''}`,
         type: 'ability',
         // Source→target, not actor-only: a cast aimed at ME is my business, and
         // the story view sorts by salience — ranking it as a bystander event
@@ -704,6 +740,9 @@ function pairCombatEvents(
         target !== me &&
         !explained &&
         ctx.abilityDealsDamage?.(p.abilityId) &&
+        // A self-targeted kit (DMZ) typed at an enemy went on the caster —
+        // its damage is not owed to that enemy this cycle.
+        ctx.abilityInfo?.(p.abilityId)?.targetType !== 'self' &&
         ctx.teamOf(target) !== ctx.myTeam &&
         !hits.some((h) => h.payload.targetId === target)
       ) {

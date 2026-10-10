@@ -4,9 +4,11 @@ import {
   newlyLearned,
   COACH_TIP_IDS,
   COACH_COOLDOWN_CYCLES,
+  formatCoachLine,
   type CoachInput,
   type CoachLearned,
 } from '~~/app/utils/coach'
+import { TUTORIAL_STEP_COUNT } from '~~/shared/constants/tutorial'
 
 /**
  * The coach's contract is mostly about when it stays QUIET. A teaching layer
@@ -183,48 +185,19 @@ describe('the coach', () => {
       expect(tip?.command).toBe('breach')
     })
 
-    it('stays quiet about locked tutorial verbs (buy/cast at step 0)', () => {
-      // First-play: the coach used to yell `buy edge_kit` / `cast q` while the
-      // tutorial still only unlocked `move`. The engine rejected those and
-      // the player thought the game was broken.
-      const shop = input({
-        tutorialStep: 0,
-        inShopZone: true,
-        onRoute: true,
-        cycle: 20,
-        scrip: 900,
-        items: [null, null, null, null, null, null],
-        lastHits: 99,
-        strippableWaves: 0,
-      })
-      expect(evaluateCoach({ ...shop, tutorialStep: undefined }, {}, {})?.id).toBe('spend_scrip')
-      expect(evaluateCoach(shop, {}, {})).toBeNull()
-
-      const fight = input({
-        tutorialStep: 0,
-        castsMade: 0,
-        enemiesHere: 1,
-        hpFraction: 1,
-        lastHits: 99,
-      })
-      expect(evaluateCoach({ ...fight, tutorialStep: undefined }, {}, {})?.id).toBe('use_abilities')
-      expect(evaluateCoach(fight, {}, {})).toBeNull()
-    })
-
-    it('still tells a tutorial player to leave base (move is unlocked at step 0)', () => {
-      const tip = evaluateCoach(
-        input({
-          tutorialStep: 0,
-          inShopZone: true,
-          onRoute: false,
-          cycle: 20,
-          scrip: 0,
-        }),
-        {},
-        {},
+    it('is silent through the scripted tutorial — the drill notices are its voice (playtest2 #3)', () => {
+      // Every coach line in a drill duplicated the server's 🎓 notice and the
+      // TutorialHint panel: one event, four lines. Even verbs the step has
+      // unlocked (move at step 0) are the drill's business, not the coach's.
+      const home = input({ inShopZone: true, onRoute: false, cycle: 20, scrip: 0 })
+      expect(evaluateCoach(home, {}, {})?.id).toBe('leave_base')
+      for (let step = 0; step < TUTORIAL_STEP_COUNT; step++) {
+        expect(evaluateCoach({ ...home, tutorialStep: step }, {}, {}), `step ${step}`).toBeNull()
+      }
+      // Free play after graduating (still mode 'tutorial') — the coach is back.
+      expect(evaluateCoach({ ...home, tutorialStep: TUTORIAL_STEP_COUNT }, {}, {})?.id).toBe(
+        'leave_base',
       )
-      expect(tip?.id).toBe('leave_base')
-      expect(tip?.command).toBe('move coldstore-t2-chaff')
     })
 
     it('teaches the two slots once the player is in a fight with an item active', () => {
@@ -235,5 +208,29 @@ describe('the coach', () => {
       )
       expect(tip?.id).toBe('dual_slot')
     })
+  })
+})
+
+describe('formatCoachLine — one line, tagged by mode (playtest2 #2)', () => {
+  const tip = evaluateCoach(input({ enemiesHere: 1, castsMade: 0 }), {}, {})!
+
+  it('a ranked / normal match gets the regular coach: [COACH], command inline, no "try:"', () => {
+    for (const mode of ['normal', undefined] as const) {
+      const line = formatCoachLine(tip, mode)
+      expect(line.startsWith('[COACH] ')).toBe(true)
+      expect(line).not.toContain('[TUTORIAL]')
+      expect(line).not.toContain('try:')
+      expect(line.endsWith('`cast q`')).toBe(true)
+    }
+  })
+
+  it('only a tutorial game tags coaching [TUTORIAL]', () => {
+    const line = formatCoachLine(tip, 'tutorial')
+    expect(line.startsWith('[TUTORIAL] ')).toBe(true)
+    expect(line).not.toContain('[COACH]')
+  })
+
+  it('a tip without a command is just its text', () => {
+    expect(formatCoachLine({ ...tip, command: undefined }, 'normal')).toBe(tip.text)
   })
 })

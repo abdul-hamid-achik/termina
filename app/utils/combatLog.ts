@@ -193,6 +193,9 @@ function storyPriority(line: CombatLine): number {
   return 5
 }
 
+/** Cycles without any visible enemy farm before "enemy farming in sight" is news again. */
+const ENEMY_FARM_QUIET_CYCLES = 20
+
 /**
  * Fold every farm-tagged line of a cycle into ONE dim summary line:
  * "· farm: you +38g (last-hit) · team 4 waves, 1 camp · enemy farming in sight".
@@ -204,7 +207,9 @@ export function digestFarmNoise(lines: CombatLine[]): CombatLine[] {
   let bucket: CombatLine[] = []
   // "enemy farming in sight" is a STATE, not an event: printing it every cycle
   // the enemy stands in view filled whole beats with the same dim line
-  // (playtest 13.png). Say it when it starts; stay quiet while it persists.
+  // (playtest 13.png), and re-saying it after every short gap still printed it
+  // every 3–4 cycles (playtest2). Say it when it NEWLY starts — after
+  // ENEMY_FARM_QUIET_CYCLES cycles with no enemy farm in sight at all.
   let enemyInSightCycle: number | null = null
 
   const flush = () => {
@@ -257,7 +262,11 @@ export function digestFarmNoise(lines: CombatLine[]): CombatLine[] {
     if (enemyCamps > 0) enemyBits.push(`${enemyCamps} camp${enemyCamps === 1 ? '' : 's'}`)
     if (enemyBurns > 0) enemyBits.push(`${enemyBurns} burn${enemyBurns === 1 ? '' : 's'}`)
     if (enemyBits.length) parts.push(`enemy ${enemyBits.join(', ')}`)
-    else if (enemyHitsSeen && enemyInSightCycle !== cycle - 1) parts.push('enemy farming in sight')
+    else if (
+      enemyHitsSeen &&
+      (enemyInSightCycle === null || cycle - enemyInSightCycle > ENEMY_FARM_QUIET_CYCLES)
+    )
+      parts.push('enemy farming in sight')
     if (enemyHitsSeen || enemyBits.length) enemyInSightCycle = cycle
     if (parts.length) {
       // The digest carrying MY rewards is mine — the ME filter must keep it.

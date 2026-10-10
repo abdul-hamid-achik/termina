@@ -8,11 +8,15 @@ import type {
   GameMode,
   SiltDwellerState,
   WaveUnitState,
+  IceState,
+  TerminalState,
+  TeamState,
 } from '~~/shared/types/game'
 import type { TargetRef } from '~~/shared/types/commands'
 import type { ItemDef } from '~~/shared/types/items'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import { pathDistance } from '~~/shared/pathfinding'
+import { structureWalkNote, structureZone } from '~~/shared/utils/structureRules'
 
 const props = withDefaults(
   defineProps<{
@@ -54,6 +58,19 @@ const props = withDefaults(
      * every legal wave target.
      */
     waves?: WaveUnitState[]
+    /**
+     * Changes when the player's situation does (death, respawn, a new tutorial
+     * step). A refused command the prompt kept for fixing is dropped then: its
+     * `!!` reason described a moment that is over (playtest2 30.png).
+     */
+    situationKey?: string
+    /** Every ICE (unfogged) — the pre-flight refuses a structure attack the
+     *  server would (tier order / own / Hardened) instead of walking toward it. */
+    ice?: IceState[]
+    /** Both Terminals (unfogged) — the firewalled/destroyed refusal. */
+    terminals?: { chaff: TerminalState; audit: TerminalState } | null
+    /** Both teams — how long an enemy Harden still holds (structureWalkNote). */
+    teams?: { chaff: TeamState; audit: TeamState } | null
   }>(),
   {
     placeholder: 'Enter command...',
@@ -78,6 +95,22 @@ const { parse, autocomplete, addToHistory } = useCommands()
 
 const input = ref('')
 const inputEl = ref<HTMLInputElement>()
+
+/** The text Enter last refused and left in the prompt (null once handled). */
+let refusedText: string | null = null
+watch(
+  () => props.situationKey,
+  () => {
+    // Only the untouched refusal goes — anything typed since is the player's.
+    if (refusedText !== null && input.value === refusedText) input.value = ''
+    refusedText = null
+  },
+)
+// The moment the prompt holds anything else, the refusal is handled: text typed
+// back to the same words later is the player's own, not the kept refusal.
+watch(input, (value) => {
+  if (refusedText !== null && value !== refusedText) refusedText = null
+})
 const history = ref<string[]>([])
 const historyIndex = ref(-1)
 const open = ref(false)
@@ -97,6 +130,9 @@ const gameContext = computed<GameContext>(() => ({
   neutrals: props.neutrals,
   tenant: props.tenant,
   waves: props.waves,
+  ice: props.ice,
+  terminals: props.terminals,
+  teams: props.teams,
 }))
 
 /**
@@ -174,6 +210,12 @@ function attackTargetLabel(t: TargetRef): string {
   }
 }
 
+/** This game's map, for path lengths — undefined until the zones hydrate. */
+function zoneFilter(): ((id: string) => boolean) | undefined {
+  const zones = props.visibleZones ?? {}
+  return Object.keys(zones).length > 0 ? (id) => !!zones[id] : undefined
+}
+
 // Inline validation preview
 const preview = computed(() => {
   const val = input.value.trim()
@@ -249,16 +291,29 @@ const preview = computed(() => {
   if (command.type === 'move') {
     const destZone = ZONE_MAP[command.zone]
     // Auto-path: show the travel time so a cross-map order reads as a plan.
-    const zones = props.visibleZones ?? {}
-    const hasZones = Object.keys(zones).length > 0
-    const hops = props.player
-      ? pathDistance(props.player.zone, command.zone, hasZones ? (id) => !!zones[id] : undefined)
-      : 0
+    const hops = props.player ? pathDistance(props.player.zone, command.zone, zoneFilter()) : 0
     const eta = hops > 1 ? ` (${hops} cycles)` : ''
     return { type: 'valid' as const, text: `>> Move to ${destZone?.name ?? command.zone}${eta}` }
   }
 
   if (command.type === 'attack') {
+    // ICE / Terminal from range: the server walks there and swings on arrival
+    // (ActionResolver.approachStructure) — say it is a walk, and how long.
+    const structure = props.player ? structureZone(props.player.team, command.target) : null
+    if (props.player && structure && structure !== props.player.zone) {
+      const hops = pathDistance(props.player.zone, structure, zoneFilter())
+      const what = command.target.kind === 'terminal' ? 'the enemy Terminal' : 'ICE'
+      // A Hardened ICE: the same words the server replies with. A fresh order
+      // resolves in the cycle AFTER the one on screen, hence the +1.
+      const note =
+        props.cycle !== undefined
+          ? structureWalkNote(props.ice ?? [], props.teams, command.target, props.cycle + 1)
+          : null
+      return {
+        type: 'valid' as const,
+        text: `>> Walk to ${ZONE_MAP[structure]?.name ?? structure} (${hops} cycle${hops === 1 ? '' : 's'}), then attack ${what}${note ? ` — ${note}` : ''}`,
+      }
+    }
     return { type: 'valid' as const, text: `>> Attack ${attackTargetLabel(command.target)}` }
   }
 
@@ -383,6 +438,7 @@ function handleSubmit() {
   // so the player can fix it.
   if (preview.value?.type === 'error') {
     emit('reject', preview.value.text.replace(/^!!\s*/, ''))
+    refusedText = input.value
     return
   }
 
@@ -390,6 +446,7 @@ function handleSubmit() {
   // tick the parent buffers the command and auto-sends it when the tick
   // arrives (shown via the bufferedCommand prop).
   emit('submit', cmd)
+  refusedText = null
   addToHistory(cmd)
   history.value.unshift(cmd)
   if (history.value.length > 50) history.value.pop()

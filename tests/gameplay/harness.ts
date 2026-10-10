@@ -108,6 +108,10 @@ export class Run {
   /** Player-action rejections from the most recent `tick()` (the feedback the
    *  real game pushes via onActionRejected). */
   lastRejected: Array<{ playerId: string; reason: string }> = []
+  /** Coaching notices (tutorial guidance) from the most recent `tick()`. */
+  lastNotices: Array<{ playerId: string; message: string }> = []
+  /** Every notice across the run, in order. */
+  readonly allNotices: Array<{ playerId: string; message: string }> = []
 
   constructor(
     private readonly sm: StateManagerApi,
@@ -147,6 +151,8 @@ export class Run {
       this.lastEvents = result.events
       this.allEvents.push(...result.events)
       this.lastRejected = result.rejectedActions
+      this.lastNotices = result.notices
+      this.allNotices.push(...result.notices)
     }
     return this
   }

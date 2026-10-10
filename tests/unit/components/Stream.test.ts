@@ -132,6 +132,18 @@ describe('Stream', () => {
       expect(row.classes()).toContain('border-ability/40')
     })
 
+    it('renders a [COACH] line with its own tag — never as [TUTORIAL] (playtest2 76.png)', () => {
+      const wrapper = mount(Stream, {
+        props: {
+          events: [makeEvent({ text: '[COACH] Only the killing blow pays.', type: 'system' })],
+        },
+      })
+      const row = wrapper.get('[data-testid="log-event"]')
+      expect(row.text()).toContain('[COACH]')
+      expect(row.text()).not.toContain('[TUTORIAL]')
+      expect(row.text()).toContain('Only the killing blow pays.')
+    })
+
     it('does not pin beat headers when pinBeats is off', () => {
       const wrapper = mount(Stream, {
         props: { events: [makeEvent({ cycle: 4 })], pinBeats: false },

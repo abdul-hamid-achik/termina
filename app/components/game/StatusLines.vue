@@ -55,6 +55,7 @@ const hopLine = computed(() => {
     threat,
     hasReadyAbility: props.hasReadyAbility,
     hasHero: props.hasHero,
+    enemyIcePresent: props.enemyIcePresent,
   })
   const route = active
     ? `${active.name.toUpperCase()} hop ${active.depth + 1}/${active.total}`

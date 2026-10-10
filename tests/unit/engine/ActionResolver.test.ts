@@ -1640,7 +1640,7 @@ describe('ActionResolver', () => {
       })
       const result = attack(state, { kind: 'wave', index: 0 })
       expect(result.rejected).toHaveLength(1)
-      expect(result.rejected[0]!.reason).toMatch(/own wave/i)
+      expect(result.rejected[0]!.reason).toMatch(/is YOUR unit/)
       expect(result.state.waves[0]!.integ).toBe(5)
       expect(result.state.players['p1']!.scrip).toBe(600)
       expect(result.state.players['p1']!.xp).toBe(0)

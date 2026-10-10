@@ -486,7 +486,9 @@ describe('combat', () => {
     ).toBe(true)
   })
 
-  it('attacking a ice from a different zone is rejected with feedback', async () => {
+  it('attacking ICE from a different zone walks there instead of failing', async () => {
+    // Was "rejected with feedback" until playtest 2: ICE never moves, so the
+    // order now auto-paths and swings on arrival (structureApproach.test.ts).
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me = await game.me()
     const enemySuffix = me.team === 'chaff' ? 'audit' : 'chaff'
@@ -495,13 +497,11 @@ describe('combat', () => {
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-cross' } },
     }))
 
-    // The enemy Coldstore T1 stands in coldstore-t1-<suffix>, not coldstore-cross — out of reach.
     game.submit({ type: 'attack', target: { kind: 'ice', zone: `coldstore-t1-${enemySuffix}` } })
     await game.tick()
 
-    expect(
-      game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('not in your zone')),
-    ).toBe(true)
+    expect(game.lastRejected.filter((r) => r.playerId === HUMAN)).toEqual([])
+    expect((await game.me()).zone).toBe(`coldstore-t1-${enemySuffix}`)
   })
 
   it('a backdoor-protected ice (its front ice still up) tells the player it is protected', async () => {

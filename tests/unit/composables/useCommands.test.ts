@@ -17,9 +17,14 @@ import {
   formatNetReadout,
   formatLookReadout,
   formatHelpReadout,
+  annotateWaveRefs,
   type GameContext,
 } from '~~/app/composables/useCommands'
-import type { PlayerState, ZoneRuntimeState, WaveUnitState } from '~~/shared/types/game'
+import type { PlayerState, ZoneRuntimeState, WaveUnitState, GameState } from '~~/shared/types/game'
+import type { TargetRef } from '~~/shared/types/commands'
+import { initializeIce } from '~~/server/game/map/zones'
+import { initializeTerminals } from '~~/server/game/engine/TerminalSystem'
+import { approachStructure } from '~~/server/game/engine/ActionResolver'
 import type { ItemDef } from '~~/shared/types/items'
 import type { AbilityDef, AbilityEffect } from '~~/shared/types/hero'
 import { ZONE_IDS } from '~~/shared/constants/zones'
@@ -2664,7 +2669,7 @@ describe('the R3-08 readouts (who / net / look)', () => {
       { id: 'n0', zone: 'coldstore-cross', alive: true, type: 'stub' },
     ])
     expect(lines[0]).toContain('1 hostile wave')
-    expect(lines[0]).toContain('wave:0 120hp')
+    expect(lines[0]).toContain('wave:0 enemy guard 120/400')
     expect(lines.some((l) => l.includes('1 friendly wave'))).toBe(true)
     expect(lines.some((l) => l.includes('camp: stub'))).toBe(true)
   })
@@ -2764,6 +2769,188 @@ describe('attack names a hero that exists', () => {
       validateCommand(
         { type: 'attack', target: { kind: 'hero', name: 'nobody' } },
         { ...ctx, allPlayers: {} },
+      ),
+    ).toBeNull()
+  })
+})
+
+// playtest2 #9: `attack wave:1` hit the player's OWN unit. The index counts
+// every unit in the zone — both crews, corpses too — so ownership must be on
+// screen wherever an index is, and every index must count the way the server's
+// waveInZoneByIndex does.
+describe('wave indices carry their owner (playtest2 #9)', () => {
+  const zone = 'coldstore-t1-chaff'
+  const player = () => makePlayer({ id: 'p1', team: 'chaff', zone })
+  const w = (
+    id: string,
+    team: 'chaff' | 'audit',
+    integ: number,
+    type: WaveUnitState['type'] = 'line',
+  ) => ({ id, team, zone, integ, maxInteg: 400, type }) as WaveUnitState
+  // A corpse first (unreaped, still counted by the server), then MY mule,
+  // then an enemy guard inside the strip window.
+  const waves = () => [w('dead', 'audit', 0), w('mine', 'chaff', 90), w('foe', 'audit', 40)]
+
+  it('the HERE verb aims at the enemy unit, not the one a corpse shift lands on', () => {
+    const recap = formatCycleRecap(player(), { p1: player() }, { waves: waves() })
+    expect(recap.verbCmd).toBe('attack wave:2')
+  })
+
+  it('the scan names the owner beside each wave command', () => {
+    const out = formatScanReadout(player(), { p1: player() }, { waves: waves() }).join('\n')
+    expect(out).toContain('attack wave:2 (enemy guard)')
+    expect(out).toContain('burn wave:1 (YOUR mule)')
+  })
+
+  it('look lists both crews with their index and owner', () => {
+    const lines = formatLookReadout(player(), waves(), [])
+    const text = lines.join('\n')
+    expect(text).toContain('wave:2 enemy guard 40/400')
+    expect(text).toContain('wave:1 YOUR mule 90/400')
+  })
+
+  it('autocomplete says whose unit each index is', () => {
+    const { autocomplete } = useCommands()
+    const ctx = makeContext({ player: player(), waves: waves() })
+    const attack = autocomplete('attack wave', ctx)
+    expect(attack.map((s) => [s.text, s.description])).toEqual([['wave:2', 'enemy guard 40/400']])
+    const burn = autocomplete('burn wave', ctx)
+    expect(burn.map((s) => [s.text, s.description])).toEqual([
+      ['wave:1', 'YOUR mule 90/400 — denyable'],
+    ])
+  })
+
+  it('annotates a coaching notice’s wave:N with its owner', () => {
+    expect(
+      annotateWaveRefs(
+        'A unit in your zone is at 40/400 INTEG — swing now: `attack wave:2`.',
+        player(),
+        waves(),
+      ),
+    ).toBe('A unit in your zone is at 40/400 INTEG — swing now: `attack wave:2` (enemy guard).')
+    // An index with nothing behind it is left alone.
+    expect(annotateWaveRefs('`attack wave:9`', player(), waves())).toBe('`attack wave:9`')
+  })
+})
+
+// `attack ice:<zone>` / `attack terminal` from range is a standing order the
+// server walks (ActionResolver.approachStructure). The prompt must not refuse
+// it for being out of zone, and must refuse exactly what the server refuses,
+// in the server's words — both read shared/utils/structureRules.
+describe('structure attacks from range (approachStructure mirror)', () => {
+  const base = (over: Partial<PlayerState> = {}) =>
+    makePlayer({ zone: 'rookery-terminal', ...over })
+  const ctxFor = (player: PlayerState, extra: Partial<GameContext> = {}): GameContext =>
+    makeContext({
+      player,
+      allPlayers: { p1: player },
+      ice: initializeIce(),
+      terminals: initializeTerminals(),
+      ...extra,
+    })
+  const atk = (target: TargetRef, ctx: GameContext) =>
+    validateCommand({ type: 'attack', target }, ctx)
+
+  it('accepts an enemy T1 from the base — the hero walks there', () => {
+    expect(atk({ kind: 'ice', zone: 'coldstore-t1-audit' }, ctxFor(base()))).toBeNull()
+  })
+
+  it('accepts it without the structure context too (no out-of-zone refusal left)', () => {
+    expect(
+      atk(
+        { kind: 'ice', zone: 'coldstore-t1-audit' },
+        makeContext({ player: base(), allPlayers: { p1: base() } }),
+      ),
+    ).toBeNull()
+  })
+
+  it('a Hardened ICE is no refusal from range (the walk outlasts it), and still one in its zone', () => {
+    const hardened = initializeIce().map((t) =>
+      t.zone === 'coldstore-t1-audit' ? { ...t, invulnerable: true } : t,
+    )
+    expect(
+      atk({ kind: 'ice', zone: 'coldstore-t1-audit' }, ctxFor(base(), { ice: hardened })),
+    ).toBeNull()
+    const there = base({ zone: 'coldstore-t1-audit' })
+    expect(atk({ kind: 'ice', zone: 'coldstore-t1-audit' }, ctxFor(there, { ice: hardened }))).toBe(
+      'That ice is Hardened — attacks do nothing until it expires',
+    )
+  })
+
+  it('refuses tier order / own ICE with the server texts', () => {
+    expect(atk({ kind: 'ice', zone: 'coldstore-t2-audit' }, ctxFor(base()))).toBe(
+      'That ice is protected — destroy the one in front of it first',
+    )
+    expect(atk({ kind: 'ice', zone: 'coldstore-t1-chaff' }, ctxFor(base()))).toBe(
+      'That is your own ICE',
+    )
+  })
+
+  it('refuses a firewalled Terminal from range, accepts an exposed one', () => {
+    expect(atk({ kind: 'terminal' }, ctxFor(base()))).toBe(
+      'The enemy Terminal is firewalled — destroy a T3 ice first',
+    )
+    const t3Down = initializeIce().map((t) =>
+      t.zone === 'coldstore-t3-audit' ? { ...t, alive: false, integ: 0 } : t,
+    )
+    expect(atk({ kind: 'terminal' }, ctxFor(base(), { ice: t3Down }))).toBeNull()
+  })
+
+  it('a rooted hero cannot start the walk (the move rule gates it)', () => {
+    const rooted = base({ buffs: [{ id: 'root', cyclesRemaining: 2, stacks: 1 }] as never })
+    expect(atk({ kind: 'ice', zone: 'coldstore-t1-audit' }, ctxFor(rooted))).toBe(
+      'Cannot move while rooted or stunned',
+    )
+  })
+
+  it('refuses a walk to ICE off this game’s map', () => {
+    const oneLane = { 'rookery-terminal': { id: 'rookery-terminal', wards: [] } }
+    expect(
+      atk({ kind: 'ice', zone: 'coldstore-t1-audit' }, ctxFor(base(), { visibleZones: oneLane })),
+    ).toBe("coldstore-t1-audit isn't on this map")
+  })
+
+  it('says exactly what the server says, for every ICE and the Terminal', () => {
+    const states = [
+      initializeIce(),
+      initializeIce().map((t) =>
+        t.team === 'audit' && t.zone.includes('-t1-') ? { ...t, alive: false, integ: 0 } : t,
+      ),
+      initializeIce().map((t) => ({ ...t, invulnerable: true })),
+    ]
+    for (const ice of states) {
+      const terminals = initializeTerminals()
+      const player = base()
+      const state = { ice, terminals, players: { p1: player } } as unknown as GameState
+      const targets: TargetRef[] = [
+        { kind: 'terminal' },
+        ...ice.map((t) => ({ kind: 'ice' as const, zone: t.zone })),
+      ]
+      for (const target of targets) {
+        const server = approachStructure(state, {
+          playerId: 'p1',
+          command: { type: 'attack', target },
+        })
+        const serverText = server && 'refuse' in server ? server.refuse : null
+        expect(atk(target, ctxFor(player, { ice, terminals })), JSON.stringify(target)).toBe(
+          serverText,
+        )
+      }
+    }
+  })
+})
+
+describe('structure mirror before the state hydrates', () => {
+  it('does not read an empty ICE list / missing Terminals as a refusal', () => {
+    const player = makePlayer({ zone: 'rookery-terminal' })
+    const ctx = makeContext({ player, allPlayers: { p1: player }, ice: [], terminals: null })
+    expect(
+      validateCommand({ type: 'attack', target: { kind: 'ice', zone: 'coldstore-t1-audit' } }, ctx),
+    ).toBeNull()
+    expect(
+      validateCommand(
+        { type: 'attack', target: { kind: 'terminal' } },
+        { ...ctx, ice: initializeIce() },
       ),
     ).toBeNull()
   })

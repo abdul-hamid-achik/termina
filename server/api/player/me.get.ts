@@ -1,5 +1,6 @@
 import { Effect } from 'effect'
 import { getGameRuntime } from '~~/server/plugins/game-server'
+import { isGuestId } from '~~/server/utils/guest'
 
 /**
  * Refresh the session user from the DB row. The session payload is stamped at
@@ -12,6 +13,24 @@ export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
   if (!session?.user?.id) {
     throw createError({ statusCode: 401, message: 'Authentication required' })
+  }
+
+  // A guest has no `players` row by design (server/api/auth/guest.post.ts), so
+  // the DB read below 404'd for every guest on every call — console noise, and
+  // a contract the client had to special-case. Answer from the session instead,
+  // in the same shape, flagged `guest: true`; nothing to re-stamp.
+  const sessionUser = session.user
+  if (sessionUser.guest || isGuestId(sessionUser.id)) {
+    return {
+      user: {
+        id: sessionUser.id,
+        username: sessionUser.username,
+        avatarUrl: sessionUser.avatarUrl ?? null,
+        selectedAvatar: sessionUser.selectedAvatar ?? null,
+        tutorialCompleted: !!sessionUser.tutorialCompleted,
+        guest: true as const,
+      },
+    }
   }
 
   const runtime = getGameRuntime()

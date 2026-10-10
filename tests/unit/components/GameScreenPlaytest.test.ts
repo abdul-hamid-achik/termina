@@ -10,6 +10,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useGameStore } from '~~/app/stores/game'
 import { makeCycleMessage, makeRoster, makeZone } from '~~/app/stories/fixtures'
 import type { GameState } from '~~/shared/types/game'
+import { TUTORIAL_FLOW } from '~~/shared/constants/tutorial'
 
 // ── useGameTransport mock ────────────────────────────────────────────
 // GameScreen calls useGameTransport() at setup (the WS/Ably picker) and
@@ -103,7 +104,15 @@ const stubs = {
   },
   PostGame: {
     name: 'PostGame',
-    props: ['winner', 'stats', 'players', 'currentPlayerId', 'gameId'],
+    props: [
+      'winner',
+      'stats',
+      'players',
+      'currentPlayerId',
+      'gameId',
+      'durationCycles',
+      'skippedDrills',
+    ],
     template: '<div data-testid="post-game-stub">post-game</div>',
   },
   GameStateBar: true,
@@ -274,6 +283,226 @@ describe('threat verdict (playtest 28.png / 29.png)', () => {
     await wrapper.vm.$nextTick()
 
     expect(feed(wrapper).at(-1)).toContain('heavy fire')
+    wrapper.unmount()
+  })
+})
+
+describe('wave fire vetoes FAVORED on the rig line (playtest2 32.png)', () => {
+  /** p1 alone at the crossing with ONE low enemy hero: a 1v1 p1 "leads". */
+  function oneVsOne(integ: number) {
+    const players = makeRoster()
+    for (const id of Object.keys(players)) {
+      if (id !== 'p1') players[id] = { ...players[id]!, zone: 'seawall-cross' }
+    }
+    players.e1 = { ...players.e1!, zone: 'coldstore-cross', alive: true, integ: 150 }
+    players.p1 = { ...players.p1!, zone: 'coldstore-cross', alive: true, integ, maxInteg: 598 }
+    return players
+  }
+
+  it('"Waves hit You ×4 for 118" at 480/598 reads CONTESTED, not FAVORED', async () => {
+    const store = seedActiveGame({ players: oneVsOne(598) })
+    const wrapper = mountGameScreen()
+    store.updateFromCycle(makeCycleMessage({ players: oneVsOne(480) }))
+    const hits = [30, 30, 29, 29].map((amount, i) => ({
+      cycle: store.cycle,
+      type: 'damage',
+      payload: { sourceId: `wave_${i}`, targetId: 'p1', amount, damageType: 'kinetic' },
+    }))
+    store.addEvents(hits as never)
+    await wrapper.vm.$nextTick()
+
+    const rig = feed(wrapper).filter((t) => t.includes('INTEG 480/598'))
+    expect(rig.at(-1)).toContain('Waves are chewing you')
+    expect(rig.at(-1)).toContain('CONTESTED')
+    expect(rig.at(-1)).not.toContain('FAVORED')
+    wrapper.unmount()
+  })
+})
+
+describe('coaching is tagged by mode, one line per tip (playtest2 76/82.png)', () => {
+  function contact() {
+    const players = makeRoster()
+    players.e1 = { ...players.e1!, zone: 'coldstore-cross', alive: true, integ: 500 }
+    players.p1 = { ...players.p1!, zone: 'coldstore-cross', alive: true }
+    return players
+  }
+  const coachLines = (lines: string[]) =>
+    lines.filter((t) => t.startsWith('[COACH]') || t.startsWith('[TUTORIAL]'))
+
+  it('a normal match prints [COACH] with the command inline — no [TUTORIAL], no try: line', async () => {
+    const store = seedActiveGame({ players: contact(), cycle: 30 } as Partial<GameState>)
+    const wrapper = mountGameScreen()
+    store.updateFromCycle(makeCycleMessage({ players: contact(), cycle: 31 } as Partial<GameState>))
+    await wrapper.vm.$nextTick()
+
+    const lines = feed(wrapper)
+    expect(coachLines(lines).length).toBeGreaterThan(0)
+    expect(coachLines(lines).every((t) => t.startsWith('[COACH]'))).toBe(true)
+    expect(lines.some((t) => t.includes('try:'))).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('a scripted tutorial step prints no coach line at all — the drill notice is the line', async () => {
+    const tut = { players: contact(), mode: 'tutorial', tutorialStep: 2 } as Partial<GameState>
+    const store = seedActiveGame({ ...tut, cycle: 30 } as Partial<GameState>)
+    const wrapper = mountGameScreen()
+    store.updateFromCycle(makeCycleMessage({ ...tut, cycle: 31 } as Partial<GameState>))
+    await wrapper.vm.$nextTick()
+
+    const lines = feed(wrapper)
+    expect(coachLines(lines)).toEqual([])
+    expect(lines.some((t) => t.includes('try:'))).toBe(false)
+    wrapper.unmount()
+  })
+})
+
+describe('the prompt learns when the situation changed (playtest2 30.png)', () => {
+  it('hands CommandInput a situation key that changes on death / respawn and step', async () => {
+    const store = seedActiveGame({ mode: 'tutorial', tutorialStep: 7 } as Partial<GameState>)
+    const wrapper = mountGameScreen()
+    const key = () => wrapper.get('[data-testid="command-input"]').attributes('situation-key') ?? ''
+    const alive = key()
+    expect(alive).not.toBe('')
+    const dead = makeRoster()
+    dead.p1 = { ...dead.p1!, alive: false, integ: 0 }
+    store.updateFromCycle(
+      makeCycleMessage({ players: dead, mode: 'tutorial', tutorialStep: 7 } as Partial<GameState>),
+    )
+    await wrapper.vm.$nextTick()
+    expect(key()).not.toBe(alive)
+    store.updateFromCycle(
+      makeCycleMessage({ mode: 'tutorial', tutorialStep: 8 } as Partial<GameState>),
+    )
+    await wrapper.vm.$nextTick()
+    expect(key()).not.toBe(alive)
+    wrapper.unmount()
+  })
+})
+
+describe('a self-buff cast reports what it gave you (playtest2 84.png)', () => {
+  it('`cast w socket` as Echo says Phase Shift went up on you', async () => {
+    const store = seedActiveGame()
+    const wrapper = mountGameScreen()
+    store.addEvents([
+      {
+        cycle: store.cycle,
+        type: 'ability_used',
+        payload: { playerId: 'p1', abilityId: 'echo-w', targetId: 'e1', cooldown: 12 },
+      },
+    ] as never)
+    await wrapper.vm.$nextTick()
+    const line = feed(wrapper).find((t) => t.startsWith('Phase Shift up'))
+    expect(line).toContain('dodge the next incoming attack')
+    expect(line).toContain('it went on you')
+    wrapper.unmount()
+  })
+})
+
+describe('PostGame gets the match length and the skipped drills (playtest2 #7/#8)', () => {
+  it('passes durationCycles and the drills a "Moving on" notice skipped', async () => {
+    const store = seedActiveGame({ mode: 'tutorial', tutorialStep: 5 } as Partial<GameState>)
+    const wrapper = mountGameScreen()
+    const castSkip = TUTORIAL_FLOW.find((s) => s.id === 'cast')!.skipNote
+    for (const h of messageHandlers) {
+      h({ type: 'announcement', level: 'info', message: `🎓 Moving on — ${castSkip}` })
+    }
+    store.setGameOver('chaff', {}, undefined, false, 150)
+    await wrapper.vm.$nextTick()
+    const post = wrapper.findComponent({ name: 'PostGame' })
+    expect(post.props('durationCycles')).toBe(150)
+    expect(post.props('skippedDrills')).toEqual(['cast'])
+    wrapper.unmount()
+  })
+})
+
+describe('a coaching notice says whose wave:N it means (playtest2 #9)', () => {
+  it('tags `attack wave:N` in a server notice with the unit owner', async () => {
+    const unit = (id: string, team: 'chaff' | 'audit', integ: number) => ({
+      id,
+      team,
+      zone: 'coldstore-cross',
+      integ,
+      maxInteg: 400,
+      type: 'line' as const,
+    })
+    seedActiveGame({
+      waves: [unit('mine', 'chaff', 300), unit('foe', 'audit', 111)],
+    } as Partial<GameState>)
+    const wrapper = mountGameScreen()
+    for (const h of messageHandlers) {
+      h({
+        type: 'announcement',
+        level: 'info',
+        message: '🎓 A unit in your zone is at 111/400 INTEG. Swing now: `attack wave:1`.',
+      })
+    }
+    await wrapper.vm.$nextTick()
+    const line = feed(wrapper).find((t) => t.includes('Swing now'))
+    expect(line).toContain('`attack wave:1` (enemy guard)')
+    wrapper.unmount()
+  })
+})
+
+describe('a game this session no longer owns (playtest2 #10)', () => {
+  it('shows one clear panel with a way out, outranks CONNECTION LOST, and sends nothing', async () => {
+    const store = seedActiveGame()
+    const wrapper = mountGameScreen()
+    store.endSession('You signed in on another tab — this guest practice ended.')
+    socketRefs.connectionLost.value = true
+    await wrapper.vm.$nextTick()
+
+    const panel = wrapper.get('[data-testid="session-ended-overlay"]')
+    expect(panel.text()).toContain('signed in on another tab')
+    expect(panel.find('[data-testid="session-ended-practice"]').exists()).toBe(true)
+    expect(panel.find('[data-testid="session-ended-lobby"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="connection-lost-overlay"]').exists()).toBe(false)
+
+    socketSpies.send.mockClear()
+    wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move coldstore-t1-chaff')
+    await wrapper.vm.$nextTick()
+    expect(socketSpies.send).not.toHaveBeenCalled()
+    expect(feed(wrapper).some((t) => t.includes('retry') || t.includes('retype'))).toBe(false)
+    socketRefs.connectionLost.value = false
+    wrapper.unmount()
+  })
+})
+
+describe('a game that simply finished is not a "session changed" (review r3 C5)', () => {
+  it('a ranked game whose row is gone reads GAME FINISHED with replay + lobby, no practice', async () => {
+    const store = seedActiveGame()
+    store.mode = 'normal'
+    const wrapper = mountGameScreen()
+    store.endSession('This game has finished — it is no longer running.', 'finished')
+    await wrapper.vm.$nextTick()
+    const panel = wrapper.get('[data-testid="session-ended-overlay"]')
+    expect(panel.get('[data-testid="session-ended-title"]').text()).toContain('GAME FINISHED')
+    expect(panel.text()).not.toContain('SESSION CHANGED')
+    expect(panel.find('[data-testid="session-ended-replay"]').exists()).toBe(true)
+    expect(panel.find('[data-testid="session-ended-lobby"]').exists()).toBe(true)
+    expect(panel.find('[data-testid="session-ended-practice"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('a finished practice offers another practice and no replay (none is recorded)', async () => {
+    const store = seedActiveGame()
+    store.mode = 'tutorial'
+    const wrapper = mountGameScreen()
+    store.endSession('This game has finished — it is no longer running.', 'finished')
+    await wrapper.vm.$nextTick()
+    const panel = wrapper.get('[data-testid="session-ended-overlay"]')
+    expect(panel.find('[data-testid="session-ended-replay"]').exists()).toBe(false)
+    expect(panel.find('[data-testid="session-ended-practice"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('a real session change keeps its own panel', async () => {
+    const store = seedActiveGame()
+    const wrapper = mountGameScreen()
+    store.endSession('You signed in on another tab — this guest practice ended.', 'changed')
+    await wrapper.vm.$nextTick()
+    const panel = wrapper.get('[data-testid="session-ended-overlay"]')
+    expect(panel.get('[data-testid="session-ended-title"]').text()).toContain('SESSION CHANGED')
+    expect(panel.find('[data-testid="session-ended-replay"]').exists()).toBe(false)
     wrapper.unmount()
   })
 })

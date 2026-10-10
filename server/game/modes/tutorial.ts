@@ -1,5 +1,5 @@
 import type { Command } from '~~/shared/types/commands'
-import type { GameState, TeamId, WaveUnitState } from '~~/shared/types/game'
+import type { GameState, PlayerState, TeamId, WaveUnitState } from '~~/shared/types/game'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import {
   TUTORIAL_FLOW,
@@ -7,11 +7,13 @@ import {
   TUTORIAL_SKIP_AFTER_DEADLINES,
   TUTORIAL_ENROUTE_NOTICE,
   TUTORIAL_FIRST_MOVE_ZONE,
+  liveIceDrillZone,
+  withIceDrillZone,
   TRAINING_WAVE_PREFIX,
   isTrainingWave,
   type TutorialStep,
 } from '~~/shared/constants/tutorial'
-import { pathDistance } from '~~/shared/pathfinding'
+import { findPath, pathDistance } from '~~/shared/pathfinding'
 import { HERO_IDS } from '~~/shared/constants/heroes'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import { ITEMS } from '~~/shared/constants/items'
@@ -339,6 +341,17 @@ function pullNearestFoe(state: GameState, humanId: string): GameState {
   }
 }
 
+/** Self-sourced stun: self-applied control always lands, CLOSED or not, and it
+ *  is refreshed per cycle so it lapses the moment the drill that set it ends.
+ *  cyclesRemaining 2: survives this cycle's end-of-tick reap and still gates the
+ *  held hero's next action (see applyBuff's note on one-gated-action). */
+function heldBuffs(p: PlayerState): PlayerState['buffs'] {
+  return [
+    ...(p.buffs ?? []).filter((b) => !(b.id === 'stun' && b.source === p.id)),
+    { id: 'stun', stacks: 1, cyclesRemaining: 2, source: p.id },
+  ]
+}
+
 /**
  * Keep a training target in the player's zone for the whole cast drill.
  *
@@ -371,12 +384,7 @@ function pinTrainingFoe(
         // training target up every cycle so the drill is never lost to the room
         // it is held in or to the very cast it teaches.
         integ: f.maxInteg,
-        buffs: [
-          ...(f.buffs ?? []).filter((b) => !(b.id === 'stun' && b.source === f.id)),
-          // cyclesRemaining 2: survives this cycle's end-of-tick reap and still
-          // gates the foe's next action (see applyBuff's note on one-gated-action).
-          { id: 'stun', stacks: 1, cyclesRemaining: 2, source: f.id },
-        ],
+        buffs: heldBuffs(f),
       }
     }
     next = { ...next, players }
@@ -388,6 +396,98 @@ function pinTrainingFoe(
     }
   }
   return { state: next, pulled }
+}
+
+/** Id prefix of the friendly unit the ICE drill keeps beside the player. A REAL
+ *  unit (not a TRAINING_WAVE_PREFIX one): the point is that the ICE and the
+ *  enemy units shoot it instead of the player, which inert units never draw. */
+const ICE_ESCORT_PREFIX = 'wave-escort-'
+
+/**
+ * The ICE drill, made survivable (playtest 2, Oct 2026): the player walked onto
+ * the enemy T1 to read and type under four enemy units, the ICE itself and both
+ * enemy heroes, and died three times. For the length of the drill, every cycle:
+ *
+ *  - the enemy crew is HELD where it stands (the cast drill's self-sourced
+ *    stun, without the pull) — no enemy hero swings at the player;
+ *  - a friendly line unit ESCORTS the player: when no healthy friendly unit
+ *    stands in the player's zone (or the next zone of the walk they ordered),
+ *    one is put there. It is a real unit, so the enemy units (which fight units
+ *    before heroes) and the ICE (which shoots units before a hero that has not
+ *    struck it) take it first — "push WITH your wave". An escort that walks off
+ *    on its own is brought back rather than replaced, so a player who stands
+ *    still never feeds a column of units into the ICE.
+ *
+ * Changes the WORLD only; the hit on the ICE stays the player's. Nothing on
+ * home ground (no lane there), nothing for a dead player.
+ */
+function upkeepIceDrill(
+  state: GameState,
+  humanId: string,
+): { state: GameState; escorted: boolean } {
+  const human = state.players[humanId]
+  if (!human) return { state, escorted: false }
+  const players = { ...state.players }
+  for (const p of Object.values(state.players)) {
+    if (p.team !== human.team && p.alive !== false) players[p.id] = { ...p, buffs: heldBuffs(p) }
+  }
+  let next: GameState = { ...state, players }
+  if (human.alive === false || isHomeGround(human.zone)) return { state: next, escorted: false }
+
+  // Where the escort is needed: the player's zone, and the next zone of the walk
+  // they ordered (an ICE order from range walks — see approachStructure). A unit
+  // put only where the player stands arrives a cycle late: units and ICE pick
+  // their targets from the zone as the cycle opens, so the zone the player
+  // walks INTO must already hold one.
+  const hasZone = (id: string) => id in state.zones
+  const heading =
+    human.moveTarget ?? (human.attackTarget?.kind === 'ice' ? human.attackTarget.zone : null)
+  const nextHop = heading ? findPath(human.zone, heading, hasZone)[1] : undefined
+  const zones = [human.zone, ...(nextHop && !isHomeGround(nextHop) ? [nextHop] : [])]
+
+  const full = waveUnitMaxHp('line', 0)
+  // Escorts that walked out of the zones they cover (a unit with nothing to
+  // fight walks on down the lane). They are brought BACK, never replaced: a
+  // fresh one every cycle behind a player who stands still marched a column of
+  // units into T1 — the ICE the hint names.
+  const isEscort = (w: WaveUnitState) => w.id.startsWith(ICE_ESCORT_PREFIX) && w.integ > 0
+  const strays = (next.waves ?? []).filter((w) => isEscort(w) && !zones.includes(w.zone))
+  const moved = new Map<string, string>()
+  let planted: WaveUnitState[] = []
+  let escorted = false
+  for (const zone of zones) {
+    // A unit about to drop (two ICE shots from gone) is no cover: the ICE
+    // retargets the player the cycle it dies.
+    const covered = (next.waves ?? []).some(
+      (w) => w.team === human.team && w.zone === zone && w.integ > full / 2 && !isTrainingWave(w),
+    )
+    if (covered) continue
+    const stray = strays.find((w) => !moved.has(w.id) && w.integ > full / 2)
+    if (stray) {
+      moved.set(stray.id, zone)
+      continue
+    }
+    planted = [
+      ...planted,
+      {
+        id: `${ICE_ESCORT_PREFIX}${human.team}-${state.cycle}-${zone}`,
+        team: human.team,
+        zone,
+        integ: full,
+        maxInteg: full,
+        type: 'line',
+      },
+    ]
+    escorted = true
+  }
+  const strayIds = new Set(strays.map((w) => w.id))
+  const kept = (next.waves ?? []).flatMap((w) => {
+    const to = moved.get(w.id)
+    if (to) return [{ ...w, zone: to }]
+    return strayIds.has(w.id) ? [] : [w]
+  })
+  next = { ...next, waves: [...kept, ...planted] }
+  return { state: next, escorted }
 }
 
 /**
@@ -473,7 +573,11 @@ export function advanceTutorialAfterTick(
 
   if (elapsed >= TUTORIAL_STEP_DEADLINE_CYCLES * TUTORIAL_SKIP_AFTER_DEADLINES) {
     const skipped = advanceTo(
-      { ...current, tutorialSkips: (current.tutorialSkips ?? 0) + 1 },
+      {
+        ...current,
+        tutorialSkips: (current.tutorialSkips ?? 0) + 1,
+        tutorialSkipped: [...(current.tutorialSkipped ?? []), stepDef.id],
+      },
       step + 1,
     )
     return { state: skipped, notice: `🎓 Moving on — ${stepDef.skipNote}` }
@@ -487,6 +591,15 @@ export function advanceTutorialAfterTick(
     const pin = pinTrainingFoe(current, humanId, elapsed === 1)
     current = pin.state
     pinnedNew = pin.pulled
+  }
+  // The ICE drill holds the enemy crew and keeps an escort beside the player
+  // (see upkeepIceDrill) — every cycle of the step.
+  let escortedFirst = false
+  if (stepDef.id === 'ice' && elapsed >= 1) {
+    const hadEscort = (current.waves ?? []).some((w) => w.id.startsWith(ICE_ESCORT_PREFIX))
+    const up = upkeepIceDrill(current, humanId)
+    current = up.state
+    escortedFirst = up.escorted && !hadEscort
   }
   // The attack / strip / burn drills keep an inert training unit in the player's
   // zone (see upkeepTrainingUnit) — every cycle once armed, so it is there on the
@@ -518,7 +631,14 @@ export function advanceTutorialAfterTick(
       ? text.replaceAll('<hero>', handle)
       : `${text} In your zone: ${foes.map(handleOf).join(', ')}.`
   }
-  const helpWith = (st: GameState): string => withHandle(stepDef.help, st)
+  // The ICE drill names the ICE that is actually standing (waves may have razed
+  // the drill's T1 already) — the same pick the client's chip makes.
+  const iceZone = (st: GameState): string =>
+    liveIceDrillZone(st.ice, st.players[humanId]?.team ?? 'chaff')
+  const helpWith = (st: GameState): string =>
+    stepDef.id === 'ice'
+      ? withIceDrillZone(withHandle(stepDef.help, st), iceZone(st))
+      : withHandle(stepDef.help, st)
 
   // Exactly-on-the-boundary check: this runs once per cycle, so each deadline
   // multiple fires its help+nudge exactly once. The nudge (BW refill, a pulled
@@ -554,6 +674,14 @@ export function advanceTutorialAfterTick(
   if (stepDef.earlyNudgeCycles !== undefined && elapsed === stepDef.earlyNudgeCycles) {
     const nudged = applyNudge(current, stepDef, humanId)
     if (nudged !== current) return { state: nudged, notice: helpWith(nudged) }
+  }
+
+  // The first escort just fell in beside the player: say so, and what it is for.
+  if (escortedFirst) {
+    return {
+      state: current,
+      notice: `🎓 A wave unit falls in beside you and the enemy crew is held at their posts for this drill — the ICE and their units shoot your escort first. One order does the rest: \`attack ice:${iceZone(current)}\`.`,
+    }
   }
 
   // The held target just arrived (or the drill just opened): tell the player who.

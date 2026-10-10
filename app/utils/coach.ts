@@ -1,5 +1,5 @@
-import type { Command } from '~~/shared/types/commands'
-import { isCommandAllowedInTutorial } from '~~/shared/constants/tutorial'
+import type { GameMode } from '~~/shared/types/game'
+import { TUTORIAL_STEP_COUNT } from '~~/shared/constants/tutorial'
 
 /**
  * The coach — situational teaching, in the STREAM.
@@ -94,9 +94,9 @@ export interface CoachInput {
   hasItemActive: boolean
   /**
    * Tutorial step when `mode === 'tutorial'`. Absent/undefined = not in a
-   * gated tutorial (ranked, free play, or the coach has no step context).
-   * When set, tips whose verb is still locked stay silent — the engine
-   * would reject them and the STREAM already has a [TUTORIAL] line.
+   * tutorial (ranked, normal). While a scripted step is active the coach is
+   * silent: the drill's 🎓 notice and the TutorialHint panel already say it,
+   * and a coach line on top made one event print four times (playtest2 #3).
    */
   tutorialStep?: number
 }
@@ -137,8 +137,6 @@ const TIPS: Array<{
   proven: (s: CoachInput) => boolean
   text: (s: CoachInput) => string
   command?: (s: CoachInput) => string
-  /** Engine verb this tip tells the player to type. Gated in tutorial. */
-  verb?: Command['type']
 }> = [
   {
     // Survival first: nothing else matters to a corpse, and a new player reads
@@ -150,7 +148,6 @@ const TIPS: Array<{
     text: (s) =>
       `[COACH] You are under a third INTEG with ${s.enemiesHere} hostile${s.enemiesHere === 1 ? '' : 's'} on you. There is no regen out here — walking back costs a few cycles, dying costs the walk plus the respawn plus what they take off your ICE.`,
     command: () => 'move anchor',
-    verb: 'move',
   },
   {
     // Deep, alone, blind. The single most common way a new player feeds.
@@ -166,7 +163,6 @@ const TIPS: Array<{
     text: () =>
       `[COACH] You are past halfway on this route, alone, with no feed on it. Anything standing between you and home is something you cannot see. Either buy sight or pull back to your own ICE.`,
     command: () => 'tap',
-    verb: 'tap',
   },
   {
     id: 'leave_base',
@@ -176,7 +172,6 @@ const TIPS: Array<{
     text: () =>
       `[COACH] Nothing happens in your base. Scrip and levels come from the routes — pick one and go stand behind your own ICE.`,
     command: () => 'move coldstore-t2-chaff',
-    verb: 'move',
   },
   {
     // The economy. A player who swings every cycle earns almost nothing and
@@ -188,7 +183,6 @@ const TIPS: Array<{
     text: () =>
       `[COACH] Only the killing blow on a wave pays scrip — chipping it every cycle pays nothing. Wait until one is nearly down, then take it.`,
     command: () => 'attack wave:0',
-    verb: 'attack',
   },
   {
     id: 'spend_scrip',
@@ -198,7 +192,6 @@ const TIPS: Array<{
     text: (s) =>
       `[COACH] You are standing in a shop with ${s.scrip}sc unspent. Scrip does nothing in your pocket — a hero with items beats a hero with savings.`,
     command: () => 'buy edge_kit',
-    verb: 'buy',
   },
   {
     id: 'use_abilities',
@@ -208,7 +201,6 @@ const TIPS: Array<{
     text: () =>
       `[COACH] You have abilities and an enemy in your zone. Your basic attack is the weakest thing you own — the kit is what wins the exchange.`,
     command: () => 'cast q',
-    verb: 'cast',
   },
   {
     // Vision is the least obvious purchase and the one that changes most.
@@ -224,7 +216,6 @@ const TIPS: Array<{
     text: () =>
       `[COACH] You have no feed on most of this route. A CAMTAP is 75sc and shows you a gank before it arrives — it is the cheapest thing that stops you dying.`,
     command: () => 'buy camtap',
-    verb: 'buy',
   },
   {
     // The objective. Players farm forever and never push.
@@ -235,7 +226,6 @@ const TIPS: Array<{
     text: () =>
       `[COACH] The ICE in front of you is open and nobody is defending it. Farming does not win — razing a route to its T3 is what exposes their Terminal.`,
     command: () => 'attack ice',
-    verb: 'attack',
   },
   {
     id: 'breach',
@@ -245,7 +235,6 @@ const TIPS: Array<{
     text: () =>
       `[COACH] Code into a closed target is halved, and hard control will not land. breach <hero> opens a five-cycle window for the whole crew.`,
     command: () => 'breach',
-    verb: 'breach',
   },
   {
     id: 'dual_slot',
@@ -255,7 +244,6 @@ const TIPS: Array<{
     text: () =>
       `[COACH] MAIN and RIG are separate slots. use <item> and cast q can fire in the SAME cycle — that is the combo.`,
     command: () => 'use',
-    verb: 'use',
   },
 ]
 
@@ -271,18 +259,13 @@ export function evaluateCoach(
   history: CoachHistory,
 ): CoachTip | null {
   if (!input.alive) return null
+  // The scripted tutorial teaches through its own notices + panel.
+  if (input.tutorialStep !== undefined && input.tutorialStep < TUTORIAL_STEP_COUNT) return null
 
   const candidates = TIPS.filter((tip) => {
     if (learned[tip.id]) return false
     if (tip.proven(input)) return false
     if (!tip.when(input)) return false
-    if (
-      input.tutorialStep !== undefined &&
-      tip.verb &&
-      !isCommandAllowedInTutorial(tip.verb, input.tutorialStep)
-    ) {
-      return false
-    }
     const last = history[tip.id]
     return last === undefined || input.cycle - last >= COACH_COOLDOWN_CYCLES
   })
@@ -295,6 +278,18 @@ export function evaluateCoach(
     command: best.command?.(input),
     priority: best.priority,
   }
+}
+
+/**
+ * The ONE feed line a tip prints. Coaching is tagged `[TUTORIAL]` only in a
+ * tutorial game — a ranked match used to show "[TUTORIAL] Only the killing
+ * blow…" (playtest2 76.png) — and the command rides inline at the end instead
+ * of a second `try:` line under every tip.
+ */
+export function formatCoachLine(tip: CoachTip, mode: GameMode | undefined): string {
+  const body = tip.text.replace(/^\[COACH\]\s*/, '')
+  const tag = mode === 'tutorial' ? '[TUTORIAL]' : '[COACH]'
+  return `${tag} ${body}${tip.command ? ` — \`${tip.command}\`` : ''}`
 }
 
 /**

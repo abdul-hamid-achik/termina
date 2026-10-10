@@ -502,7 +502,13 @@ describe('tutorial mode', () => {
       const s = await game.state()
       expect(s.tutorialStep).toBe(stepIndex('ice') + 1)
       expect(s.tutorialSkips).toBe(1)
+      expect(s.tutorialSkipped).toEqual(['ice'])
       expect(tutorialMasteryAchieved(s)).toBe(false)
+      // Graduation names the drill and invites the retry (playtest 2: a run
+      // that timed out on ICE "graduated" with ICE DAMAGE 0 and no word on it).
+      const graduation = game.lastNotices.find((n) => n.message.includes('Practice over'))
+      expect(graduation?.message).toContain('the ICE drill timed out')
+      expect(graduation?.message).toContain('Run practice again')
     })
 
     it('a clean run masters the tutorial (no skips)', async () => {

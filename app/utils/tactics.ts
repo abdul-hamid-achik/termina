@@ -1,3 +1,5 @@
+import { isNpcSourceId, npcKind } from './combatLog'
+
 // Shared tactical derivations for the current zone — used by the rig line and StatusLines
 // (the detailed unit list) and the rig line in the stream so the
 // threat verdict can never drift between the two surfaces.
@@ -17,6 +19,16 @@ const FAVORED_MIN_FRACTION = 0.5
 /** Cycles of last cycle's incoming damage that would finish you — at or under
  *  this many, you are being burst down whatever the headcount says. */
 const LETHAL_PRESSURE_CYCLES = 3
+/** Wave / ICE fire is "sustained" — and the fight is no longer yours — once a
+ *  single cycle of it costs this fraction of max INTEG... */
+const SUSTAINED_NPC_FRACTION = 0.15
+/** ...or once, repeated, it would finish you within this many cycles. */
+const SUSTAINED_NPC_CYCLES = 4
+/** The honest line for a hero being ground down by waves / ICE (playtest2 32.png
+ *  read "You have the advantage — press it" under "Waves hit You ×4 for 118"). */
+const WAVE_PRESSURE_ACTION = 'Waves are chewing you — step back or clear them'
+/** The same, when the fire is the enemy ICE in your zone. */
+const ICE_PRESSURE_ACTION = 'Their ICE is chewing you — step back out of its zone'
 /** At an EQUAL headcount the stronger side is only FAVORED by this INTEG ratio —
  *  a full-INTEG hero against one enemy at 8% INTEG is not an "even fight". */
 const EQUAL_FIGHT_MARGIN = 1.5
@@ -36,6 +48,10 @@ export interface ThreatContext {
   integ?: number
   /** INTEG the local hero lost in the last resolved cycle. */
   incomingLastCycle?: number
+  /** The part of incomingLastCycle dealt by waves, ICE, the Silt, the Tenant. */
+  npcIncomingLastCycle?: number
+  /** Max INTEG — what the sustained-NPC-fire fraction is measured against. */
+  maxInteg?: number
   /** Summed current INTEG of allied heroes in the zone, self included. */
   allyPower?: number
   /** Summed current INTEG of the visible enemy heroes in the zone. */
@@ -48,6 +64,25 @@ function underLethalPressure(ctx: ThreatContext): boolean {
   const incoming = ctx.incomingLastCycle ?? 0
   if (incoming <= 0 || ctx.integ === undefined) return false
   return incoming * LETHAL_PRESSURE_CYCLES >= ctx.integ
+}
+
+/** True when last cycle's wave / ICE fire is heavy enough that no fight in
+ *  this zone is "favored": ≥ SUSTAINED_NPC_FRACTION of max INTEG, or a
+ *  time-to-death at that rate of ≤ SUSTAINED_NPC_CYCLES. */
+function underSustainedNpcFire(ctx: {
+  npcIncomingLastCycle?: number
+  integ?: number
+  maxInteg?: number
+}): boolean {
+  const npc = ctx.npcIncomingLastCycle ?? 0
+  if (npc <= 0) return false
+  if (
+    ctx.maxInteg !== undefined &&
+    ctx.maxInteg > 0 &&
+    npc >= ctx.maxInteg * SUSTAINED_NPC_FRACTION
+  )
+    return true
+  return ctx.integ !== undefined && ctx.integ <= npc * SUSTAINED_NPC_CYCLES
 }
 
 /**
@@ -66,6 +101,9 @@ export function computeThreat(
   if (ctx.alive === false) return { label: 'DOWN', tone: 'danger' }
   const low = ctx.hpFraction !== undefined && ctx.hpFraction <= LOW_INTEG_FRACTION
   const pressured = low || underLethalPressure(ctx)
+  // Waves / ICE grinding you down caps the verdict at CONTESTED: neither CLEAR
+  // nor FAVORED is true of a hero losing a sixth of their INTEG a cycle.
+  const ground = underSustainedNpcFire(ctx)
   if (enemyCount === 0) {
     // No enemy HEROES is not safety: a low hero under ICE fire, or one a wave /
     // the Tenant is bursting down, is in danger whatever the hero headcount says.
@@ -73,6 +111,7 @@ export function computeThreat(
       return { label: 'DANGER', tone: 'danger' }
     }
     if (enemyIcePresent) return { label: 'ICE', tone: 'warn' }
+    if (ground) return { label: 'CONTESTED', tone: 'warn' }
     return { label: 'CLEAR', tone: 'safe' }
   }
   if (enemyCount > allyHeadcount || pressured) {
@@ -88,12 +127,12 @@ export function computeThreat(
       ctx.allyPower !== undefined &&
       ctx.enemyPower !== undefined &&
       ctx.allyPower >= ctx.enemyPower * EQUAL_FIGHT_MARGIN
-    if (healthy && dominant) return { label: 'FAVORED', tone: 'safe' }
+    if (healthy && dominant && !ground) return { label: 'FAVORED', tone: 'safe' }
     return { label: 'CONTESTED', tone: 'warn' }
   }
   const outweighs =
     ctx.allyPower === undefined || ctx.enemyPower === undefined || ctx.allyPower > ctx.enemyPower
-  if (healthy && outweighs) return { label: 'FAVORED', tone: 'safe' }
+  if (healthy && outweighs && !ground) return { label: 'FAVORED', tone: 'safe' }
   return { label: 'CONTESTED', tone: 'warn' }
 }
 
@@ -122,6 +161,26 @@ export interface RecommendationContext {
   integ?: number
   /** INTEG lost in the last resolved cycle. */
   incomingLastCycle?: number
+  /** The wave / ICE / Silt / Tenant share of incomingLastCycle. */
+  npcIncomingLastCycle?: number
+  /** Max INTEG (for the sustained-NPC-fire fraction). */
+  maxInteg?: number
+  /** The enemy-ICE share of npcIncomingLastCycle — names the fire. */
+  iceIncomingLastCycle?: number
+  /** An alive enemy ICE stands in the zone — the fallback when the ICE share
+   *  is not known. */
+  enemyIcePresent?: boolean
+}
+
+/** Is the sustained NPC fire mostly the enemy ICE? Judged from the damage
+ *  itself when it is known (an ICE can be shooting your escort while waves
+ *  chew you), else from whether one stands in the zone — never from the
+ *  verdict label, which reads CONTESTED the moment an enemy hero is present. */
+function iceIsTheFire(ctx: RecommendationContext): boolean {
+  if (ctx.iceIncomingLastCycle !== undefined) {
+    return ctx.iceIncomingLastCycle * 2 >= (ctx.npcIncomingLastCycle ?? 0)
+  }
+  return ctx.enemyIcePresent ?? ctx.threat.label === 'ICE'
 }
 
 /**
@@ -135,6 +194,11 @@ export function recommendAction(ctx: RecommendationContext): string {
   if (ctx.hpFraction <= LOW_INTEG_FRACTION) return 'Low INTEG — retreat and heal'
   // Healthy-looking but melting: the bar lags the burst by a cycle.
   if (underLethalPressure(ctx)) return 'Under heavy fire — retreat now'
+  // The verdict above is only as honest as its reason: a hero the waves are
+  // grinding down is told so, not "press it" / "farm" / "even fight".
+  if (ctx.threat.label !== 'DANGER' && underSustainedNpcFire(ctx)) {
+    return iceIsTheFire(ctx) ? ICE_PRESSURE_ACTION : WAVE_PRESSURE_ACTION
+  }
   switch (ctx.threat.label) {
     case 'DANGER':
       return 'Outnumbered — retreat to safety'
@@ -169,14 +233,28 @@ export function incomingDamageLastCycle(
   playerId: string | null,
   currentCycle: number,
 ): number {
-  if (!playerId) return 0
+  return incomingDamageBreakdownLastCycle(events, playerId, currentCycle).total
+}
+
+/**
+ * incomingDamageLastCycle, split: `total` is every hit on me, `npc` the part
+ * dealt by waves, ICE, the Silt, the Tenant or a Terminal (isNpcSourceId) —
+ * the fire that vetoes FAVORED without any enemy hero being involved — and
+ * `ice` the ICE part of `npc` (what the pressure line names).
+ */
+export function incomingDamageBreakdownLastCycle(
+  events: readonly DamageEventLike[],
+  playerId: string | null,
+  currentCycle: number,
+): { total: number; npc: number; ice: number } {
+  if (!playerId) return { total: 0, npc: 0, ice: 0 }
   let latest = -Infinity
   for (const e of events) {
     if (e.cycle <= currentCycle && e.cycle >= currentCycle - 1 && e.cycle > latest) {
       latest = e.cycle
     }
   }
-  if (latest === -Infinity) return 0
+  if (latest === -Infinity) return { total: 0, npc: 0, ice: 0 }
   // What I dealt this cycle, by (target, amount): Spite Plate returns 100% of the
   // INTEG its wearer lost as black damage, so a black hit on me that exactly
   // mirrors one of my own hits on that attacker is my reflect, not their attack.
@@ -187,6 +265,8 @@ export function incomingDamageLastCycle(
     dealt.set(key, (dealt.get(key) ?? 0) + 1)
   }
   let sum = 0
+  let npc = 0
+  let ice = 0
   for (const e of events) {
     if (e.cycle !== latest || e.type !== 'damage' || e.payload.targetId !== playerId) continue
     // Self-inflicted INTEG loss (Malloc's Stack Overflow cost) is a cost, not fire.
@@ -202,8 +282,10 @@ export function incomingDamageLastCycle(
       }
     }
     sum += amount
+    if (isNpcSourceId(e.payload.sourceId)) npc += amount
+    if (npcKind(String(e.payload.sourceId)) === 'ICE') ice += amount
   }
-  return sum
+  return { total: sum, npc, ice }
 }
 
 /** The minimal hero shape the zone verdict reads. */
@@ -233,6 +315,10 @@ export function zoneVerdict(input: {
   enemies: readonly HeroLike[]
   enemyIcePresent: boolean
   incomingLastCycle: number
+  /** The wave / ICE share of incomingLastCycle (incomingDamageBreakdownLastCycle). */
+  npcIncomingLastCycle?: number
+  /** The enemy-ICE share of npcIncomingLastCycle (same breakdown). */
+  iceIncomingLastCycle?: number
   hasReadyAbility: boolean
 }): ZoneVerdict {
   const { me } = input
@@ -252,6 +338,8 @@ export function zoneVerdict(input: {
     hpFraction,
     integ: integKnown ? me.integ : undefined,
     incomingLastCycle: input.incomingLastCycle,
+    npcIncomingLastCycle: input.npcIncomingLastCycle,
+    maxInteg: integKnown ? me.maxInteg : undefined,
     allyPower: power(alliesHere) + (me.alive ? Math.max(0, me.integ) : 0),
     enemyPower: power(enemiesHere),
   }
@@ -263,6 +351,10 @@ export function zoneVerdict(input: {
     hasReadyAbility: input.hasReadyAbility,
     integ: integKnown ? me.integ : undefined,
     incomingLastCycle: input.incomingLastCycle,
+    npcIncomingLastCycle: input.npcIncomingLastCycle,
+    maxInteg: integKnown ? me.maxInteg : undefined,
+    iceIncomingLastCycle: input.iceIncomingLastCycle,
+    enemyIcePresent: input.enemyIcePresent,
   })
   return { threat, action, enemyCount: enemiesHere.length, allyHeadcount }
 }

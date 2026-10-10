@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import TutorialHint from '~~/app/components/game/TutorialHint.vue'
-import { TUTORIAL_STEP_COUNT } from '~~/shared/constants/tutorial'
+import { ICE_DRILL_ZONE, TUTORIAL_FLOW, TUTORIAL_STEP_COUNT } from '~~/shared/constants/tutorial'
+import { initializeIce } from '~~/server/game/map/zones'
 
 describe('TutorialHint', () => {
   // Assert against the shared flow rather than literal copy: the hints ARE the
@@ -46,5 +47,36 @@ describe('TutorialHint', () => {
     expect(wrapper.get('[data-testid="tutorial-progress"]').text()).toBe(
       `${TUTORIAL_STEP_COUNT}/${TUTORIAL_STEP_COUNT}`,
     )
+  })
+
+  it('the ICE drill names an ICE still standing when waves razed the drill T1', () => {
+    const step = TUTORIAL_FLOW.findIndex((s) => s.id === 'ice')
+    const ice = initializeIce().map((t) =>
+      t.zone === ICE_DRILL_ZONE ? { ...t, alive: false, integ: 0 } : t,
+    )
+    const wrapper = mount(TutorialHint, {
+      props: { step, zone: 'rookery-anchor', inventory: [], ice, team: 'chaff' as const },
+    })
+    expect(wrapper.get('[data-testid="tutorial-try"]').text()).toContain(
+      'attack ice:coldstore-t2-audit',
+    )
+    expect(wrapper.get('[data-testid="tutorial-hint-text"]').text()).toContain(
+      'attack ice:coldstore-t2-audit',
+    )
+    expect(wrapper.text()).not.toContain(ICE_DRILL_ZONE)
+  })
+
+  it('offers the next unsatisfied command, not a stale one (playtest2 #4)', async () => {
+    // Step 6 (tap) with a camtap already held: "try: buy camtap" stayed up.
+    const wrapper = mount(TutorialHint, {
+      props: {
+        step: 6,
+        zone: 'rookery-terminal',
+        inventory: ['camtap', null, null, null, null, null],
+      },
+    })
+    expect(wrapper.get('[data-testid="tutorial-try"]').text()).toContain('tap rookery-terminal')
+    await wrapper.get('[data-testid="tutorial-try"]').trigger('click')
+    expect(wrapper.emitted('command')).toEqual([['tap rookery-terminal']])
   })
 })

@@ -75,10 +75,14 @@ vi.stubGlobal('setUserSession', async (_e: H3Event, data: Session) => {
 vi.stubGlobal('replaceUserSession', async (_e: H3Event, data: Session) => {
   return h3Update(data)
 })
+// nuxt-auth-utils: { ...session.data, id } — the session as the request cookie has it.
+vi.stubGlobal('getUserSession', async () => ({ ...structuredClone(incoming), id: 'sess' }))
 
 vi.mock('~~/server/utils/RateLimiter', () => ({ checkScopedRateLimit: vi.fn(() => true) }))
 vi.mock('~~/server/utils/email', () => ({ sendEmail: vi.fn() }))
 vi.mock('~~/server/utils/authTokens', () => ({ createVerifyToken: vi.fn() }))
+const endPractice = vi.hoisted(() => vi.fn(async () => [] as string[]))
+vi.mock('~~/server/utils/guestPracticeEnd', () => ({ endFormerGuestPractice: endPractice }))
 vi.mock('~~/server/plugins/game-server', () => ({
   getGameRuntime: () => ({
     dbService: {
@@ -101,6 +105,23 @@ describe('a guest who registers or signs in stops being a guest', () => {
   beforeEach(() => {
     incoming = structuredClone(GUEST_SESSION)
     session = {}
+    endPractice.mockReset()
+    endPractice.mockResolvedValue([])
+  })
+
+  // The guest's practice game kept ticking for nobody after the upgrade.
+  it('register + login end the former guest’s practice game', async () => {
+    await registerHandler(event({ username: 'newplayer', password: 'longenough1' }))
+    expect(endPractice).toHaveBeenCalledWith('guest_a1b2c3d4e5f6')
+    incoming = structuredClone(GUEST_SESSION)
+    await loginHandler(event({ username: 'oldtimer', password: 'longenough1' }))
+    expect(endPractice).toHaveBeenCalledTimes(2)
+  })
+
+  it('a non-guest sign-in ends nothing', async () => {
+    incoming = { user: { ...structuredClone(GUEST_SESSION).user, id: 'local_x', guest: undefined } }
+    await loginHandler(event({ username: 'oldtimer', password: 'longenough1' }))
+    expect(endPractice).not.toHaveBeenCalled()
   })
 
   it('register: the session after a 200 is the registered user — no leftover guest flag', async () => {
@@ -121,12 +142,30 @@ describe('a guest who registers or signs in stops being a guest', () => {
   })
 
   it('a stray top-level key in the old cookie (e.g. `secure`) does not survive the upgrade', async () => {
+    // `secure` is rewritten wholesale: only the former-guest claim is in it.
     incoming = { ...structuredClone(GUEST_SESSION), secure: { token: 'old' } }
 
     await registerHandler(event({ username: 'newplayer', password: 'longenough1' }))
-    expect(session.secure).toBeUndefined()
+    expect(session.secure).toEqual({ formerGuestId: 'guest_a1b2c3d4e5f6' })
 
     incoming = { ...structuredClone(GUEST_SESSION), secure: { token: 'old' } }
+    await loginHandler(event({ username: 'oldtimer', password: 'longenough1' }))
+    expect(session.secure).toEqual({ formerGuestId: 'guest_a1b2c3d4e5f6' })
+  })
+
+  it('the upgraded session remembers the guest id it replaced (server-only `secure`)', async () => {
+    // Playtest 2: the guest's practice game, still open in another tab, must be
+    // able to tell "you signed in" from a stranger (GAME_SESSION_CHANGED).
+    await registerHandler(event({ username: 'newplayer', password: 'longenough1' }))
+    expect(session.secure?.formerGuestId).toBe('guest_a1b2c3d4e5f6')
+    expect(session.user?.formerGuestId).toBeUndefined() // never on the client-visible half
+  })
+
+  it('a real account signing in again claims no guest game', async () => {
+    incoming = {
+      user: { ...structuredClone(GUEST_SESSION).user, id: 'local_other', guest: undefined },
+      secure: { formerGuestId: 'guest_stale00000000' },
+    }
     await loginHandler(event({ username: 'oldtimer', password: 'longenough1' }))
     expect(session.secure).toBeUndefined()
   })

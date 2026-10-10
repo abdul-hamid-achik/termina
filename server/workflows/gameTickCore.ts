@@ -41,7 +41,7 @@ import { engineLog } from '~~/server/utils/log'
 import { gameLoggerLive } from '~~/server/utils/logger'
 import type { GameMode, GameState } from '~~/shared/types/game'
 import type { Command } from '~~/shared/types/commands'
-import type { PlayerEndStats } from '~~/shared/types/protocol'
+import type { PlayerEndStats, TutorialGameOverSummary } from '~~/shared/types/protocol'
 
 /**
  * THE PRODUCTION game-tick workflow (spike/workflow-tick migration).
@@ -588,6 +588,7 @@ export async function runOneTick(
         burns: ps.burns ?? 0,
       }
     }
+    const tutorial = tutorialGameOverSummary(next, row.mode)
     for (const p of humans) {
       specs.push({
         channel: `game:${gameId}:p:${p.playerId}`,
@@ -597,6 +598,7 @@ export async function runOneTick(
           stats,
           ranked: isRankedMatch(row.roster.players.length, hasBots),
           durationCycles: next.cycle,
+          ...(tutorial ? { tutorial } : {}),
         },
       })
     }
@@ -692,6 +694,22 @@ export function tutorialGraduates(
   return roster.players
     .filter((p) => !isBot(p.playerId) && !isGuestId(p.playerId) && p.team === state.winner)
     .map((p) => p.playerId)
+}
+
+/** game_over's `tutorial` block (null outside tutorial mode): whether the flow
+ *  was finished, mastered, and which drills skipped — so the post-game screen can
+ *  name them and offer the retry instead of a blanket "practice complete". */
+export function tutorialGameOverSummary(
+  state: GameState,
+  mode: string,
+): TutorialGameOverSummary | null {
+  if (mode !== 'tutorial') return null
+  const completed = (state.tutorialStep ?? 0) >= TUTORIAL_STEP_COUNT
+  return {
+    completed,
+    mastered: completed && tutorialMasteryAchieved(state),
+    skipped: [...(state.tutorialSkipped ?? [])],
+  }
 }
 
 async function markTutorialCompleted(playerIds: string[], run: DbRunner): Promise<void> {

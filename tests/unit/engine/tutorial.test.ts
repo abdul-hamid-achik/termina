@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { GameState } from '~~/shared/types/game'
+import { tutorialSkipNotice } from '~~/shared/constants/tutorial'
 import {
   TUTORIAL_FLOW,
   TUTORIAL_STEP_COUNT,
@@ -387,6 +388,7 @@ describe('tutorial flow', () => {
         const next = advanceTutorialAfterTick(stuck, [], [])
         expect(next.state.tutorialStep).toBe(stepIndex('cast') + 1)
         expect(next.state.tutorialSkips).toBe(1)
+        expect(next.state.tutorialSkipped).toEqual(['cast'])
         expect(next.notice).toContain('Moving on')
       })
 
@@ -403,6 +405,7 @@ describe('tutorial flow', () => {
         }
         expect(state.tutorialStep).toBeGreaterThanOrEqual(TUTORIAL_STEP_COUNT)
         expect(state.tutorialSkips).toBe(TUTORIAL_STEP_COUNT)
+        expect(state.tutorialSkipped).toEqual(TUTORIAL_FLOW.map((step) => step.id))
         expect(tutorialMasteryAchieved(state)).toBe(false)
       })
 
@@ -873,5 +876,21 @@ describe('tutorial flow', () => {
         expect(isBot(p.playerId)).toBe(true)
       }
     })
+  })
+})
+
+describe('tutorialSkipNotice', () => {
+  it('is silent for a clean run', () => {
+    expect(tutorialSkipNotice([])).toBeNull()
+  })
+  it('names one skipped drill and invites the retry', () => {
+    expect(tutorialSkipNotice(['ice'])).toBe(
+      '🎓 Practice over — the ICE drill timed out and was skipped. Run practice again to master it.',
+    )
+  })
+  it('names several in flow order', () => {
+    expect(tutorialSkipNotice(['strip', 'cast', 'ice'])).toBe(
+      '🎓 Practice over — the STRIP, CAST and ICE drills timed out and were skipped. Run practice again to master them.',
+    )
   })
 })

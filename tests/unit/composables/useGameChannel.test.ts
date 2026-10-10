@@ -172,7 +172,7 @@ describe('useGameChannel', () => {
         const { connect, connected } = useGameChannel()
         connect('game-1', 'player-1')
         // Let the rejected enter settle — an unhandled rejection fails the run.
-        await vi.runAllTimersAsync()
+        await vi.advanceTimersByTimeAsync(50)
         MockRealtime.last!.connection._setState('connected')
         expect(MockRealtime.last!.channel!.presence.enter).toHaveBeenCalled()
         expect(connected.value).toBe(true)
@@ -300,7 +300,26 @@ describe('useGameChannel', () => {
         durationCycles: 60,
       })
 
-      expect(spy).toHaveBeenCalledWith('chaff', stats, undefined, false, 60)
+      expect(spy).toHaveBeenCalledWith('chaff', stats, undefined, false, 60, undefined)
+    })
+
+    it('carries game_over.tutorial (skipped drills) through to the store', async () => {
+      const { useGameStore } = await import('../../../app/stores/game')
+      const store = useGameStore()
+      const { connect } = useGameChannel()
+      connect('game-1', 'player-1')
+      MockRealtime.last!.connection._setState('connected')
+
+      const tutorial = { completed: true, mastered: false, skipped: ['cast', 'tap'] }
+      MockRealtime.last!.channel!._receive('game_over', {
+        winner: 'chaff',
+        stats: {},
+        ranked: false,
+        durationCycles: 60,
+        tutorial,
+      })
+
+      expect(store.gameOverTutorial).toEqual(tutorial)
     })
 
     it('notifies onMessage handlers for inbound chat and ping_map messages', async () => {
@@ -454,6 +473,163 @@ describe('useGameChannel', () => {
         expect.stringContaining('after the batch committed'),
         'warning',
       )
+    })
+
+    // playtest2 #10: after the guest signed in on another tab, every order 403'd
+    // and the HUD said "Order failed to reach the server — retype it" forever.
+    describe('a game this session no longer owns', () => {
+      async function postFails(status: number, body: unknown, playerId = 'guest_abc') {
+        const { useGameStore } = await import('../../../app/stores/game')
+        const store = useGameStore()
+        const toastSpy = vi.spyOn(store, 'addAnnouncement')
+        fetchMock.mockImplementation((url: string) => {
+          if (url === '/api/game/action') {
+            return Promise.resolve({ ok: false, status, json: async () => body })
+          }
+          return Promise.resolve({ ok: true, json: async () => ({}) })
+        })
+        const channel = useGameChannel()
+        channel.connect('game-1', playerId)
+        MockRealtime.last!.connection._setState('connected')
+        const client = MockRealtime.last!
+        channel.send({ type: 'action', command: { type: 'move', zone: 'coldstore' } })
+        await vi.waitFor(() => {
+          expect(fetchMock.mock.calls.some(([u]) => u === '/api/game/action')).toBe(true)
+        })
+        await vi.advanceTimersByTimeAsync(50)
+        return { store, toastSpy, channel, client }
+      }
+
+      it('a 403 ends the session once: one clear message, no "retype it", no more sends', async () => {
+        const { store, toastSpy, channel, client } = await postFails(403, {
+          statusCode: 403,
+          message: 'Not assigned to this game',
+        })
+        expect(store.sessionEnded).toContain('signed in on another tab')
+        expect(store.sessionEndReason).toBe('changed')
+        expect(toastSpy).not.toHaveBeenCalledWith(expect.stringContaining('retype'), 'warning')
+        expect(client.close).toHaveBeenCalled()
+
+        const posts = () => fetchMock.mock.calls.filter(([u]) => u === '/api/game/action').length
+        const before = posts()
+        channel.send({ type: 'action', command: { type: 'move', zone: 'coldstore' } })
+        await vi.advanceTimersByTimeAsync(50)
+        expect(posts()).toBe(before)
+      })
+
+      it('a GAME_SESSION_CHANGED code ends it whatever the status', async () => {
+        const { store } = await postFails(409, { data: { code: 'GAME_SESSION_CHANGED' } }, 'p1')
+        expect(store.sessionEnded).toBeTruthy()
+      })
+
+      it('a registered player gets the generic wording', async () => {
+        const { store } = await postFails(403, { message: 'Not assigned to this game' }, 'p1')
+        expect(store.sessionEnded).toBeTruthy()
+        expect(store.sessionEnded).not.toContain('guest')
+      })
+
+      it('a transient failure (500) keeps the retry message and the session', async () => {
+        const { store, toastSpy } = await postFails(500, {})
+        expect(store.sessionEnded).toBeNull()
+        expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('retype'), 'warning')
+      })
+
+      // The EXACT body h3's createError serialises for action.post's 409 (what
+      // ofetch would expose as err.data; raw fetch gives it to res.json()).
+      const H3_409 = {
+        error: true,
+        url: '/api/game/action',
+        statusCode: 409,
+        statusMessage: '',
+        message: 'You signed in — this guest practice ended. Start a new one.',
+        data: { code: 'GAME_SESSION_CHANGED' },
+      }
+
+      it('the real 409 GAME_SESSION_CHANGED body ends the session in the server’s words', async () => {
+        const { store, toastSpy, client } = await postFails(409, H3_409)
+        expect(store.sessionEnded).toBe(H3_409.message)
+        expect(toastSpy).not.toHaveBeenCalledWith(expect.stringContaining('retype'), 'warning')
+        expect(client.close).toHaveBeenCalled()
+      })
+
+      it('a 409 WITHOUT the code (AI took the slot) is not a session change', async () => {
+        const { store } = await postFails(409, {
+          ...H3_409,
+          message:
+            'Your slot was taken over by AI after inactivity; only surrender votes are accepted',
+          data: undefined,
+        })
+        expect(store.sessionEnded).toBeNull()
+      })
+
+      it('a 404 (the game row is gone — finalized) ends the session instead of "retype it"', async () => {
+        const { store, toastSpy } = await postFails(404, {
+          statusCode: 404,
+          message: 'Game not found',
+        })
+        expect(store.sessionEnded).toBeTruthy()
+        expect(toastSpy).not.toHaveBeenCalledWith(expect.stringContaining('retype'), 'warning')
+      })
+
+      it('a 404 is a FINISHED game, not a session change', async () => {
+        const { store } = await postFails(404, { statusCode: 404, message: 'Game not found' }, 'p1')
+        expect(store.sessionEndReason).toBe('finished')
+      })
+
+      it('after the session ended, send() refuses with a visible note — chat included', async () => {
+        const { store, toastSpy, channel } = await postFails(404, {
+          statusCode: 404,
+          message: 'Game not found',
+        })
+        toastSpy.mockClear()
+        const signals = () => fetchMock.mock.calls.filter(([u]) => u === '/api/game/signal').length
+        const before = signals()
+        expect(channel.send({ type: 'chat', channel: 'team', message: 'gg' })).toBe(false)
+        await vi.advanceTimersByTimeAsync(50)
+        expect(signals()).toBe(before)
+        expect(toastSpy).toHaveBeenCalledWith('[GAME] Not sent — this game has finished', 'warning')
+        expect(store.sessionEnded).toBeTruthy()
+      })
+
+      it('a 404 keeps the channel open so a late game_over still lands on PostGame', async () => {
+        const { store, client } = await postFails(404, {
+          statusCode: 404,
+          message: 'Game not found',
+        })
+        expect(client.close).not.toHaveBeenCalled()
+        client.channel!._receive('game_over', { winner: 'audit', stats: {}, ranked: false })
+        expect(store.winner).toBe('audit')
+      })
+
+      it('a chat/ping refused with GAME_SESSION_CHANGED ends the session too', async () => {
+        const { useGameStore } = await import('../../../app/stores/game')
+        const store = useGameStore()
+        const toastSpy = vi.spyOn(store, 'addAnnouncement')
+        fetchMock.mockImplementation((url: string) =>
+          url === '/api/game/signal'
+            ? Promise.resolve({ ok: false, status: 409, json: async () => H3_409 })
+            : Promise.resolve({ ok: true, json: async () => ({}) }),
+        )
+        const channel = useGameChannel()
+        channel.connect('game-1', 'guest_abc')
+        MockRealtime.last!.connection._setState('connected')
+        channel.send({ type: 'chat', channel: 'team', message: 'hi' })
+        await vi.advanceTimersByTimeAsync(50)
+        expect(store.sessionEnded).toBe(H3_409.message)
+        expect(toastSpy).not.toHaveBeenCalledWith('[CHAT] Message failed to send', 'warning')
+      })
+
+      it('the server’s pushed GAME_SESSION_CHANGED error (practice ended on sign-in) ends it', async () => {
+        const { useGameStore } = await import('../../../app/stores/game')
+        const store = useGameStore()
+        const channel = useGameChannel()
+        channel.connect('game-1', 'guest_abc')
+        MockRealtime.last!.connection._setState('connected')
+        const client = MockRealtime.last!
+        client.channel!._receive('error', { code: 'GAME_SESSION_CHANGED', message: H3_409.message })
+        expect(store.sessionEnded).toBe(H3_409.message)
+        expect(client.close).toHaveBeenCalled()
+      })
     })
 
     it('returns false when there is no active game to send to', () => {

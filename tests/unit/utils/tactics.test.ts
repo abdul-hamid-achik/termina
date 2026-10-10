@@ -4,6 +4,7 @@ import {
   threatToneClass,
   recommendAction,
   incomingDamageLastCycle,
+  incomingDamageBreakdownLastCycle,
   zoneVerdict,
 } from '~~/app/utils/tactics'
 import type { ZoneThreat } from '~~/app/utils/tactics'
@@ -327,5 +328,164 @@ describe('incomingDamageLastCycle ignores damage I did to myself (review B2C-2)'
   it('black damage that does NOT mirror one of my hits still counts', () => {
     const events = [ev(20, 'me', 'e1', 90), ev(20, 'e1', 'me', 75, 'black')]
     expect(incomingDamageLastCycle(events, 'me', 21)).toBe(75)
+  })
+})
+
+describe('sustained wave / ICE fire is never FAVORED (playtest2 32.png)', () => {
+  // Echo at Coldstore Crossing, alone with one (lower) enemy hero, eating
+  // "Waves hit You ×4 for 118" every cycle. The banner said FAVORED both times.
+  const me = { id: 'me', zone: 'cx', alive: true, integ: 480, maxInteg: 598, team: 'chaff' }
+  const kernel = { id: 'k', zone: 'cx', alive: true, integ: 200, team: 'audit' }
+  const v = (integ: number, npc: number, total = npc, enemies = [kernel]) =>
+    zoneVerdict({
+      me: { ...me, integ },
+      allies: [],
+      enemies,
+      enemyIcePresent: false,
+      incomingLastCycle: total,
+      npcIncomingLastCycle: npc,
+      hasReadyAbility: true,
+    })
+
+  it('480/598 taking 118 from waves is CONTESTED with an honest action', () => {
+    const r = v(480, 118)
+    expect(r.threat).toEqual({ label: 'CONTESTED', tone: 'warn' })
+    expect(r.action).toBe('Waves are chewing you — step back or clear them')
+  })
+
+  it('362/598 taking 118 from waves is CONTESTED with the same action', () => {
+    const r = v(362, 118)
+    expect(r.threat.label).toBe('CONTESTED')
+    expect(r.action).toBe('Waves are chewing you — step back or clear them')
+  })
+
+  it('with no enemy hero, the same wave fire is not a calm CLEAR', () => {
+    const r = v(480, 118, 118, [])
+    expect(r.threat.label).toBe('CONTESTED')
+    expect(r.action).toBe('Waves are chewing you — step back or clear them')
+  })
+
+  it('a wave chip well under 15% of max INTEG keeps the advantage', () => {
+    const r = v(480, 40)
+    expect(r.threat.label).toBe('FAVORED')
+  })
+
+  it('a short time-to-death at the wave rate also vetoes FAVORED', () => {
+    // 80/598 is only 13% a cycle: at 330 INTEG that is 4.1 cycles — fine;
+    // at 310 it is 3.9 cycles — not a fight you are winning.
+    const r = v(330, 80)
+    expect(r.threat.label).toBe('FAVORED')
+    const low = zoneVerdict({
+      me: { ...me, integ: 310 },
+      allies: [],
+      enemies: [{ ...kernel, integ: 100 }],
+      enemyIcePresent: false,
+      incomingLastCycle: 80,
+      npcIncomingLastCycle: 80,
+      hasReadyAbility: true,
+    })
+    expect(low.threat.label).toBe('CONTESTED')
+  })
+
+  it('under enemy ICE with no hero around, the action names the ICE', () => {
+    const r = zoneVerdict({
+      me: { ...me, integ: 480 },
+      allies: [],
+      enemies: [],
+      enemyIcePresent: true,
+      incomingLastCycle: 118,
+      npcIncomingLastCycle: 118,
+      hasReadyAbility: true,
+    })
+    expect(r.threat.label).toBe('ICE')
+    expect(r.action).toBe('Their ICE is chewing you — step back out of its zone')
+  })
+
+  it('the same number dealt by an enemy HERO is a duel, not wave pressure', () => {
+    const r = v(480, 0, 118)
+    expect(r.threat.label).toBe('FAVORED')
+  })
+})
+
+describe('the pressure line names what is actually shooting (review r3 C2/C3)', () => {
+  const me = { id: 'me', zone: 'cx', alive: true, integ: 480, maxInteg: 598, team: 'chaff' }
+  const ally = { id: 'a', zone: 'cx', alive: true, integ: 500, maxInteg: 600, team: 'chaff' }
+  const kernel = { id: 'k', zone: 'cx', alive: true, integ: 200, team: 'audit' }
+
+  it('ICE fire with an enemy hero present (CONTESTED) names the ICE, not the waves', () => {
+    const r = zoneVerdict({
+      me,
+      allies: [],
+      enemies: [kernel],
+      enemyIcePresent: true,
+      incomingLastCycle: 118,
+      npcIncomingLastCycle: 118,
+      iceIncomingLastCycle: 118,
+      hasReadyAbility: true,
+    })
+    expect(r.threat.label).toBe('CONTESTED')
+    expect(r.action).toBe('Their ICE is chewing you — step back out of its zone')
+  })
+
+  it('wave fire under an ICE that is shooting someone else names the waves', () => {
+    const r = zoneVerdict({
+      me,
+      allies: [],
+      enemies: [],
+      enemyIcePresent: true,
+      incomingLastCycle: 118,
+      npcIncomingLastCycle: 118,
+      iceIncomingLastCycle: 0,
+      hasReadyAbility: true,
+    })
+    expect(r.action).toBe('Waves are chewing you — step back or clear them')
+  })
+
+  it('allies outnumbering the enemy is still not FAVORED under ≥15% max-INTEG NPC fire', () => {
+    const r = zoneVerdict({
+      me,
+      allies: [ally],
+      enemies: [kernel],
+      enemyIcePresent: false,
+      incomingLastCycle: 100,
+      npcIncomingLastCycle: 100, // 100/598 ≈ 17%
+      hasReadyAbility: true,
+    })
+    expect(r.allyHeadcount).toBe(2)
+    expect(r.threat).toEqual({ label: 'CONTESTED', tone: 'warn' })
+    // ...and the same fire under the threshold leaves the advantage alone.
+    const chip = zoneVerdict({
+      me,
+      allies: [ally],
+      enemies: [kernel],
+      enemyIcePresent: false,
+      incomingLastCycle: 40,
+      npcIncomingLastCycle: 40,
+      hasReadyAbility: true,
+    })
+    expect(chip.threat.label).toBe('FAVORED')
+  })
+})
+
+describe('incomingDamageBreakdownLastCycle', () => {
+  const ev = (cycle: number, sourceId: string, amount: number) => ({
+    type: 'damage',
+    cycle,
+    payload: { sourceId, targetId: 'me', amount },
+  })
+  it('splits wave / ICE / Silt fire from hero fire', () => {
+    const events = [
+      ev(20, 'wave_1', 30),
+      ev(20, 'wave_2', 28),
+      ev(20, 'ice_coldstore-t1-audit', 95),
+      ev(20, 'neutral_3', 10),
+      ev(20, 'kernel_player', 55),
+    ]
+    expect(incomingDamageBreakdownLastCycle(events, 'me', 21)).toEqual({
+      total: 218,
+      npc: 163,
+      ice: 95,
+    })
+    expect(incomingDamageLastCycle(events, 'me', 21)).toBe(218)
   })
 })

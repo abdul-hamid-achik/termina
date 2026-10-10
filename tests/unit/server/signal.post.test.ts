@@ -3,7 +3,7 @@ import type { H3Event } from 'h3'
 
 // ── Stubs for Nitro/h3 auto-imports (same pattern as join-neon.post.test) ──
 
-let sessionUser: { user?: { id?: string } } | null = null
+let sessionUser: { user?: { id?: string }; secure?: { formerGuestId?: string } } | null = null
 let requestBody: unknown = {}
 
 function makeEvent(): H3Event {
@@ -13,9 +13,10 @@ function makeEvent(): H3Event {
 vi.stubGlobal('defineEventHandler', (fn: (event: H3Event) => unknown) => fn)
 vi.stubGlobal('getUserSession', async () => sessionUser)
 vi.stubGlobal('readBody', async () => requestBody)
-vi.stubGlobal('createError', (opts: { statusCode: number; message: string }) => {
-  const err = new Error(opts.message) as Error & { statusCode: number }
+vi.stubGlobal('createError', (opts: { statusCode: number; message: string; data?: unknown }) => {
+  const err = new Error(opts.message) as Error & { statusCode: number; data?: unknown }
   err.statusCode = opts.statusCode
+  err.data = opts.data
   throw err
 })
 
@@ -114,6 +115,16 @@ describe('POST /api/game/signal (chat + map pings over Ably)', () => {
     sessionUser = { user: { id: 'stranger' } }
     requestBody = { gameId: 'g1', signal: { type: 'chat', channel: 'team', message: 'hi' } }
     await expect(handler(makeEvent())).rejects.toMatchObject({ statusCode: 403 })
+  })
+
+  it('409 GAME_SESSION_CHANGED for a guest who signed in while their game ran', async () => {
+    sessionUser = { user: { id: 'local_new' }, secure: { formerGuestId: 'p1' } }
+    requestBody = { gameId: 'g1', signal: { type: 'chat', channel: 'team', message: 'gg' } }
+    await expect(handler(makeEvent())).rejects.toMatchObject({
+      statusCode: 409,
+      data: { code: 'GAME_SESSION_CHANGED' },
+    })
+    expect(publishMock).not.toHaveBeenCalled()
   })
 
   it('401s without a session', async () => {

@@ -1,5 +1,6 @@
 import type { Command } from './commands'
 import type { GameEvent, TeamId, PlayerVisibleState } from './game'
+import type { TutorialStepId } from '../constants/tutorial'
 
 // ── Client → Server ──────────────────────────────────────────────
 
@@ -75,6 +76,20 @@ export interface GameOverMessage {
    * totals, and a total is unreadable as progress: 40 last hits is a good 10
    * minutes and a poor 30. Everything rate-based on that screen derives from it. */
   durationCycles?: number
+  /** Tutorial games only: how the drill flow ended for this player. `skipped`
+   *  names each drill that timed out (in flow order) — the post-game screen
+   *  names them and offers the retry; `mastered` is what tutorial completion
+   *  is persisted on (finished with no skips). Absent for every other mode. */
+  tutorial?: TutorialGameOverSummary
+}
+
+export interface TutorialGameOverSummary {
+  /** The flow reached its end (false: the player surrendered/left mid-flow). */
+  completed: boolean
+  /** Completed with every drill genuinely performed (no skips). */
+  mastered: boolean
+  /** Drills that skipped themselves on exhausted deadlines, in order. */
+  skipped: TutorialStepId[]
 }
 
 export interface PlayerEndStats {

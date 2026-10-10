@@ -23,6 +23,7 @@ import {
   resolveActions,
   validateAction,
   convertClosedControlCast,
+  approachStructure,
   type PlayerAction,
 } from './ActionResolver'
 import {
@@ -30,6 +31,7 @@ import {
   tutorialMasteryAchieved,
   TUTORIAL_STEP_COUNT,
 } from '~~/server/game/modes/tutorial'
+import { tutorialSkipNotice } from '~~/shared/constants/tutorial'
 import { distributePassiveScrip, awardKill, xpComebackMultiplier } from './ScripDistributor'
 import { runWaveAI, applyWaveActions, enforceWaveZoneCap } from './WaveAI'
 import { ensureTerminals, updateTerminalVulnerability, checkTerminalWin } from './TerminalSystem'
@@ -68,13 +70,9 @@ import {
   recordLeaverSafe,
 } from '~~/server/services/LeaverSystem'
 import { escalateRejection } from './rejectionEscalation'
+import { keepsWalk } from '~~/shared/utils/standingOrders'
 
 // ── Action queue per game ──────────────────────────────────────
-
-/** Command verbs that do NOT cancel an in-progress auto-path walk: a new move
- *  replaces the destination in the resolver, and the out-of-band verbs resolve
- *  without expressing a new positional intent. */
-const KEEPS_AUTOPATH = new Set(['move', 'surrender', 'select_talent', 'buyback'])
 
 /** Command verbs that do NOT cancel a standing attack order: a new attack
  *  replaces the target in the resolver, an item active is a free action from
@@ -378,10 +376,18 @@ export function processCycle(
     // don't interrupt walking. The standing attack order is dropped by the same
     // rule, against its own exception set.
     for (const action of actions) {
+      // Only a typed order is activity or a new intent. Live, synthesized
+      // continuations are pushed AFTER this loop and never reach it; on replay
+      // the log re-feeds them here, so they must be skipped WHOLE — a re-fed
+      // walk hop that stamped lastActionCycle kept an offline walker "active"
+      // and the replay never ran the AFK takeover the live game did.
+      if (action.synthesized) continue
       markPlayerActiveSafe(gameId, action.playerId)
       const actor = currentState.players[action.playerId]
       if (actor) {
-        const cancelsWalk = !KEEPS_AUTOPATH.has(action.command.type) && actor.moveTarget != null
+        // Which orders keep a walk: shared/utils/standingOrders (the client's
+        // walk memory reads the same rule).
+        const cancelsWalk = !keepsWalk(action.command) && actor.moveTarget != null
         const cancelsAttack = !KEEPS_ATTACK.has(action.command.type) && actor.attackTarget != null
         currentState = {
           ...currentState,
@@ -421,8 +427,12 @@ export function processCycle(
       actedThisTick.add(pid)
     }
     // Walking wins over swinging: a hero mid-route is not standing in the zone
-    // its old target was in (and the two orders are mutually exclusive anyway —
-    // each cancels the other in 1.2).
+    // its old target was in. A typed move and a typed attack cancel each other
+    // in 1.2; the one time both are held is an attack on ICE / a Terminal from
+    // range (approachStructure) — the walk runs first, and once it arrives the
+    // held attack takes over from the next cycle. (If the walk is dropped — a
+    // relocating item active mid-route: recall, jump — the held attack retires:
+    // a re-swing never starts a walk.)
     for (const [pid, p] of Object.entries(currentState.players)) {
       if (!p.alive || !p.attackTarget || actedThisTick.has(pid)) continue
       actions.push({
@@ -451,8 +461,30 @@ export function processCycle(
       }
       // Auto-breach: a control cast into a CLOSED hero the caster can breach
       // becomes that breach (ActionResolver.convertClosedControlCast).
-      const action = convertClosedControlCast(currentState, drained)
-      const error = validateAction(currentState, action)
+      let action = convertClosedControlCast(currentState, drained)
+      let error = validateAction(currentState, action)
+      // An ICE / Terminal attacked from outside its zone becomes the walk there,
+      // holding the attack as the standing order that swings on arrival
+      // (ActionResolver.approachStructure). Judged after the ORDER passed
+      // validation, so the tutorial gate and attack disables see what was typed.
+      const approach = error === null ? approachStructure(currentState, action) : null
+      if (approach && 'refuse' in approach) {
+        error = approach.refuse
+      } else if (approach) {
+        action = approach.walk
+        error = validateAction(currentState, action)
+        if (error === null) {
+          const walker = currentState.players[action.playerId]!
+          currentState = {
+            ...currentState,
+            players: {
+              ...currentState.players,
+              [action.playerId]: { ...walker, attackTarget: approach.target },
+            },
+          }
+          if (approach.note) notices.push({ playerId: action.playerId, message: approach.note })
+        }
+      }
       if (error === null) {
         validActions.push(action)
       } else if (!action.synthesized) {
@@ -563,9 +595,12 @@ export function processCycle(
             // An honest graduation: mastery = every drill genuinely performed.
             // With skips the game still ends (never trap the player), but the
             // funnel keeps offering practice — say so.
+            // Names each skipped drill (tutorialSkipNotice) so the retry
+            // invitation says WHAT to practise.
             message: tutorialMasteryAchieved(currentState)
               ? "🎓 That's the basics — practice complete. Here's how it went."
-              : '🎓 Practice over — some drills timed out and were skipped. Run practice again to master them.',
+              : (tutorialSkipNotice(currentState.tutorialSkipped ?? []) ??
+                '🎓 Practice over — some drills timed out and were skipped. Run practice again to master them.'),
           })
         }
       }

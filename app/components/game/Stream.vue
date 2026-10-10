@@ -24,6 +24,12 @@ function isCoachLine(text: string): boolean {
   return text.startsWith('[TUTORIAL]') || text.startsWith('[COACH]')
 }
 
+/** The line's OWN tag: a ranked coach line is [COACH], never relabelled
+ *  [TUTORIAL] (playtest2 76.png). */
+function coachTag(text: string): string {
+  return text.startsWith('[TUTORIAL]') ? '[TUTORIAL]' : '[COACH]'
+}
+
 const emit = defineEmits<{
   inspect: [kind: 'map']
 }>()
@@ -390,9 +396,9 @@ function eventAriaLabel(line: CombatLine): string {
           "
         >
           <template v-if="isCoachLine(event.text)">
-            <span class="mr-1 t-hud-xs font-bold text-ability">[TUTORIAL]</span>
+            <span class="mr-1 t-hud-xs font-bold text-ability">{{ coachTag(event.text) }}</span>
             <span class="whitespace-pre-wrap text-text-primary">{{
-              event.text.replace(/^\[TUTORIAL\]\s*/, '').replace(/^\[COACH\]\s*/, '')
+              event.text.replace(/^\[(?:TUTORIAL|COACH)\]\s*/, '')
             }}</span>
           </template>
           <template v-else>

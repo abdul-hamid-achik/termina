@@ -19,6 +19,7 @@ import {
   type LiveGamesRepo,
   type PendingActionsRepo,
   type TickDeps,
+  tutorialGameOverSummary,
 } from '~~/server/workflows/gameTickCore'
 import { serializeStateForTransport } from '~~/server/game/engine/replayArtifact'
 import { TUTORIAL_STEP_COUNT } from '~~/shared/constants/tutorial'
@@ -235,6 +236,41 @@ describe('claimRun', () => {
   })
 })
 
+describe('tutorialGameOverSummary', () => {
+  const ended = (over: Partial<GameState> = {}) =>
+    makeGameState({ phase: 'ended', winner: 'chaff', mode: 'tutorial', ...over })
+
+  it('names each skipped drill and denies mastery', () => {
+    expect(
+      tutorialGameOverSummary(
+        ended({
+          tutorialStep: TUTORIAL_STEP_COUNT,
+          tutorialSkips: 2,
+          tutorialSkipped: ['cast', 'ice'],
+        }),
+        'tutorial',
+      ),
+    ).toEqual({ completed: true, mastered: false, skipped: ['cast', 'ice'] })
+  })
+
+  it('a clean finish is mastered; an unfinished flow is neither', () => {
+    expect(
+      tutorialGameOverSummary(
+        ended({ tutorialStep: TUTORIAL_STEP_COUNT, tutorialSkips: 0 }),
+        'tutorial',
+      ),
+    ).toEqual({ completed: true, mastered: true, skipped: [] })
+    expect(
+      tutorialGameOverSummary(ended({ tutorialStep: 3, tutorialSkips: 0 }), 'tutorial'),
+    ).toEqual({ completed: false, mastered: false, skipped: [] })
+  })
+
+  it('is absent outside tutorial mode', () => {
+    expect(tutorialGameOverSummary(ended(), 'practice')).toBeNull()
+    expect(tutorialGameOverSummary(ended(), 'normal')).toBeNull()
+  })
+})
+
 describe('tutorialGraduates', () => {
   const tutorialRoster: LiveGameRoster = {
     players: [
@@ -320,6 +356,16 @@ describe('runOneTick — tutorial completion lands before the final publish', ()
 
     expect(mark).toHaveBeenCalledWith(['human'])
     expect(order).toEqual(['mark', 'publish'])
+    // game_over carries the drill summary the post-game screen reads.
+    const specs = t.publish.mock.calls[0]![0] as Array<{
+      name?: string
+      data: Record<string, unknown>
+    }>
+    expect(specs.find((spec) => spec.name === 'game_over')?.data['tutorial']).toEqual({
+      completed: true,
+      mastered: true,
+      skipped: [],
+    })
   })
 })
 

@@ -5,6 +5,8 @@ import { checkScopedRateLimit } from '~~/server/utils/RateLimiter'
 import { sendEmail } from '~~/server/utils/email'
 import { verifyEmailTemplate, welcomeTemplate } from '~~/shared/emailTemplates'
 import { createVerifyToken } from '~~/server/utils/authTokens'
+import { upgradedSessionSecure } from '~~/server/utils/guest'
+import { endFormerGuestPractice } from '~~/server/utils/guestPracticeEnd'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -99,8 +101,12 @@ export default defineEventHandler(async (event) => {
     // request cookie that update() re-reads: the result is a TOP-LEVEL shallow merge
     // (`user` is replaced wholesale, any other key would survive). So every top-level
     // key a session can carry (`user`, `secure`) is set explicitly here.
+    // A guest signing in keeps a claim on the practice game it left running
+    // (formerGuestId → GAME_SESSION_CHANGED in action.post, not a bare 403).
+    const prior = await getUserSession(event)
+    const secure = upgradedSessionSecure(prior)
     await replaceUserSession(event, {
-      secure: undefined,
+      secure,
       user: {
         id: player.id,
         username: player.username,
@@ -111,6 +117,8 @@ export default defineEventHandler(async (event) => {
         tutorialCompleted: !!player.tutorialCompleted,
       },
     })
+    // The guest's practice game would otherwise tick on for nobody.
+    if (secure) await endFormerGuestPractice(secure.formerGuestId)
 
     return {
       user: {

@@ -55,8 +55,12 @@ export type LoggedAction = ActionLogEntry
  *   takeover (meta.presenceOffline — "offline" needs two samples, the primary
  *   check and its confirm); bots respect their own disables and never touch
  *   tutorial training units; damage_blocked events.
+ * 4 (2026-10-10): a re-fed synthesized continuation is not activity (replays
+ *   of an ICE walk + AFK takeover now convert like live); taunt-forced swings
+ *   never replace the held order; an item active keeps the walk; Hardened ICE
+ *   ordered from range walks; finalSummaryHash carries aiControlled.
  */
-export const REPLAY_RULESET_VERSION = 3
+export const REPLAY_RULESET_VERSION = 4
 
 /** Per-player scrubber summary — the projection the replay UI renders. */
 export interface FramePlayer {
@@ -134,6 +138,11 @@ export function finalSummaryHash(state: GameState): string {
     players: Object.keys(frame.players)
       .sort()
       .map((id) => frame.players[id]),
+    // Who ended the game under bot control: an AFK takeover changes who played
+    // every later cycle, and a replay that missed one used to still verify.
+    aiControlled: Object.keys(state.players ?? {})
+      .filter((id) => state.players[id]?.aiControlled)
+      .sort(),
     waves: (state.waves ?? [])
       .map((w) => [w.zone, w.team, w.type, w.integ, w.maxInteg ?? null] as const)
       .sort((a, b) => compareCodePoints(JSON.stringify(a), JSON.stringify(b))),

@@ -57,6 +57,13 @@ export function routeServerMessage(
       break
     case 'error':
       socketLog.warn('Server error', { code: msg.code, message: msg.message })
+      // A sign-in on another tab ended this guest practice (server
+      // guestPracticeEnd): the same terminal state the action POST's 409 opens.
+      if (msg.code === 'GAME_SESSION_CHANGED') {
+        gameStore.endSession(msg.message, 'changed')
+        opts.disconnect()
+        break
+      }
       // NOT_ASSIGNED is terminal, not transient: the server no longer maps us
       // to this game, so retrying the same request answers the same forever
       // and the HUD stays frozen on a board that will never tick again. Being
@@ -82,6 +89,7 @@ export function routeServerMessage(
         msg.mmrChange,
         msg.ranked ?? true,
         msg.durationCycles,
+        msg.tutorial,
       )
       break
     // chat/ping_map are deliberately NOT store concerns: GameScreen's

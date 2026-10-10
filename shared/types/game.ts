@@ -1,4 +1,5 @@
 import type { Command, TargetRef } from './commands'
+import type { TutorialStepId } from '../constants/tutorial'
 
 export type TeamId = 'chaff' | 'audit'
 
@@ -187,6 +188,10 @@ export interface GameState {
    *  the game normally but does NOT persist tutorial completion — see
    *  tutorialMasteryAchieved. */
   tutorialSkips?: number
+  /** WHICH drills skipped, in order (`tutorialSkips` is its length). Server-only
+   *  in cycle_state; reported to the player in the graduation notice and in
+   *  game_over's `tutorial` summary. */
+  tutorialSkipped?: TutorialStepId[]
   /** Per-game seed for deterministic tick resolution (crits, procs, neutral/cache
    *  spawn rolls). Set ONCE at game creation (StateManager.createInitialGameState)
    *  and never mutated — it rides in the state, so snapshots/resume carry it

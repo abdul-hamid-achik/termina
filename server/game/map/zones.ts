@@ -115,29 +115,5 @@ export function removeExpiredWards(
   return changed ? updated : zones
 }
 
-/** Check if a ice at a zone can be attacked (preceding ice must be destroyed). */
-export function canAttackIce(ice: IceState[], zoneId: string): boolean {
-  const target = ice.find((t) => t.zone === zoneId && t.alive)
-  if (!target) return false
-
-  const zone = ZONE_MAP[zoneId]
-  const tier = zone?.tier ?? getIceTier(zoneId)
-  if (tier <= 1) return true // T1 can always be attacked
-
-  // Route and team come from the zone RECORD, and the preceding zone is looked
-  // up by its fields rather than assembled from them. The old code parsed the id
-  // (`startsWith('top-')`) and then rebuilt one (`${lane}-t${tier}-${team}`),
-  // which silently encoded the id scheme into the ICE-exposure rule: any rename
-  // would have made every T2/T3 permanently attackable — no type error, no
-  // failing test, just a game that no longer has a tower order.
-  const lane = zone?.lane
-  const team = target.team
-  const precedingTier = tier - 1
-  const precedingZone = ZONES.find(
-    (z) => z.lane === lane && z.tier === precedingTier && z.team === team,
-  )
-  if (!lane || !precedingZone) return true
-
-  const precedingIce = ice.find((t) => t.zone === precedingZone.id)
-  return !precedingIce || !precedingIce.alive
-}
+/** The ICE tier-order rule lives in shared/utils/structureRules (the prompt mirrors it). */
+export { canAttackIce } from '~~/shared/utils/structureRules'

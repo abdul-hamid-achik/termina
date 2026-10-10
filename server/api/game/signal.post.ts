@@ -5,6 +5,11 @@ import { checkScopedRateLimit } from '~~/server/utils/RateLimiter'
 import { ablyPublishBatch, type AblyBatchSpec } from '~~/server/utils/ablyRest'
 import { isBot } from '~~/server/game/ai/BotManager'
 import { ZONE_MAP } from '~~/shared/constants/zones'
+import {
+  GAME_SESSION_CHANGED,
+  GAME_SESSION_CHANGED_MESSAGE,
+  isFormerGuestOf,
+} from '~~/server/utils/guest'
 
 interface SignalRequestBody {
   gameId: string
@@ -63,7 +68,17 @@ export default defineEventHandler(async (event) => {
   if (!row) throw createError({ statusCode: 404, message: 'Game not found' })
 
   const sender = row.roster.players.find((p) => p.playerId === playerId)
-  if (!sender) throw createError({ statusCode: 403, message: 'Not a player in this game' })
+  if (!sender) {
+    // Same contract as action.post: a guest who signed in mid-practice.
+    if (isFormerGuestOf(session, row.roster)) {
+      throw createError({
+        statusCode: 409,
+        message: GAME_SESSION_CHANGED_MESSAGE,
+        data: { code: GAME_SESSION_CHANGED },
+      })
+    }
+    throw createError({ statusCode: 403, message: 'Not a player in this game' })
+  }
 
   // Pings are team-scoped by nature; chat honors its channel.
   const teamOnly = signal.type === 'ping_map' || signal.channel === 'team'

@@ -184,6 +184,17 @@ describe('the durable replay artifact', () => {
     }
     expect(finalSummaryHash(reordered)).toBe(finalSummaryHash(live))
   })
+
+  it('finalSummaryHash tells a game that ended with an AFK takeover from one that did not', async () => {
+    // Who played the later cycles is outcome: a replay that missed a takeover
+    // must not verify against the live game.
+    const live = await playLive(SEED)
+    const takenOver: GameState = {
+      ...live,
+      players: { ...live.players, human: { ...live.players.human!, aiControlled: true } },
+    }
+    expect(finalSummaryHash(takenOver)).not.toBe(finalSummaryHash(live))
+  })
 })
 
 describe('replay reproduces AFK takeovers driven by Ably presence', () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import PostGame from '~~/app/components/lobby/PostGame.vue'
 import { makePlayerEndStats, SAMPLE_HEROES, SAMPLE_ITEMS } from '~~/app/stories/fixtures'
@@ -278,5 +278,225 @@ describe('PostGame', () => {
       // MVP is the absolute best individual game, even on the losing side.
       expect(wrapper.get('[data-testid="mvp-name"]').text()).toContain('daemon_carry')
     })
+  })
+})
+
+// playtest2 37.png — the practice graduation screen.
+describe('PostGame after a practice game (playtest2 #7)', () => {
+  it('offers no WATCH REPLAY for practice — practice games archive none — and says why', () => {
+    const wrapper = mountPostGame({ mode: 'tutorial', tutorialComplete: true, gameId: 'prac_1' })
+    expect(wrapper.find('a[href^="/replay/"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="no-replay"]').text()).toContain('not recorded')
+  })
+
+  it('a dev_ game is unrecorded too; a normal match keeps its replay', () => {
+    const dev = mountPostGame({ gameId: 'dev_1' })
+    expect(dev.find('a[href^="/replay/"]').exists()).toBe(false)
+    const real = mountPostGame({ gameId: 'game_abc' })
+    expect(real.find('a[href^="/replay/"]').exists()).toBe(true)
+    expect(real.find('[data-testid="no-replay"]').exists()).toBe(false)
+  })
+
+  it('shows handles and labels instead of raw ids', () => {
+    const players = [
+      {
+        id: 'guest_b24b52530031',
+        name: 'guest_b24b52530031',
+        heroId: 'echo',
+        team: 'chaff' as TeamId,
+      },
+      {
+        id: 'bot_ally_prac_1791624441320_akrqgc',
+        name: 'bot_ally_prac_1791624441320_akrqgc',
+        heroId: 'sentry',
+        team: 'chaff' as TeamId,
+      },
+      {
+        id: 'local_cff6baeb-1111-2222-3333-444455556666',
+        name: 'local_cff6baeb-1111-2222-3333-444455556666',
+        heroId: 'daemon',
+        team: 'audit' as TeamId,
+      },
+      {
+        id: 'bot_enemy1_prac_1791623981819_5o2abc',
+        name: 'BOT_ENEMY1_PRAC_1791623981819_5O2ABC',
+        heroId: 'kernel',
+        team: 'audit' as TeamId,
+      },
+    ]
+    const stats = {
+      guest_b24b52530031: makePlayerEndStats({ kills: 1, deaths: 2, assists: 0, heroDamage: 69 }),
+      bot_ally_prac_1791624441320_akrqgc: makePlayerEndStats({
+        kills: 0,
+        deaths: 1,
+        assists: 0,
+        heroDamage: 510,
+      }),
+      'local_cff6baeb-1111-2222-3333-444455556666': makePlayerEndStats({
+        kills: 0,
+        deaths: 2,
+        assists: 0,
+        heroDamage: 544,
+      }),
+      bot_enemy1_prac_1791623981819_5o2abc: makePlayerEndStats({
+        kills: 3,
+        deaths: 0,
+        assists: 0,
+        heroDamage: 6660,
+      }),
+    }
+    const wrapper = mountPostGame({
+      players,
+      stats,
+      currentPlayerId: 'guest_b24b52530031',
+      mode: 'tutorial',
+      tutorialComplete: true,
+    })
+    const text = wrapper.text()
+    expect(text).not.toMatch(/bot_|BOT_ENEMY|local_|guest_b24/)
+    expect(wrapper.get('[data-testid="mvp-name"]').text()).toContain('Kernel')
+    expect(wrapper.get('[data-testid="mvp-name"]').text()).toContain('bot')
+  })
+
+  it('a real name is left alone', () => {
+    const wrapper = mountPostGame()
+    expect(wrapper.text()).toContain('kernel_main')
+  })
+
+  it('says which drills were skipped instead of "you have the basics"', () => {
+    const wrapper = mountPostGame({
+      mode: 'tutorial',
+      tutorialComplete: true,
+      skippedDrills: ['cast', 'tap'],
+    })
+    const wrap = wrapper.get('[data-testid="tutorial-wrapup"]').text()
+    expect(wrap).toContain('CAST')
+    expect(wrap).toContain('TAP')
+    expect(wrap).toMatch(/skipped/i)
+    expect(wrap).not.toContain("You've got the basics")
+  })
+
+  it('pluralises the last-hit observation ("1 wave", not "1 waves")', () => {
+    const wrapper = mountPostGame({
+      stats: { ...smallStats(), p1: makePlayerEndStats({ lastHits: 1 }) },
+    })
+    const text = wrapper.get('[data-testid="what-to-work-on"]').text()
+    expect(text).toContain('You last-hit 1 wave')
+    expect(text).not.toContain('1 waves')
+  })
+})
+
+// playtest2 #10: a guest's graduation screen called GET /api/player/me, which
+// 404s for a guest (no player row) — every time.
+describe('the post-tutorial session refresh', () => {
+  afterEach(() => vi.unstubAllGlobals())
+  const flush = () => new Promise((r) => setTimeout(r, 0))
+
+  it('refreshes a registered graduate', async () => {
+    const fetchSpy = vi.fn(() => Promise.resolve({}))
+    vi.stubGlobal('$fetch', fetchSpy)
+    mountPostGame({ mode: 'tutorial', tutorialComplete: true, currentPlayerId: 'p1' })
+    await flush()
+    expect(fetchSpy).toHaveBeenCalledWith('/api/player/me')
+  })
+
+  // GET /api/player/me now answers 200 for a guest (session-shaped, guest:true),
+  // so a guest graduate refreshes like anyone else.
+  it('refreshes a guest graduate too', async () => {
+    const fetchSpy = vi.fn(() => Promise.resolve({}))
+    vi.stubGlobal('$fetch', fetchSpy)
+    mountPostGame({
+      mode: 'tutorial',
+      tutorialComplete: true,
+      currentPlayerId: 'guest_b24b52530031',
+      players: [{ id: 'guest_b24b52530031', name: 'g', heroId: 'echo', team: 'chaff' as TeamId }],
+    })
+    await flush()
+    expect(fetchSpy).toHaveBeenCalledWith('/api/player/me')
+  })
+
+  it('never asks after skipped drills (nothing banked)', async () => {
+    const fetchSpy = vi.fn(() => Promise.resolve({}))
+    vi.stubGlobal('$fetch', fetchSpy)
+    mountPostGame({ mode: 'tutorial', tutorialComplete: true, skippedDrills: ['tap'] })
+    mountPostGame({
+      mode: 'tutorial',
+      tutorialComplete: true,
+      tutorialSummary: { completed: true, mastered: false, skipped: ['cast'] },
+    })
+    await flush()
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('stays quiet when the refresh fails', async () => {
+    const fetchSpy = vi.fn(() => Promise.reject(new Error('503')))
+    vi.stubGlobal('$fetch', fetchSpy)
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const wrapper = mountPostGame({ mode: 'tutorial', tutorialComplete: true })
+    await flush()
+    expect(fetchSpy).toHaveBeenCalled()
+    expect(errors).not.toHaveBeenCalled()
+    expect(wrapper.get('[data-testid="tutorial-wrapup"]').text()).toContain('Ready for a real')
+    errors.mockRestore()
+  })
+})
+
+// game_over.tutorial is the server's word on how the drill flow ended; the
+// "Moving on" notice parsing (skippedDrills) is only the fallback for a
+// game_over without it.
+describe('PostGame reads the tutorial game_over block', () => {
+  const banner = (w: ReturnType<typeof mountPostGame>) => w.get('[data-testid="post-game"]').text()
+
+  it('names the skipped drills from game_over.tutorial and drops the pass headline', () => {
+    const w = mountPostGame({
+      mode: 'tutorial',
+      tutorialComplete: true,
+      tutorialSummary: { completed: true, mastered: false, skipped: ['cast', 'tap'] },
+    })
+    const wrap = w.get('[data-testid="tutorial-wrapup"]').text()
+    expect(wrap).toContain('CAST')
+    expect(wrap).toContain('TAP')
+    expect(wrap).not.toContain("You've got the basics")
+    expect(banner(w)).not.toContain('PRACTICE COMPLETE')
+    expect(banner(w)).not.toContain('tutorial complete')
+    expect(banner(w)).toContain('DRILLS SKIPPED')
+  })
+
+  it('prefers the block over the notice fallback', () => {
+    const w = mountPostGame({
+      mode: 'tutorial',
+      tutorialComplete: true,
+      skippedDrills: ['buy'],
+      tutorialSummary: { completed: true, mastered: false, skipped: ['ice'] },
+    })
+    const wrap = w.get('[data-testid="tutorial-wrapup"]').text()
+    expect(wrap).toContain('ICE')
+    expect(wrap).not.toContain('BUY')
+  })
+
+  it('a mastered run keeps the pass headline', () => {
+    const w = mountPostGame({
+      mode: 'tutorial',
+      tutorialComplete: false,
+      tutorialSummary: { completed: true, mastered: true, skipped: [] },
+    })
+    expect(banner(w)).toContain('PRACTICE COMPLETE')
+    expect(w.get('[data-testid="tutorial-wrapup"]').text()).toContain("You've got the basics")
+  })
+
+  it('an unfinished flow reads as ended early, whatever the step counter says', () => {
+    const w = mountPostGame({
+      mode: 'tutorial',
+      tutorialComplete: true,
+      tutorialSummary: { completed: false, mastered: false, skipped: [] },
+    })
+    expect(banner(w)).toContain('PRACTICE ENDED')
+    expect(w.get('[data-testid="tutorial-wrapup"]').text()).toContain('ended early')
+  })
+
+  it('falls back to the notice-parsed drills when the block is absent', () => {
+    const w = mountPostGame({ mode: 'tutorial', tutorialComplete: true, skippedDrills: ['burn'] })
+    expect(w.get('[data-testid="tutorial-wrapup"]').text()).toContain('BURN')
+    expect(banner(w)).toContain('DRILLS SKIPPED')
   })
 })

@@ -1,15 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { H3Event } from 'h3'
 
-let sessionUser: { user?: { id?: string } } | null = null
+let sessionUser: { user?: { id?: string }; secure?: { formerGuestId?: string } } | null = null
 let requestBody: unknown = {}
 
 vi.stubGlobal('defineEventHandler', (fn: (event: H3Event) => unknown) => fn)
 vi.stubGlobal('getUserSession', async () => sessionUser)
 vi.stubGlobal('readBody', async () => requestBody)
-vi.stubGlobal('createError', (opts: { statusCode: number; message: string }) => {
-  const err = new Error(opts.message) as Error & { statusCode: number }
+vi.stubGlobal('createError', (opts: { statusCode: number; message: string; data?: unknown }) => {
+  const err = new Error(opts.message) as Error & { statusCode: number; data?: unknown }
   err.statusCode = opts.statusCode
+  err.data = opts.data
   return err
 })
 vi.mock('~~/server/utils/RateLimiter', () => ({ checkRateLimit: vi.fn(() => true) }))
@@ -109,6 +110,32 @@ describe('POST /api/game/action', () => {
     selectResults = [[liveRow(5)]]
     sessionUser = { user: { id: 'intruder' } }
     await expect(handler(event)).rejects.toMatchObject({ statusCode: 403 })
+  })
+
+  describe('a guest who signed in while their practice game ran (playtest 2)', () => {
+    function guestRow() {
+      return {
+        ...liveRow(5),
+        roster: { players: [{ playerId: 'guest_abc', team: 'chaff', heroId: 'echo', mmr: 1000 }] },
+      }
+    }
+
+    it('409 GAME_SESSION_CHANGED with a message the old tab can show — nothing queued', async () => {
+      selectResults = [[guestRow()]]
+      sessionUser = { user: { id: 'local_new' }, secure: { formerGuestId: 'guest_abc' } }
+      await expect(handler(event)).rejects.toMatchObject({
+        statusCode: 409,
+        message: 'You signed in — this guest practice ended. Start a new one.',
+        data: { code: 'GAME_SESSION_CHANGED' },
+      })
+      expect(execute).not.toHaveBeenCalled()
+    })
+
+    it('a former guest of a DIFFERENT game is still just not on this roster (403)', async () => {
+      selectResults = [[guestRow()]]
+      sessionUser = { user: { id: 'local_new' }, secure: { formerGuestId: 'guest_zzz' } }
+      await expect(handler(event)).rejects.toMatchObject({ statusCode: 403 })
+    })
   })
 
   describe('AFK-converted (aiControlled) humans', () => {

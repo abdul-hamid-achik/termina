@@ -51,6 +51,12 @@ import { awardLastHit, awardIceKill, waveStripScrip } from './ScripDistributor'
 import { pickupBackup } from './TenantAI'
 import { pickupCache } from './CacheAI'
 import { resolveTerminalAttack, TERMINAL_ZONES } from './TerminalSystem'
+import {
+  STRUCTURE_REFUSAL,
+  structureRefusal,
+  structureWalkNote,
+  structureZone,
+} from '~~/shared/utils/structureRules'
 import { ITEMS } from '~~/shared/constants/items'
 import {
   WAVE_XP,
@@ -105,6 +111,10 @@ export interface PlayerAction {
    *  — its rejections are silent so a rooted/slowed walker isn't spammed with
    *  warnings for a command they issued ticks ago. */
   synthesized?: boolean
+  /** A swing the engine forced (taunt) in place of the player's own action. It
+   *  resolves like any attack but is not the player's order, so it never
+   *  becomes the held attack (holdTarget). */
+  forced?: boolean
   /** Set when GameLoop converted a control cast into a CLOSED hero into this
    *  breach (convertClosedControlCast) — names the ability that was ordered. */
   convertedFrom?: { ability: AbilitySlot; abilityName: string }
@@ -203,6 +213,35 @@ function waveInZoneByIndex(
     seen++
   }
   return null
+}
+
+/**
+ * The refusal for `attack wave:N` at one of the attacker's OWN units. wave:N
+ * counts every unit in the zone, both crews, in list order (waveInZoneByIndex)
+ * — so "your own wave" alone left the player guessing which N is the enemy
+ * (playtest 2). Names the indices that would work, in that same index space:
+ * the first living enemy unit to strip, and the burn when this unit is inside
+ * the burn window.
+ */
+function ownWaveRefusal(
+  waves: WaveUnitState[],
+  attacker: PlayerState,
+  index: number,
+  wave: WaveUnitState,
+): string {
+  const inZone = waves.filter((w) => w.zone === attacker.zone)
+  const enemyIdx = inZone.findIndex((w) => w.team !== attacker.team && w.integ > 0)
+  const burnMax = wave.maxInteg ?? waveUnitMaxHp(wave.type, 0)
+  const burnable = wave.integ <= burnMax * BURN_HP_THRESHOLD
+  const head = `wave:${index} is YOUR unit — `
+  const burn = `\`burn wave:${index}\` denies it`
+  const windowNote = `(burn opens at ≤${Math.round(BURN_HP_THRESHOLD * 100)}% INTEG)`
+  if (enemyIdx < 0) {
+    const none = 'no enemy unit in this zone right now'
+    return burnable ? `${head}${burn} (${none})` : `${head}${none} ${windowNote}`
+  }
+  const enemy = `\`attack wave:${enemyIdx}\` is the enemy one`
+  return burnable ? `${head}${burn}, or ${enemy}` : `${head}${enemy} ${windowNote}`
 }
 
 /**
@@ -534,6 +573,68 @@ export function convertClosedControlCast(state: GameState, action: PlayerAction)
   return { ...breach, convertedFrom: { ability: cmd.ability, abilityName } }
 }
 
+// ── Structure approach (ICE / Terminal attacked from range) ────
+
+/** What GameLoop does with an attack on a structure the attacker is not standing at. */
+export type StructureApproach =
+  /** Walk: validate + resolve this `move` instead, and hold `target` as the attack order.
+   *  `note` is the reply owed with it (a Hardened ICE: how long it holds). */
+  | { walk: PlayerAction; target: TargetRef; note?: string }
+  /** The order can never land — refuse it now instead of walking the player there. */
+  | { refuse: string }
+
+/**
+ * `attack ice:<zone>` / `attack terminal` from outside the structure's zone.
+ *
+ * ICE and Terminals never move, so such an order is a standing one: the hero
+ * walks there one hop per cycle (the `move` auto-path, so root/stun/taunt and
+ * slow gate it exactly as they gate a walk) and the held attack order swings
+ * on the cycle after arrival — GameLoop's standing-order continuation, the same
+ * re-swing an in-zone ICE attack already gets. Hero targets are NOT converted:
+ * heroes move, and walking at where one stood is a chase the player did not ask
+ * for.
+ *
+ * A typed order that can never land (tier order, own ICE, a firewalled or dead
+ * Terminal) is refused at the order — the player is not walked under a
+ * structure only to be told on arrival. A Hardened ICE is NOT refused: Harden
+ * is temporary (5 cycles), the walk may outlast it, and the held order waits
+ * it out at the ICE anyway — the order goes ahead with a `note` saying how long
+ * the Harden still holds (structureWalkNote).
+ *
+ * Only a TYPED order starts a walk. A synthesized re-swing that finds its
+ * attacker out of the structure's zone means something else moved them — a
+ * recall/TP (an item active keeps the attack order, see KEEPS_ATTACK), a pull, a
+ * swap — and walking them back across the map would be an order nobody gave.
+ * It is left unconverted, so the attack phase retires it silently (the one
+ * place that rule lives). The walk itself never needs this: it is the held
+ * `moveTarget`, and on arrival the re-swing is in zone.
+ *
+ * Returns null for anything else (other targets, in-zone attacks, no player).
+ * Pure; GameLoop runs it after the original order passed validateAction, so
+ * the tutorial gate and the attack disables are judged on what was typed.
+ */
+export function approachStructure(
+  state: GameState,
+  action: PlayerAction,
+): StructureApproach | null {
+  const cmd = action.command
+  if (cmd.type !== 'attack' || action.synthesized) return null
+  const player = state.players[action.playerId]
+  if (!player || !player.alive) return null
+  const zone = structureZone(player.team, cmd.target)
+  if (!zone || zone === player.zone) return null
+  const refusal = structureRefusal(state.ice, state.terminals, player.team, cmd.target, {
+    fromRange: true,
+  })
+  if (refusal) return { refuse: refusal }
+  const note = structureWalkNote(state.ice, state.teams, cmd.target, state.cycle)
+  return {
+    walk: { playerId: action.playerId, command: { type: 'move', zone } },
+    target: cmd.target,
+    ...(note ? { note } : {}),
+  }
+}
+
 /** Every action-gating debuff id, derived from the sets above so a new disable
  *  is narrated the moment it is enforced — the two can never drift apart. */
 const NARRATED_STATUS_IDS: ReadonlySet<string> = new Set(
@@ -574,6 +675,26 @@ function emitStatusApplied(
       })
     }
   }
+}
+
+/**
+ * The reason a typed order dropped by anti-cheat is refused with. A hero target
+ * the attacker cannot see is ALSO an honest mistake, so it reads exactly as the
+ * resolver's own out-of-zone / ally refusals do — generic, never the target's
+ * zone. Anything else anti-cheat drops gets a plain refusal, so no order
+ * vanishes without a word.
+ */
+function antiCheatDropReason(state: GameState, action: PlayerAction): string {
+  const cmd = action.command
+  if ((cmd.type === 'attack' || cmd.type === 'breach') && cmd.target.kind === 'hero') {
+    const target = findTargetPlayer(state, cmd.target)
+    const me = state.players[action.playerId]
+    if (target && me && target.team === me.team) {
+      return cmd.type === 'attack' ? `${target.name} is on your team` : 'Cannot breach an ally'
+    }
+    return cmd.type === 'attack' ? 'Target is not in your zone' : 'Target not in your zone'
+  }
+  return 'That order was refused'
 }
 
 // ── Resolution Pipeline ────────────────────────────────────────
@@ -1353,7 +1474,9 @@ function resolveAttackPhase(
     // explicit timing decision (the contract the command parser documents), not
     // a standing order.
     const holdTarget = (): void => {
-      if (cmd.target.kind === 'wave') return
+      // A taunt-forced swing is not the player's order — the order they DID
+      // give (an ICE walk's held attack) must survive it.
+      if (cmd.target.kind === 'wave' || action.forced) return
       playerUpdates[action.playerId] = {
         ...playerUpdates[action.playerId],
         attackTarget: cmd.target,
@@ -1413,7 +1536,7 @@ function resolveAttackPhase(
       // teaching the exact opposite of last-hitting. Killing your own wave is
       // the `burn` command, which has its own INTEG window and reduced reward.
       if (wave.team === attacker.team) {
-        miss('That is your own wave — use `burn` instead')
+        miss(ownWaveRefusal(wavesAtPhaseStart, attacker, cmd.target.index, wave))
         continue
       }
 
@@ -1430,11 +1553,16 @@ function resolveAttackPhase(
       const targetZone = cmd.target.zone
       let iceTarget = ice.find((t) => t.zone === targetZone && t.alive)
       if (!iceTarget) {
-        miss(`No standing ice in ${targetZone}`)
+        miss(STRUCTURE_REFUSAL.noIce(targetZone))
         continue
       }
       if (iceTarget.zone !== attacker.zone) {
         miss('Target is not in your zone')
+        continue
+      }
+      // Nothing stopped a hero from chipping their OWN ICE while standing at it.
+      if (iceTarget.team === attacker.team) {
+        miss(STRUCTURE_REFUSAL.ownIce)
         continue
       }
       if (iceTarget.invulnerable) {
@@ -1451,13 +1579,13 @@ function resolveAttackPhase(
         if (!action.synthesized) {
           rejected.push({
             playerId: action.playerId,
-            reason: 'That ice is Hardened — attacks do nothing until it expires',
+            reason: STRUCTURE_REFUSAL.hardened,
           })
         }
         continue
       }
       if (!canAttackIce(ice, targetZone)) {
-        miss('That ice is protected — destroy the one in front of it first')
+        miss(STRUCTURE_REFUSAL.protectedIce)
         continue
       }
 
@@ -2516,6 +2644,7 @@ export function resolveActions(
     const repositioning = new Set(
       actions.filter((a) => a.command.type === 'use').map((a) => a.playerId),
     )
+    const antiCheatRefusals: Array<{ playerId: string; reason: string }> = []
     // Auto-breach conversion is idempotent: GameLoop already applied it before
     // validation; repeating it here keeps direct callers on the same rule.
     let validActions = actions
@@ -2554,6 +2683,10 @@ export function resolveActions(
           cheatDetections.push({ playerId: a.playerId, command: a.command, violations })
           // Reject high and critical violations; lower severities are logged only
           if (violations.some((v) => v.severity === 'critical' || v.severity === 'high')) {
+            // Dropped, but never in silence: the same order is also a plain
+            // mistake (`attack hero:<x>` with x elsewhere), and it gets the text
+            // the attack phase would have given — which never says where.
+            antiCheatRefusals.push({ playerId: a.playerId, reason: antiCheatDropReason(state, a) })
             return false
           }
         }
@@ -2564,7 +2697,7 @@ export function resolveActions(
     let players = { ...state.players }
     const events: GameEngineEvent[] = []
     const heroAttackers = new Map<string, string>()
-    const rejected: Array<{ playerId: string; reason: string }> = []
+    const rejected: Array<{ playerId: string; reason: string }> = [...antiCheatRefusals]
     let zones = { ...state.zones }
     let terminals = state.terminals
     let waves = [...state.waves]
@@ -2627,6 +2760,7 @@ export function resolveActions(
         validActions.push({
           playerId: pid,
           command: { type: 'attack', target: { kind: 'hero', name: taunterId } },
+          forced: true,
         })
       }
     }

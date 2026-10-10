@@ -290,9 +290,17 @@ describe('enemy farming in sight (a state, not an event)', () => {
     expect(out.map((l) => [l.cycle, l.text])).toEqual([[85, 'farm: enemy farming in sight']])
   })
 
-  it('is said again after a cycle without it', () => {
-    const out = digestFarmNoise([seen(85), seen(87)])
-    expect(out.map((l) => l.cycle)).toEqual([85, 87])
+  // playtest2: it still came back every 3–4 cycles — an enemy dipping in and
+  // out of vision is the same standing state, not news.
+  it('is NOT said again after a short gap (3–4 cycles)', () => {
+    const out = digestFarmNoise([seen(85), seen(88), seen(92), seen(95)])
+    expect(out.map((l) => l.cycle)).toEqual([85])
+  })
+
+  it('is said again only once it newly starts after 20 quiet cycles', () => {
+    const out = digestFarmNoise([seen(85), seen(104), seen(125)])
+    // 104 is 19 cycles after 85 (still the same spell); 125 follows 21 quiet.
+    expect(out.map((l) => l.cycle)).toEqual([85, 125])
   })
 
   it('never yields two digests for one cycle once the feed is cycle-sorted', () => {

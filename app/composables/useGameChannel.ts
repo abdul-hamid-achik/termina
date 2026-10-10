@@ -21,6 +21,55 @@ interface CycleStateData {
   nextCommitAt?: number
 }
 
+/** The code a server error body may carry for "this game is no longer your
+ *  session's" (a guest upgraded to an account mid-game, on another tab). */
+const SESSION_CHANGED_CODE = 'GAME_SESSION_CHANGED'
+
+/**
+ * The message to end the session with when an action/signal POST failure means
+ * the game is no longer this session's — a 403 (not assigned: the cookie now
+ * names someone else), a 404 (the game is gone), or an explicit
+ * GAME_SESSION_CHANGED code, read defensively off h3's error body (`data.code`
+ * — ofetch's `err.data.data.code` —, `code`, `statusMessage`). Null for
+ * anything transient, which keeps the retry path.
+ */
+async function sessionEndedMessage(
+  res: { status: number; json?: () => Promise<unknown> },
+  playerId: string | null,
+): Promise<{ message: string; reason: 'finished' | 'changed' } | null> {
+  let body: Record<string, unknown> = {}
+  try {
+    const parsed = (await res.json?.()) as Record<string, unknown> | null
+    if (parsed && typeof parsed === 'object') body = parsed
+  } catch {
+    // Not JSON — judge by the status alone.
+  }
+  const data = (body.data ?? {}) as Record<string, unknown>
+  const code = data.code ?? body.code ?? body.statusMessage
+  if (code === SESSION_CHANGED_CODE) {
+    // The server says it in its own words (action.post / signal.post 409).
+    const message =
+      typeof body.message === 'string' && body.message
+        ? body.message
+        : 'You signed in on another tab — this guest practice ended.'
+    return { message, reason: 'changed' }
+  }
+  // The live_games row is gone: the game was finalized — almost always because
+  // it ENDED. (A guest practice deleted by a sign-in elsewhere 404s too, but the
+  // server also pushes GAME_SESSION_CHANGED on the channel — kept open on a 404
+  // — which re-labels the panel 'changed'.) Nothing will accept an order again.
+  if (res.status === 404) {
+    return { message: 'This game has finished — it is no longer running.', reason: 'finished' }
+  }
+  if (res.status !== 403) return null
+  return {
+    message: playerId?.startsWith('guest_')
+      ? 'You signed in on another tab — this guest practice ended.'
+      : 'This match is no longer tied to your session — it ended here.',
+    reason: 'changed',
+  }
+}
+
 /**
  * Ably+HTTP transport — mirrors useGameSocket's public surface (connect,
  * disconnect, connected/reconnecting refs, send) so call sites can swap
@@ -220,6 +269,19 @@ export function useGameChannel() {
    *  the boolean is "the request went out", not "the server accepted it";
    *  the accept/reject arrives later via the action_ack routing below. */
   function send(message: ClientMessage): boolean {
+    // The game is over for this session: the request would only be refused
+    // again. Not sent — and said so, so a chat line typed under the ended panel
+    // is not dropped in silence. (GameScreen stops game actions before they get
+    // here, so its "connection unstable, will retry" buffering never sees this.)
+    if (gameStore.sessionEnded) {
+      gameStore.addAnnouncement(
+        gameStore.sessionEndReason === 'finished'
+          ? '[GAME] Not sent — this game has finished'
+          : '[GAME] Not sent — this game is no longer your session’s',
+        'warning',
+      )
+      return false
+    }
     if (!currentGameId) {
       socketLog.warn('Send dropped — no active game', { type: message.type })
       return false
@@ -262,6 +324,12 @@ export function useGameChannel() {
         body: JSON.stringify({ gameId: currentGameId, signal: message }),
       })
       if (!res.ok) {
+        const ended = await sessionEndedMessage(res, currentPlayerId)
+        if (ended) {
+          gameStore.endSession(ended.message, ended.reason)
+          if (res.status !== 404) disconnect()
+          return
+        }
         socketLog.warn('Signal POST rejected', { status: res.status, type: message.type })
         gameStore.addAnnouncement('[CHAT] Message failed to send', 'warning')
       }
@@ -287,6 +355,20 @@ export function useGameChannel() {
         }),
       })
       if (!res.ok) {
+        const ended = await sessionEndedMessage(res, currentPlayerId)
+        if (ended) {
+          // Terminal, not transient: this session no longer owns the game.
+          // Stop here — one message, no retry loop, no live channel.
+          socketLog.warn('Action POST refused — game no longer this session’s', {
+            status: res.status,
+          })
+          gameStore.endSession(ended.message, ended.reason)
+          // A 404 can race a normal ending (finalize deletes the row right after
+          // the final tick publishes): keep the channel so a game_over still in
+          // flight lands on PostGame, which renders over the ended panel.
+          if (res.status !== 404) disconnect()
+          return
+        }
         // A transport/HTTP failure is NOT the same thing as the server's own
         // 'late'/'future' rejection reasons — don't fabricate one of those
         // reasons for a request that never got a server verdict.

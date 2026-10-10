@@ -13,15 +13,12 @@
  */
 import type { TerminalState, GameState, TeamId } from '~~/shared/types/game'
 import { TERMINAL_HP } from '~~/shared/constants/balance'
-import { ZONE_MAP } from '~~/shared/constants/zones'
+import { STRUCTURE_REFUSAL, terminalExposed } from '~~/shared/utils/structureRules'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import { scaledTerminalHp } from './fastGame'
 
-/** The zone each team's Terminal occupies. */
-export const TERMINAL_ZONES: Record<TeamId, string> = {
-  chaff: 'rookery-terminal',
-  audit: 'landing-terminal',
-}
+/** The zone each team's Terminal occupies (shared: the prompt mirrors it). */
+export { TERMINAL_ZONES } from '~~/shared/utils/structureRules'
 
 /** Stable target id for a Terminal, used in damage events and targeting. */
 export function terminalTargetId(team: TeamId): string {
@@ -59,7 +56,7 @@ export function ensureTerminals(state: GameState): GameState {
  *  Tier comes from the zone record — matching '-t3-' inside the id made the
  *  win condition itself depend on how zones happen to be named. */
 export function isTerminalVulnerable(state: GameState, team: TeamId): boolean {
-  return state.ice.some((t) => t.team === team && !t.alive && ZONE_MAP[t.zone]?.tier === 3)
+  return terminalExposed(state.ice, team)
 }
 
 /**
@@ -108,7 +105,7 @@ export function resolveTerminalAttack(
   damage: number,
 ): { state: GameState; events: GameEngineEvent[]; rejected?: string } {
   if (!state.terminals) {
-    return { state, events: [], rejected: 'No Terminal in this game' }
+    return { state, events: [], rejected: STRUCTURE_REFUSAL.noTerminal }
   }
 
   const attackerTeam = getAttackerTeam(state, attackerId)
@@ -120,7 +117,7 @@ export function resolveTerminalAttack(
   const terminal = state.terminals[targetTeam]
 
   if (!terminal.alive) {
-    return { state, events: [], rejected: 'The enemy Terminal is already destroyed' }
+    return { state, events: [], rejected: STRUCTURE_REFUSAL.terminalDestroyed }
   }
   // Derived from the ICE as it stands NOW, not from the stored flag: the flag is
   // only recomputed at GameLoop step 5.7, after hero actions, so reading it would
@@ -129,7 +126,7 @@ export function resolveTerminalAttack(
     return {
       state,
       events: [],
-      rejected: 'The enemy Terminal is firewalled — destroy a T3 ice first',
+      rejected: STRUCTURE_REFUSAL.firewalled,
     }
   }
 

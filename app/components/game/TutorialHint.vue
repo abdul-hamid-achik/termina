@@ -4,9 +4,12 @@ import {
   TUTORIAL_FLOW,
   TUTORIAL_STEP_COUNT,
   tutorialHint,
-  tutorialTryCommand,
   isTutorialComplete,
+  liveIceDrillZone,
+  withIceDrillZone,
 } from '~~/shared/constants/tutorial'
+import type { IceState, TeamId } from '~~/shared/types/game'
+import { liveTutorialTryCommand } from '~/utils/tutorialTry'
 
 /**
  * Live tutorial strip. Renders at the top of the FEED so the current drill
@@ -16,6 +19,16 @@ import {
 const props = defineProps<{
   /** Current tutorial step (0-based). >= TUTORIAL_STEP_COUNT means free play. */
   step: number
+  /** The hero's zone / items / shop access — the `try:` chip skips a command
+   *  the player has already satisfied (liveTutorialTryCommand). Optional:
+   *  without them the chip is the step's static first command. */
+  zone?: string
+  inventory?: readonly (string | null)[]
+  inShopZone?: boolean
+  /** Live ICE + the hero's team: the ICE drill names an ICE that is still
+   *  standing (liveIceDrillZone), not a T1 the waves already razed. */
+  ice?: readonly IceState[]
+  team?: TeamId
 }>()
 
 const emit = defineEmits<{
@@ -23,8 +36,21 @@ const emit = defineEmits<{
 }>()
 
 const complete = computed(() => isTutorialComplete(props.step))
-const hint = computed(() => tutorialHint(props.step)?.replace(/^🎓\s*/, '') ?? '')
-const tryCmd = computed(() => tutorialTryCommand(props.step))
+const iceDrillZone = computed(() =>
+  props.team && props.ice?.length ? liveIceDrillZone(props.ice, props.team) : undefined,
+)
+const hint = computed(() => {
+  const text = tutorialHint(props.step)?.replace(/^🎓\s*/, '') ?? ''
+  return iceDrillZone.value ? withIceDrillZone(text, iceDrillZone.value) : text
+})
+const tryCmd = computed(() =>
+  liveTutorialTryCommand(props.step, {
+    zone: props.zone,
+    items: props.inventory,
+    inShopZone: props.inShopZone,
+    iceDrillZone: iceDrillZone.value,
+  }),
+)
 const progress = computed(() => Math.min(props.step, TUTORIAL_STEP_COUNT))
 
 const items = computed(() =>

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { seedGame, HUMAN } from './harness'
+import { seedGame, HUMAN, ENEMY } from './harness'
+import { clearPlayerViolations, getPlayerViolations } from '~~/server/utils/AntiCheat'
 import { processSpecialActions } from '~~/server/game/engine/GameLoop'
 
 /**
@@ -168,5 +169,60 @@ describe('select_talent exits', () => {
       { playerId: HUMAN, command: { type: 'select_talent', tier: 12, talentId: 'x' } },
     ] as never)
     expect(out.rejectedActions[0]?.reason).toBe('Invalid talent tier')
+  })
+})
+
+// A typed `attack hero:<x>` with x elsewhere tripped anti-cheat's VISION_BYPASS
+// and was dropped before the attack phase — no reason, the cycle simply gone.
+// A legitimate mistake gets the attack phase's own generic text (which never
+// says where the target is); the detection is still logged and recorded.
+describe('a typed hero attack out of zone says why', () => {
+  async function seedApart() {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-t1-chaff' },
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'seawall-t2-audit' },
+      },
+    }))
+    return game
+  }
+
+  it('gets "Target is not in your zone", never the target’s zone', async () => {
+    clearPlayerViolations(HUMAN)
+    const game = await seedApart()
+    game.attackHero(ENEMY)
+    await game.tick()
+    const r = mine(game)
+    expect(r).toEqual([{ playerId: HUMAN, reason: 'Target is not in your zone' }])
+    expect(r[0]!.reason).not.toMatch(/seawall/i)
+    // Still an anti-cheat detection (logged + recorded), still dropped.
+    expect(getPlayerViolations(HUMAN).some((v) => v.violationType === 'VISION_BYPASS')).toBe(true)
+    expect(
+      game.lastEvents.some(
+        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
+      ),
+    ).toBe(false)
+  })
+
+  it('an ally elsewhere gets the resolver’s team text, not the zone text', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    const me = await game.me()
+    // laning_combat is 1v1 — seat a teammate (a copy of the enemy, on our side).
+    const ally = { id: 'ally1', name: 'Ally' }
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-t1-chaff' },
+        ally1: { ...s.players[ENEMY]!, ...ally, team: me.team, zone: 'seawall-t2-chaff' },
+      },
+    }))
+    // By NAME: anti-cheat looks heroes up by exact name, so this is the order it drops.
+    game.submit({ type: 'attack', target: { kind: 'hero', name: ally.name } })
+    await game.tick()
+    expect(mine(game)[0]?.reason).toBe(`${ally.name} is on your team`)
   })
 })

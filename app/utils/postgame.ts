@@ -50,3 +50,33 @@ export function computeMvp<T extends MvpInput>(
   }
   return best
 }
+
+/** A name that is really an id: `bot_…`, `guest_…`, `local_<uuid>`, an OAuth
+ *  `github_123`, or the player id itself. */
+const RAW_ID_NAME = /^(bot|guest|local|github|google|discord|gitlab)_/i
+
+export interface DisplayName {
+  /** What to print in a "player" slot. */
+  name: string
+  /** True when `name` is a label standing in for a raw id ("bot", "you"…), so a
+   *  headline should lead with the hero handle instead. */
+  stand_in: boolean
+}
+
+/**
+ * The end screen's name for a roster entry. Server rosters carry raw ids as
+ * names for bots, guests and some accounts ("BOT_ENEMY1_PRAC_1791623981819_5O2ABC",
+ * "local_cff6baeb-…" — playtest2 37.png); those read as a stand-in label —
+ * bot / you / guest / the hero handle — never as the id.
+ */
+export function displayPlayerName(
+  p: { id: string; name: string; heroName?: string },
+  currentPlayerId: string,
+): DisplayName {
+  const raw = !p.name || p.name.toLowerCase() === p.id.toLowerCase() || RAW_ID_NAME.test(p.name)
+  if (!raw) return { name: p.name, stand_in: false }
+  if (p.id.startsWith('bot_')) return { name: 'bot', stand_in: true }
+  if (p.id === currentPlayerId) return { name: 'you', stand_in: true }
+  if (p.id.startsWith('guest_')) return { name: 'guest', stand_in: true }
+  return { name: p.heroName ?? 'operator', stand_in: true }
+}

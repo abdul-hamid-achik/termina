@@ -19,13 +19,14 @@ import type {
   CycleStateMessage,
   PlayerEndStats,
   AnnouncementMessage,
+  TutorialGameOverSummary,
 } from '~~/shared/types/protocol'
 
 // Server announcement severities plus a client-only 'error' (synthesised for
 // connection/[ERROR] messages) — drives the AnnouncementToast colour.
 export type AnnouncementLevel = AnnouncementMessage['level'] | 'error'
 import { isShopZoneFor, ZONE_MAP } from '~~/shared/constants/zones'
-import { CYCLE_DURATION_MS } from '~~/shared/constants/balance'
+import { CYCLE_DURATION_MS, STARTING_SCRIP } from '~~/shared/constants/balance'
 import { gameLog } from '~/utils/logger'
 import { playerNetWorth } from '~/utils/strategy'
 
@@ -129,6 +130,9 @@ export const useGameStore = defineStore('game', () => {
   /** Match length, for the post-game summary. Null for any game_over that
    *  predates the field (older snapshots, resumed games). */
   const gameOverDurationTicks = ref<number | null>(null)
+  /** game_over.tutorial — how the drill flow ended (skipped drills, mastery).
+   *  Null outside tutorial mode and on the cycle_state-derived fallback. */
+  const gameOverTutorial = ref<TutorialGameOverSummary | null>(null)
   const winner = ref<TeamId | null>(null)
   const timeOfDay = ref<'day' | 'night'>('day')
   /** Which map this game runs on (undefined = full 5v5); drives the ASCII layout. */
@@ -138,6 +142,20 @@ export const useGameStore = defineStore('game', () => {
   /** Tutorial progress (0-based step); drives the in-game tutorial banner. */
   const tutorialStep = ref<number | undefined>(undefined)
   const dayNightCycle = ref(0)
+  /**
+   * Set (to the message to show) once the server refuses this session's
+   * orders for good — the game is no longer this session's (a guest who signed
+   * in on another tab, a lost assignment). Sticky until reset: nothing more is
+   * sent, and the screen offers a way out instead of "retype it" forever.
+   */
+  const sessionEnded = ref<string | null>(null)
+  /**
+   * Why `sessionEnded` is set: 'finished' — the game row is gone because the
+   * game ENDED (finalize deletes it; a normal ending whose game_over this tab
+   * missed); 'changed' — this session no longer owns the game (a guest who
+   * signed in elsewhere, a lost assignment). The two get different panels.
+   */
+  const sessionEndReason = ref<'finished' | 'changed' | null>(null)
 
   // Track if player has acted this cycle (resets each cycle)
   const lastActionCycle = ref<number>(-1)
@@ -403,10 +421,13 @@ export const useGameStore = defineStore('game', () => {
         }
       }
       knownNetWorth.value = known
+      // A player never seen un-fogged is not worth 0: every operator spawns
+      // with STARTING_SCRIP. Counting them as 0 read "NET CHF +3.0k" at cycle 2
+      // — your five wallets against five unseen ones (playtest2 #8).
       const teamWorth = (team: TeamId) =>
         Object.values(state.players)
           .filter((p) => p.team === team)
-          .reduce((sum, p) => sum + (known[p.id] ?? 0), 0)
+          .reduce((sum, p) => sum + (known[p.id] ?? STARTING_SCRIP), 0)
       const push = (arr: number[], v: number) => {
         const next = [...arr, v]
         return next.length > NET_WORTH_HISTORY_MAX ? next.slice(-NET_WORTH_HISTORY_MAX) : next
@@ -481,12 +502,14 @@ export const useGameStore = defineStore('game', () => {
     mmrChange?: number,
     ranked = true,
     durationCycles?: number,
+    tutorial?: TutorialGameOverSummary,
   ) {
     winner.value = winnerTeam
     gameOverStats.value = stats
     gameOverMmrChange.value = mmrChange ?? null
     gameOverRanked.value = ranked
     gameOverDurationTicks.value = durationCycles ?? null
+    gameOverTutorial.value = tutorial ?? null
     phase.value = 'ended'
   }
 
@@ -523,6 +546,7 @@ export const useGameStore = defineStore('game', () => {
     teams.value = null
     ice.value = []
     terminals.value = null
+    gameOverTutorial.value = null
     waves.value = []
     neutrals.value = []
     tenant.value = null
@@ -553,6 +577,16 @@ export const useGameStore = defineStore('game', () => {
     mapId.value = undefined
     mode.value = undefined
     tutorialStep.value = undefined
+    sessionEnded.value = null
+    sessionEndReason.value = null
+  }
+
+  /** The game is no longer this session's — see `sessionEnded`. */
+  function endSession(message: string, reason: 'finished' | 'changed' = 'changed') {
+    sessionEnded.value = message
+    sessionEndReason.value = reason
+    bufferedCommand.value = null
+    pendingCommand.value = null
   }
 
   return {
@@ -593,6 +627,7 @@ export const useGameStore = defineStore('game', () => {
     gameOverMmrChange,
     gameOverRanked,
     gameOverDurationTicks,
+    gameOverTutorial,
     winner,
     lastActionCycle,
     lastItemActionTick,
@@ -601,6 +636,8 @@ export const useGameStore = defineStore('game', () => {
     mapId,
     mode,
     tutorialStep,
+    sessionEnded,
+    sessionEndReason,
     // Getters
     currentZone,
     isAlive,
@@ -615,6 +652,7 @@ export const useGameStore = defineStore('game', () => {
     allyPlayers,
     netWorth,
     // Actions
+    endSession,
     updateFromCycle,
     addEvents,
     addAnnouncement,

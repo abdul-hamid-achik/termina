@@ -41,6 +41,7 @@ import {
   formatContactsReadout,
   formatNetReadout,
   formatLookReadout,
+  annotateWaveRefs,
   formatHelpReadout,
 } from '~/composables/useCommands'
 import {
@@ -53,6 +54,7 @@ import {
 } from '~/utils/strategy'
 import { useAudio } from '~/composables/useAudio'
 import { ZONE_MAP } from '~~/shared/constants/zones'
+import { keepsWalk } from '~~/shared/utils/standingOrders'
 import { WAVE_UNIT_LABELS, type WaveRole } from '~~/shared/constants/world'
 import { zonesForMap } from '~~/shared/constants/maps'
 import { buildAdjacentZones } from '~/components/game/traceModel'
@@ -64,6 +66,9 @@ import { STRIP_HP_THRESHOLD } from '~~/shared/constants/balance'
 const stripHpPercent = Math.round(STRIP_HP_THRESHOLD * 100)
 import { ITEMS, ITEM_CATEGORIES, DEFAULT_QUICKBUY_ITEMS } from '~~/shared/constants/items'
 import type { ItemCategoryId } from '~~/shared/types/items'
+import type { TargetType } from '~~/shared/types/hero'
+import { skippedDrillFromNotice } from '~/utils/tutorialTry'
+import { useStartTutorial } from '~/composables/useStartTutorial'
 import { getTalentTree } from '~~/shared/constants/talents'
 import type { IceState, TerminalState } from '~~/shared/types/game'
 import { uiLog } from '~/utils/logger'
@@ -82,13 +87,14 @@ import {
 } from '~~/shared/constants/balance'
 import { pathDistance } from '~~/shared/pathfinding'
 import { formatTenant, ticksToClock } from '~/utils/strategy'
-import { incomingDamageLastCycle, zoneVerdict } from '~/utils/tactics'
+import { incomingDamageBreakdownLastCycle, zoneVerdict } from '~/utils/tactics'
 import { arrowTargetZone } from '~/utils/arrowMove'
 import { computeSituationalActions } from '~/utils/situationalActions'
 import { routeGameKey } from '~/utils/gameKeys'
 import { escalateRejection, resetRejectionEscalation } from '~/utils/rejectionEscalation'
 import {
   evaluateCoach,
+  formatCoachLine,
   newlyLearned,
   COACH_TIP_IDS,
   type CoachInput,
@@ -102,6 +108,8 @@ import {
   isTutorialComplete,
   tutorialHint,
   isCommandAllowedInTutorial,
+  liveIceDrillZone,
+  withIceDrillZone,
 } from '~~/shared/constants/tutorial'
 
 const gameStore = useGameStore()
@@ -343,7 +351,9 @@ function measureCut() {
 const streamIdleHint = computed(() => {
   if (gameStore.mode === 'tutorial') {
     const hint = tutorialHint(gameStore.tutorialStep ?? 0)
-    if (hint) return hint.replace(/^🎓\s*/, '')
+    const team = gameStore.player?.team
+    const live = team && gameStore.ice.length ? liveIceDrillZone(gameStore.ice, team) : null
+    if (hint) return (live ? withIceDrillZone(hint, live) : hint).replace(/^🎓\s*/, '')
   }
   return 'The city commits every four seconds. Type a verb — or tap MOVE.'
 })
@@ -551,6 +561,10 @@ function pushRejection(reason: string) {
   })
 }
 
+/** Tutorial drills the server skipped on a timeout, read off its "Moving on"
+ *  notices — the graduation screen must not claim they were learned. */
+const skippedDrills = ref<string[]>([])
+
 /** A notice repeated inside this many cycles is not printed again. */
 const NOTICE_REPEAT_WINDOW = 10
 const noticeLastCycle = new Map<string, number>()
@@ -561,7 +575,11 @@ function pushNotice(message: string) {
   const last = noticeLastCycle.get(message)
   if (last !== undefined && gameStore.cycle - last < NOTICE_REPEAT_WINDOW) return
   noticeLastCycle.set(message, gameStore.cycle)
-  localEvents.value.push({ cycle: gameStore.cycle, text: `>_ ${message}`, type: 'system' })
+  // "Swing now: `attack wave:0`" — say whose unit wave:0 is (both crews share
+  // the numbering; playtest2 #9).
+  const me = gameStore.player
+  const text = me ? annotateWaveRefs(message, me, gameStore.waves) : message
+  localEvents.value.push({ cycle: gameStore.cycle, text: `>_ ${text}`, type: 'system' })
 }
 
 // The transient AnnouncementToast, retriggered per announcement — except the
@@ -949,9 +967,21 @@ const abilityNameById: Record<string, string> = {}
 // Hero-targeted casts that deal damage on cast — a cast like that which lands
 // NO damage event gets an explicit "dealt no damage" line (combatNarrative).
 const damagingHeroAbilities = new Set<string>()
+// Targeting + description per ability — a self-targeted cast's feed line says
+// what it gave the caster (combatNarrative selfCastOutcome).
+const abilityInfoById: Record<
+  string,
+  { targetType: TargetType; description: string; grants: boolean }
+> = {}
+const GRANT_EFFECTS = new Set(['buff', 'shield', 'heal', 'reveal'])
 for (const hero of Object.values(HEROES)) {
   for (const ability of Object.values(hero.abilities)) {
     abilityNameById[ability.id] = ability.name
+    abilityInfoById[ability.id] = {
+      targetType: ability.targetType,
+      description: ability.description,
+      grants: ability.effects.some((e) => GRANT_EFFECTS.has(e.type)),
+    }
     // Executes are conditional by design (Sudo whiffs above its threshold) —
     // their silence is the rule working, not news.
     if (
@@ -1021,6 +1051,7 @@ const narrativeCtx = computed<NarrativeContext>(() => ({
   itemName: (id) => ITEMS[id]?.name ?? id,
   zoneName: zoneLabel,
   abilityDealsDamage: (id) => typeof id === 'string' && damagingHeroAbilities.has(id),
+  abilityInfo: (id) => (typeof id === 'string' ? abilityInfoById[id] : undefined),
 }))
 
 const combatEvents = computed<CombatLine[]>(() => {
@@ -1082,8 +1113,13 @@ const unsubOnMessage = gameSocket.onMessage((msg) => {
     // Rejections ride as warnings; coaching notices as info. Anything else
     // (kill/objective headlines) keeps its line AND its toast.
     if (msg.level === 'warning' && !msg.message.startsWith('[ADMIN]')) pushRejection(msg.message)
-    else if (msg.level === 'info') pushNotice(msg.message)
-    else
+    else if (msg.level === 'info') {
+      const skipped = skippedDrillFromNotice(msg.message)
+      if (skipped && !skippedDrills.value.includes(skipped)) {
+        skippedDrills.value = [...skippedDrills.value, skipped]
+      }
+      pushNotice(msg.message)
+    } else
       localEvents.value.push({ cycle: gameStore.cycle, text: `>_ ${msg.message}`, type: 'system' })
   } else if (msg.type === 'error') {
     localEvents.value.push({
@@ -1491,6 +1527,10 @@ function handleCommand(cmd: string) {
     // match, so don't queue doomed game actions — the server would drop them.
     // Surrender still goes through (the human's vote counts); chat/ping/missing
     // and the local readouts returned above stay available too.
+    // The game is no longer this session's (signed in on another tab): the
+    // ended-session panel says so and offers the way out — sending would only
+    // be refused again.
+    if (gameStore.sessionEnded) return
     if (gameStore.player?.aiControlled && command.type !== 'surrender') {
       rejectLocally(
         'A bot controls your hero for the rest of this match — you can still chat, ping, and vote to surrender.',
@@ -1530,6 +1570,8 @@ function handleCommand(cmd: string) {
       tenant: gameStore.tenant ?? undefined,
       cycle: gameStore.cycle,
       mode: gameStore.mode,
+      ice: gameStore.ice,
+      terminals: gameStore.terminals,
     })
     if (validationError) {
       // Third identical rejection reads differently (playability ledger).
@@ -1556,15 +1598,16 @@ function handleCommand(cmd: string) {
     }
     uiLog.debug('Command sent', { type: command.type })
     gameStore.markActionSent(cmd)
-    // Remember (or drop) the walk order. `isSpecial` is exactly the server's
-    // KEEPS_AUTOPATH set minus `move`, so this mirrors GameLoop: a deliberate
-    // non-move order replaces the walk, and no arrival is owed any more.
+    // Remember (or drop) the walk order. `keepsWalk` is the rule GameLoop
+    // applies (shared/utils/standingOrders): a deliberate order replaces the
+    // walk and no arrival is owed any more — except the out-of-band verbs and
+    // an item active that does not relocate you.
     // Ordering a move to where you already stand is the STOP command (the
     // server's BFS finds no next hop and nulls moveTarget), so it must clear
     // the local memory too rather than leave the current zone as a destination.
     if (command.type === 'move') {
       walkTarget.value = command.zone === gameStore.player?.zone ? null : command.zone
-    } else if (!isSpecial) walkTarget.value = null
+    } else if (!keepsWalk(command)) walkTarget.value = null
     // Immediate positive confirmation so the action feels registered NOW, not
     // only when the cycle resolves ~4s later. Pre-flight validation already gated
     // out rejects above, so this fires only on actions that will resolve; the
@@ -1819,10 +1862,8 @@ watch(
     const tip = evaluateCoach(snapshot, coachLearned.value, coachHistory.value)
     if (!tip) return
     coachHistory.value = { ...coachHistory.value, [tip.id]: cycle }
-    localEvents.value.push({ cycle, text: tip.text, type: 'system' })
-    if (tip.command) {
-      localEvents.value.push({ cycle, text: `        try:  ${tip.command}`, type: 'system' })
-    }
+    // ONE line per tip, tagged by mode, command inline (formatCoachLine).
+    localEvents.value.push({ cycle, text: formatCoachLine(tip, gameStore.mode), type: 'system' })
   },
 )
 
@@ -2147,12 +2188,15 @@ const abilityArias = computed(() => {
 const rigVerdict = computed(() => {
   const p = gameStore.player
   if (!p) return null
+  const incoming = incomingDamageBreakdownLastCycle(gameStore.events, p.id, gameStore.cycle)
   return zoneVerdict({
     me: p,
     allies: gameStore.allyPlayers,
     enemies: gameStore.enemyPlayers,
     enemyIcePresent: gameStore.ice.some((t) => t.zone === p.zone && t.alive && t.team !== p.team),
-    incomingLastCycle: incomingDamageLastCycle(gameStore.events, p.id, gameStore.cycle),
+    incomingLastCycle: incoming.total,
+    npcIncomingLastCycle: incoming.npc,
+    iceIncomingLastCycle: incoming.ice,
     hasReadyAbility: ['Q', 'W', 'E', 'R'].some((s) => abilityButtonState.value[s]?.ready),
   })
 })
@@ -2282,6 +2326,19 @@ function reloadPage() {
   window.location.reload()
 }
 
+// The ended-session panel's way back into a game (same launcher as PostGame).
+const {
+  starting: startingPractice,
+  error: practiceError,
+  start: startPractice,
+} = useStartTutorial()
+
+/** A finished game's replay exists for every match except practice (the same
+ *  rule PostGame's WATCH REPLAY follows — finalize archives no tutorial/dev_). */
+const finishedReplayArchived = computed(
+  () => !!gameStore.gameId && gameStore.mode !== 'tutorial' && !gameStore.gameId.startsWith('dev_'),
+)
+
 function handlePlayAgain() {
   gameStore.reset()
   navigateTo('/lobby')
@@ -2304,7 +2361,9 @@ function handleReturnToMenu() {
     :game-id="gameStore.gameId ?? null"
     :mode="gameStore.mode"
     :tutorial-complete="isTutorialComplete(gameStore.tutorialStep ?? 0)"
-    :duration-ticks="gameStore.gameOverDurationTicks ?? undefined"
+    :duration-cycles="gameStore.gameOverDurationTicks ?? undefined"
+    :skipped-drills="skippedDrills"
+    :tutorial-summary="gameStore.gameOverTutorial"
     :mmr-change="gameStore.gameOverMmrChange ?? undefined"
     :ranked="gameStore.gameOverRanked"
     @play-again="handlePlayAgain"
@@ -2427,9 +2486,61 @@ function handleReturnToMenu() {
         </button>
       </div>
     </div>
+    <!-- Session ended: the server refuses this session's orders for good.
+         Two different stories: the game FINISHED (its row is gone — a normal
+         ending whose game_over this tab missed) or the session CHANGED (a guest
+         who signed in on another tab). Outranks connection-lost — the Ably
+         token refresh fails next, and RELOAD would not bring it back. -->
+    <div
+      v-if="gameStore.sessionEnded"
+      class="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-bg-primary/90"
+      data-testid="session-ended-overlay"
+      :data-reason="gameStore.sessionEndReason ?? 'changed'"
+      role="alertdialog"
+      aria-live="assertive"
+    >
+      <div
+        v-if="gameStore.sessionEndReason === 'finished'"
+        class="text-2xl text-chaff text-glow"
+        data-testid="session-ended-title"
+      >
+        ■ GAME FINISHED
+      </div>
+      <div v-else class="text-2xl text-audit text-glow-audit" data-testid="session-ended-title">
+        ⚠ SESSION CHANGED
+      </div>
+      <p class="max-w-md text-center text-sm text-text-dim">{{ gameStore.sessionEnded }}</p>
+      <div class="flex gap-3">
+        <NuxtLink
+          v-if="gameStore.sessionEndReason === 'finished' && finishedReplayArchived"
+          :to="`/replay/${gameStore.gameId}`"
+          class="border border-ability px-4 py-2 font-mono text-ability transition-all hover:bg-ability/10 active:scale-95"
+          data-testid="session-ended-replay"
+        >
+          [WATCH REPLAY]
+        </NuxtLink>
+        <button
+          v-if="gameStore.sessionEndReason !== 'finished' || gameStore.mode === 'tutorial'"
+          class="border border-ability px-4 py-2 font-mono text-ability transition-all hover:bg-ability/10 active:scale-95 disabled:opacity-50"
+          data-testid="session-ended-practice"
+          :disabled="startingPractice"
+          @click="startPractice()"
+        >
+          [NEW PRACTICE]
+        </button>
+        <button
+          class="border border-border px-4 py-2 font-mono text-text-dim transition-all hover:bg-white/5 active:scale-95"
+          data-testid="session-ended-lobby"
+          @click="handlePlayAgain"
+        >
+          [LOBBY]
+        </button>
+      </div>
+      <p v-if="practiceError" class="text-xs text-audit">{{ practiceError }}</p>
+    </div>
     <!-- Connection lost: all reconnect attempts exhausted -->
     <div
-      v-if="connectionLost"
+      v-if="connectionLost && !gameStore.sessionEnded"
       class="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-bg-primary/90"
       data-testid="connection-lost-overlay"
     >
@@ -2551,7 +2662,15 @@ function handleReturnToMenu() {
           @inspect="openLook"
         >
           <template v-if="gameStore.mode === 'tutorial'" #banner>
-            <TutorialHint :step="gameStore.tutorialStep ?? 0" @command="handleCommand" />
+            <TutorialHint
+              :step="gameStore.tutorialStep ?? 0"
+              :zone="gameStore.player?.zone"
+              :inventory="gameStore.player?.items"
+              :in-shop-zone="!!gameStore.player && ZONE_MAP[gameStore.player.zone]?.shop === true"
+              :ice="gameStore.ice"
+              :team="gameStore.player?.team"
+              @command="handleCommand"
+            />
           </template>
         </Stream>
       </div>
@@ -2777,6 +2896,10 @@ function handleReturnToMenu() {
         :neutrals="gameStore.neutrals"
         :tenant="gameStore.tenant ?? undefined"
         :waves="gameStore.waves"
+        :ice="gameStore.ice"
+        :terminals="gameStore.terminals"
+        :teams="gameStore.teams"
+        :situation-key="`${gameStore.isAlive ? 'up' : 'down'}:${gameStore.tutorialStep ?? ''}`"
         @submit="submitFromPrompt"
         @reject="handlePromptRejection"
       />

@@ -1260,3 +1260,93 @@ describe('buildCombatLines: damage_blocked states why a hit did nothing', () => 
     expect(built[0]!.dmgAmount ?? 0).toBe(0)
   })
 })
+
+// playtest2 84.png: `cast w socket` as Echo printed only "You cast Phase Shift
+// on Socket" — a self-buff with no outcome line, aimed (it seemed) at an enemy.
+describe('a self-targeted cast says what it gave you', () => {
+  const abilities: Record<
+    string,
+    { name: string; targetType: string; description: string; grants?: boolean }
+  > = {
+    'echo-w': {
+      name: 'Phase Shift',
+      targetType: 'self',
+      description: 'Phase out to dodge the next incoming attack.',
+      grants: true,
+    },
+    'lambda-e': {
+      name: 'Return',
+      targetType: 'self',
+      description: 'Mark current zone. After 2 cycles, teleport back to the marked zone.',
+    },
+    'firewall-w': {
+      name: 'DMZ',
+      targetType: 'self',
+      description: 'Raise a DMZ around yourself. It explodes when broken.',
+    },
+    'echo-q': { name: 'Resonance', targetType: 'hero', description: 'Hit a hero.' },
+  }
+  const selfCtx: NarrativeContext = {
+    ...ctx,
+    entityLabel: (id) => (id === 'me' ? 'You' : id === 'enemy1' ? 'Socket' : String(id)),
+    abilityLabel: (id) => abilities[String(id)]?.name ?? String(id),
+    abilityDealsDamage: (id) => id === 'firewall-w' || id === 'echo-q',
+    abilityInfo: (id) => {
+      const a = abilities[String(id)]
+      return a
+        ? { targetType: a.targetType as 'self', description: a.description, grants: a.grants }
+        : undefined
+    },
+  }
+  const cast = (abilityId: string, targetId?: string) =>
+    ev(
+      'ability_used',
+      { playerId: 'me', abilityId, cooldown: 12, ...(targetId ? { targetId } : {}) },
+      56,
+    )
+  const lines = (events: GameEvent[]) =>
+    buildCombatLines(events, selfCtx, collapseStructureDamage).map((l) => l.text)
+
+  it('prints the buff it put up, derived from the ability definition', () => {
+    expect(lines([cast('echo-w')])).toEqual([
+      'Phase Shift up — phase out to dodge the next incoming attack',
+    ])
+  })
+
+  it('typed at an enemy, it says the cast went on you', () => {
+    const [line] = lines([cast('echo-w', 'enemy1')])
+    expect(line).toBe(
+      'Phase Shift up — phase out to dodge the next incoming attack (self-targeted: it went on you, not Socket)',
+    )
+  })
+
+  it('a self-cast that grants nothing (a recall mark) is said as an act, not "up"', () => {
+    expect(lines([cast('lambda-e')])).toEqual(['You cast Return — mark current zone'])
+  })
+
+  it('a self-targeted damaging kit (DMZ) aimed at an enemy is not a whiff', () => {
+    const out = lines([
+      cast('firewall-w', 'enemy1'),
+      ev('cooldown_used', { playerId: 'me', abilityId: 'w' }, 56),
+    ])
+    expect(out.some((t) => t.includes('dealt no damage'))).toBe(false)
+  })
+
+  it('a targeted cast is unchanged', () => {
+    expect(
+      lines([
+        cast('echo-q', 'enemy1'),
+        ev('damage', { sourceId: 'me', targetId: 'enemy1', amount: 50, damageType: 'kinetic' }, 56),
+      ])[0],
+    ).toBe('You cast Resonance on Socket')
+  })
+
+  it("someone else's self-cast keeps the plain line", () => {
+    const out = buildCombatLines(
+      [ev('ability_used', { playerId: 'enemy1', abilityId: 'echo-w' }, 56)],
+      selfCtx,
+      collapseStructureDamage,
+    ).map((l) => l.text)
+    expect(out).toEqual(['Socket cast Phase Shift'])
+  })
+})

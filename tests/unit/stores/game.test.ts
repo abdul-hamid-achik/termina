@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useGameStore, EVENT_HISTORY_CAP } from '~~/app/stores/game'
+import { STARTING_SCRIP } from '~~/shared/constants/balance'
 import type { CycleStateMessage, PlayerEndStats } from '~~/shared/types/protocol'
 import type { PlayerState, GameEvent, TeamState, ZoneRuntimeState } from '~~/shared/types/game'
 
@@ -803,6 +804,18 @@ describe('Game Store', () => {
         expect(store.gameOverRanked).toBe(false)
       })
 
+      it('keeps game_over.tutorial when the ended cycle_state lands after it', () => {
+        const store = useGameStore()
+        const tutorial = { completed: true, mastered: false, skipped: ['ice' as const] }
+        store.setGameOver('chaff', {}, undefined, false, 40, tutorial)
+        const msg = makeCycleMessage({ cycle: 41, phase: 'ended' })
+        ;(msg.state as { winner?: string }).winner = 'chaff'
+        store.updateFromCycle(msg)
+        expect(store.gameOverTutorial).toEqual(tutorial)
+        store.reset()
+        expect(store.gameOverTutorial).toBeNull()
+      })
+
       it('does not clobber a game_over message that already arrived', () => {
         const store = useGameStore()
         store.setGameOver('audit', {}, -12, true, 55)
@@ -959,16 +972,21 @@ describe('Game Store — overhaul state (fog-safe lastSeen / net worth / objecti
     expect(store.netWorth.audit).toBe(auditBefore) // carried forward, not 0
   })
 
-  it('an enemy never seen contributes 0 to team net worth (no phantom worth)', () => {
+  it('an enemy never seen counts what every operator spawns with (playtest2 #8)', () => {
+    // The HUD read "NET CHF +3.0k" at cycle 2: five allies at their starting
+    // 600 against five fogged, never-seen enemies counted as 0. An unseen
+    // operator is not worth 0 — they spawned with STARTING_SCRIP like you.
     const store = useGameStore()
     store.playerId = 'me'
-    const me = makePlayer({ id: 'me', team: 'chaff' })
-    // The audit enemy is fogged from the very first cycle — never observed, so it
-    // has no last-known worth to carry. It must read 0, not crash or guess.
-    store.updateFromCycle(
-      makeCycleMessage({ cycle: 1, players: { me, e1: fogged('e1', 'audit') } }),
-    )
-    expect(store.netWorth.audit).toBe(0)
+    const players: Record<string, ReturnType<typeof makePlayer>> = {}
+    for (const id of ['me', 'a1', 'a2', 'a3', 'a4']) {
+      players[id] = makePlayer({ id, team: 'chaff', scrip: STARTING_SCRIP, items: [] })
+    }
+    const fog: Record<string, ReturnType<typeof fogged>> = {}
+    for (const id of ['e1', 'e2', 'e3', 'e4', 'e5']) fog[id] = fogged(id, 'audit')
+    store.updateFromCycle(makeCycleMessage({ cycle: 2, players: { ...players, ...fog } as never }))
+    expect(store.netWorth.audit).toBe(5 * STARTING_SCRIP)
+    expect(store.netWorth.chaff - store.netWorth.audit).toBe(0)
   })
 
   it('caps net-worth history at 40 samples', () => {

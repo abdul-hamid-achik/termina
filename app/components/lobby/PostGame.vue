@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import type { TeamId, GameMode } from '~~/shared/types/game'
-import type { PlayerEndStats } from '~~/shared/types/protocol'
+import type { PlayerEndStats, TutorialGameOverSummary } from '~~/shared/types/protocol'
+import { tutorialSkipNotice, type TutorialStepId } from '~~/shared/constants/tutorial'
 import { HEROES } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
-import { computeMvp } from '~/utils/postgame'
+import { computeMvp, displayPlayerName } from '~/utils/postgame'
 // Imported rather than left to Nuxt's auto-import so the component also mounts
 // under the plain-Vite component test runner, which has no unimport pass.
 import { useStartTutorial } from '~/composables/useStartTutorial'
@@ -33,6 +34,14 @@ const props = withDefaults(
     /** Match length in cycles — turns the raw totals into per-minute rates, which
      *  is the only form in which a farm number means anything. */
     durationCycles?: number
+    /** Tutorial drills that timed out and were skipped rather than performed
+     *  (by step id). Mastery is not banked with any skip, so the wrap-up must
+     *  not claim the basics were learned. */
+    skippedDrills?: readonly string[]
+    /** game_over.tutorial — the server's account of the drill flow. When
+     *  present it wins over `tutorialComplete` / `skippedDrills`, which are the
+     *  client's own reconstruction (step counter, "Moving on" notices). */
+    tutorialSummary?: TutorialGameOverSummary | null
   }>(),
   { ranked: true, stats: () => ({}) },
 )
@@ -44,7 +53,29 @@ const isTutorial = computed(() => props.mode === 'tutorial')
 // from tick 0, so "tutorial game" no longer implies "tutorial completed" — a
 // learner who bails at tick 2 must not be congratulated for the basics they
 // never saw, nor read their own exit as a defeat.
-const finishedTutorial = computed(() => isTutorial.value && props.tutorialComplete === true)
+const finishedTutorial = computed(
+  () => isTutorial.value && (props.tutorialSummary?.completed ?? props.tutorialComplete === true),
+)
+const skipped = computed<readonly string[]>(
+  () => props.tutorialSummary?.skipped ?? props.skippedDrills ?? [],
+)
+/** Finished with every drill genuinely performed — the only run that may be
+ *  told it has the basics (and the only one the server banks). */
+const mastered = computed(
+  () =>
+    finishedTutorial.value &&
+    (props.tutorialSummary ? props.tutorialSummary.mastered : skipped.value.length === 0),
+)
+const skipLine = computed(() =>
+  tutorialSkipNotice(skipped.value as readonly TutorialStepId[])?.replace(/^🎓\s*/, ''),
+)
+
+// Replays are archived for every finished match EXCEPT practice: the server's
+// finalize (gameTickCore isPracticeGame) records nothing for a tutorial or a
+// dev_ game, so a WATCH REPLAY there only ever led to "REPLAY UNAVAILABLE".
+const replayArchived = computed(
+  () => !!props.gameId && !isTutorial.value && !props.gameId.startsWith('dev_'),
+)
 
 const emit = defineEmits<{
   playAgain: []
@@ -63,6 +94,8 @@ const {
 interface ScoreRow {
   id: string
   name: string
+  /** `name` is a stand-in label (bot / you / guest), not a real name. */
+  nameIsStandIn: boolean
   heroId: string
   team: TeamId
   kills: number
@@ -99,9 +132,14 @@ const mvp = computed(() => computeMvp([...chaffPlayers.value, ...auditPlayers.va
 
 function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): ScoreRow {
   const s = props.stats[p.id]
+  const shown = displayPlayerName(
+    { id: p.id, name: p.name, heroName: HEROES[p.heroId]?.name },
+    props.currentPlayerId,
+  )
   return {
     id: p.id,
-    name: p.name,
+    name: shown.name,
+    nameIsStandIn: shown.stand_in,
     heroId: p.heroId,
     team: p.team,
     kills: s?.kills ?? 0,
@@ -173,7 +211,7 @@ const advice = computed((): Advice[] => {
   if (rate !== null && rate < 2) {
     out.push({
       id: 'last-hits',
-      observation: `You last-hit ${cs} waves (${rate.toFixed(1)}/min)`,
+      observation: `You last-hit ${cs} wave${cs === 1 ? '' : 's'} (${rate.toFixed(1)}/min)`,
       command: 'attack wave:0',
       detail:
         'Only the killing blow pays scrip, and you do not have to out-damage the unit: once it is inside the strip window it goes down to any swing. Wait for STRIP on the ActionRow rather than swinging every cycle — attack wave:N works too, but the numbers shift each cycle.',
@@ -181,7 +219,7 @@ const advice = computed((): Advice[] => {
   } else if (rate === null && cs < 20) {
     out.push({
       id: 'last-hits',
-      observation: `You last-hit ${cs} waves`,
+      observation: `You last-hit ${cs} wave${cs === 1 ? '' : 's'}`,
       command: 'attack wave:0',
       detail:
         'Only the killing blow pays scrip, and you do not have to out-damage the unit: once it is inside the strip window it goes down to any swing. Wait for STRIP on the ActionRow rather than swinging every cycle — attack wave:N works too, but the numbers shift each cycle.',
@@ -228,7 +266,9 @@ const advice = computed((): Advice[] => {
 // and re-stamp the session. Best-effort both ways: a DB hiccup just keeps the
 // funnel as-is, and the store pull is skipped in environments without Pinia.
 onMounted(async () => {
-  if (!finishedTutorial.value || !props.currentPlayerId) return
+  // A run with skipped drills banks no mastery (server tutorialMasteryAchieved):
+  // nothing to refresh. Guests refresh too — /api/player/me answers them.
+  if (!mastered.value || !props.currentPlayerId) return
   try {
     if (typeof $fetch !== 'function') return
     await $fetch('/api/player/me')
@@ -264,9 +304,11 @@ onMounted(async () => {
         <div class="t-caption mb-2 text-text-muted">
           {{
             isTutorial
-              ? finishedTutorial
-                ? '// tutorial complete'
-                : '// practice ended'
+              ? !finishedTutorial
+                ? '// practice ended'
+                : skipped.length > 0
+                  ? `// practice finished — ${skipped.length} drill${skipped.length === 1 ? '' : 's'} skipped`
+                  : '// tutorial complete'
               : '// match concluded'
           }}
         </div>
@@ -275,15 +317,23 @@ onMounted(async () => {
           :class="winner === 'chaff' ? 'text-chaff' : 'text-audit'"
         >
           <template v-if="isTutorial">{{
-            finishedTutorial ? 'PRACTICE COMPLETE' : 'PRACTICE ENDED'
+            !finishedTutorial
+              ? 'PRACTICE ENDED'
+              : skipped.length > 0
+                ? 'DRILLS SKIPPED'
+                : 'PRACTICE COMPLETE'
           }}</template>
           <template v-else>{{ winner === 'chaff' ? 'CHAFF VICTORY' : 'AUDIT VICTORY' }}</template>
         </span>
         <p v-if="isTutorial" class="mt-3 text-sm text-text-dim" data-testid="tutorial-wrapup">
           {{
-            finishedTutorial
-              ? "You've got the basics — move, last-hit, cast, and buy. Ready for a real match?"
-              : 'Practice ended early — the drills are still there whenever you want them.'
+            !finishedTutorial
+              ? 'Practice ended early — the drills are still there whenever you want them.'
+              : skipLine
+                ? skipLine
+                : mastered
+                  ? "You've got the basics — move, last-hit, cast, and buy. Ready for a real match?"
+                  : 'Practice finished — run it again to bank the basics.'
           }}
         </p>
       </div>
@@ -302,8 +352,15 @@ onMounted(async () => {
             class="t-h2"
             :class="mvp.team === 'chaff' ? 'text-chaff' : 'text-audit'"
             data-testid="mvp-name"
-            >{{ mvp.name }}
-            <span class="text-text-dim">({{ HEROES[mvp.heroId]?.name ?? mvp.heroId }})</span></span
+            ><template v-if="mvp.nameIsStandIn"
+              >{{ HEROES[mvp.heroId]?.name ?? mvp.heroId }}
+              <span class="text-text-dim">({{ mvp.name }})</span></template
+            ><template v-else
+              >{{ mvp.name }}
+              <span class="text-text-dim"
+                >({{ HEROES[mvp.heroId]?.name ?? mvp.heroId }})</span
+              ></template
+            ></span
           >
           <span class="t-caption t-mono-num text-text-dim">
             {{ mvp.kills }}/{{ mvp.deaths }}/{{ mvp.assists }} ·
@@ -681,12 +738,18 @@ onMounted(async () => {
         @click="emit('playAgain')"
       />
       <NuxtLink
-        v-if="gameId"
+        v-if="replayArchived"
         :to="`/replay/${gameId}`"
         class="inline-flex items-center gap-1 border border-ability bg-bg-secondary px-3 py-1.5 font-mono text-sm text-ability shadow-glow-ability transition-all hover:bg-ability/10 hover:shadow-glow-ability-lg"
       >
         [WATCH REPLAY]
       </NuxtLink>
+      <span
+        v-else-if="gameId && isTutorial"
+        class="font-mono text-xs text-text-dim"
+        data-testid="no-replay"
+        >No replay — practice games are not recorded</span
+      >
       <AsciiButton
         label="MAIN MENU"
         variant="ghost"

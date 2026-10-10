@@ -2,6 +2,11 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import CommandInput from '~~/app/components/game/CommandInput.vue'
 import type { PlayerState } from '~~/shared/types/game'
+import { initializeIce } from '~~/server/game/map/zones'
+import { initializeTerminals } from '~~/server/game/engine/TerminalSystem'
+import { pathDistance } from '~~/shared/pathfinding'
+import { ZONE_MAP } from '~~/shared/constants/zones'
+import { approachStructure } from '~~/server/game/engine/ActionResolver'
 
 function makePlayer(over: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -409,6 +414,90 @@ describe('CommandInput', () => {
       expect((input.element as HTMLInputElement).value).toBe('move banana')
     })
 
+    // playtest2 30.png: a refused `attack ice:…` kept its `!!` reason under the
+    // prompt through a death and a respawn — about a situation long over.
+    it('drops a refused command it kept once the situation changes (respawn, step)', async () => {
+      const wrapper = mount(CommandInput, {
+        props: {
+          canAct: true,
+          player: makePlayer(),
+          situationKey: 'up:7',
+          // A protected T2 — still refused (an out-of-zone T1 is a walk now).
+          ice: initializeIce(),
+          terminals: initializeTerminals(),
+        },
+      })
+      const input = await typeAndEnter(wrapper, 'attack ice:coldstore-t2-audit')
+      expect(wrapper.emitted('reject')?.[0]?.[0]).toContain('ice')
+      expect((input.element as HTMLInputElement).value).toBe('attack ice:coldstore-t2-audit')
+
+      await wrapper.setProps({ situationKey: 'down:7' })
+      expect((input.element as HTMLInputElement).value).toBe('')
+      expect(wrapper.find('[data-testid="command-preview"]').exists()).toBe(false)
+    })
+
+    it('keeps what the player typed AFTER a refusal when the situation changes', async () => {
+      const wrapper = mount(CommandInput, {
+        props: {
+          canAct: true,
+          player: makePlayer(),
+          situationKey: 'up:7',
+          // A protected T2 — still refused (an out-of-zone T1 is a walk now).
+          ice: initializeIce(),
+          terminals: initializeTerminals(),
+        },
+      })
+      const input = await typeAndEnter(wrapper, 'attack ice:coldstore-t2-audit')
+      await input.setValue('move rookery-terminal')
+      await wrapper.setProps({ situationKey: 'down:7' })
+      expect((input.element as HTMLInputElement).value).toBe('move rookery-terminal')
+    })
+
+    it('a later, freshly typed copy of a once-refused command survives a situation change', async () => {
+      // The refusal is handled (fixed and submitted); later the same text is
+      // typed again from scratch — it is the player's, not the old refusal.
+      const ice = initializeIce()
+      const wrapper = mount(CommandInput, {
+        props: {
+          canAct: true,
+          player: makePlayer(),
+          situationKey: 'up:7',
+          ice,
+          terminals: initializeTerminals(),
+        },
+      })
+      const input = await typeAndEnter(wrapper, 'attack ice:coldstore-t2-audit')
+      expect(wrapper.emitted('reject')).toHaveLength(1)
+      // T1 falls: the same order is now legal and goes through.
+      const t1Down = ice.map((t) =>
+        t.zone === 'coldstore-t1-audit' ? { ...t, alive: false, integ: 0 } : t,
+      )
+      await wrapper.setProps({ ice: t1Down })
+      await input.trigger('keydown', { key: 'Enter' })
+      expect(wrapper.emitted('submit')?.[0]?.[0]).toBe('attack ice:coldstore-t2-audit')
+      // Typed again, fresh, then the situation changes before Enter.
+      await input.setValue('attack ice:coldstore-t2-audit')
+      await wrapper.setProps({ situationKey: 'down:7' })
+      expect((input.element as HTMLInputElement).value).toBe('attack ice:coldstore-t2-audit')
+    })
+
+    it('a refusal edited away and retyped identically is the player’s again', async () => {
+      const wrapper = mount(CommandInput, {
+        props: {
+          canAct: true,
+          player: makePlayer(),
+          situationKey: 'up:7',
+          ice: initializeIce(),
+          terminals: initializeTerminals(),
+        },
+      })
+      const input = await typeAndEnter(wrapper, 'attack ice:coldstore-t2-audit')
+      await input.setValue('')
+      await input.setValue('attack ice:coldstore-t2-audit')
+      await wrapper.setProps({ situationKey: 'down:7' })
+      expect((input.element as HTMLInputElement).value).toBe('attack ice:coldstore-t2-audit')
+    })
+
     it('does not submit `chat team` — its "needs a message" error still gates it', async () => {
       const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
       await typeAndEnter(wrapper, 'chat team')
@@ -539,5 +628,95 @@ describe('CommandInput', () => {
       }
       wrapper.unmount()
     })
+  })
+})
+
+// `attack ice:<zone>` from range is a walk + held attack on the server
+// (ActionResolver.approachStructure). The preview says so, with the ETA.
+describe('CommandInput structure-approach preview', () => {
+  it('previews the walk and the held ICE attack with the path length', async () => {
+    const player = makePlayer({ zone: 'rookery-anchor' })
+    const wrapper = mount(CommandInput, {
+      props: { canAct: true, player, ice: initializeIce(), terminals: initializeTerminals() },
+    })
+    await wrapper.find('input').setValue('attack ice:coldstore-t1-audit')
+    const n = pathDistance('rookery-anchor', 'coldstore-t1-audit')
+    expect(n).toBeGreaterThan(1)
+    expect(wrapper.get('[data-testid="command-preview"]').text()).toBe(
+      `>> Walk to ${ZONE_MAP['coldstore-t1-audit']!.name} (${n} cycles), then attack ICE`,
+    )
+  })
+
+  it('says "1 cycle" for an adjacent ICE', async () => {
+    const player = makePlayer({ zone: 'coldstore-cross' })
+    const wrapper = mount(CommandInput, { props: { canAct: true, player } })
+    await wrapper.find('input').setValue('attack ice:coldstore-t1-audit')
+    expect(wrapper.get('[data-testid="command-preview"]').text()).toBe(
+      `>> Walk to ${ZONE_MAP['coldstore-t1-audit']!.name} (1 cycle), then attack ICE`,
+    )
+  })
+
+  it('keeps the plain attack line in the ICE’s own zone', async () => {
+    const player = makePlayer({ zone: 'coldstore-t1-audit' })
+    const wrapper = mount(CommandInput, { props: { canAct: true, player } })
+    await wrapper.find('input').setValue('attack ice:coldstore-t1-audit')
+    expect(wrapper.get('[data-testid="command-preview"]').text()).toBe(
+      '>> Attack ice in coldstore-t1-audit',
+    )
+  })
+
+  it('shows the server’s refusal for a protected ICE instead of a walk', async () => {
+    const player = makePlayer({ zone: 'rookery-anchor' })
+    const wrapper = mount(CommandInput, {
+      props: { canAct: true, player, ice: initializeIce(), terminals: initializeTerminals() },
+    })
+    await wrapper.find('input').setValue('attack ice:coldstore-t2-audit')
+    expect(wrapper.get('[data-testid="command-preview"]').text()).toBe(
+      '!! That ice is protected — destroy the one in front of it first',
+    )
+  })
+
+  it('a Hardened ICE previews the walk with the SAME note the server replies with', async () => {
+    const player = makePlayer({ zone: 'coldstore-cross' })
+    const ice = initializeIce().map((t) => (t.team === 'audit' ? { ...t, invulnerable: true } : t))
+    const teams = {
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, scrip: 0, hardenUsedCycle: 40 },
+    } as const
+    // On screen: cycle 42 committed. The order resolves in cycle 43 — the
+    // cycle the server's approachStructure judges it in.
+    const server = approachStructure(
+      { cycle: 43, ice, teams, terminals: initializeTerminals(), players: { p1: player } } as never,
+      {
+        playerId: 'p1',
+        command: { type: 'attack', target: { kind: 'ice', zone: 'coldstore-t1-audit' } },
+      },
+    )
+    const note = server && 'walk' in server ? server.note : undefined
+    expect(note).toBe(
+      'That ice is Hardened for 3 more cycles — walking there anyway; the attack lands once it expires',
+    )
+    const wrapper = mount(CommandInput, {
+      props: { canAct: true, player, ice, teams, cycle: 42, terminals: initializeTerminals() },
+    })
+    await wrapper.find('input').setValue('attack ice:coldstore-t1-audit')
+    expect(wrapper.get('[data-testid="command-preview"]').text()).toBe(
+      `>> Walk to ${ZONE_MAP['coldstore-t1-audit']!.name} (1 cycle), then attack ICE — ${note}`,
+    )
+  })
+
+  it('previews the walk to an exposed enemy Terminal', async () => {
+    const player = makePlayer({ zone: 'rookery-anchor' })
+    const ice = initializeIce().map((t) =>
+      t.zone === 'coldstore-t3-audit' ? { ...t, alive: false, integ: 0 } : t,
+    )
+    const wrapper = mount(CommandInput, {
+      props: { canAct: true, player, ice, terminals: initializeTerminals() },
+    })
+    await wrapper.find('input').setValue('attack terminal')
+    const n = pathDistance('rookery-anchor', 'landing-terminal')
+    expect(wrapper.get('[data-testid="command-preview"]').text()).toBe(
+      `>> Walk to ${ZONE_MAP['landing-terminal']!.name} (${n} cycles), then attack the enemy Terminal`,
+    )
   })
 })
