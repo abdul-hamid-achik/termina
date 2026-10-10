@@ -908,9 +908,18 @@ export function validateCommand(command: Command, context: GameContext): string 
         return 'Cannot attack while in ghost form'
       const t = command.target
       if (t.kind === 'hero') {
-        const target = Object.values(context.allPlayers).find(
-          (p) => p.heroId === t.name || p.name.toLowerCase() === t.name.toLowerCase(),
+        // Same lookup as the server's hero index (name / id / heroId, raw or
+        // normalised — `nullref` finds null_ref), so this never refuses a
+        // handle the engine would accept.
+        const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
+        const want = norm(t.name)
+        const roster = Object.values(context.allPlayers)
+        const target = roster.find((p) =>
+          [p.heroId ?? '', p.name, p.id].some((k) => k && norm(k) === want),
         )
+        // `attack hero:nobody` used to queue and resolve to nothing visible
+        // (playtest 04a.png). Skip while the roster has not hydrated.
+        if (!target && roster.length > 0) return `No hero named "${t.name}" in this game`
         if (target && (!target.alive || target.zone !== player.zone)) {
           return `${t.name} is not in your zone`
         }
@@ -1105,21 +1114,72 @@ export function validateCommand(command: Command, context: GameContext): string 
  * to type — the zones themselves have read "Rookery Terminal" and "Landing
  * Anchor" since the world landed.
  */
-export function resolveZoneAlias(zoneInput: string, team: TeamId = 'chaff'): string {
+export function resolveZoneAlias(
+  zoneInput: string,
+  team: TeamId = 'chaff',
+  fromZone?: string,
+): string {
   // Check if it's already a valid zone ID
   if (ZONE_IDS.includes(zoneInput)) return zoneInput
+  // Natural spellings: "Coldstore Crossing", coldstore_crossing, coldstore-crossing.
+  const word = normaliseZoneWord(zoneInput)
+  if (ZONE_IDS.includes(word)) return word
+  // A bare `crossing` means the crossing of the route you are on.
+  const routeCross = crossingOfRoute(word, fromZone)
+  if (routeCross) return routeCross
   // Team-relative "home" shortcuts resolve to YOUR side of the map.
   const home = ZONES.find((z) => z.type === 'base' && z.team === team)
   const anchor = ZONES.find((z) => z.type === 'anchor' && z.team === team)
-  if (zoneInput === 'terminal' && home) return home.id
-  if (zoneInput === 'anchor' && anchor) return anchor.id
+  if (word === 'terminal' && home) return home.id
+  if (word === 'anchor' && anchor) return anchor.id
   // Check if it's an alias
-  if (ZONE_ALIASES[zoneInput]) return ZONE_ALIASES[zoneInput]
+  if (ZONE_ALIASES[word]) return ZONE_ALIASES[word]
   // Check if it matches a zone ID prefix (e.g. "cold" -> the coldstore zones)
-  const matches = ZONE_IDS.filter((z) => z.startsWith(zoneInput))
+  const matches = ZONE_IDS.filter((z) => z.startsWith(word))
   if (matches.length === 1) return matches[0]!
   // Return as-is (let server validate)
-  return zoneInput
+  return word
+}
+
+/** "Coldstore T1 (AUDIT)" → "coldstore-t1-audit": a display name as a typed word. */
+function slugZoneWord(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[()]/g, '')
+    .replace(/[\s_]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+/** Every zone's display name, slugged, → its id ("coldstore-crossing" → coldstore-cross). */
+const ZONE_NAME_INDEX: Record<string, string> = Object.fromEntries(
+  ZONES.map((z) => [slugZoneWord(z.name), z.id]),
+)
+
+/**
+ * The spelling-tolerant form of a typed zone word. Players type what the HUD
+ * shows ("Coldstore Crossing") while the ids are terse (`coldstore-cross`), so
+ * `move coldstore-crossing` and `move coldstore crossing` were refused
+ * (playtest 24.png). Spaces/underscores become hyphens, display names map to
+ * their id, and a trailing `crossing` is the `cross` the ids use.
+ */
+function normaliseZoneWord(input: string): string {
+  const word = slugZoneWord(input).replace(/^the-/, '')
+  if (ZONE_NAME_INDEX[word]) return ZONE_NAME_INDEX[word]
+  return word.replace(/(^|-)crossing$/, '$1cross')
+}
+
+/** The three route crossings, for the "which one?" answer to a bare `crossing`.
+ *  The cache spots share `type: 'cross'` but belong to no route (no `lane`). */
+const CROSSINGS = ZONES.filter((z) => z.type === 'cross' && z.lane).map((z) => z.id)
+
+/** `cross`/`crossing` → the crossing of the route `fromZone` lies on, if any. */
+function crossingOfRoute(word: string, fromZone?: string): string | null {
+  if (word !== 'cross' || !fromZone) return null
+  const lane = ZONE_MAP[fromZone]?.lane
+  const id = lane ? `${lane}-cross` : null
+  return id && ZONE_IDS.includes(id) ? id : null
 }
 
 /**
@@ -1127,18 +1187,24 @@ export function resolveZoneAlias(zoneInput: string, team: TeamId = 'chaff'): str
  * unreported these reach the server as a raw prefix and are rejected there,
  * costing the player their one action for the cycle with no explanation.
  */
-function ambiguousZoneError(zoneInput: string): string | null {
-  if (ZONE_IDS.includes(zoneInput) || zoneInput === 'terminal' || zoneInput === 'anchor')
-    return null
-  if (ZONE_ALIASES[zoneInput]) return null
+function ambiguousZoneError(zoneInput: string, fromZone?: string): string | null {
+  if (ZONE_IDS.includes(zoneInput)) return null
+  const word = normaliseZoneWord(zoneInput)
+  if (ZONE_IDS.includes(word) || word === 'terminal' || word === 'anchor') return null
+  if (ZONE_ALIASES[word]) return null
+  // A bare `crossing` off-route (base, Silt, the Hollow) names no one crossing.
+  if (word === 'cross') {
+    if (crossingOfRoute(word, fromZone)) return null
+    return `"${zoneInput}" is ambiguous — which route? ${CROSSINGS.join(', ')}`
+  }
   // Legacy word from the old vocabulary: `cache` matched both cache spots. The
   // spots are cache-seawall/cache-shallows now, but a player who types `move cache` still
   // means "a cache drop" — guide them to both rather than dumping a raw prefix
   // on the server (which would burn their one action on a rejection).
-  if (zoneInput === 'cache') {
+  if (word === 'cache') {
     return `"cache" is ambiguous — did you mean cache-seawall or cache-shallows?`
   }
-  const matches = ZONE_IDS.filter((z) => z.startsWith(zoneInput))
+  const matches = ZONE_IDS.filter((z) => z.startsWith(word))
   if (matches.length < 2) return null
   return matches.length > 3
     ? `"${zoneInput}" is ambiguous — ${matches.length} zones match (${matches.slice(0, 3).join(', ')}, ...)`
@@ -1158,8 +1224,8 @@ function ambiguousZoneError(zoneInput: string): string | null {
  * `mid`, `top`, `bot`, `base`, `fountain` — resolves to nothing now, and those
  * are exactly the words a returning player types from muscle memory.
  */
-function unknownZoneError(zoneInput: string, team: TeamId): string | null {
-  const resolved = resolveZoneAlias(zoneInput, team)
+function unknownZoneError(zoneInput: string, team: TeamId, fromZone?: string): string | null {
+  const resolved = resolveZoneAlias(zoneInput, team, fromZone)
   if (ZONE_IDS.includes(resolved)) return null
   // A retired word gets NAMED its replacement. This is not a legacy alias — it
   // does not resolve and the command still does not run; it just refuses to make
@@ -1177,7 +1243,7 @@ function unknownZoneError(zoneInput: string, team: TeamId): string | null {
   const retired = RETIRED[zoneInput]
   if (retired) return `"${zoneInput}" is the old word — it is \`${retired}\` now.`
 
-  const suggestions = ZONE_IDS.filter((z) => z.includes(zoneInput)).slice(0, 3)
+  const suggestions = ZONE_IDS.filter((z) => z.includes(normaliseZoneWord(zoneInput))).slice(0, 3)
   return suggestions.length
     ? `No zone called "${zoneInput}" — did you mean ${suggestions.join(' or ')}?`
     : `No zone called "${zoneInput}" — type \`map\` for the layout.`
@@ -1187,7 +1253,11 @@ export function useCommands() {
   const history = ref<string[]>([])
   const historyIndex = ref(-1)
 
-  function parse(input: string, team: TeamId = 'chaff'): ParseResult {
+  /**
+   * @param fromZone the player's current zone — lets a bare `crossing` mean the
+   *   crossing of the route they stand on.
+   */
+  function parse(input: string, team: TeamId = 'chaff', fromZone?: string): ParseResult {
     // `raw` keeps the original case: the parser lowercases for command/target
     // matching, but chat text is content, not syntax — a lowercased message
     // read as shouting-less, and player names/copy lose their casing.
@@ -1207,13 +1277,14 @@ export function useCommands() {
 
     switch (cmd) {
       case 'move': {
-        const zone = tokens[1]
+        // The whole rest of the line is the zone: "coldstore crossing" is two words.
+        const zone = tokens.slice(1).join(' ')
         if (!zone) return { command: null, error: 'Usage: move <zone>' }
-        const ambiguous = ambiguousZoneError(zone)
+        const ambiguous = ambiguousZoneError(zone, fromZone)
         if (ambiguous) return { command: null, error: ambiguous }
-        const unknown = unknownZoneError(zone, team)
+        const unknown = unknownZoneError(zone, team, fromZone)
         if (unknown) return { command: null, error: unknown }
-        const resolvedZone = resolveZoneAlias(zone, team)
+        const resolvedZone = resolveZoneAlias(zone, team, fromZone)
         return { command: { type: 'move', zone: resolvedZone }, error: null }
       }
 
@@ -1281,7 +1352,7 @@ export function useCommands() {
         // (Daemon's Fork Bomb / Root Access). Heroes and `zone:`-prefixed targets
         // were already handled above, so this only ever rescues an unparsed word.
         if (targetStr && !target) {
-          const resolved = resolveZoneAlias(targetStr, team)
+          const resolved = resolveZoneAlias(targetStr, team, fromZone)
           if (ZONE_IDS.includes(resolved)) target = { kind: 'zone', zone: resolved }
         }
         return { command: { type: 'cast', ability, target: target ?? undefined }, error: null }
@@ -1308,13 +1379,14 @@ export function useCommands() {
       }
 
       case 'tap': {
-        const zone = tokens[1]
+        // The whole rest of the line is the zone: "coldstore crossing" is two words.
+        const zone = tokens.slice(1).join(' ')
         if (!zone) return { command: null, error: 'Usage: tap <zone>' }
-        const ambiguous = ambiguousZoneError(zone)
+        const ambiguous = ambiguousZoneError(zone, fromZone)
         if (ambiguous) return { command: null, error: ambiguous }
-        const unknown = unknownZoneError(zone, team)
+        const unknown = unknownZoneError(zone, team, fromZone)
         if (unknown) return { command: null, error: unknown }
-        const resolvedZone = resolveZoneAlias(zone, team)
+        const resolvedZone = resolveZoneAlias(zone, team, fromZone)
         return { command: { type: 'tap', zone: resolvedZone }, error: null }
       }
 
@@ -1383,13 +1455,14 @@ export function useCommands() {
       }
 
       case 'ping': {
-        const zone = tokens[1]
+        // The whole rest of the line is the zone: "coldstore crossing" is two words.
+        const zone = tokens.slice(1).join(' ')
         if (!zone) return { command: null, error: 'Usage: ping <zone>' }
-        const ambiguous = ambiguousZoneError(zone)
+        const ambiguous = ambiguousZoneError(zone, fromZone)
         if (ambiguous) return { command: null, error: ambiguous }
-        const unknown = unknownZoneError(zone, team)
+        const unknown = unknownZoneError(zone, team, fromZone)
         if (unknown) return { command: null, error: unknown }
-        const resolvedZone = resolveZoneAlias(zone, team)
+        const resolvedZone = resolveZoneAlias(zone, team, fromZone)
         return { command: { type: 'ping', zone: resolvedZone }, error: null }
       }
 
@@ -1615,7 +1688,7 @@ export function useCommands() {
     // An exact alias outranks every prefix match: `mid` means the river, and
     // burying it under `coldstore-t3-chaff` (first in zone order) walked players into
     // their OWN tier-3 ice the moment Enter accepted the top suggestion.
-    const exact = partial ? resolveZoneAlias(partial, team) : ''
+    const exact = partial ? resolveZoneAlias(partial, team, context.player?.zone) : ''
     if (exact !== partial && zonePool.includes(exact) && ZONE_MAP[exact]) {
       suggestions.push({ text: partial, description: `→ ${ZONE_MAP[exact]!.name}` })
     }
@@ -1671,7 +1744,7 @@ export function useCommands() {
 
     // Same alias-first rule as _suggestZones, but only for a reachable zone —
     // `ward mid` from a mid lane means the river, not the ice behind you.
-    const exact = partial ? resolveZoneAlias(partial, context.player.team) : ''
+    const exact = partial ? resolveZoneAlias(partial, context.player.team, context.player.zone) : ''
     if (exact !== partial && adjacent.includes(exact) && ZONE_MAP[exact]) {
       suggestions.push({ text: partial, description: `→ ${ZONE_MAP[exact]!.name}` })
     }

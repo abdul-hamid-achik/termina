@@ -8,6 +8,9 @@ import { useAuthStore } from '~/stores/auth'
 // Live hero count from the registry so the landing page can't drift.
 const heroCount = HERO_IDS.length
 const tickSeconds = CYCLE_DURATION_MS / 1000
+// The sample turn quotes Echo's real rank-1 Resonance damage from the registry.
+const echoResonanceDamage =
+  HEROES.echo?.abilities.q.effects.find((e) => e.type === 'damage')?.value ?? 0
 
 // Practice vs bots: shared one-lane tutorial launcher (see useStartTutorial).
 const {
@@ -164,7 +167,7 @@ const pillars = [
           <span class="text-ability">cast q hero:daemon</span>
         </p>
         <p class="text-text-dim">
-          &nbsp;&nbsp;⤷ cycle 42 · Resonance hits Daemon — 80 dmg (+bounce)
+          &nbsp;&nbsp;⤷ cycle 42 · Resonance hits Daemon — {{ echoResonanceDamage }} dmg (+bounce)
         </p>
         <p>
           <span class="text-chaff">&gt;</span>

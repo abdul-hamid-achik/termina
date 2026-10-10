@@ -1113,3 +1113,150 @@ describe('buildCombatLines: newly delivered combat events print once', () => {
     expect(lines).toHaveLength(3) // verbose keeps all three
   })
 })
+
+// Playtest 2026-10 (27.png): `cast q socket` printed "You cast Resonance on
+// Socket" and then nothing — the shield on Socket soaked the hit, so the
+// engine's INTEG diff emitted no damage event at all, and the caster read
+// silence. Every damage line of a cast also read as a plain "You hit".
+describe('buildCombatLines: a cast tells the caster what it did', () => {
+  const castCtx: NarrativeContext = {
+    ...ctx,
+    abilityLabel: (id) => (id === 'echo-q' ? 'Resonance' : String(id)),
+    abilityDealsDamage: (id) => id === 'echo-q',
+  }
+  const cast = (target = 'enemy1') =>
+    ev('ability_used', { playerId: 'me', abilityId: 'echo-q', targetId: target, cooldown: 5 }, 28)
+  const dmg = (sourceId: string, targetId: string, amount: number) =>
+    ev('damage', { sourceId, targetId, amount, damageType: 'kinetic' }, 28)
+  const lines = (events: GameEvent[]) =>
+    buildCombatLines(events, castCtx, collapseStructureDamage).map((l) => l.text)
+
+  it('names the ability on each hit it produced, bounce included', () => {
+    expect(lines([cast(), dmg('me', 'enemy1', 72), dmg('me', 'enemy2', 36)])).toEqual([
+      'You cast Resonance on enemy1',
+      'Your Resonance hit enemy1 for 72 kinetic',
+      'Your Resonance hit enemy2 for 36 kinetic',
+    ])
+  })
+
+  it('says so when a damaging cast landed nothing on its target', () => {
+    const out = lines([cast(), ev('cooldown_used', { playerId: 'me', abilityId: 'q' }, 28)])
+    expect(out).toContain(
+      'Your Resonance dealt no damage to enemy1 — shielded, dodged, immune, or its condition was not met',
+    )
+  })
+
+  it('stays quiet when a block or resist line already explains it', () => {
+    const out = lines([
+      cast(),
+      ev('spell_blocked', { casterId: 'me', targetId: 'enemy1', source: 'intercept_shell' }, 28),
+    ])
+    expect(out.some((t) => t.includes('dealt no damage'))).toBe(false)
+  })
+
+  it('does not claim a later basic attack by someone else, nor my hits after another cast', () => {
+    const out = lines([
+      cast(),
+      dmg('me', 'enemy1', 72),
+      dmg('enemy2', 'ally1', 40),
+      dmg('me', 'enemy2', 30),
+    ])
+    expect(out).toContain('Your Resonance hit enemy1 for 72 kinetic')
+    expect(out).toContain('You hit enemy2 for 30 kinetic')
+  })
+
+  it('stops at the cast’s own cooldown_used — a later DoT tick of mine stays plain', () => {
+    const out = lines([
+      cast(),
+      dmg('me', 'enemy1', 72),
+      ev('cooldown_used', { playerId: 'me', abilityId: 'q' }, 28),
+      dmg('me', 'enemy2', 12),
+    ])
+    expect(out).toContain('Your Resonance hit enemy1 for 72 kinetic')
+    expect(out).toContain('You hit enemy2 for 12 kinetic')
+  })
+
+  it('an item use is not an ability cast: my later basic attack stays a plain hit', () => {
+    // Item actives are an `ability_used` with no cooldown and no closing cooldown_used.
+    const item = ev('ability_used', { playerId: 'me', abilityId: 'blink_dagger' }, 28)
+    const out = lines([item, dmg('me', 'enemy1', 55)])
+    expect(out).toContain('You hit enemy1 for 55 kinetic')
+    expect(out.some((t) => t.startsWith('Your blink_dagger'))).toBe(false)
+  })
+
+  it('never flags a cast at an ally or at myself', () => {
+    expect(lines([cast('ally1')]).some((t) => t.includes('dealt no damage'))).toBe(false)
+    expect(lines([cast('me')]).some((t) => t.includes('dealt no damage'))).toBe(false)
+  })
+})
+
+describe('eventToLine: NPC sources are tagged for the story fold', () => {
+  it('tags a wave hit on me and leaves a hero hit untagged', () => {
+    const wave = eventToLine(ev('damage', { sourceId: 'wave_3', targetId: 'me', amount: 19 }), ctx)!
+    const hero = eventToLine(ev('damage', { sourceId: 'enemy1', targetId: 'me', amount: 60 }), ctx)!
+    expect(wave.npcSource).toBe('waves')
+    expect(hero.npcSource).toBeUndefined()
+  })
+})
+
+// Server half shipped 2026-10-10: a hit that lands nothing now arrives as an
+// explicit `damage_blocked { reason: shield|dodge|immune }` (events.ts), so the
+// feed states the cause instead of guessing, and never double-prints.
+describe('buildCombatLines: damage_blocked states why a hit did nothing', () => {
+  const blockCtx: NarrativeContext = {
+    ...ctx,
+    abilityLabel: (id) => (id === 'echo-q' ? 'Resonance' : String(id)),
+    abilityDealsDamage: (id) => id === 'echo-q',
+  }
+  const lines = (events: GameEvent[]) =>
+    buildCombatLines(events, blockCtx, collapseStructureDamage).map((l) => l.text)
+  const blocked = (p: Record<string, unknown>) =>
+    ev('damage_blocked', { damageType: 'kinetic', ...p }, 28)
+
+  it('a cast soaked by a shield names the ability, the shield and the amount — no guess line', () => {
+    const out = lines([
+      ev(
+        'ability_used',
+        { playerId: 'me', abilityId: 'echo-q', targetId: 'enemy1', cooldown: 5 },
+        28,
+      ),
+      blocked({
+        sourceId: 'me',
+        targetId: 'enemy1',
+        reason: 'shield',
+        amount: 70,
+        abilityId: 'echo-q',
+      }),
+      ev('cooldown_used', { playerId: 'me', abilityId: 'q' }, 28),
+    ])
+    expect(out).toContain("Your Resonance was absorbed by enemy1's shield (70)")
+    expect(out.some((t) => t.includes('dealt no damage'))).toBe(false)
+  })
+
+  it('a dodged swing on me reads in second person', () => {
+    expect(lines([blocked({ sourceId: 'enemy1', targetId: 'me', reason: 'dodge' })])).toEqual([
+      "You dodged enemy1's attack",
+    ])
+  })
+
+  it("an immune target merges with the engine's 0-damage swing into ONE line", () => {
+    const out = lines([
+      ev('damage', { sourceId: 'me', targetId: 'enemy1', amount: 0, damageType: 'kinetic' }, 28),
+      blocked({ sourceId: 'me', targetId: 'enemy1', reason: 'immune', amount: 58 }),
+    ])
+    expect(out).toEqual(['enemy1 is immune — your attack did nothing'])
+  })
+
+  it('a fully-shielded swing replaces the pre-shield damage line (the recap must not count it)', () => {
+    const built = buildCombatLines(
+      [
+        ev('damage', { sourceId: 'enemy1', targetId: 'me', amount: 40, damageType: 'kinetic' }, 28),
+        blocked({ sourceId: 'enemy1', targetId: 'me', reason: 'shield', amount: 40 }),
+      ],
+      blockCtx,
+      collapseStructureDamage,
+    )
+    expect(built.map((l) => l.text)).toEqual(["Your shield absorbed enemy1's attack (40)"])
+    expect(built[0]!.dmgAmount ?? 0).toBe(0)
+  })
+})

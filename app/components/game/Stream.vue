@@ -2,7 +2,7 @@
 import StreamLine from '~/components/game/StreamLine.vue'
 import { ref, watch, nextTick, onMounted, computed } from 'vue'
 import HeroPortrait from '~/components/avatars/HeroPortrait.vue'
-import { buildTickStoryView, buildTickRecaps } from '~/utils/combatLog'
+import { buildTickStoryView, buildTickRecaps, recapClausesFor } from '~/utils/combatLog'
 import type { CombatLine, CombatLineType, Salience } from '~/utils/combatLog'
 import { formatTickClock } from '~/utils/gameClock'
 
@@ -103,6 +103,18 @@ const beats = computed<Beat[]>(() => {
     const last = out[out.length - 1]
     if (last && last.cycle === line.cycle) last.lines.push(line)
     else out.push({ cycle: line.cycle, lines: [line] })
+  }
+  return out
+})
+
+// What each beat's recap still has to say once its own lines are on screen: a
+// clause that only restates the beat's single matching line ("You took 60 from
+// Socket" over "Socket hit You for 60") is dropped.
+const recapByBeat = computed(() => {
+  const out = new Map<number, { takenText: string | null; dealtText: string | null }>()
+  for (const beat of beats.value) {
+    const clauses = recapClausesFor(recapByTick.value.get(beat.cycle), beat.lines)
+    if (clauses.takenText || clauses.dealtText) out.set(beat.cycle, clauses)
   }
   return out
 })
@@ -313,7 +325,7 @@ function eventAriaLabel(line: CombatLine): string {
 
     <div
       ref="logEl"
-      class="flex-1 overflow-y-auto py-1 text-[0.8rem] leading-normal"
+      class="flex-1 overflow-y-auto pb-1 text-[0.8rem] leading-normal"
       data-testid="stream-body"
       @scroll="handleScroll"
     >
@@ -326,32 +338,38 @@ function eventAriaLabel(line: CombatLine): string {
         [scroll pinned — click to resume]
       </button>
       <div v-for="beat in beats" :key="beat.cycle" class="mb-0.5">
-        <!-- Cycle beat header. The recap rides INSIDE the sticky block so the
-             turn's bottom line stays on screen while its detail scrolls away. -->
+        <!-- Cycle beat header: ONE line pinned while its beat scrolls. -->
         <!-- Fully opaque + z-[2]: at /95 the scrolling lines beneath ghosted
              through the stuck header (double-exposure text), and the event
              rows' fade-in transforms create stacking contexts that could
              paint over a z-[1] header mid-animation. -->
-        <div class="z-[2] bg-bg-primary select-none" :class="pinBeats ? 'sticky top-0' : ''">
+        <div
+          class="z-[2] bg-bg-primary select-none"
+          :class="pinBeats ? 'sticky top-0' : ''"
+          data-testid="beat-header"
+        >
           <div class="flex items-center gap-1 px-2 py-px t-hud-xs tracking-wider text-text-muted">
             <span class="text-border">──</span>
             <span class="font-bold">CYCLE {{ beat.cycle }}</span>
             <span class="text-text-dim">· {{ clock(beat.cycle) }}</span>
             <span class="flex-1 truncate text-right text-border">{{ '─'.repeat(40) }}</span>
           </div>
-          <div
-            v-if="recap && recapByTick.get(beat.cycle)"
-            class="flex flex-wrap items-baseline gap-x-2 px-2 pb-px t-hud-sm t-mono-num"
-            data-testid="tick-recap"
-            :aria-label="`Cycle ${beat.cycle} recap: ${recapByTick.get(beat.cycle)!.text}`"
-          >
-            <span v-if="recapByTick.get(beat.cycle)!.takenText" class="font-semibold text-audit">
-              {{ recapByTick.get(beat.cycle)!.takenText }}
-            </span>
-            <span v-if="recapByTick.get(beat.cycle)!.dealtText" class="text-self">
-              {{ recapByTick.get(beat.cycle)!.dealtText }}
-            </span>
-          </div>
+        </div>
+        <!-- The recap is the beat's first row, NOT part of the sticky block: a
+             two-line pinned header sat over the lines it summarised (playtest
+             28.png). It only renders when it adds something — see recapByBeat. -->
+        <div
+          v-if="recap && recapByBeat.get(beat.cycle)"
+          class="flex flex-wrap items-baseline gap-x-2 px-2 pb-px t-hud-sm t-mono-num"
+          data-testid="tick-recap"
+          :aria-label="`Cycle ${beat.cycle} recap: ${recapByTick.get(beat.cycle)?.text ?? ''}`"
+        >
+          <span v-if="recapByBeat.get(beat.cycle)!.takenText" class="font-semibold text-audit">
+            {{ recapByBeat.get(beat.cycle)!.takenText }}
+          </span>
+          <span v-if="recapByBeat.get(beat.cycle)!.dealtText" class="text-self">
+            {{ recapByBeat.get(beat.cycle)!.dealtText }}
+          </span>
         </div>
 
         <div

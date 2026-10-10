@@ -11,7 +11,7 @@ import DamageFloat, { type DamageFloatEntry } from '~/components/game/DamageFloa
 import GameStateBar from '~/components/game/GameStateBar.vue'
 import StatusLines from '~/components/game/StatusLines.vue'
 import Stream from '~/components/game/Stream.vue'
-import Deck from '~/components/game/Deck.vue'
+import Deck, { type AbilitySlotState } from '~/components/game/Deck.vue'
 import InventoryBar from '~/components/game/InventoryBar.vue'
 import ItemShop from '~/components/game/ItemShop.vue'
 import KillFeed from '~/components/game/KillFeed.vue'
@@ -67,7 +67,7 @@ import type { ItemCategoryId } from '~~/shared/types/items'
 import { getTalentTree } from '~~/shared/constants/talents'
 import type { IceState, TerminalState } from '~~/shared/types/game'
 import { uiLog } from '~/utils/logger'
-import { collapseStructureDamage, type CombatLine } from '~/utils/combatLog'
+import { collapseStructureDamage, isNpcSourceId, type CombatLine } from '~/utils/combatLog'
 import {
   buildCombatLines,
   deriveKillFeed,
@@ -82,7 +82,7 @@ import {
 } from '~~/shared/constants/balance'
 import { pathDistance } from '~~/shared/pathfinding'
 import { formatTenant, ticksToClock } from '~/utils/strategy'
-import { computeThreat, recommendAction } from '~/utils/tactics'
+import { incomingDamageLastCycle, zoneVerdict } from '~/utils/tactics'
 import { arrowTargetZone } from '~/utils/arrowMove'
 import { computeSituationalActions } from '~/utils/situationalActions'
 import { routeGameKey } from '~/utils/gameKeys'
@@ -526,9 +526,71 @@ let awaitingRespawn = false
 const endFlashKey = ref(0)
 const endFlashType = ref<'victory' | 'defeat' | null>(null)
 
-// The most recent server announcement (rejected-action feedback), shown by the
-// transient AnnouncementToast and retriggered via gameStore.announcementSeq.
-const latestAnnouncement = computed(() => gameStore.announcements.at(-1) ?? '')
+// ── Rejections + server notices: ONE place each lands ──────────────────
+// A rejection is the line the player MUST read, so every one — the prompt's
+// pre-flight, the server's `announcement` warning, a refused/failed order —
+// lands in the STREAM as a marked line (once per cycle) and keeps its toast.
+// A server NOTICE (tutorial coaching, level `info`) lands in the stream once
+// and never toasts: the TutorialHint strip already carries the step, so the
+// toast made the same advice appear three times at once (playtest 06.png).
+const REJECTION_MARK = '✕ REJECTED —'
+let rejectionCycle = -1
+const rejectionsThisCycle = new Set<string>()
+function pushRejection(reason: string) {
+  if (!reason) return
+  if (rejectionCycle !== gameStore.cycle) {
+    rejectionCycle = gameStore.cycle
+    rejectionsThisCycle.clear()
+  }
+  if (rejectionsThisCycle.has(reason)) return
+  rejectionsThisCycle.add(reason)
+  localEvents.value.push({
+    cycle: gameStore.cycle,
+    text: `${REJECTION_MARK} ${reason}`,
+    type: 'system',
+  })
+}
+
+/** A notice repeated inside this many cycles is not printed again. */
+const NOTICE_REPEAT_WINDOW = 10
+const noticeLastCycle = new Map<string, number>()
+/** Texts that arrived as server notices — never toasted. */
+const noticeTexts = new Set<string>()
+function pushNotice(message: string) {
+  noticeTexts.add(message)
+  const last = noticeLastCycle.get(message)
+  if (last !== undefined && gameStore.cycle - last < NOTICE_REPEAT_WINDOW) return
+  noticeLastCycle.set(message, gameStore.cycle)
+  localEvents.value.push({ cycle: gameStore.cycle, text: `>_ ${message}`, type: 'system' })
+}
+
+// The transient AnnouncementToast, retriggered per announcement — except the
+// server notices above. Several announcements can land in one flush (a notice
+// and a rejection together), so the newest TOASTABLE one is shown.
+const toastText = ref('')
+const toastLevel = ref<typeof gameStore.lastAnnouncementLevel>('warning')
+const toastSeq = ref(0)
+let seenAnnouncementSeq = gameStore.announcementSeq
+watch(
+  () => gameStore.announcementSeq,
+  (seq) => {
+    const count = Math.min(Math.max(0, seq - seenAnnouncementSeq), gameStore.announcements.length)
+    seenAnnouncementSeq = seq
+    if (count === 0) return
+    const fresh = gameStore.announcements.slice(-count)
+    // Order failures the channel raises itself ([CYCLE] late/refused/failed to
+    // send, [CHAT]) reach no other path into the feed.
+    for (const text of fresh) {
+      if (text.startsWith('[CYCLE]') || text.startsWith('[CHAT]')) pushRejection(text)
+    }
+    const latest = fresh.at(-1)!
+    const toastable = [...fresh].reverse().find((t) => !noticeTexts.has(t))
+    if (toastable === undefined) return
+    toastText.value = toastable
+    toastLevel.value = toastable === latest ? gameStore.lastAnnouncementLevel : 'warning'
+    toastSeq.value++
+  },
+)
 
 // Floating combat numbers for damage involving the local player. Each entry
 // rises + fades once (DamageFloat.vue) and is pruned after the animation.
@@ -609,6 +671,8 @@ function registerHit(amount: number) {
 // memory of the order. It is also what gates the arrival line: narrating any
 // zone change would double-print teleports and fire on every respawn.
 const walkTarget = ref<string | null>(null)
+/** The cycle whose NPC damage already fired the hit cue (once per cycle). */
+let lastNpcImpactCycle = -1
 
 // On each new cycle: play the cycle sound and flush any command the player
 // pre-typed while waiting (buffered client-side, sent now that they can act).
@@ -699,10 +763,18 @@ watch(
     const pid = gameStore.playerId
     if (!pid) return
 
+    // NPC fire on you (a wave stack, ICE, Silt, the Tenant) lands as many small
+    // hits a cycle; one hit sound + flash + float EACH read as a strobe and
+    // said nothing a single "you took N" doesn't. Summed here, fired once below.
+    let npcTaken = 0
+    let batchCycle = -1
     for (const e of newEvents) {
+      if (e.cycle > batchCycle) batchCycle = e.cycle
       switch (e.type) {
         case 'damage':
-          if (e.payload.targetId === pid) {
+          if (e.payload.targetId === pid && isNpcSourceId(e.payload.sourceId)) {
+            npcTaken += Number(e.payload.amount) || 0
+          } else if (e.payload.targetId === pid) {
             playSound('damage')
             registerHit(Number(e.payload.amount))
             pushDamageFloat(Number(e.payload.amount), 'taken')
@@ -812,6 +884,15 @@ watch(
           break
       }
     }
+    // One SOUND per cycle (no strobe), but never drop the damage: a cycle's events
+    // can arrive split, and the late part is INTEG the player really lost, so its
+    // float + hit register still land — the floats add up to the cycle's total.
+    if (npcTaken > 0) {
+      if (batchCycle !== lastNpcImpactCycle) playSound('damage')
+      lastNpcImpactCycle = batchCycle
+      registerHit(npcTaken)
+      pushDamageFloat(npcTaken, 'taken')
+    }
   },
 )
 
@@ -865,9 +946,21 @@ const heroData = computed(() => {
 // Resolve raw entity IDs (github_*, bot_*, creep_3, ice_coldstore-t1-chaff…) to
 // readable names: hero name for players ("You" for self), short labels for units.
 const abilityNameById: Record<string, string> = {}
+// Hero-targeted casts that deal damage on cast — a cast like that which lands
+// NO damage event gets an explicit "dealt no damage" line (combatNarrative).
+const damagingHeroAbilities = new Set<string>()
 for (const hero of Object.values(HEROES)) {
   for (const ability of Object.values(hero.abilities)) {
     abilityNameById[ability.id] = ability.name
+    // Executes are conditional by design (Sudo whiffs above its threshold) —
+    // their silence is the rule working, not news.
+    if (
+      ability.targetType === 'hero' &&
+      ability.effects.some((e) => e.type === 'damage') &&
+      !ability.effects.some((e) => e.type === 'execute')
+    ) {
+      damagingHeroAbilities.add(ability.id)
+    }
   }
   abilityNameById[hero.passive.id] = hero.passive.name
 }
@@ -927,6 +1020,7 @@ const narrativeCtx = computed<NarrativeContext>(() => ({
     typeof id === 'string' ? (gameStore.allPlayers[id]?.heroId ?? undefined) : undefined,
   itemName: (id) => ITEMS[id]?.name ?? id,
   zoneName: zoneLabel,
+  abilityDealsDamage: (id) => typeof id === 'string' && damagingHeroAbilities.has(id),
 }))
 
 const combatEvents = computed<CombatLine[]>(() => {
@@ -985,11 +1079,12 @@ const unsubOnMessage = gameSocket.onMessage((msg) => {
       })
     }
   } else if (msg.type === 'announcement') {
-    localEvents.value.push({
-      cycle: gameStore.cycle,
-      text: `>_ ${msg.message}`,
-      type: 'system',
-    })
+    // Rejections ride as warnings; coaching notices as info. Anything else
+    // (kill/objective headlines) keeps its line AND its toast.
+    if (msg.level === 'warning' && !msg.message.startsWith('[ADMIN]')) pushRejection(msg.message)
+    else if (msg.level === 'info') pushNotice(msg.message)
+    else
+      localEvents.value.push({ cycle: gameStore.cycle, text: `>_ ${msg.message}`, type: 'system' })
   } else if (msg.type === 'error') {
     localEvents.value.push({
       cycle: gameStore.cycle,
@@ -1227,7 +1322,7 @@ function handleCommand(cmd: string) {
     if (me) {
       const picked = pickAttackTargetString(me, gameStore.allPlayers)
       if ('error' in picked) {
-        localEvents.value.push({ cycle: gameStore.cycle, text: picked.error, type: 'system' })
+        rejectLocally(picked.error)
         return
       }
       cmd = `attack ${picked.target}`
@@ -1240,14 +1335,14 @@ function handleCommand(cmd: string) {
     if (me) {
       const picked = pickDenyTargetString(me, gameStore.waves)
       if ('error' in picked) {
-        localEvents.value.push({ cycle: gameStore.cycle, text: picked.error, type: 'system' })
+        rejectLocally(picked.error)
         return
       }
       cmd = `burn ${picked.target}`
     }
   }
   // Pass the player's team so base/fountain resolve to THEIR side of the map.
-  const { command, error } = commands.parse(cmd, gameStore.player?.team)
+  const { command, error } = commands.parse(cmd, gameStore.player?.team, gameStore.player?.zone)
   if (command) {
     // Auto-resolve a missing target for a targeted ability so clicking Q (or the
     // `q` shortcut, or chat `cast q`) doesn't silently reject server-side. We
@@ -1259,13 +1354,14 @@ function handleCommand(cmd: string) {
       if (caster && ability) {
         const picked = pickAbilityTargetString(ability, caster, gameStore.allPlayers)
         if ('error' in picked) {
-          localEvents.value.push({ cycle: gameStore.cycle, text: picked.error, type: 'system' })
+          rejectLocally(picked.error)
           return
         }
         if (picked.target) {
           const resolved = commands.parse(
             `cast ${command.ability} ${picked.target}`,
             gameStore.player?.team,
+            gameStore.player?.zone,
           ).command
           if (resolved?.type === 'cast') command.target = resolved.target
         }
@@ -1281,12 +1377,13 @@ function handleCommand(cmd: string) {
       if (user && targetType) {
         const picked = pickItemTargetString(targetType, user, gameStore.allPlayers)
         if ('error' in picked) {
-          localEvents.value.push({ cycle: gameStore.cycle, text: picked.error, type: 'system' })
+          rejectLocally(picked.error)
           return
         }
         const resolved = commands.parse(
           `use ${command.item} ${picked.target}`,
           gameStore.player?.team,
+          gameStore.player?.zone,
         ).command
         if (resolved?.type === 'use') command.target = resolved.target
       }
@@ -1300,11 +1397,7 @@ function handleCommand(cmd: string) {
       const heroId = gameStore.player?.heroId
       const opts = heroId ? getTalentTree(heroId)?.tiers[command.tier] : undefined
       if (!opts) {
-        localEvents.value.push({
-          cycle: gameStore.cycle,
-          text: 'No talents available for your hero',
-          type: 'system',
-        })
+        rejectLocally('No talents available for your hero')
         return
       }
       command.talentId = command.talentId === 'left' ? opts[0].id : opts[1].id
@@ -1399,11 +1492,9 @@ function handleCommand(cmd: string) {
     // Surrender still goes through (the human's vote counts); chat/ping/missing
     // and the local readouts returned above stay available too.
     if (gameStore.player?.aiControlled && command.type !== 'surrender') {
-      localEvents.value.push({
-        cycle: gameStore.cycle,
-        text: 'A bot controls your hero for the rest of this match — you can still chat, ping, and vote to surrender.',
-        type: 'system',
-      })
+      rejectLocally(
+        'A bot controls your hero for the rest of this match — you can still chat, ping, and vote to surrender.',
+      )
       return
     }
     // Already acted this cycle: buffer the command client-side and auto-send
@@ -1443,11 +1534,7 @@ function handleCommand(cmd: string) {
     if (validationError) {
       // Third identical rejection reads differently (playability ledger).
       const escalated = escalateRejection(validationError)
-      localEvents.value.push({
-        cycle: gameStore.cycle,
-        text: escalated,
-        type: 'system',
-      })
+      pushRejection(escalated)
       // A rejection is the one [SYS] line the player MUST notice — client-side
       // rejects now raise the same amber toast the server path already raises,
       // which keeps grey [SYS] for genuine meta-chatter (chat, pings, readouts).
@@ -1496,13 +1583,32 @@ function handleCommand(cmd: string) {
     else if (command.type === 'burn') playSound('burn')
     else playSound('submit')
   } else if (error) {
-    localEvents.value.push({
-      cycle: gameStore.cycle,
-      text: error,
-      type: 'system',
-    })
-    gameStore.addAnnouncement(error, 'warning')
+    rejectLocally(error)
   }
+}
+
+/** A refusal decided on this side of the wire: a marked stream line + the toast. */
+function rejectLocally(reason: string) {
+  pushRejection(reason)
+  gameStore.addAnnouncement(reason, 'warning')
+}
+
+/**
+ * The prompt refused to send a command it knows the server would reject (its
+ * pre-flight preview is an error). That used to show only as the faint `!!`
+ * line under the prompt (playtest 24.png) — now it is a stream line + toast,
+ * exactly like a rejection from the send path.
+ */
+function handlePromptRejection(reason: string) {
+  rejectLocally(escalateRejection(reason))
+}
+
+/** An order the player typed: the map/scan look closes on it (`map`/`scan`
+ *  re-open it). Not on the cycle's auto-send of a buffered order — that would
+ *  pull the look away mid-read. */
+function submitFromPrompt(cmd: string) {
+  showLook.value = false
+  handleCommand(cmd)
 }
 
 const pendingBuyId = ref<string | null>(null)
@@ -1740,6 +1846,29 @@ function openLook(mode: 'map' | 'scan') {
   triggerFx('scan')
 }
 
+/**
+ * Keys inside the look overlay. The dialog's focus trap holds the keyboard, so
+ * a player who starts typing their next order was typing into nothing: Enter
+ * (off a button) closes the look, and any printable key closes it and hands the
+ * keyboard back to the prompt — the keystroke lands there.
+ */
+function onLookKeydown(e: KeyboardEvent) {
+  const onButton = (e.target as HTMLElement | null)?.tagName === 'BUTTON'
+  // Enter/Space on a hop or verb button activate it, as buttons do.
+  const activatesButton = onButton && (e.key === 'Enter' || e.key === ' ')
+  const printable = e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey
+  if (!activatesButton && (e.key === 'Enter' || printable)) {
+    // Never let it reach the window hotkeys: with the look already closed,
+    // `w` would cast W and `s` open the shop instead of being typed.
+    e.stopPropagation()
+    showLook.value = false
+    if (e.key === 'Enter') e.preventDefault()
+    else commandInputRef.value?.focus()
+    return
+  }
+  lookFocusTrap.onKeydown(e)
+}
+
 function handleLookCommand(cmd: string) {
   showLook.value = false
   handleCommand(cmd)
@@ -1891,11 +2020,18 @@ function runSituational(cmd: string) {
 // at a glance which abilities are actually castable this cycle.
 const abilityButtonState = computed(() => {
   const p = gameStore.player
-  const result: Record<string, { ready: boolean; label: string; aria: string }> = {}
+  const result: Record<string, AbilitySlotState> = {}
   for (const slot of ['q', 'w', 'e', 'r'] as const) {
     const upper = slot.toUpperCase()
     if (!p || !p.alive || !p.heroId) {
-      result[upper] = { ready: false, label: upper, aria: `${upper}, unavailable` }
+      result[upper] = {
+        ready: false,
+        label: upper,
+        aria: `${upper}, unavailable`,
+        state: 'down',
+        chip: '—',
+        reason: p && !p.alive ? 'Unavailable while you are down' : 'Waiting for your hero',
+      }
       continue
     }
     const name = HEROES[p.heroId]?.abilities[slot]?.name ?? upper
@@ -1912,6 +2048,9 @@ const abilityButtonState = computed(() => {
         ready: false,
         label: `${upper}·—`,
         aria: `${upper} ${name}, locked — follow the tutorial step first`,
+        state: 'locked',
+        chip: 'LOCK',
+        reason: `${name}: locked by the tutorial — casting opens at the cast step`,
       }
       continue
     }
@@ -1921,6 +2060,9 @@ const abilityButtonState = computed(() => {
         ready: false,
         label: `${upper}·L${at}`,
         aria: `${upper} ${name}, unlocks at level ${at}`,
+        state: 'locked',
+        chip: `L${at}`,
+        reason: `${name}: unlocks at level ${at} (you are level ${p.level})`,
       }
       continue
     }
@@ -1928,22 +2070,49 @@ const abilityButtonState = computed(() => {
     if (cd > 0) {
       // The chip stays a bare cycle count so the dense bar keeps its width; the
       // seconds a player actually plans in go into the accessible name instead.
+      const secs = (cd * CYCLE_DURATION_MS) / 1000
       result[upper] = {
         ready: false,
         label: `${upper}·${cd}`,
-        aria: `${upper} ${name}, on cooldown ${cd} cycles, about ${(cd * CYCLE_DURATION_MS) / 1000} seconds`,
+        aria: `${upper} ${name}, on cooldown ${cd} cycles, about ${secs} seconds`,
+        state: 'cooldown',
+        chip: `${cd}`,
+        reason: `${name}: on cooldown — ${cd} cycle${cd === 1 ? '' : 's'} (~${secs}s)`,
       }
       continue
     }
     const ability = HEROES[p.heroId]?.abilities[slot]
-    if (ability && p.bw < getAbilityBwCost(ability, slot, p.level)) {
-      result[upper] = { ready: false, label: upper, aria: `${upper} ${name}, not enough BW` }
+    const cost = ability ? getAbilityBwCost(ability, slot, p.level) : 0
+    if (ability && p.bw < cost) {
+      result[upper] = {
+        ready: false,
+        label: upper,
+        aria: `${upper} ${name}, not enough BW`,
+        state: 'nobw',
+        chip: 'BW',
+        reason: `${name}: not enough BW — need ${cost}, have ${Math.floor(p.bw)}`,
+      }
       continue
     }
-    result[upper] = { ready: true, label: upper, aria: `${upper} ${name}, ready` }
+    result[upper] = {
+      ready: true,
+      label: upper,
+      aria: `${upper} ${name}, ready`,
+      state: 'ready',
+      chip: 'RDY',
+      reason: `${name}: ready`,
+    }
   }
   return result
 })
+
+/** The same slot truth, keyed q/w/e/r, for the Deck's ability chips. */
+const deckSlots = computed(() => ({
+  q: abilityButtonState.value.Q!,
+  w: abilityButtonState.value.W!,
+  e: abilityButtonState.value.E!,
+  r: abilityButtonState.value.R!,
+}))
 
 // Accessible name + toggle state for the quick-action bar buttons (#14).
 function quickActionAria(cmd: string): string {
@@ -1972,36 +2141,35 @@ const abilityArias = computed(() => {
 // scrollback as a `> ` line WHEN IT CHANGES (a per-cycle repeat is noise). The
 // INTEG readout and threat verdict ride in the same line so nothing the banner
 // showed is lost.
-const rigRecommendation = computed(() => {
+// ONE verdict for the rig line and the HUD hop line (StatusLines): the old
+// pair each ran a headcount-only computeThreat, so a hero at 24% INTEG with
+// two enemies on them read "FAVORED", and a dead one did too.
+const rigVerdict = computed(() => {
   const p = gameStore.player
   if (!p) return null
-  const enemyCount = gameStore.enemyPlayers.filter((e) => e.zone === p.zone && e.alive).length
-  const allyHeadcount = gameStore.allyPlayers.filter((a) => a.zone === p.zone && a.alive).length + 1
-  const enemyIcePresent = gameStore.ice.some(
-    (t) => t.zone === p.zone && t.alive && t.team !== p.team,
-  )
-  const threat = computeThreat(enemyCount, allyHeadcount, enemyIcePresent)
-  const hasReadyAbility = ['Q', 'W', 'E', 'R'].some((s) => abilityButtonState.value[s]?.ready)
-  const action = recommendAction({
-    alive: p.alive,
-    hpFraction: p.maxInteg > 0 ? p.integ / p.maxInteg : 0,
-    threat,
-    hasReadyAbility,
+  return zoneVerdict({
+    me: p,
+    allies: gameStore.allyPlayers,
+    enemies: gameStore.enemyPlayers,
+    enemyIcePresent: gameStore.ice.some((t) => t.zone === p.zone && t.alive && t.team !== p.team),
+    incomingLastCycle: incomingDamageLastCycle(gameStore.events, p.id, gameStore.cycle),
+    hasReadyAbility: ['Q', 'W', 'E', 'R'].some((s) => abilityButtonState.value[s]?.ready),
   })
+})
+const rigRecommendation = computed(() => {
+  const p = gameStore.player
+  const v = rigVerdict.value
+  if (!p || !v) return null
   const integ = `${p.integ}/${p.maxInteg}`
-  return `${action} · INTEG ${integ} · ${threat.label}${enemyCount ? ` (${enemyCount} hostile)` : ''}`
+  // The hostile count is a fight readout — meaningless (and misleading) while down.
+  const hostile = p.alive && v.enemyCount ? ` (${v.enemyCount} hostile)` : ''
+  return `${v.action} · INTEG ${integ} · ${v.threat.label}${hostile}`
 })
 
 // The status-line helpers — the same values the rig line reads, exposed for
 // StatusLines (one source, no drift).
-const rigEnemyCount = computed(() => {
-  const p = gameStore.player
-  return p ? gameStore.enemyPlayers.filter((e) => e.zone === p.zone && e.alive).length : 0
-})
-const rigAllyHeadcount = computed(() => {
-  const p = gameStore.player
-  return p ? gameStore.allyPlayers.filter((a) => a.zone === p.zone && a.alive).length + 1 : 1
-})
+const rigEnemyCount = computed(() => rigVerdict.value?.enemyCount ?? 0)
+const rigAllyHeadcount = computed(() => rigVerdict.value?.allyHeadcount ?? 1)
 const rigEnemyIcePresent = computed(() => {
   const p = gameStore.player
   return p ? gameStore.ice.some((t) => t.zone === p.zone && t.alive && t.team !== p.team) : false
@@ -2175,11 +2343,7 @@ function handleReturnToMenu() {
     <!-- Transient action-feedback toast: surfaces server rejections (out of
          range, juked target, firewalled Terminal, not enough BW, …) that would
          otherwise die silently in the store -->
-    <AnnouncementToast
-      :text="latestAnnouncement"
-      :seq="gameStore.announcementSeq"
-      :level="gameStore.lastAnnouncementLevel"
-    />
+    <AnnouncementToast :text="toastText" :seq="toastSeq" :level="toastLevel" />
 
     <!-- Instant death vignette pulse, fired on the death EVENT (the overlay below
          waits for authoritative isAlive state, which can lag under latency) -->
@@ -2371,6 +2535,7 @@ function handleReturnToMenu() {
         :move="cycleRecap.move"
         :compact="cutHud"
         :has-hero="!!gameStore.player"
+        :verdict="rigVerdict ? { label: rigVerdict.threat.label, action: rigVerdict.action } : null"
       />
     </div>
 
@@ -2428,6 +2593,7 @@ function handleReturnToMenu() {
                 !isCommandAllowedInTutorial('cast', gameStore.tutorialStep ?? 0)
               "
               :compact="cutHud"
+              :slots="deckSlots"
               @cast-ability="handleQuickAction"
             />
             <div v-else class="p-2 text-[0.8rem] text-text-dim">&gt;_ awaiting hero data...</div>
@@ -2474,7 +2640,7 @@ function handleReturnToMenu() {
       aria-modal="true"
       :aria-label="lookMode === 'map' ? 'Map' : 'Scan'"
       @click.self="showLook = false"
-      @keydown="lookFocusTrap.onKeydown"
+      @keydown="onLookKeydown"
     >
       <ScanOverlay
         :mode="lookMode"
@@ -2611,7 +2777,8 @@ function handleReturnToMenu() {
         :neutrals="gameStore.neutrals"
         :tenant="gameStore.tenant ?? undefined"
         :waves="gameStore.waves"
-        @submit="handleCommand"
+        @submit="submitFromPrompt"
+        @reject="handlePromptRejection"
       />
     </div>
   </div>

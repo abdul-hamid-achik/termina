@@ -7,7 +7,8 @@ import { nextTick, watch, type Ref } from 'vue'
  * (the "opener") and moves focus into the dialog; Tab/Shift+Tab cycle
  * among the dialog's own focusable descendants without escaping to the
  * page; Escape calls `onClose`; on deactivation focus returns to the
- * opener (if it's still attached to the document).
+ * opener (if it's still attached to the document AND focus wasn't already
+ * moved to another real element outside the dialog).
  *
  * GameScreen also runs a window-level keydown handler that treats a bare
  * Tab press as a game hotkey (hold-to-peek scoreboard — see
@@ -61,7 +62,20 @@ export function useFocusTrap(
     const toRestore = opener
     opener = null
     nextTick(() => {
-      if (toRestore && document.contains(toRestore)) toRestore.focus()
+      if (!toRestore || !document.contains(toRestore)) return
+      // Focus already went somewhere real (the caller handed the keyboard to
+      // another control while closing — e.g. the look overlay forwarding a
+      // keystroke to the prompt): restoring the opener now would steal it back
+      // and the typed character would be lost. Only restore when focus was
+      // dropped — it fell to <body> (the dialog node was removed) or is still
+      // inside the container we're leaving.
+      const current = document.activeElement
+      const dropped =
+        !current ||
+        current === document.body ||
+        current === document.documentElement ||
+        !!containerRef.value?.contains(current)
+      if (dropped) toRestore.focus()
     })
   }
 

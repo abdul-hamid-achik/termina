@@ -70,6 +70,22 @@ describe('StatusLines', () => {
     expect(hop).toContain('CLEAR')
   })
 
+  it('prints the verdict GameScreen computed instead of re-deriving one from headcount', () => {
+    // 3v2 by headcount alone reads FAVORED; the hero is at 24% — the shared
+    // verdict (zoneVerdict) says DANGER, and both surfaces must agree.
+    const wrapper = mountLines({
+      props: {
+        enemyCount: 2,
+        allyHeadcount: 3,
+        hpFraction: 0.24,
+        verdict: { label: 'DANGER', action: 'Low INTEG — retreat and heal' },
+      },
+    })
+    const hop = wrapper.get('[data-testid="status-hop"]').text()
+    expect(hop).toContain('DANGER')
+    expect(hop).not.toContain('FAVORED')
+  })
+
   it('renders the cycle recap: HERE, the verb, and named MOVE hops', () => {
     const wrapper = mountLines({
       props: {

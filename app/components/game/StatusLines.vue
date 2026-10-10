@@ -38,6 +38,12 @@ const props = defineProps<{
   compact?: boolean
   /** False before the first cycle_state lands. */
   hasHero?: boolean
+  /**
+   * The verdict the rig line printed (GameScreen's zoneVerdict). When given,
+   * the hop line shows exactly it — the two surfaces used to compute their own
+   * and could disagree. The headcount props stay as the standalone fallback.
+   */
+  verdict?: { label: string; action: string } | null
 }>()
 
 const hopLine = computed(() => {
@@ -53,6 +59,10 @@ const hopLine = computed(() => {
   const route = active
     ? `${active.name.toUpperCase()} hop ${active.depth + 1}/${active.total}`
     : 'off route'
+  // GameScreen passes null until it has a hero, so a verdict is always current.
+  if (props.verdict) {
+    return `${route} · ${props.verdict.label} · ${props.verdict.action}`
+  }
   return `${route} · ${threat.label} · ${action}`
 })
 

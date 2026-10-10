@@ -4,6 +4,9 @@ import {
   buildTickStoryView,
   buildTickRecaps,
   collapseStructureDamage,
+  digestNpcHitsOnMe,
+  recapClausesFor,
+  isNpcSourceId,
   type CombatLine,
 } from '~~/app/utils/combatLog'
 
@@ -273,5 +276,152 @@ describe('buildTickRecaps', () => {
     expect(collapsed).toHaveLength(1)
     const r = buildTickRecaps(collapsed).get(3)!
     expect(r.dealt).toBe(210)
+  })
+})
+
+// Playtest 2026-10 (13.png): "farm: enemy farming in sight" filled cycle after
+// cycle on its own. It is a standing state — said once when it starts.
+describe('enemy farming in sight (a state, not an event)', () => {
+  const seen = (cycle: number) =>
+    line({ cycle, text: `Thread hit a wave (${cycle})`, salience: 'world', farmKind: 'hit' })
+
+  it('is said when it starts and not repeated while it persists', () => {
+    const out = digestFarmNoise([seen(85), seen(86), seen(87)])
+    expect(out.map((l) => [l.cycle, l.text])).toEqual([[85, 'farm: enemy farming in sight']])
+  })
+
+  it('is said again after a cycle without it', () => {
+    const out = digestFarmNoise([seen(85), seen(87)])
+    expect(out.map((l) => l.cycle)).toEqual([85, 87])
+  })
+
+  it('never yields two digests for one cycle once the feed is cycle-sorted', () => {
+    // GameScreen merges engine lines with local notices and sorts by cycle
+    // (stable) before the story view — interleaved sources stay one digest.
+    const merged = [
+      line({ cycle: 5, text: 'Kernel hit a wave', salience: 'ally', farmKind: 'hit' }),
+      line({ cycle: 5, text: 'lh', type: 'scrip', salience: 'ally', farmKind: 'lasthit' }),
+      line({ cycle: 5, text: '[SYS] local notice', type: 'system' }),
+      line({
+        cycle: 5,
+        text: 'Ping last-hit',
+        type: 'scrip',
+        salience: 'ally',
+        farmKind: 'lasthit',
+      }),
+      line({ cycle: 6, text: 'lh', type: 'scrip', salience: 'ally', farmKind: 'lasthit' }),
+    ].sort((a, b) => a.cycle - b.cycle)
+    const digests = buildTickStoryView(merged).filter((l) => l.type === 'farm')
+    expect(digests.map((l) => l.cycle)).toEqual([5, 6])
+  })
+})
+
+// Playtest 2026-10 (25.png): a wave stack printed four "a wave hit You for 19"
+// lines a cycle, under a recap that said the same thing again.
+describe('NPC hits on me fold into one line per cycle (story view)', () => {
+  const waveHit = (amount: number, cycle = 19): CombatLine =>
+    line({
+      cycle,
+      text: `a wave hit You for ${amount} kinetic`,
+      salience: 'mine-in',
+      dmgAmount: amount,
+      sourceLabel: 'a wave',
+      targetLabel: 'You',
+      npcSource: 'waves',
+    })
+  const iceHit = (amount: number): CombatLine =>
+    line({
+      cycle: 19,
+      text: `ice (cs-t1) hit You for ${amount} kinetic`,
+      salience: 'mine-in',
+      dmgAmount: amount,
+      sourceLabel: 'ice (cs-t1)',
+      targetLabel: 'You',
+      npcSource: 'ICE',
+    })
+  const heroHit = line({
+    cycle: 19,
+    text: 'Socket hit You for 60 kinetic',
+    salience: 'mine-in',
+    dmgAmount: 60,
+    sourceLabel: 'Socket',
+    targetLabel: 'You',
+  })
+
+  it('classifies NPC source ids and leaves heroes alone', () => {
+    expect(
+      ['wave_3', 'neutral_1', 'ice_cs-t1', 'tenant', 'terminal_audit'].map(isNpcSourceId),
+    ).toEqual([true, true, true, true, true])
+    expect(isNpcSourceId('bot_alpha')).toBe(false)
+    expect(isNpcSourceId('github_1')).toBe(false)
+  })
+
+  it('folds four wave hits into one line with the total', () => {
+    const out = digestNpcHitsOnMe([waveHit(19), waveHit(19), waveHit(19), waveHit(29)])
+    expect(out).toHaveLength(1)
+    expect(out[0]!.text).toBe('Waves hit You ×4 for 86')
+    expect(out[0]!.dmgAmount).toBe(86)
+    expect(out[0]!.salience).toBe('mine-in')
+  })
+
+  it('breaks a mixed fold down by source and keeps hero hits individual', () => {
+    const out = digestNpcHitsOnMe([waveHit(19), heroHit, waveHit(19), iceHit(48)])
+    expect(out.map((l) => l.text)).toEqual([
+      'NPCs hit You ×3 for 86 (waves ×2: 38, ICE ×1: 48)',
+      'Socket hit You for 60 kinetic',
+    ])
+  })
+
+  it('leaves a lone NPC hit as it is and never folds across cycles', () => {
+    const out = digestNpcHitsOnMe([waveHit(19, 18), waveHit(19, 19)])
+    expect(out.map((l) => l.text)).toEqual([
+      'a wave hit You for 19 kinetic',
+      'a wave hit You for 19 kinetic',
+    ])
+  })
+
+  it('is part of the story view', () => {
+    const out = buildTickStoryView([waveHit(19), waveHit(19), waveHit(19), waveHit(29)])
+    expect(out.filter((l) => l.salience === 'mine-in')).toHaveLength(1)
+  })
+})
+
+describe('recapClausesFor — the recap never restates the beat', () => {
+  const recaps = (lines: CombatLine[]) => buildTickRecaps(lines).get(1)
+
+  it('drops a clause that restates the beat’s one line', () => {
+    const hit = line({
+      text: 'Socket hit You for 60',
+      salience: 'mine-in',
+      dmgAmount: 60,
+      sourceLabel: 'Socket',
+    })
+    expect(recapClausesFor(recaps([hit]), [hit]).takenText).toBeNull()
+  })
+
+  it('keeps a clause that sums several shown lines', () => {
+    const a = line({ text: 'a', salience: 'mine-in', dmgAmount: 60, sourceLabel: 'Socket' })
+    const b = line({ text: 'b', salience: 'mine-in', dmgAmount: 45, sourceLabel: 'Sentry' })
+    expect(recapClausesFor(recaps([a, b]), [a, b]).takenText).toBe(
+      'You took 105 (Socket 60, Sentry 45)',
+    )
+  })
+
+  it('drops the clause over a folded NPC line that already carries the total', () => {
+    const raw = [19, 19, 19, 29].map((amount) =>
+      line({
+        text: 'a wave hit You',
+        salience: 'mine-in',
+        dmgAmount: amount,
+        sourceLabel: 'a wave',
+        npcSource: 'waves',
+      }),
+    )
+    expect(recapClausesFor(recaps(raw), digestNpcHitsOnMe(raw)).takenText).toBeNull()
+  })
+
+  it('keeps the clause when a filter hid the lines it summed', () => {
+    const hit = line({ text: 'x', salience: 'mine-in', dmgAmount: 60, sourceLabel: 'Socket' })
+    expect(recapClausesFor(recaps([hit]), []).takenText).toBe('You took 60 from Socket')
   })
 })

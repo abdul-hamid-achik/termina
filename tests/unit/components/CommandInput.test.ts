@@ -350,6 +350,65 @@ describe('CommandInput', () => {
       expect((input.element as HTMLInputElement).value).toContain('move coldstore-')
     })
 
+    // Playtest 26.png: Enter on `cast q socket` rewrote the line to
+    // `cast q hero:socket` instead of firing the cast.
+    describe('a finished order is sent, a half-typed one completed', () => {
+      const socket = {
+        ...makePlayer({ id: 'bot_s', name: 'bot_s', heroId: 'socket', team: 'audit' }),
+        zone: 'coldstore-cross',
+      }
+      const me = makePlayer({ zone: 'coldstore-cross' })
+      const withEnemy = { canAct: true, player: me, allPlayers: { me, bot_s: socket } }
+
+      it('submits `cast q socket` as typed', async () => {
+        const wrapper = mount(CommandInput, { props: withEnemy })
+        const input = await typeAndEnter(wrapper, 'cast q socket')
+        expect(wrapper.emitted('submit')?.[0]).toEqual(['cast q socket'])
+        expect((input.element as HTMLInputElement).value).toBe('')
+      })
+
+      it('completes `cast q soc` instead of firing an untargeted Q', async () => {
+        const wrapper = mount(CommandInput, { props: withEnemy })
+        const input = await typeAndEnter(wrapper, 'cast q soc')
+        expect(wrapper.emitted('submit')).toBeUndefined()
+        expect((input.element as HTMLInputElement).value).toContain('hero:socket')
+      })
+
+      it('completes `buy edge` to a real item rather than sending an unknown one', async () => {
+        const items = { edge_kit: { id: 'edge_kit', name: 'Edge Kit', cost: 100 } } as never
+        const wrapper = mount(CommandInput, {
+          props: { canAct: true, player: makePlayer({ zone: 'rookery-anchor' }), items },
+        })
+        const input = await typeAndEnter(wrapper, 'buy edge')
+        expect(wrapper.emitted('submit')).toBeUndefined()
+        expect((input.element as HTMLInputElement).value).toContain('edge_kit')
+      })
+
+      it('completes `move cold` (ambiguous) instead of sending it', async () => {
+        const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
+        await typeAndEnter(wrapper, 'move cold')
+        expect(wrapper.emitted('submit')).toBeUndefined()
+      })
+    })
+
+    it('reads `move crossing` as the crossing of the route the player stands on', async () => {
+      const wrapper = mount(CommandInput, {
+        props: { canAct: true, player: makePlayer({ zone: 'coldstore-t1-chaff' }) },
+      })
+      await wrapper.find('input').setValue('move crossing')
+      expect(wrapper.get('[data-testid="command-preview"]').text()).toContain('Coldstore Crossing')
+    })
+
+    // Playtest 24.png: a refused command only showed as the faint `!!` line
+    // under the prompt. Enter now hands the reason up for the STREAM.
+    it('hands a refused command’s reason to the parent on Enter', async () => {
+      const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
+      const input = await typeAndEnter(wrapper, 'move banana')
+      expect(wrapper.emitted('submit')).toBeUndefined()
+      expect(wrapper.emitted('reject')?.[0]?.[0]).toContain('No zone called "banana"')
+      expect((input.element as HTMLInputElement).value).toBe('move banana')
+    })
+
     it('does not submit `chat team` — its "needs a message" error still gates it', async () => {
       const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
       await typeAndEnter(wrapper, 'chat team')

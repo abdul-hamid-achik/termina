@@ -70,6 +70,8 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   submit: [command: string]
+  /** Enter on a command the pre-flight refuses: the reason, for the stream. */
+  reject: [reason: string]
 }>()
 
 const { parse, autocomplete, addToHistory } = useCommands()
@@ -232,7 +234,11 @@ const preview = computed(() => {
   }
 
   // Parse to get validation (team makes base/fountain resolve to YOUR side)
-  const { command, error } = parse(val, gameContext.value.player?.team)
+  const { command, error } = parse(
+    val,
+    gameContext.value.player?.team,
+    gameContext.value.player?.zone,
+  )
   if (error) return { type: 'error' as const, text: `!! ${error}` }
   if (!command) return null
 
@@ -313,6 +319,35 @@ const preview = computed(() => {
   return { type: 'valid' as const, text: `>> ${command.type}` }
 })
 
+/**
+ * The typed line is already a finished, valid order — Enter must SEND it, not
+ * rewrite it. `cast q socket` used to become `cast q hero:socket` on Enter
+ * (the top suggestion was accepted) and the player had to press Enter twice
+ * under a four-second clock (playtest 26.png). "Parses" is not enough: every
+ * typed argument has to have resolved to something real, or a half-typed word
+ * is still being completed (`cast q soc` would otherwise fire an UNtargeted Q,
+ * `buy edge` an unknown item).
+ */
+function isCompleteCommand(val: string): boolean {
+  if (preview.value?.type !== 'valid') return false
+  const { command } = parse(val, gameContext.value.player?.team, gameContext.value.player?.zone)
+  if (!command) return false
+  const argCount = val.trim().split(/\s+/).length - 1
+  switch (command.type) {
+    case 'cast':
+      return argCount <= 1 || !!command.target
+    case 'buy':
+    case 'sell':
+      return !!props.items?.[command.item]
+    case 'use':
+      return !!props.items?.[command.item] && (argCount <= 1 || typeof command.target === 'object')
+    case 'select_talent':
+      return command.talentId === 'left' || command.talentId === 'right'
+    default:
+      return true
+  }
+}
+
 function handleSubmit() {
   const cmd = input.value.trim()
   if (!cmd) return
@@ -332,7 +367,7 @@ function handleSubmit() {
     const accept =
       selectedIndex.value > 0
         ? !isNoop(suggestions.value[selectedIndex.value]!)
-        : !suggestions.value.some(isNoop)
+        : !suggestions.value.some(isNoop) && !isCompleteCommand(cmd)
     if (accept) {
       acceptSuggestion(suggestions.value[selectedIndex.value]!)
       return
@@ -343,7 +378,11 @@ function handleSubmit() {
   // Block submission of commands that would be rejected — in a one-action-
   // per-cycle game a wasted action is the worst outcome. The preview line
   // already shows why it's invalid.
+  // The faint `!!` preview alone was easy to miss (playtest 24.png): hand the
+  // reason to the parent so it lands in the STREAM. The typed text stays put
+  // so the player can fix it.
   if (preview.value?.type === 'error') {
+    emit('reject', preview.value.text.replace(/^!!\s*/, ''))
     return
   }
 

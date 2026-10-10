@@ -357,3 +357,79 @@ describe('Deck dead state', () => {
     wrapper.unmount()
   })
 })
+
+// Playtest 13.png vs 21.png: at level 1 the tutorial painted every chip a bare
+// [—] while quick match painted the ultimate [RDY] — neither was the truth.
+describe('Deck chips show the slot truth GameScreen computed', () => {
+  type Slot = {
+    ready: boolean
+    label: string
+    aria: string
+    state: string
+    chip: string
+    reason: string
+  }
+  const slot = (state: string, chip: string, reason: string): Slot => ({
+    ready: state === 'ready',
+    label: '',
+    aria: reason,
+    state,
+    chip,
+    reason,
+  })
+  const slots = {
+    q: slot('ready', 'RDY', 'Resonance: ready'),
+    w: slot('cooldown', '4', 'Phase Shift: on cooldown — 4 cycles (~16s)'),
+    e: slot('nobw', 'BW', 'Feedback Loop: not enough BW — need 60, have 20'),
+    r: slot('locked', 'L6', 'Cascade: unlocks at level 6 (you are level 1)'),
+  }
+  function mountWithSlots(over: Partial<typeof slots> = {}) {
+    return mount(Deck, {
+      props: {
+        hero: makeHero({ level: 1, cooldowns: { q: 0, w: 4, e: 0, r: 0 } }),
+        heroId: HERO_ID,
+        slots: { ...slots, ...over } as never,
+      },
+      attachTo: document.body,
+      global: { stubs: { HeroPortrait: true, ProgressBar: true } },
+    })
+  }
+
+  it('never paints a level-1 ultimate [RDY]; says when it unlocks', () => {
+    const r = mountWithSlots().get('[data-testid="ability-chip-r"]')
+    expect(r.text()).toContain('[L6]')
+    expect(r.text()).not.toContain('RDY')
+    expect(r.attributes('title')).toContain('unlocks at level 6')
+  })
+
+  it('labels each state distinctly, with the reason on the chip', () => {
+    const w = mountWithSlots()
+    expect(w.get('[data-testid="ability-chip-q"]').text()).toContain('[RDY]')
+    expect(w.get('[data-testid="ability-chip-w"]').text()).toContain('[4]')
+    expect(w.get('[data-testid="ability-chip-e"]').text()).toContain('[BW]')
+    expect(w.get('[data-testid="ability-chip-e"]').attributes('title')).toContain('not enough BW')
+  })
+
+  it('names a tutorial lock instead of a bare dash, and refuses the tap', async () => {
+    mockPointer(false)
+    const w = mountWithSlots({
+      q: slot(
+        'locked',
+        'LOCK',
+        'Resonance: locked by the tutorial — casting opens at the cast step',
+      ),
+    })
+    const q = w.get('[data-testid="ability-chip-q"]')
+    expect(q.text()).toContain('[LOCK]')
+    expect(q.attributes('title')).toContain('tutorial')
+    await q.trigger('click')
+    expect(w.emitted('castAbility')).toBeUndefined()
+  })
+
+  it('shows the reason in the detail card of a slot that is not ready', async () => {
+    mockPointer(false)
+    const w = mountWithSlots()
+    await w.get('[data-testid="ability-chip-r"]').trigger('mouseenter')
+    expect(w.get('[data-testid="ability-reason-r"]').text()).toContain('unlocks at level 6')
+  })
+})

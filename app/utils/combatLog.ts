@@ -75,6 +75,12 @@ export interface CombatLine {
   farmKind?: 'hit' | 'lasthit' | 'camp' | 'burn'
   /** Gold carried by a folded farm line (my last-hit reward in the summary). */
   scripAmount?: number
+  /**
+   * Set on damage lines whose SOURCE is a non-hero unit (wave, Silt dweller,
+   * ICE, the Tenant, a Terminal) — the kind label used by the story view's
+   * NPC-hit fold ("waves ×4: 86"). Hero damage never carries it.
+   */
+  npcSource?: string
 }
 
 /** Working line with internal bookkeeping used only while collapsing. */
@@ -103,6 +109,25 @@ export function isStructureTarget(targetId: unknown): boolean {
   return (
     typeof targetId === 'string' && (targetId.startsWith('ice') || targetId.startsWith('terminal_'))
   )
+}
+
+/**
+ * True when a damage SOURCE id is a non-hero unit: a wave, a Silt dweller, an
+ * ICE, the Tenant or a Terminal. Shared by the feed's NPC-hit fold and the
+ * impact feedback (which fires once per cycle for NPC damage, not per hit).
+ */
+export function isNpcSourceId(id: unknown): boolean {
+  return typeof id === 'string' && npcKind(id) !== null
+}
+
+/** Short kind label for an NPC source id, or null for anything else. */
+export function npcKind(id: string): string | null {
+  if (id.startsWith('wave')) return 'waves'
+  if (id.startsWith('neutral')) return 'Silt'
+  if (id.startsWith('ice')) return 'ICE'
+  if (id === 'tenant') return 'Tenant'
+  if (id.startsWith('terminal_')) return 'Terminal'
+  return null
 }
 
 /** Faction display label from the world lexicon ("chaff" -> "CHAFF"). */
@@ -177,6 +202,10 @@ export function digestFarmNoise(lines: CombatLine[]): CombatLine[] {
   const out: CombatLine[] = []
   let cycle: number | null = null
   let bucket: CombatLine[] = []
+  // "enemy farming in sight" is a STATE, not an event: printing it every cycle
+  // the enemy stands in view filled whole beats with the same dim line
+  // (playtest 13.png). Say it when it starts; stay quiet while it persists.
+  let enemyInSightCycle: number | null = null
 
   const flush = () => {
     if (cycle === null || bucket.length === 0) return
@@ -228,7 +257,8 @@ export function digestFarmNoise(lines: CombatLine[]): CombatLine[] {
     if (enemyCamps > 0) enemyBits.push(`${enemyCamps} camp${enemyCamps === 1 ? '' : 's'}`)
     if (enemyBurns > 0) enemyBits.push(`${enemyBurns} burn${enemyBurns === 1 ? '' : 's'}`)
     if (enemyBits.length) parts.push(`enemy ${enemyBits.join(', ')}`)
-    else if (enemyHitsSeen) parts.push('enemy farming in sight')
+    else if (enemyHitsSeen && enemyInSightCycle !== cycle - 1) parts.push('enemy farming in sight')
+    if (enemyHitsSeen || enemyBits.length) enemyInSightCycle = cycle
     if (parts.length) {
       // The digest carrying MY rewards is mine — the ME filter must keep it.
       const hasMine = myLastHits > 0 || myCamps > 0 || myBurns > 0
@@ -295,6 +325,73 @@ export function digestTeamfightNoise(lines: CombatLine[], threshold = 4): Combat
   return out
 }
 
+/** Lead word for a single-kind NPC fold ("Waves hit You ×4 for 86"). */
+const NPC_FOLD_LEAD: Record<string, string> = {
+  waves: 'Waves',
+  Silt: 'Silt dwellers',
+  ICE: 'ICE',
+  Tenant: 'The Tenant',
+  Terminal: 'The Terminal',
+}
+
+/**
+ * Fold every NPC hit landing on ME in a cycle into ONE line carrying the total
+ * and a per-kind breakdown — "Waves hit You ×4 for 86", or with mixed sources
+ * "NPCs hit You ×5 for 134 (waves ×4: 86, ICE ×1: 48)". A wave stack used to
+ * print four identical "a wave hit You for 19" lines a cycle. Hero hits on me
+ * are never folded (each is a decision someone made); a lone NPC hit stays as
+ * it is. The folded line sits where the cycle's first NPC hit was.
+ */
+export function digestNpcHitsOnMe(lines: CombatLine[]): CombatLine[] {
+  const isFoldable = (l: CombatLine) =>
+    l.type === 'damage' && l.salience === 'mine-in' && !!l.npcSource
+  const byCycle = new Map<number, CombatLine[]>()
+  for (const l of lines) {
+    if (!isFoldable(l)) continue
+    const bucket = byCycle.get(l.cycle) ?? []
+    bucket.push(l)
+    byCycle.set(l.cycle, bucket)
+  }
+  const out: CombatLine[] = []
+  const emitted = new Set<number>()
+  for (const l of lines) {
+    const bucket = isFoldable(l) ? byCycle.get(l.cycle) : undefined
+    if (!bucket || bucket.length < 2) {
+      out.push(l)
+      continue
+    }
+    if (emitted.has(l.cycle)) continue
+    emitted.add(l.cycle)
+    const kinds = new Map<string, { count: number; total: number }>()
+    for (const hit of bucket) {
+      const k = kinds.get(hit.npcSource!) ?? { count: 0, total: 0 }
+      k.count++
+      k.total += hit.dmgAmount ?? 0
+      kinds.set(hit.npcSource!, k)
+    }
+    const total = bucket.reduce((sum, hit) => sum + (hit.dmgAmount ?? 0), 0)
+    const victim = bucket[0]!.targetLabel || 'You'
+    const text =
+      kinds.size === 1
+        ? `${NPC_FOLD_LEAD[bucket[0]!.npcSource!] ?? 'NPCs'} hit ${victim} ×${bucket.length} for ${total}`
+        : `NPCs hit ${victim} ×${bucket.length} for ${total} (${[...kinds.entries()]
+            .map(([kind, k]) => `${kind} ×${k.count}: ${k.total}`)
+            .join(', ')})`
+    out.push({
+      cycle: l.cycle,
+      text,
+      type: 'damage',
+      salience: 'mine-in',
+      dmgAmount: total,
+      sourceLabel: 'NPCs',
+      targetLabel: victim,
+      npcSource: kinds.size === 1 ? bucket[0]!.npcSource : 'mixed',
+      count: bucket.length,
+    })
+  }
+  return out
+}
+
 /**
  * The feed's default ("story") view: farm noise folded to one line per cycle,
  * then each cycle's lines ordered by salience — YOUR results first, kills and
@@ -302,7 +399,7 @@ export function digestTeamfightNoise(lines: CombatLine[], threshold = 4): Combat
  */
 export function buildTickStoryView(lines: CombatLine[]): CombatLine[] {
   // Bystander self-cast upkeep is verbose-only — see CombatLine.minor.
-  const digested = digestFarmNoise(lines.filter((l) => !l.minor))
+  const digested = digestNpcHitsOnMe(digestFarmNoise(lines.filter((l) => !l.minor)))
   // Stable sort per cycle: decorate with the original index, sort, strip.
   const sorted = digested
     .map((line, i) => ({ line, i }))
@@ -405,4 +502,26 @@ export function buildTickRecaps(lines: CombatLine[]): Map<number, TickRecap> {
     })
   }
   return out
+}
+
+/**
+ * The recap clauses worth printing over a beat that ALREADY shows `beatLines`.
+ * A clause that restates the beat's one and only matching line ("You took 60
+ * from Socket" above "Socket hit You for 60") is noise in the sticky header —
+ * it is dropped. A clause that sums several lines, or stands for lines a filter
+ * hid, stays.
+ */
+export function recapClausesFor(
+  recap: TickRecap | undefined,
+  beatLines: readonly CombatLine[],
+): { takenText: string | null; dealtText: string | null } {
+  if (!recap) return { takenText: null, dealtText: null }
+  const restates = (salience: Salience, total: number) => {
+    const shown = beatLines.filter((l) => l.type === 'damage' && l.salience === salience)
+    return shown.length === 1 && (shown[0]!.dmgAmount ?? 0) === total
+  }
+  return {
+    takenText: recap.takenText && !restates('mine-in', recap.taken) ? recap.takenText : null,
+    dealtText: recap.dealtText && !restates('mine-out', recap.dealt) ? recap.dealtText : null,
+  }
 }

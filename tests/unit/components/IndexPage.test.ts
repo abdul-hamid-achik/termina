@@ -71,6 +71,12 @@ describe('index (landing) page', () => {
     }
   })
 
+  it("quotes Echo's real Resonance damage in the sample turn (from the registry, so a rebalance can't leave it stale)", () => {
+    const text = mountIndex().text()
+    const q = HEROES.echo!.abilities.q.effects.find((e) => e.type === 'damage')!.value
+    expect(text).toContain(`Resonance hits Daemon — ${q} dmg`)
+  })
+
   it('states the win condition exactly, from the constants', () => {
     const text = mountIndex().text()
     expect(text).toContain(`destroying the enemy Terminal (${TERMINAL_HP} INTEG)`)

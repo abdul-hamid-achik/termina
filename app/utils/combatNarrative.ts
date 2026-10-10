@@ -14,7 +14,7 @@
  * Core falling is a "core dumped". Kept parseable — not obfuscated.
  */
 import type { GameEvent } from '~~/shared/types/game'
-import { isStructureTarget, teamLabel, type CombatLine, type Salience } from './combatLog'
+import { isStructureTarget, npcKind, teamLabel, type CombatLine, type Salience } from './combatLog'
 import { buffLabel } from './buffs'
 import { WARD_LABELS } from '~~/shared/constants/world'
 
@@ -36,6 +36,9 @@ export interface NarrativeContext {
   /** Human zone name for a zone id ("coldstore-t2-chaff" → "Coldstore T2 (CHAFF)").
    *  Optional — raw ids pass through when absent (older callers/tests). */
   zoneName?: (id: string) => string
+  /** Whether an ability id deals damage (its def carries a damage effect). Lets
+   *  the feed tell the caster a damaging cast landed nothing. Optional. */
+  abilityDealsDamage?: (abilityId: unknown) => boolean
 }
 
 const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v) || 0)
@@ -128,6 +131,10 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       // background of every cycle in sight — story view drops it, verbose keeps
       // it. Hits on ME stay: they are the answer to "why am I low?".
       const sourceId = str(p.sourceId)
+      // Tag NPC sources so the story view can fold a wave stack's hits on me
+      // into one line (digestNpcHitsOnMe).
+      const kind = npcKind(sourceId)
+      if (kind) line.npcSource = kind
       if (
         (sourceId.startsWith('wave') || sourceId.startsWith('neutral')) &&
         line.salience !== 'mine-in'
@@ -436,6 +443,39 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         salience: salience(p.owner, p.targetId, ctx),
       }
 
+    case 'damage_blocked': {
+      // A hit that landed nothing — the engine names the cause (events.ts
+      // DamageBlockedEvent), so the feed never has to guess.
+      const me = ctx.playerId
+      const srcMe = p.sourceId === me
+      const tgtMe = p.targetId === me
+      const src = label(p.sourceId)
+      const tgt = label(p.targetId)
+      const what = p.abilityId ? ctx.abilityLabel(p.abilityId) : 'attack'
+      const amt = num(p.amount) > 0 ? ` (${num(p.amount)})` : ''
+      let text: string
+      if (p.reason === 'shield') {
+        text = srcMe
+          ? `Your ${what} was absorbed by ${tgt}'s shield${amt}`
+          : tgtMe
+            ? `Your shield absorbed ${src}'s ${what}${amt}`
+            : `${tgt}'s shield absorbed ${src}'s ${what}${amt}`
+      } else if (p.reason === 'dodge') {
+        text = tgtMe
+          ? `You dodged ${src}'s ${what}`
+          : srcMe
+            ? `${tgt} dodged your ${what}`
+            : `${tgt} dodged ${src}'s ${what}`
+      } else {
+        text = srcMe
+          ? `${tgt} is immune — your ${what} did nothing`
+          : tgtMe
+            ? `You are immune — ${src}'s ${what} did nothing`
+            : `${tgt} is immune — ${src}'s ${what} did nothing`
+      }
+      return { cycle, text, type: 'damage', salience: salience(p.sourceId, p.targetId, ctx) }
+    }
+
     case 'spell_blocked': {
       const text =
         p.source === 'mirror_shell'
@@ -592,19 +632,85 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
  *    and the engine's duplicate caster→caster self-hit is absorbed.
  * Pure: identity-keyed on the input events, nothing mutated.
  */
-function pairCombatEvents(events: GameEvent[]): {
+function pairCombatEvents(
+  events: GameEvent[],
+  ctx?: NarrativeContext,
+): {
   absorbed: Set<GameEvent>
   rewritten: Map<GameEvent, GameEvent>
   carries: Map<GameEvent, GameEvent>
+  castHits: Map<GameEvent, string>
+  whiffs: Map<GameEvent, string>
 } {
   const absorbed = new Set<GameEvent>()
   const rewritten = new Map<GameEvent, GameEvent>()
   const carries = new Map<GameEvent, GameEvent>()
+  const castHits = new Map<GameEvent, string>()
+  const whiffs = new Map<GameEvent, string>()
   const unclaimed = (pred: (d: GameEvent) => boolean) =>
     events.find((d) => !absorbed.has(d) && !carries.has(d) && pred(d))
+  const me = ctx?.playerId ?? null
 
-  for (const e of events) {
+  for (const [i, e] of events.entries()) {
     const p = e.payload
+    // Only a hero-ability cast (ActionResolver.resolveHeroCast): it alone carries
+    // `cooldown` and is closed by its own `cooldown_used`. An item use is an
+    // `ability_used` with neither, so nothing would stop the scan below from
+    // claiming my later basic attack as "Your <item> hit X".
+    if (
+      e.type === 'ability_used' &&
+      me &&
+      p.playerId === me &&
+      ctx &&
+      typeof p.cooldown === 'number'
+    ) {
+      // The engine splices `ability_used` right before the damage its cast
+      // produced (ActionResolver.resolveHeroCast), so MY damage that follows it
+      // in the same cycle — until another cast or someone else's swing starts —
+      // is this ability's. Name it: "Your Resonance hit Socket for 72".
+      const ability = ctx.abilityLabel(p.abilityId)
+      const hits: GameEvent[] = []
+      let explained = false
+      for (let j = i + 1; j < events.length && j <= i + 60; j++) {
+        const d = events[j]!
+        const dp = d.payload
+        if (d.cycle !== e.cycle || d.type === 'ability_used') break
+        // The engine closes a cast with its `cooldown_used` — anything of mine
+        // after it (a DoT tick in the passives phase) is not this ability.
+        if (d.type === 'cooldown_used' && dp.playerId === me) break
+        if (d.type === 'damage' && dp.sourceId === me) {
+          hits.push(d)
+          continue
+        }
+        if (
+          (d.type === 'spell_blocked' && dp.casterId === me) ||
+          (d.type === 'damage_blocked' && dp.sourceId === me) ||
+          ((d.type === 'control_resisted' || d.type === 'breach_opened') && dp.playerId === me)
+        ) {
+          explained = true
+          continue
+        }
+        const actor = dp.sourceId ?? dp.killerId ?? dp.casterId ?? dp.playerId
+        // A reflect lands on me mid-cast; anyone else acting ends the cast.
+        if (actor !== undefined && actor !== me && dp.targetId !== me) break
+      }
+      for (const hit of hits) castHits.set(hit, ability)
+      // A damaging cast at an enemy hero that produced NO damage event and no
+      // block/resist line: the server reports nothing (a shield soaked it all,
+      // a dodge, an immunity) — the caster must not be left with silence.
+      const target = p.targetId
+      if (
+        typeof target === 'string' &&
+        target !== me &&
+        !explained &&
+        ctx.abilityDealsDamage?.(p.abilityId) &&
+        ctx.teamOf(target) !== ctx.myTeam &&
+        !hits.some((h) => h.payload.targetId === target)
+      ) {
+        whiffs.set(e, ability)
+      }
+      continue
+    }
     if (e.type === 'kill') {
       const death = unclaimed(
         (d) => d.type === 'death' && d.cycle === e.cycle && d.payload.playerId === p.victimId,
@@ -613,6 +719,22 @@ function pairCombatEvents(events: GameEvent[]): {
         absorbed.add(death)
         rewritten.set(e, { ...e, payload: { ...p, respawnCycle: death.payload.respawnCycle } })
       }
+    } else if (e.type === 'damage_blocked') {
+      // A blocked BASIC attack arrives with the engine's raw swing beside it
+      // (amount 0 when immune, the pre-shield amount when a shield soaked it
+      // all). The blocked line tells the story; absorbing the raw swing keeps
+      // the feed to one line and keeps a soaked hit out of the damage recap.
+      const swing = unclaimed(
+        (d) =>
+          d.type === 'damage' &&
+          d.cycle === e.cycle &&
+          d.payload.sourceId === p.sourceId &&
+          d.payload.targetId === p.targetId &&
+          (p.reason === 'immune'
+            ? num(d.payload.amount) === 0
+            : num(d.payload.amount) === num(p.amount)),
+      )
+      if (swing) absorbed.add(swing)
     } else if (e.type === 'trap_triggered') {
       const hit = unclaimed(
         (d) =>
@@ -649,7 +771,7 @@ function pairCombatEvents(events: GameEvent[]): {
       if (phantom) absorbed.add(phantom)
     }
   }
-  return { absorbed, rewritten, carries }
+  return { absorbed, rewritten, carries, castHits, whiffs }
 }
 
 /**
@@ -664,12 +786,14 @@ export function buildCombatLines(
     format: (info: { baseText: string; count: number; total: number }) => string,
   ) => CombatLine[],
 ): CombatLine[] {
-  const { absorbed, rewritten, carries } = pairCombatEvents(events)
+  const { absorbed, rewritten, carries, castHits, whiffs } = pairCombatEvents(events, ctx)
   const mapped: CombatLine[] = []
   for (const e of events) {
     if (absorbed.has(e)) continue
     const line = eventToLine(rewritten.get(e) ?? e, ctx)
     if (!line) continue
+    const castAbility = castHits.get(e)
+    if (castAbility) line.text = line.text.replace(/^You hit /, `Your ${castAbility} hit `)
     const hit = carries.get(e)
     if (hit) {
       // This line now stands for the absorbed damage event: carry its number
@@ -679,6 +803,15 @@ export function buildCombatLines(
       line.targetLabel = ctx.entityLabel(hit.payload.targetId)
     }
     mapped.push(line)
+    const whiff = whiffs.get(e)
+    if (whiff) {
+      mapped.push({
+        cycle: e.cycle,
+        text: `Your ${whiff} dealt no damage to ${ctx.entityLabel(e.payload.targetId)} — shielded, dodged, immune, or its condition was not met`,
+        type: 'ability',
+        salience: 'mine-out',
+      })
+    }
   }
   return collapse(mapped, ({ baseText, count, total }) => `${baseText} ×${count} (${total} total)`)
 }

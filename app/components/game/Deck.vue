@@ -25,6 +25,25 @@ interface HeroData {
   alive: boolean
 }
 
+/**
+ * One ability slot's truth, computed by GameScreen (the same source as the
+ * ActionRow buttons): READY only when the engine would accept the cast now.
+ * The chip used to look at the cooldown alone, so the ultimate read [RDY] at
+ * level 1 and a tutorial-locked slot read a bare [—] with no reason (playtest
+ * 13.png vs 21.png).
+ */
+export interface AbilitySlotState {
+  ready: boolean
+  /** ActionRow label (e.g. `R·L6`). */
+  label: string
+  aria: string
+  state: 'ready' | 'cooldown' | 'nobw' | 'locked' | 'down'
+  /** What the chip shows between the brackets: RDY / 3 / BW / L6 / LOCK / —. */
+  chip: string
+  /** Why — the chip's tooltip, and a line in its detail card. */
+  reason: string
+}
+
 const props = defineProps<{
   hero: HeroData
   heroId?: string
@@ -32,6 +51,8 @@ const props = defineProps<{
   castsLocked?: boolean
   /** Cut HUD: portrait + pools only. Abilities live on the ActionRow. */
   compact?: boolean
+  /** Per-slot truth (GameScreen). Absent = the cooldown-only fallback. */
+  slots?: Record<'q' | 'w' | 'e' | 'r', AbilitySlotState>
 }>()
 
 const emit = defineEmits<{
@@ -76,6 +97,22 @@ function cdLabel(cd: number): string {
   return cd <= 0 ? 'RDY' : `${cd}`
 }
 
+/** The bracketed chip text for a slot — the slot truth when GameScreen gave it. */
+function chipLabel(key: 'q' | 'w' | 'e' | 'r'): string {
+  return props.slots?.[key]?.chip ?? cdLabel(props.hero.cooldowns[key])
+}
+
+/** ready → glow; locked/down → the locked look; cooldown/BW → dimmed. */
+function chipState(key: 'q' | 'w' | 'e' | 'r'): 'ready' | 'locked' | 'waiting' {
+  const slot = props.slots?.[key]
+  if (slot) {
+    if (slot.state === 'ready') return 'ready'
+    return slot.state === 'locked' || slot.state === 'down' ? 'locked' : 'waiting'
+  }
+  if (props.castsLocked) return 'locked'
+  return props.hero.cooldowns[key] <= 0 ? 'ready' : 'waiting'
+}
+
 // Nothing else in the HUD tells a player a tick is 4s, and the tooltip has the
 // room to say it. Under a minute the bare seconds read better than a clock
 // ("12s", not "0:12"), and the tick count is still what you plan casts in.
@@ -85,7 +122,7 @@ function cooldownText(ticks: number): string {
 }
 
 function onAbilityTap(key: 'q' | 'w' | 'e' | 'r') {
-  if (props.castsLocked) return
+  if (chipState(key) === 'locked') return
   // On coarse pointers the first tap opens the inspection tooltip instead
   // of casting — casting requires the explicit [CAST] button inside it.
   if (!interceptActivate(key)) return
@@ -187,21 +224,24 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
           :ref="(el) => registerEl(key, el)"
           class="touch-target relative inline-flex min-h-[36px] min-w-[44px] cursor-pointer items-center gap-1 border px-2 py-1 text-xs t-mono-num transition-all duration-150"
           :class="
-            castsLocked
+            chipState(key) === 'locked'
               ? 'cursor-not-allowed border-border text-text-muted opacity-50'
-              : hero.cooldowns[key] <= 0
+              : chipState(key) === 'ready'
                 ? 'border-ability text-ability shadow-glow-ability hover:bg-ability/15 hover:shadow-glow-ability-lg hover:scale-[1.06]'
                 : 'border-border text-text-muted opacity-70'
           "
+          :title="slots?.[key]?.reason"
+          :aria-label="slots?.[key]?.aria"
+          :data-state="slots?.[key]?.state"
           :data-testid="`ability-chip-${key}`"
           @click="onAbilityTap(key)"
           @mouseenter="hoverEnter(key)"
           @mouseleave="hoverLeave()"
         >
-          <span class="font-bold" :class="hero.cooldowns[key] <= 0 ? 'text-glow-sm' : ''">{{
+          <span class="font-bold" :class="chipState(key) === 'ready' ? 'text-glow-sm' : ''">{{
             key.toUpperCase()
           }}</span>
-          <span>[{{ cdLabel(hero.cooldowns[key]) }}]</span>
+          <span>[{{ chipLabel(key) }}]</span>
 
           <!-- Ability tooltip -->
           <div
@@ -221,6 +261,13 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
                   cooldownText(getAbilityDef(key)!.cooldownCycles)
                 }}</span></span
               >
+            </div>
+            <div
+              v-if="slots?.[key] && !slots[key].ready"
+              class="mt-1 text-text-dim"
+              :data-testid="`ability-reason-${key}`"
+            >
+              {{ slots[key].reason }}
             </div>
             <div class="mt-1 text-text-primary">{{ getAbilityDef(key)!.description }}</div>
             <div v-if="getAbilityDef(key)!.effects.length" class="mt-1 border-t border-border pt-1">

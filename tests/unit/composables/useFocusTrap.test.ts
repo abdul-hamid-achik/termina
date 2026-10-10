@@ -83,6 +83,44 @@ describe('useFocusTrap', () => {
     expect(document.activeElement).toBe(fixture.opener)
   })
 
+  it('does not steal focus back from a control the caller moved it to while closing', async () => {
+    // The look overlay forwards a keystroke to the prompt as it closes; restoring the
+    // opener a tick later used to undo that and the typed character was lost.
+    const prompt = document.createElement('input')
+    document.body.appendChild(prompt)
+    fixture.opener.focus()
+    const active = ref(false)
+    useFocusTrap(containerRef(fixture.container), active)
+    active.value = true
+    await nextTick()
+    await nextTick()
+    expect(document.activeElement).toBe(fixture.first)
+
+    active.value = false
+    prompt.focus() // synchronous hand-off, before the trap's nextTick restore runs
+    await nextTick()
+    await nextTick()
+
+    expect(document.activeElement).toBe(prompt)
+    prompt.remove()
+  })
+
+  it('still restores the opener when the dialog node vanished and focus fell to <body>', async () => {
+    fixture.opener.focus()
+    const active = ref(false)
+    useFocusTrap(containerRef(fixture.container), active)
+    active.value = true
+    await nextTick()
+    await nextTick()
+
+    fixture.container.remove() // v-if teardown: the focused button leaves the DOM
+    active.value = false
+    await nextTick()
+    await nextTick()
+
+    expect(document.activeElement).toBe(fixture.opener)
+  })
+
   it('does not restore focus to an opener that left the document', async () => {
     fixture.opener.focus()
     const active = ref(false)

@@ -2683,3 +2683,88 @@ describe('the R3-08 readouts (who / net / look)', () => {
     expect(autocomplete('loo', makeContext()).map((s) => s.text)).toContain('look')
   })
 })
+
+// Playtest 2026-10 (24.png): `move coldstore-crossing` and `move crossing` were
+// refused ("No zone called …"); only `move coldstore crossing` worked, and only
+// because the parser silently dropped the second word. The HUD shows
+// "Coldstore Crossing" — that is what players type.
+describe('zone words the way players type them', () => {
+  const { parse } = useCommands()
+  const zoneOf = (input: string, from?: string) => {
+    const r = parse(input, 'chaff', from)
+    return r.command && 'zone' in r.command ? r.command.zone : r.error
+  }
+
+  it('resolves hyphen, space and underscore spellings of a crossing', () => {
+    expect(zoneOf('move coldstore-crossing')).toBe('coldstore-cross')
+    expect(zoneOf('move coldstore crossing')).toBe('coldstore-cross')
+    expect(zoneOf('move Coldstore_Crossing')).toBe('coldstore-cross')
+    expect(zoneOf('move shallows-crossing')).toBe('shallows-cross')
+  })
+
+  it('reads a display name as its zone ("Coldstore T1 (AUDIT)")', () => {
+    expect(zoneOf('move coldstore t1 audit')).toBe('coldstore-t1-audit')
+    expect(zoneOf('move rookery anchor')).toBe('rookery-anchor')
+  })
+
+  it('takes the WHOLE rest of the line as the zone, not just the first word', () => {
+    expect(zoneOf('move coldstore t2 chaff')).toBe('coldstore-t2-chaff')
+    expect(zoneOf('tap seawall crossing')).toBe('seawall-cross')
+    expect(zoneOf('ping shallows crossing')).toBe('shallows-cross')
+  })
+
+  it('reads a bare `crossing` as the crossing of the route you stand on', () => {
+    expect(zoneOf('move crossing', 'coldstore-t1-chaff')).toBe('coldstore-cross')
+    expect(zoneOf('move cross', 'shallows-t2-audit')).toBe('shallows-cross')
+  })
+
+  it('asks which route when you stand on none', () => {
+    const err = zoneOf('move crossing', 'rookery-anchor')
+    expect(err).toContain('ambiguous')
+    expect(err).toContain('seawall-cross')
+    expect(err).toContain('coldstore-cross')
+    expect(err).toContain('shallows-cross')
+    // The cache spots are `type: 'cross'` too, but they are not route crossings.
+    expect(err).not.toContain('cache-')
+    expect(zoneOf('move crossing')).toContain('ambiguous')
+  })
+
+  it('still refuses a word that names nothing', () => {
+    expect(zoneOf('move banana')).toContain('No zone called "banana"')
+  })
+})
+
+// Playtest 04a.png: `attack hero:nobody` was queued ("resolves next cycle")
+// and nothing ever said why it did nothing.
+describe('attack names a hero that exists', () => {
+  const me = makePlayer({ id: 'me', zone: 'coldstore-cross' })
+  const nullRef = makePlayer({
+    id: 'bot_n',
+    name: 'bot_n',
+    heroId: 'null_ref',
+    team: 'audit',
+    zone: 'coldstore-cross',
+  })
+  const ctx = { player: me, visibleZones: {}, allPlayers: { me, bot_n: nullRef } } as GameContext
+  const attack = (name: string) =>
+    validateCommand({ type: 'attack', target: { kind: 'hero', name } }, ctx)
+
+  it('refuses an unknown handle before it costs the cycle', () => {
+    expect(attack('nobody')).toBe('No hero named "nobody" in this game')
+  })
+
+  it('accepts the handle the way the server does (normalised)', () => {
+    expect(attack('null_ref')).toBeNull()
+    expect(attack('nullref')).toBeNull()
+    expect(attack('bot_n')).toBeNull()
+  })
+
+  it('does not guess before the roster has arrived', () => {
+    expect(
+      validateCommand(
+        { type: 'attack', target: { kind: 'hero', name: 'nobody' } },
+        { ...ctx, allPlayers: {} },
+      ),
+    ).toBeNull()
+  })
+})

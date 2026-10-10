@@ -511,7 +511,43 @@ describe('Stream per-cycle recap', () => {
     const recap = wrapper.find('[data-testid="tick-recap"]')
     expect(recap.exists()).toBe(true)
     expect(recap.text()).toContain('You took 109 (Mutex 84, burn 25)')
-    expect(recap.text()).toContain('You dealt 62 to Thread')
+    // The one "You hit Thread for 62" line already says it — no echo.
+    expect(recap.text()).not.toContain('You dealt 62')
+  })
+
+  it('rides as the beat’s first row, not inside the pinned header (28.png overlap)', () => {
+    const wrapper = mount(Stream, { props: { events: fight } })
+    const header = wrapper.get('[data-testid="beat-header"]')
+    expect(header.classes()).toContain('sticky')
+    expect(header.find('[data-testid="tick-recap"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="tick-recap"]').exists()).toBe(true)
+  })
+
+  it('leaves no padding band above a pinned header for lines to peek through', () => {
+    const wrapper = mount(Stream, { props: { events: fight } })
+    const body = wrapper.get('[data-testid="stream-body"]').classes()
+    expect(body.some((c) => c === 'py-1' || c.startsWith('pt-'))).toBe(false)
+  })
+
+  it('folds a wave stack hitting you into one story line; verbose keeps every hit', async () => {
+    const waves: CombatLine[] = [19, 19, 19, 29].map((amount) => ({
+      cycle: 19,
+      text: `a wave hit You for ${amount} kinetic`,
+      type: 'damage',
+      salience: 'mine-in',
+      dmgAmount: amount,
+      sourceLabel: 'a wave',
+      targetLabel: 'You',
+      npcSource: 'waves',
+    }))
+    const wrapper = mount(Stream, { props: { events: waves } })
+    const story = wrapper.findAll('[data-testid="log-event"]').map((e) => e.text())
+    expect(story).toHaveLength(1)
+    expect(story[0]).toContain('Waves hit You ×4 for 86')
+    // …and no recap repeating "You took 86 from a wave" above it.
+    expect(wrapper.find('[data-testid="tick-recap"]').exists()).toBe(false)
+    await wrapper.get('[data-testid="log-density-toggle"]').trigger('click')
+    expect(wrapper.findAll('[data-testid="log-event"]')).toHaveLength(4)
   })
 
   it('is dismissable from the toggle beside the density button', async () => {
