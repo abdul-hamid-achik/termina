@@ -61,6 +61,7 @@ import { ITEMS } from '~~/shared/constants/items'
 import {
   WAVE_XP,
   SILT_DWELLERS,
+  APPROACH_HOLD_INTEG_RATIO,
   type SiltDwellerType,
   WAVE_SCRIP_MIN,
   WAVE_SCRIP_MAX,
@@ -632,6 +633,64 @@ export function approachStructure(
     walk: { playerId: action.playerId, command: { type: 'move', zone } },
     target: cmd.target,
     ...(note ? { note } : {}),
+  }
+}
+
+/** Whether `zone` is under enemy fire for a hero on `team`: a living enemy ICE
+ *  stands there (ICE shoots heroes in its own zone — IceAI). The enemy base on
+ *  its own is NOT: a Terminal never shoots a hero. */
+function underEnemyIce(state: GameState, team: TeamId, zone: string): boolean {
+  return (state.ice ?? []).some((t) => t.alive && t.team !== team && t.zone === zone)
+}
+
+/** Item actives that restore INTEG (shop.ts useHealingSalve — a regen buff). A
+ *  hero who uses one this cycle is managing their INTEG: the hold is not judged
+ *  on the pre-heal reading. */
+const INTEG_HEAL_ACTIVES: ReadonlySet<string> = new Set(['trauma_patch'])
+
+/**
+ * Safe-by-default structure walk (playtest 3: a held `attack ice:` walk carried
+ * a 250/598 hero straight into enemy ICE). Run by GameLoop for a hero whose
+ * walk would CONTINUE this cycle (no order typed): when the held order is an
+ * ICE / Terminal approach, the next hop steps from cover INTO a zone under a
+ * living enemy ICE (the only structure that shoots a hero — a Terminal does
+ * not), and INTEG is at or below APPROACH_HOLD_INTEG_RATIO, the walk holds one
+ * hop short. A valid `use` of an INTEG-healing active in this cycle's `actions`
+ * waives the hold (the heal resolves after this check). The caller drops the
+ * walk and the held attack and sends `message` — once, since nothing is held
+ * after. A TYPED order never comes through here, so retyping the attack pushes
+ * in anyway. Already inside such a zone, the walk goes on (it is past the line).
+ *
+ * Pure on state (the hop is the resolver's own BFS), so a replay — which runs
+ * the same continuation step on the same state — holds at the same hop.
+ * Returns null when the walk should go ahead.
+ */
+export function approachHold(
+  state: GameState,
+  playerId: string,
+  actions: readonly PlayerAction[] = [],
+): { message: string } | null {
+  const p = state.players[playerId]
+  if (!p || !p.alive || !p.moveTarget) return null
+  const target = p.attackTarget
+  if (target?.kind !== 'ice' && target?.kind !== 'terminal') return null
+  if (!(p.maxInteg > 0) || p.integ / p.maxInteg > APPROACH_HOLD_INTEG_RATIO) return null
+  const healing = actions.some(
+    (a) =>
+      a.playerId === playerId &&
+      !a.synthesized &&
+      a.command.type === 'use' &&
+      INTEG_HEAL_ACTIVES.has(a.command.item) &&
+      validateAction(state, a) === null,
+  )
+  if (healing) return null
+  const nextHop = findPath(p.zone, p.moveTarget, (id) => !!state.zones[id])[1]
+  if (!nextHop || !underEnemyIce(state, p.team, nextHop)) return null
+  if (underEnemyIce(state, p.team, p.zone)) return null
+  const pct = Math.round((p.integ / p.maxInteg) * 100)
+  const order = target.kind === 'ice' ? `attack ice:${target.zone}` : 'attack terminal'
+  return {
+    message: `Holding at ${p.zone}: INTEG ${pct}% — retype \`${order}\` to push in anyway`,
   }
 }
 

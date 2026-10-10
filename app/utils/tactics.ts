@@ -29,6 +29,12 @@ const SUSTAINED_NPC_CYCLES = 4
 const WAVE_PRESSURE_ACTION = 'Waves are chewing you — step back or clear them'
 /** The same, when the fire is the enemy ICE in your zone. */
 const ICE_PRESSURE_ACTION = 'Their ICE is chewing you — step back out of its zone'
+/** Inside enemy ICE coverage with their wave on you, at or under this INTEG
+ *  fraction no fight is "even": the ICE and the units fire every cycle. */
+const DIVE_EXPOSED_FRACTION = 0.5
+/** The honest line for that dive (playtest 3 read "Even fight … CONTESTED" at
+ *  250/598 under enemy ICE with four hostile units). */
+const DIVE_EXPOSED_ACTION = 'Under their ICE with their wave on you — step back out of its zone'
 /** At an EQUAL headcount the stronger side is only FAVORED by this INTEG ratio —
  *  a full-INTEG hero against one enemy at 8% INTEG is not an "even fight". */
 const EQUAL_FIGHT_MARGIN = 1.5
@@ -56,6 +62,35 @@ export interface ThreatContext {
   allyPower?: number
   /** Summed current INTEG of the visible enemy heroes in the zone. */
   enemyPower?: number
+  /** Living HOSTILE wave units in the zone. */
+  enemyWavesHere?: number
+  /** Living FRIENDLY wave units in the zone (unknown = none). */
+  friendlyWavesHere?: number
+  /** The enemy-ICE share of last cycle's incoming damage. */
+  iceIncomingLastCycle?: number
+}
+
+/** Inside an enemy ICE's zone, hostile units here, at ≤ half INTEG — AND the ICE
+ *  is actually on you: it hit you last cycle, or no friendly unit stands here
+ *  for it to shoot first. Pushing behind your own wave at half INTEG with the
+ *  ICE busy on the wave is not a dive (round-4 review: false DANGER). */
+function diveExposed(
+  enemyIcePresent: boolean,
+  ctx: {
+    hpFraction?: number
+    enemyWavesHere?: number
+    friendlyWavesHere?: number
+    iceIncomingLastCycle?: number
+  },
+): boolean {
+  const iceOnYou = (ctx.iceIncomingLastCycle ?? 0) > 0 || (ctx.friendlyWavesHere ?? 0) === 0
+  return (
+    enemyIcePresent &&
+    iceOnYou &&
+    (ctx.enemyWavesHere ?? 0) > 0 &&
+    ctx.hpFraction !== undefined &&
+    ctx.hpFraction <= DIVE_EXPOSED_FRACTION
+  )
 }
 
 /** True when last cycle's incoming damage, repeated, finishes you within
@@ -100,14 +135,19 @@ export function computeThreat(
 ): ZoneThreat {
   if (ctx.alive === false) return { label: 'DOWN', tone: 'danger' }
   const low = ctx.hpFraction !== undefined && ctx.hpFraction <= LOW_INTEG_FRACTION
-  const pressured = low || underLethalPressure(ctx)
+  // Under their ICE with their wave at half INTEG is DANGER whatever the hero
+  // headcount says — an even 1v1 there is not even.
+  const pressured = low || underLethalPressure(ctx) || diveExposed(enemyIcePresent, ctx)
   // Waves / ICE grinding you down caps the verdict at CONTESTED: neither CLEAR
   // nor FAVORED is true of a hero losing a sixth of their INTEG a cycle.
   const ground = underSustainedNpcFire(ctx)
   if (enemyCount === 0) {
     // No enemy HEROES is not safety: a low hero under ICE fire, or one a wave /
     // the Tenant is bursting down, is in danger whatever the hero headcount says.
-    if (pressured && (enemyIcePresent || (ctx.incomingLastCycle ?? 0) > 0)) {
+    if (
+      pressured &&
+      (enemyIcePresent || (ctx.incomingLastCycle ?? 0) > 0 || (ctx.enemyWavesHere ?? 0) > 0)
+    ) {
       return { label: 'DANGER', tone: 'danger' }
     }
     if (enemyIcePresent) return { label: 'ICE', tone: 'warn' }
@@ -170,6 +210,10 @@ export interface RecommendationContext {
   /** An alive enemy ICE stands in the zone — the fallback when the ICE share
    *  is not known. */
   enemyIcePresent?: boolean
+  /** Living hostile wave units in the zone. */
+  enemyWavesHere?: number
+  /** Living friendly wave units in the zone. */
+  friendlyWavesHere?: number
 }
 
 /** Is the sustained NPC fire mostly the enemy ICE? Judged from the damage
@@ -194,6 +238,7 @@ export function recommendAction(ctx: RecommendationContext): string {
   if (ctx.hpFraction <= LOW_INTEG_FRACTION) return 'Low INTEG — retreat and heal'
   // Healthy-looking but melting: the bar lags the burst by a cycle.
   if (underLethalPressure(ctx)) return 'Under heavy fire — retreat now'
+  if (diveExposed(ctx.enemyIcePresent ?? false, ctx)) return DIVE_EXPOSED_ACTION
   // The verdict above is only as honest as its reason: a hero the waves are
   // grinding down is told so, not "press it" / "farm" / "even fight".
   if (ctx.threat.label !== 'DANGER' && underSustainedNpcFire(ctx)) {
@@ -319,6 +364,10 @@ export function zoneVerdict(input: {
   npcIncomingLastCycle?: number
   /** The enemy-ICE share of npcIncomingLastCycle (same breakdown). */
   iceIncomingLastCycle?: number
+  /** Living hostile wave units in the zone. */
+  enemyWavesHere?: number
+  /** Living friendly wave units in the zone. */
+  friendlyWavesHere?: number
   hasReadyAbility: boolean
 }): ZoneVerdict {
   const { me } = input
@@ -342,6 +391,9 @@ export function zoneVerdict(input: {
     maxInteg: integKnown ? me.maxInteg : undefined,
     allyPower: power(alliesHere) + (me.alive ? Math.max(0, me.integ) : 0),
     enemyPower: power(enemiesHere),
+    enemyWavesHere: input.enemyWavesHere,
+    friendlyWavesHere: input.friendlyWavesHere,
+    iceIncomingLastCycle: input.iceIncomingLastCycle,
   }
   const threat = computeThreat(enemiesHere.length, allyHeadcount, input.enemyIcePresent, ctx)
   const action = recommendAction({
@@ -355,6 +407,8 @@ export function zoneVerdict(input: {
     maxInteg: integKnown ? me.maxInteg : undefined,
     iceIncomingLastCycle: input.iceIncomingLastCycle,
     enemyIcePresent: input.enemyIcePresent,
+    enemyWavesHere: input.enemyWavesHere,
+    friendlyWavesHere: input.friendlyWavesHere,
   })
   return { threat, action, enemyCount: enemiesHere.length, allyHeadcount }
 }

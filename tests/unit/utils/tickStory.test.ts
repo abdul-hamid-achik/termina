@@ -9,6 +9,7 @@ import {
   isNpcSourceId,
   type CombatLine,
 } from '~~/app/utils/combatLog'
+import { buildCombatLines, type NarrativeContext } from '~~/app/utils/combatNarrative'
 
 /** Shorthand line factory. */
 function line(overrides: Partial<CombatLine> & { text: string }): CombatLine {
@@ -301,6 +302,29 @@ describe('enemy farming in sight (a state, not an event)', () => {
     const out = digestFarmNoise([seen(85), seen(104), seen(125)])
     // 104 is 19 cycles after 85 (still the same spell); 125 follows 21 quiet.
     expect(out.map((l) => l.cycle)).toEqual([85, 125])
+  })
+
+  // Playtest 3 asked whether tutorial mode throttles it too. It is one
+  // client-side digest with no mode input: the tutorial's own engine events
+  // (an enemy bot chipping units every cycle in sight) say it once.
+  it('a tutorial lane — a bot farming in sight for 30 cycles — says it once', () => {
+    const ctx: NarrativeContext = {
+      playerId: 'guest_me',
+      myTeam: 'chaff',
+      entityLabel: (id) => String(id),
+      abilityLabel: (id) => String(id),
+      teamOf: (id) =>
+        id === 'bot_enemy1_prac' ? 'audit' : id === 'guest_me' ? 'chaff' : undefined,
+      heroIdOf: () => undefined,
+      itemName: (id) => id,
+    }
+    const events = Array.from({ length: 30 }, (_, i) => ({
+      cycle: 100 + i,
+      type: 'damage',
+      payload: { sourceId: 'bot_enemy1_prac', targetId: `wave_chaff_${i}`, amount: 30 },
+    }))
+    const story = buildTickStoryView(buildCombatLines(events, ctx, collapseStructureDamage))
+    expect(story.filter((l) => l.text.includes('enemy farming in sight'))).toHaveLength(1)
   })
 
   it('never yields two digests for one cycle once the feed is cycle-sorted', () => {

@@ -5,6 +5,7 @@ import type { PlayerVisibleState } from '~~/shared/types/game'
 import { useGameStore } from '~/stores/game'
 import { socketLog } from '~/utils/logger'
 import { routeServerMessage } from '~/utils/gameMessageRouter'
+import { GUEST_SESSION_CHANGED_MESSAGE, sessionChangedMessage } from '~/utils/playRoute'
 
 // Ably auto-reconnects/resumes on its own (subscription + presence recovery
 // included) — this composable does NOT reimplement the WS composable's
@@ -24,6 +25,10 @@ interface CycleStateData {
 /** The code a server error body may carry for "this game is no longer your
  *  session's" (a guest upgraded to an account mid-game, on another tab). */
 const SESSION_CHANGED_CODE = 'GAME_SESSION_CHANGED'
+
+/** Ably's "operation not permitted with provided capability" — the token's
+ *  player cannot read this channel. */
+const CAPABILITY_DENIED_CODE = 40160
 
 /**
  * The message to end the session with when an action/signal POST failure means
@@ -51,7 +56,7 @@ async function sessionEndedMessage(
     const message =
       typeof body.message === 'string' && body.message
         ? body.message
-        : 'You signed in on another tab — this guest practice ended.'
+        : GUEST_SESSION_CHANGED_MESSAGE
     return { message, reason: 'changed' }
   }
   // The live_games row is gone: the game was finalized — almost always because
@@ -63,9 +68,7 @@ async function sessionEndedMessage(
   }
   if (res.status !== 403) return null
   return {
-    message: playerId?.startsWith('guest_')
-      ? 'You signed in on another tab — this guest practice ended.'
-      : 'This match is no longer tied to your session — it ended here.',
+    message: sessionChangedMessage(playerId),
     reason: 'changed',
   }
 }
@@ -190,8 +193,25 @@ export function useGameChannel() {
     const channelName = `game:${currentGameId}:p:${currentPlayerId}`
     socketLog.debug('Subscribing to Ably channel', { channel: channelName })
     channel = client.channels.get(channelName)
-    channel.subscribe((message) => {
+    const attach = channel.subscribe((message) => {
       _handleInbound(message)
+    })
+    // The token names the session's CURRENT player; a channel keyed to anyone
+    // else is refused at attach (40160, capability). That is not a blip to
+    // retry: this tab holds a stale id (a guest who signed in elsewhere), and
+    // the HUD otherwise sat on "Waiting for the first cycle" forever.
+    const subscribedTo = channel
+    void Promise.resolve(attach).catch((err: unknown) => {
+      if (channel !== subscribedTo) return
+      const code = (err as { code?: unknown } | null)?.code
+      socketLog.warn('Ably channel attach refused', { channel: channelName, code })
+      if (code === CAPABILITY_DENIED_CODE && currentGameId !== 'lobby') {
+        gameStore.endSession(
+          'This game is not open to the account signed in now — start a new practice or go back to the lobby.',
+          'changed',
+        )
+        disconnect()
+      }
     })
     // PRESENCE — the AFK takeover's connection signal. While this page holds
     // the game open, the player is a presence member of their own channel; the

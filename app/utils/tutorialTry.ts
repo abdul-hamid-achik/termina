@@ -1,9 +1,16 @@
 import {
+  TUTORIAL_FIRST_MOVE_ZONE,
   TUTORIAL_FLOW,
   tutorialHint,
   tutorialTryCommand,
   withIceDrillZone,
 } from '~~/shared/constants/tutorial'
+import { BURN_HP_THRESHOLD } from '~~/shared/constants/balance'
+import { ZONE_MAP } from '~~/shared/constants/zones'
+import { pathDistance } from '~~/shared/pathfinding'
+import type { IceState, PlayerState, TeamId, WaveUnitState } from '~~/shared/types/game'
+import { pickDenyTargetString, waveFullHp } from '~/composables/useCommands'
+import { stripTargetString } from '~/utils/situationalActions'
 
 /** What the player has right now — enough to tell a done sub-step from a live one. */
 export interface TutorialTryContext {
@@ -16,6 +23,14 @@ export interface TutorialTryContext {
   /** The ICE the drill should name right now (liveIceDrillZone) — the static
    *  drill ICE may already be down. */
   iceDrillZone?: string
+  /** The hero's crew and the visible waves: a `wave:N` chip names a unit that
+   *  is really there (and the right index), or the walk to one. Without them
+   *  the chip keeps the step's static command. */
+  team?: TeamId
+  waves?: readonly WaveUnitState[]
+  /** Live ICE: a walk chip never leads into a zone a live enemy ICE covers.
+   *  Without it every enemy ICE zone counts as covered. */
+  ice?: readonly IceState[]
 }
 
 /**
@@ -29,6 +44,69 @@ export interface TutorialTryContext {
  * the player has NOT already satisfied, with `<zone>` filled in.
  */
 export function liveTutorialTryCommand(step: number, ctx: TutorialTryContext): string | null {
+  const cmd = stepCommand(step, ctx)
+  return cmd ? liveWaveCommand(cmd, ctx) : cmd
+}
+
+/**
+ * A `attack|burn wave:N` chip judged against the units actually in the zone.
+ * The static `attack wave:0` was offered with no wave in the zone and the
+ * server rejected it (playtest 3). Offers the index of a unit the order is
+ * legal on right now (strip: an enemy unit, in the window first; burn: one of
+ * YOUR units at or under the burn window); with none here, the walk to the
+ * nearest SAFE zone that has one (never the crossing, never under a live enemy
+ * ICE — a level-1 learner was offered `move coldstore-t1-audit`, round-4
+ * review); with none there, the walk out to the lane — or no chip at all once
+ * on it (the wave comes to them). Any other command passes through.
+ */
+function liveWaveCommand(cmd: string, ctx: TutorialTryContext): string | null {
+  const m = /^(attack|burn) wave:\d+$/.exec(cmd)
+  if (!m || ctx.waves === undefined || ctx.zone === undefined || ctx.team === undefined) return cmd
+  const verb = m[1] as 'attack' | 'burn'
+  const zone = ctx.zone
+  const me = { zone, team: ctx.team } as PlayerState
+  const waves = ctx.waves as WaveUnitState[]
+  const here =
+    verb === 'attack' ? stripTargetString(me, waves) : targetOf(pickDenyTargetString(me, waves))
+  if (here) return `${verb} ${here}`
+
+  const fits = (w: WaveUnitState) =>
+    w.integ > 0 &&
+    (verb === 'attack'
+      ? w.team !== ctx.team
+      : w.team === ctx.team && w.integ <= waveFullHp(w) * BURN_HP_THRESHOLD)
+  let best: { zone: string; d: number } | null = null
+  for (const w of waves) {
+    if (w.zone === zone || !fits(w) || !safeForLearner(w.zone, ctx.team, ctx.ice)) continue
+    const d = pathDistance(zone, w.zone)
+    if (d >= 0 && (best === null || d < best.d)) best = { zone: w.zone, d }
+  }
+  if (best) return `move ${best.zone}`
+  // Nothing in sight: the lane is where units walk — home ground walks out.
+  const type = ZONE_MAP[zone]?.type
+  const home = type === 'base' || type === 'anchor'
+  return home && zone !== TUTORIAL_FIRST_MOVE_ZONE ? `move ${TUTORIAL_FIRST_MOVE_ZONE}` : null
+}
+
+/** A zone a learner may be walked into: not contested ground (the crossing),
+ *  not the enemy's home, and not under a live enemy ICE (ICE unknown: every
+ *  enemy ICE zone counts as covered). */
+function safeForLearner(zone: string, team: TeamId, ice?: readonly IceState[]): boolean {
+  const z = ZONE_MAP[zone]
+  if (!z || z.type === 'cross') return false
+  if (z.team === team || z.team === 'neutral') return true
+  if (z.type === 'base' || z.type === 'anchor') return false
+  if (!z.ice) return true
+  if (!ice || ice.length === 0) return false
+  return !ice.some((t) => t.zone === zone && t.alive && t.team !== team)
+}
+
+function targetOf(r: { target: string } | { error: string }): string | null {
+  return 'target' in r ? r.target : null
+}
+
+/** The step's command, judged against zone/items/ICE (not yet the waves). */
+function stepCommand(step: number, ctx: TutorialTryContext): string | null {
   const raw = tutorialTryCommand(step)
   if (!raw) return null
   const base = ctx.iceDrillZone ? withIceDrillZone(raw, ctx.iceDrillZone) : raw

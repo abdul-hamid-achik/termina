@@ -8,7 +8,7 @@ import {
   liveIceDrillZone,
   withIceDrillZone,
 } from '~~/shared/constants/tutorial'
-import type { IceState, TeamId } from '~~/shared/types/game'
+import type { IceState, TeamId, WaveUnitState } from '~~/shared/types/game'
 import { liveTutorialTryCommand } from '~/utils/tutorialTry'
 
 /**
@@ -29,6 +29,9 @@ const props = defineProps<{
    *  standing (liveIceDrillZone), not a T1 the waves already razed. */
   ice?: readonly IceState[]
   team?: TeamId
+  /** Visible waves: a `wave:N` chip names a unit actually there (or the walk
+   *  to one) — never a command the server would reject. */
+  waves?: readonly WaveUnitState[]
 }>()
 
 const emit = defineEmits<{
@@ -49,6 +52,9 @@ const tryCmd = computed(() =>
     items: props.inventory,
     inShopZone: props.inShopZone,
     iceDrillZone: iceDrillZone.value,
+    team: props.team,
+    waves: props.waves,
+    ice: props.ice,
   }),
 )
 const progress = computed(() => Math.min(props.step, TUTORIAL_STEP_COUNT))

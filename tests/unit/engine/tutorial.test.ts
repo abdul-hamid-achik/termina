@@ -23,6 +23,8 @@ import {
 import {
   TUTORIAL_STEP_DEADLINE_CYCLES,
   TUTORIAL_SKIP_AFTER_DEADLINES,
+  TUTORIAL_IDLE_END_CYCLES,
+  TUTORIAL_IDLE_END_NOTICE,
   tutorialTryCommand,
   isTrainingWave,
 } from '~~/shared/constants/tutorial'
@@ -393,20 +395,99 @@ describe('tutorial flow', () => {
       })
 
       it('always reaches the end from a standing start — with every skip counted, mastery denied', () => {
-        // The dead-end guarantee survives the redesign: doing nothing still
-        // terminates. What changed is the verdict: all skips are recorded and
-        // the run does not count as tutorial completion.
+        // The dead-end guarantee survives the redesign: a player who keeps
+        // typing but never performs a drill still terminates. What changed is the
+        // verdict: all skips are recorded and the run does not count as tutorial
+        // completion. (A player who types NOTHING is nudged, never skipped, on
+        // the opening drills — next test.)
+        // (The ICE drill restarts its skip clock on every order — its skip ENDS
+        // the game — so this player types once there, then stops.)
         let state = tutorialState(0, 'rookery-anchor', 0)
         const budget =
-          TUTORIAL_STEP_DEADLINE_CYCLES * TUTORIAL_SKIP_AFTER_DEADLINES * TUTORIAL_STEP_COUNT + 1
+          (TUTORIAL_STEP_DEADLINE_CYCLES * TUTORIAL_SKIP_AFTER_DEADLINES + 1) * TUTORIAL_STEP_COUNT
+        const iceAt = stepIndex('ice')
+        let iceOrder: number | null = null
         for (let cycle = 1; cycle <= budget; cycle++) {
-          state = { ...state, cycle }
+          const at = state.tutorialStep ?? 0
+          if (at === iceAt && iceOrder === null) iceOrder = cycle
+          const typed = at < iceAt || iceOrder === cycle
+          const p1 = typed ? { ...state.players.p1!, lastActionCycle: cycle } : state.players.p1!
+          state = { ...state, cycle, players: { ...state.players, p1 } }
           state = advanceTutorialAfterTick(state, [], []).state
         }
+        expect(state.phase).not.toBe('ended') // never on the idle budget
         expect(state.tutorialStep).toBeGreaterThanOrEqual(TUTORIAL_STEP_COUNT)
         expect(state.tutorialSkips).toBe(TUTORIAL_STEP_COUNT)
         expect(state.tutorialSkipped).toEqual(TUTORIAL_FLOW.map((step) => step.id))
         expect(tutorialMasteryAchieved(state)).toBe(false)
+      })
+
+      it('a player who has typed nothing is nudged at every deadline but never skipped off the move drill', () => {
+        // Playtest 3: "Moving on — Movement…" at cycle 45, hero in the fountain, reading.
+        let state = tutorialState(0, 'rookery-anchor', 0)
+        const notices: (string | null)[] = []
+        for (let cycle = 1; cycle <= TUTORIAL_STEP_DEADLINE_CYCLES * 6; cycle++) {
+          const next = advanceTutorialAfterTick({ ...state, cycle }, [], [])
+          state = next.state
+          notices.push(next.notice)
+        }
+        expect(state.tutorialStep).toBe(0)
+        expect(state.tutorialSkips ?? 0).toBe(0)
+        expect(notices.filter((n) => n === TUTORIAL_FLOW[0]!.help)).toHaveLength(6)
+      })
+
+      it('an abandoned practice (no order, ever) ends ONCE, on the idle budget — never walking each drill', () => {
+        // A closed tab is never AFK-converted in the tutorial; each cycle costs a
+        // Workflow step + Neon write + Ably publish, so it ends at the budget.
+        let state = tutorialState(0, 'rookery-anchor', 0)
+        let endedAt = -1
+        let notice: string | null = null
+        for (let cycle = 1; cycle <= TUTORIAL_IDLE_END_CYCLES * 3 && endedAt < 0; cycle++) {
+          const next = advanceTutorialAfterTick({ ...state, cycle }, [], [])
+          state = next.state
+          if (state.phase === 'ended') {
+            endedAt = cycle
+            notice = next.notice
+          }
+        }
+        expect(endedAt).toBe(TUTORIAL_IDLE_END_CYCLES)
+        expect(notice).toBe(TUTORIAL_IDLE_END_NOTICE)
+        // Mid-flow, nothing skipped: game_over reads `left_early`, no completion.
+        expect(state.tutorialStep).toBe(0)
+        expect(state.tutorialSkips ?? 0).toBe(0)
+        expect(state.winner).toBe('audit')
+      })
+
+      it('the idle budget runs from the LAST order, on any drill', () => {
+        // Acted at 300 on the buy drill (no step-start reset), then went.
+        const p1 = { id: 'p1', zone: 'rookery-anchor', team: 'chaff', lastActionCycle: 300 }
+        const base = {
+          ...tutorialState(stepIndex('buy'), 'rookery-anchor', 0),
+          tutorialStepSince: 290,
+          players: { p1 },
+        } as unknown as GameState
+        const at = (cycle: number) => advanceTutorialAfterTick({ ...base, cycle }, [], []).state
+        expect(at(300 + TUTORIAL_IDLE_END_CYCLES - 1).phase).not.toBe('ended')
+        const ended = at(300 + TUTORIAL_IDLE_END_CYCLES)
+        expect(ended.phase).toBe('ended')
+        expect(ended.winner).toBe('audit')
+      })
+
+      it('an active player is never cut off — an order every budget-minus-one cycles keeps it running', () => {
+        let state = tutorialState(0, 'rookery-anchor', 0)
+        for (let cycle = 1; cycle <= TUTORIAL_IDLE_END_CYCLES * 6; cycle++) {
+          const ordered = cycle % (TUTORIAL_IDLE_END_CYCLES - 1) === 0
+          const p1 = ordered ? { ...state.players.p1!, lastActionCycle: cycle } : state.players.p1!
+          const next = advanceTutorialAfterTick(
+            { ...state, cycle, players: { ...state.players, p1 } },
+            [],
+            [],
+          )
+          expect(next.notice, `cycle ${cycle}`).not.toBe(TUTORIAL_IDLE_END_NOTICE)
+          state = next.state
+          if ((state.tutorialStep ?? 0) >= TUTORIAL_STEP_COUNT) break
+        }
+        expect(state.phase).not.toBe('ended')
       })
 
       it('a clean run keeps mastery', () => {

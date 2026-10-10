@@ -79,4 +79,55 @@ describe('TutorialHint', () => {
     await wrapper.get('[data-testid="tutorial-try"]').trigger('click')
     expect(wrapper.emitted('command')).toEqual([['tap rookery-terminal']])
   })
+
+  // Playtest 3: no wave in the zone, the chip still said `attack wave:0` and the
+  // server rejected it. GameScreen passes the visible waves; the chip is live.
+  it('never offers a wave:N chip with no wave in the zone', () => {
+    const strip = TUTORIAL_FLOW.findIndex((s) => s.id === 'strip')
+    const wrapper = mount(TutorialHint, {
+      props: {
+        step: strip,
+        zone: 'coldstore-t2-chaff',
+        team: 'chaff',
+        waves: [
+          {
+            id: 'w1',
+            team: 'audit',
+            zone: 'coldstore-t1-chaff',
+            integ: 80,
+            maxInteg: 400,
+            type: 'line',
+          },
+        ],
+      },
+    })
+    expect(wrapper.get('[data-testid="tutorial-try"]').text()).toBe('try: move coldstore-t1-chaff')
+  })
+
+  it('judges the walk chip against the LIVE ICE it is handed (round-4 review)', () => {
+    const strip = TUTORIAL_FLOW.findIndex((s) => s.id === 'strip')
+    const unitAt = (zone: string) => [
+      { id: 'w1', team: 'audit' as const, zone, integ: 80, maxInteg: 400, type: 'line' as const },
+    ]
+    const ice = initializeIce()
+    const mountAt = (iceState: typeof ice) =>
+      mount(TutorialHint, {
+        props: {
+          step: strip,
+          zone: 'coldstore-t2-chaff',
+          team: 'chaff',
+          waves: unitAt('coldstore-t1-audit'),
+          ice: iceState,
+        },
+      })
+    // Under a live enemy ICE: no walk offered.
+    expect(mountAt(ice).find('[data-testid="tutorial-try"]').exists()).toBe(false)
+    // That ICE razed: fair ground.
+    const razed = ice.map((t) =>
+      t.zone === 'coldstore-t1-audit' ? { ...t, alive: false, integ: 0 } : t,
+    )
+    expect(mountAt(razed).get('[data-testid="tutorial-try"]').text()).toBe(
+      'try: move coldstore-t1-audit',
+    )
+  })
 })

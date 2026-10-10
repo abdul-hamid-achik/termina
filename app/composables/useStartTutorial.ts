@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { useAuthStore } from '~/stores/auth'
 
 /**
  * Shared "Practice vs bots" launcher. Spins up a guided one-lane tutorial vs
@@ -34,8 +35,20 @@ export function useStartTutorial() {
     // practice path — the DO-era in-process game server's tutorial.post.ts
     // (which returned a ready-made { url }) was deleted with the rest of the
     // DO/Redis stack, so the /play URL is built by hand from { gameId }.
-    const res = await $fetch<{ gameId: string }>('/api/game/practice', { method: 'POST', body })
-    const playerId = useUserSession().user.value?.id
+    //
+    // The session is re-read FIRST: the server keys the new game to the cookie,
+    // and a tab whose guest signed in elsewhere still holds the guest id — the
+    // /play URL then named the guest and Ably denied the channel (playtest 3).
+    // Only after the game exists is the old game/lobby state dropped, so a
+    // failed launch leaves the ended-session panel (and its error) on screen.
+    const auth = useAuthStore()
+    await auth.fetchUser()
+    const res = await $fetch<{ gameId: string; playerId?: string }>('/api/game/practice', {
+      method: 'POST',
+      body,
+    })
+    const sessionId = await auth.refreshIdentity({ fresh: true, refetch: false })
+    const playerId = res.playerId ?? sessionId
     const params = new URLSearchParams({ gameId: res.gameId, tutorial: '1' })
     if (playerId) params.set('playerId', playerId)
     await navigateTo(`/play?${params.toString()}`)

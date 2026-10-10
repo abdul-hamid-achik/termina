@@ -250,7 +250,14 @@ describe('tutorialGameOverSummary', () => {
         }),
         'tutorial',
       ),
-    ).toEqual({ completed: true, mastered: false, skipped: ['cast', 'ice'] })
+    ).toEqual({
+      completed: true,
+      mastered: false,
+      skipped: ['cast', 'ice'],
+      // Explicit WHY the practice ended (playtest 3: a game that ended on the
+      // last drill's skip read as an unexplained stop).
+      reason: 'drills_skipped',
+    })
   })
 
   it('a clean finish is mastered; an unfinished flow is neither', () => {
@@ -259,10 +266,10 @@ describe('tutorialGameOverSummary', () => {
         ended({ tutorialStep: TUTORIAL_STEP_COUNT, tutorialSkips: 0 }),
         'tutorial',
       ),
-    ).toEqual({ completed: true, mastered: true, skipped: [] })
+    ).toEqual({ completed: true, mastered: true, skipped: [], reason: 'mastered' })
     expect(
       tutorialGameOverSummary(ended({ tutorialStep: 3, tutorialSkips: 0 }), 'tutorial'),
-    ).toEqual({ completed: false, mastered: false, skipped: [] })
+    ).toEqual({ completed: false, mastered: false, skipped: [], reason: 'left_early' })
   })
 
   it('is absent outside tutorial mode', () => {
@@ -365,6 +372,7 @@ describe('runOneTick — tutorial completion lands before the final publish', ()
       completed: true,
       mastered: true,
       skipped: [],
+      reason: 'mastered',
     })
   })
 })

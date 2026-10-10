@@ -233,4 +233,16 @@ describe('formatCoachLine — one line, tagged by mode (playtest2 #2)', () => {
   it('a tip without a command is just its text', () => {
     expect(formatCoachLine({ ...tip, command: undefined }, 'normal')).toBe(tip.text)
   })
+
+  // Playtest 3: a fixed `attack wave:0` pointed at whatever unit sat first in
+  // the zone (often your own). The strip tip names the live strip target.
+  it('the strip tip names the unit actually in the window', () => {
+    const tip = evaluateCoach(
+      input({ lastHits: 0, strippableWaves: 1, stripTarget: 'wave:2' }),
+      {},
+      {},
+    )
+    expect(tip?.id).toBe('last_hit')
+    expect(tip?.command).toBe('attack wave:2')
+  })
 })

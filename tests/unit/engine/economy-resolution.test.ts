@@ -365,7 +365,11 @@ describe('Economy through resolution', () => {
       ).toBe(true)
     })
 
-    it('crossing into level 6 emits both level_up and a power_spike(level_6)', async () => {
+    it('crossing into level 6 emits ONE level_up carrying the spike — no second, name-bearing event', async () => {
+      // Playtest 3: "[OBJ]bot_zeta reached level 6! Ultimate powers online." printed
+      // beside "[OBJ]Proxy reached level 6" — the SAME level-up, twice, the second
+      // with the raw player name as display text. One event, ids only; the client
+      // labels it.
       const gameId = uid('spike6')
       const sm = await startGame(gameId, makePlayers('ps', 1))
 
@@ -390,11 +394,18 @@ describe('Economy through resolution', () => {
       expect(
         r.events.some((e) => e._tag === 'level_up' && e.playerId === 'ps_r0' && e.newLevel === 6),
       ).toBe(true)
-      expect(
-        r.events.some(
-          (e) => e._tag === 'power_spike' && e.playerId === 'ps_r0' && e.spikeType === 'level_6',
-        ),
-      ).toBe(true)
+      const mine = r.events.filter(
+        (e) => (e._tag === 'level_up' || e._tag === 'power_spike') && e.playerId === 'ps_r0',
+      )
+      expect(mine).toEqual([
+        {
+          _tag: 'level_up',
+          cycle: r.state.cycle,
+          playerId: 'ps_r0',
+          newLevel: 6,
+          spike: 'level_6',
+        },
+      ])
     })
   })
 

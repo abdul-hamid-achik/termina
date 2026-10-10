@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 import { useStartTutorial } from '~~/app/composables/useStartTutorial'
+import { useGameStore } from '~~/app/stores/game'
+import { useLobbyStore } from '~~/app/stores/lobby'
 
 // The composable uses Nuxt auto-imports ($fetch, navigateTo, useUserSession)
 // as globals — stub them the same way IndexPage.test.ts does.
@@ -7,6 +10,7 @@ const mockNavigateTo = vi.fn()
 const mockFetch = vi.fn()
 
 beforeEach(() => {
+  setActivePinia(createPinia())
   mockNavigateTo.mockReset()
   mockFetch.mockReset()
   vi.stubGlobal('navigateTo', mockNavigateTo)
@@ -93,7 +97,9 @@ describe('useStartTutorial', () => {
     expect(mockFetch).toHaveBeenCalledWith('/api/auth/guest', { method: 'POST' })
     // The reactive session must refresh so the header/store see the new
     // (guest) user immediately — same as any other login path.
-    expect(mockSessionFetch).toHaveBeenCalledOnce()
+    const guestCall = mockFetch.mock.calls.findIndex(([url]) => url === '/api/auth/guest')
+    const guestOrder = mockFetch.mock.invocationCallOrder[guestCall]!
+    expect(mockSessionFetch.mock.invocationCallOrder.some((o) => o > guestOrder)).toBe(true)
     expect(calls).toBe(2)
     expect(mockNavigateTo).toHaveBeenCalledWith('/play?gameId=g5&tutorial=1&playerId=guest_abc123')
     expect(error.value).toBeNull()
@@ -190,11 +196,86 @@ describe('useStartTutorial', () => {
     const first = start()
     expect(starting.value).toBe(true)
     await start() // re-entrant: should no-op while the first is pending
+    await new Promise((r) => setTimeout(r, 0)) // the session re-read runs first
 
     expect(mockFetch).toHaveBeenCalledTimes(1)
 
     resolve({ gameId: 'g2' })
     await first
     expect(mockNavigateTo).toHaveBeenCalledTimes(1)
+  })
+
+  // Playtest 3: a guest practice ended because the guest signed in on another
+  // tab. [NEW PRACTICE] built the /play URL from the tab's STALE session (the
+  // guest), so the new game was opened on `game:<id>:p:guest_…` — denied.
+  describe('session changed under the tab', () => {
+    function staleSession(fresh: string) {
+      const user = { value: { id: 'guest_old' } as { id: string } | null }
+      const fetch = vi.fn(async () => {
+        user.value = { id: fresh }
+      })
+      vi.stubGlobal('useUserSession', () => ({ user, fetch }))
+      return fetch
+    }
+
+    it('re-reads the session BEFORE asking for a game and names the current player', async () => {
+      const sessionFetch = staleSession('github_7')
+      mockFetch.mockResolvedValue({ gameId: 'g_new' })
+
+      await useStartTutorial().start()
+
+      expect(sessionFetch).toHaveBeenCalled()
+      expect(sessionFetch.mock.invocationCallOrder[0]!).toBeLessThan(
+        mockFetch.mock.invocationCallOrder[0]!,
+      )
+      expect(mockNavigateTo).toHaveBeenCalledWith('/play?gameId=g_new&tutorial=1&playerId=github_7')
+    })
+
+    it('drops the dead game and its lobby state, keying the store to the current player', async () => {
+      staleSession('github_7')
+      const game = useGameStore()
+      game.gameId = 'g_dead'
+      game.playerId = 'guest_old'
+      game.endSession('You signed in on another tab — this guest practice ended.', 'changed')
+      useLobbyStore().queueStatus = 'searching'
+      mockFetch.mockResolvedValue({ gameId: 'g_new' })
+
+      await useStartTutorial().start()
+
+      expect(game.sessionEnded).toBeNull()
+      expect(game.gameId).toBeNull() // /play adopts g_new from the URL
+      expect(game.playerId).toBe('github_7')
+      expect(useLobbyStore().queueStatus).toBe('idle')
+    })
+
+    it('starts clean even for the same player (a finished practice, a stale queue)', async () => {
+      const game = useGameStore()
+      game.gameId = 'g_done'
+      game.playerId = 'p1'
+      game.endSession('This game has finished — it is no longer running.', 'finished')
+      useLobbyStore().queueStatus = 'searching'
+      mockFetch.mockResolvedValue({ gameId: 'g_next' })
+
+      await useStartTutorial().start()
+
+      expect(game.sessionEnded).toBeNull()
+      expect(game.gameId).toBeNull()
+      expect(useLobbyStore().queueStatus).toBe('idle')
+    })
+
+    it('keeps the ended panel when the new practice could not start', async () => {
+      staleSession('github_7')
+      const game = useGameStore()
+      game.gameId = 'g_dead'
+      game.playerId = 'guest_old'
+      game.endSession('ended', 'changed')
+      mockFetch.mockRejectedValue({ statusCode: 503, data: { message: 'warming up' } })
+
+      const { start, error } = useStartTutorial()
+      await start()
+
+      expect(error.value).toBe('warming up')
+      expect(game.sessionEnded).toBe('ended')
+    })
   })
 })

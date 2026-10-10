@@ -78,6 +78,9 @@ export interface CoachInput {
   alliesHere: number
   /** Hostile wave units in the zone that are low enough to be worth a swing. */
   strippableWaves: number
+  /** The `wave:N` a strip should name right now (stripTargetString) — the
+   *  command must point at a unit that is really there, not a fixed wave:0. */
+  stripTarget?: string | null
   /** An enemy ICE stands in this zone and is currently attackable. */
   attackableIce: boolean
   /** Abilities the player has cast this match. */
@@ -182,7 +185,7 @@ const TIPS: Array<{
     proven: (s) => s.lastHits >= PROOF.lastHits,
     text: () =>
       `[COACH] Only the killing blow on a wave pays scrip — chipping it every cycle pays nothing. Wait until one is nearly down, then take it.`,
-    command: () => 'attack wave:0',
+    command: (s) => `attack ${s.stripTarget ?? 'wave:0'}`,
   },
   {
     id: 'spend_scrip',

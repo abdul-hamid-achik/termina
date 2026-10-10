@@ -1,6 +1,7 @@
 import type { Command } from '~~/shared/types/commands'
 import type { IceState, TeamId } from '~~/shared/types/game'
 import { ZONE_MAP } from '~~/shared/constants/zones'
+import { CYCLE_DURATION_MS } from '~~/shared/constants/balance'
 import { structureRefusal } from '~~/shared/utils/structureRules'
 
 /**
@@ -127,8 +128,15 @@ export function withIceDrillZone(text: string, zone: string): string {
   return zone === ICE_DRILL_ZONE ? text : text.replaceAll(ICE_DRILL_ZONE, zone)
 }
 
-/** The notice pushed while the opening walk is still on home ground. */
-export const TUTORIAL_ENROUTE_NOTICE = `🎓 On your way — the order stands. You keep walking toward \`${TUTORIAL_FIRST_MOVE_ZONE}\`, one zone per cycle; no need to retype it.`
+/**
+ * The notice pushed while the opening walk is still on home ground, naming the
+ * zone the player is ACTUALLY walking to (playtest 3: after `move
+ * coldstore-t3-chaff` it said "keep walking toward `coldstore-t2-chaff`" — the
+ * hint's zone, not the order's).
+ */
+export function tutorialEnrouteNotice(destination: string): string {
+  return `🎓 On your way — the order stands. You keep walking toward \`${destination}\`, one zone per cycle; no need to retype it.`
+}
 
 /**
  * How many cycles a step may sit unachieved before the tutorial escalates
@@ -143,6 +151,37 @@ export const TUTORIAL_STEP_DEADLINE_CYCLES = 15
  * so this is a dead-end escape hatch, not a grading policy.
  */
 export const TUTORIAL_SKIP_AFTER_DEADLINES = 3
+
+/**
+ * The tutorial's ONE idle budget: this many cycles (10 min) with no typed order
+ * — measured from the player's last order, else the start of the practice —
+ * and the practice ENDS (game_over reason `left_early`). An abandoned practice
+ * (closed tab: the tutorial never AFK-converts) must end promptly — every cycle
+ * costs a Workflow step, a Neon write and an Ably publish — and it ends once,
+ * instead of walking each drill's own backstop (that ran ~675 cycles).
+ * Generous on purpose: a reader is never cut off, only a player who has gone.
+ */
+export const TUTORIAL_IDLE_END_CYCLES = 150
+
+/** What the player (back at the tab) reads when the idle budget ended the practice. */
+export const TUTORIAL_IDLE_END_NOTICE = `🎓 Practice closed — no orders for ${Math.round((TUTORIAL_IDLE_END_CYCLES * CYCLE_DURATION_MS) / 60000)} minutes. Start a new practice whenever you are ready.`
+
+/**
+ * Drills whose skip clock starts at the player's FIRST order in the step, not
+ * at the step's start (playtest 3: "Moving on — Movement…" fired at cycle 45
+ * with the hero still in the fountain, reading). Until that first order the
+ * deadlines still push the step's help — the player is never left without a
+ * word — but never skip a drill nobody has tried yet (a player who never orders
+ * meets TUTORIAL_IDLE_END_CYCLES instead).
+ *
+ *  - move / attack: the opening drills, where a new player reads longest;
+ *  - ice: the LAST drill — its skip graduates, i.e. ENDS the game (run 1 ended
+ *    as the player typed the ICE order after reading the hint). Its clock runs
+ *    from the player's LATEST order in the step: it never ends the game under
+ *    a player who is still acting.
+ */
+export const TUTORIAL_SKIP_CLOCK_ON_FIRST_ORDER: ReadonlySet<TutorialStepId> =
+  new Set<TutorialStepId>(['move', 'attack', 'ice'])
 
 /** Ordered tutorial flow. */
 export const TUTORIAL_FLOW: readonly TutorialStep[] = [

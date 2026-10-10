@@ -5,8 +5,11 @@ import {
   TUTORIAL_FLOW,
   TUTORIAL_STEP_DEADLINE_CYCLES,
   TUTORIAL_SKIP_AFTER_DEADLINES,
-  TUTORIAL_ENROUTE_NOTICE,
   TUTORIAL_FIRST_MOVE_ZONE,
+  TUTORIAL_SKIP_CLOCK_ON_FIRST_ORDER,
+  TUTORIAL_IDLE_END_CYCLES,
+  TUTORIAL_IDLE_END_NOTICE,
+  tutorialEnrouteNotice,
   liveIceDrillZone,
   withIceDrillZone,
   TRAINING_WAVE_PREFIX,
@@ -571,7 +574,34 @@ export function advanceTutorialAfterTick(
   const elapsed = current.cycle - since
   const stepDef = TUTORIAL_FLOW[step]!
 
-  if (elapsed >= TUTORIAL_STEP_DEADLINE_CYCLES * TUTORIAL_SKIP_AFTER_DEADLINES) {
+  // The ONE idle budget: no typed order for TUTORIAL_IDLE_END_CYCLES (from the
+  // last order, else the start of the practice) ends the practice — mid-flow,
+  // so game_over reads `left_early`. Checked before any drill can skip.
+  const lastOrder = current.players[humanId]?.lastActionCycle
+  if (current.cycle - (lastOrder ?? 0) >= TUTORIAL_IDLE_END_CYCLES) {
+    const team = current.players[humanId]?.team
+    return {
+      state: {
+        ...current,
+        phase: 'ended',
+        // As a surrender would: the other crew takes it. No completion is
+        // banked — the flow never reached its end.
+        winner: team === 'audit' ? 'chaff' : 'audit',
+      },
+      notice: TUTORIAL_IDLE_END_NOTICE,
+    }
+  }
+
+  // The human's first order in this step (an order resolved on the very cycle
+  // the step opened belonged to the step before — hence strictly after).
+  if (
+    current.tutorialFirstOrderCycle === undefined &&
+    lastOrder !== undefined &&
+    lastOrder > since
+  ) {
+    current = { ...current, tutorialFirstOrderCycle: lastOrder }
+  }
+  if (skipDue(stepDef, current, humanId)) {
     const skipped = advanceTo(
       {
         ...current,
@@ -700,9 +730,14 @@ export function advanceTutorialAfterTick(
   if (stepDef.id === 'move' && isHomeGround(current.players[humanId]?.zone)) {
     const typed = validActions.find((a) => a.playerId === humanId && a.command.type === 'move')
     if (typed && typed.command.type === 'move') {
+      // Name the walk's real destination (the held auto-path target, else the
+      // typed zone) — never the hint's zone: the player may have ordered another.
+      const destination = current.players[humanId]?.moveTarget ?? typed.command.zone
       return {
         state: current,
-        notice: isHomeGround(typed.command.zone) ? stepDef.help : TUTORIAL_ENROUTE_NOTICE,
+        notice: isHomeGround(typed.command.zone)
+          ? stepDef.help
+          : tutorialEnrouteNotice(destination),
       }
     }
   }
@@ -730,10 +765,43 @@ function castTouchedEnemyHero(
   )
 }
 
+/**
+ * Whether the stalled step's last deadline is spent and it skips now.
+ *
+ * The skip clock runs from the step's start — or, for
+ * TUTORIAL_SKIP_CLOCK_ON_FIRST_ORDER drills, from the player's first order in
+ * the step (the ICE drill: their LATEST order in it). No order yet: never — only
+ * the deadline help, and the tutorial-wide idle budget (TUTORIAL_IDLE_END_CYCLES)
+ * for a player who has gone. The ICE drill also never skips under a live ICE /
+ * Terminal order: the player is doing the drill, and its skip ends the game
+ * (graduation).
+ */
+function skipDue(step: TutorialStep, state: GameState, humanId: string): boolean {
+  const from = skipClockFrom(step, state, humanId)
+  if (from === undefined) return false
+  if (state.cycle - from < TUTORIAL_STEP_DEADLINE_CYCLES * TUTORIAL_SKIP_AFTER_DEADLINES) {
+    return false
+  }
+  const held = state.players[humanId]?.attackTarget?.kind
+  return !(step.id === 'ice' && (held === 'ice' || held === 'terminal'))
+}
+
+/** Where the step's skip clock starts (see skipDue); undefined = not running. */
+function skipClockFrom(step: TutorialStep, state: GameState, humanId: string): number | undefined {
+  const since = state.tutorialStepSince ?? 0
+  if (!TUTORIAL_SKIP_CLOCK_ON_FIRST_ORDER.has(step.id)) return since
+  if (step.id !== 'ice') return state.tutorialFirstOrderCycle
+  // The drill whose skip ENDS the game restarts its clock on every order: an
+  // order resolved on the step's opening cycle belonged to the step before.
+  const last = state.players[humanId]?.lastActionCycle
+  return last !== undefined && last > since ? last : undefined
+}
+
 /** Step the flow forward, stamping the tick so the next step gets a fresh deadline. */
 function advanceTo(state: GameState, nextStep: number): GameState {
   const next = TUTORIAL_FLOW[nextStep]
   // Training units belong to the unit drills only — sweep them on the way out.
   const swept = next && isUnitDrill(next.id) ? state : clearTrainingUnits(state)
-  return { ...swept, tutorialStep: nextStep, tutorialStepSince: state.cycle }
+  const { tutorialFirstOrderCycle: _spent, ...rest } = swept
+  return { ...rest, tutorialStep: nextStep, tutorialStepSince: state.cycle }
 }

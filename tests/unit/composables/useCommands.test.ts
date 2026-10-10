@@ -2831,6 +2831,13 @@ describe('wave indices carry their owner (playtest2 #9)', () => {
     // An index with nothing behind it is left alone.
     expect(annotateWaveRefs('`attack wave:9`', player(), waves())).toBe('`attack wave:9`')
   })
+
+  // Playtest 3: "…`attack wave:2` (enemy guard) (enemy guard 40/400)." — a ref
+  // the server already named is not tagged a second time.
+  it('leaves a wave ref that already carries a parenthetical alone', () => {
+    const named = 'Swing now: `attack wave:2` (enemy guard 40/400).'
+    expect(annotateWaveRefs(named, player(), waves())).toBe(named)
+  })
 })
 
 // `attack ice:<zone>` / `attack terminal` from range is a standing order the

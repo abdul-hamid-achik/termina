@@ -9,6 +9,7 @@ import {
 } from '~~/shared/constants/tutorial'
 import { initializeIce } from '~~/server/game/map/zones'
 import { structureRefusal } from '~~/shared/utils/structureRules'
+import type { TeamId, WaveUnitState } from '~~/shared/types/game'
 
 const stepOf = (id: string) => TUTORIAL_FLOW.findIndex((s) => s.id === id)
 const EMPTY = [null, null, null, null, null, null]
@@ -111,6 +112,114 @@ describe('liveTutorialTryCommand', () => {
 
   it('is null once the tutorial is complete', () => {
     expect(liveTutorialTryCommand(TUTORIAL_STEP_COUNT, { zone: 'x' })).toBeNull()
+  })
+})
+
+// Playtest 3: with no wave in the zone the chip said `attack wave:0` and the
+// server rejected it. The chip offers only what is legal right now.
+describe('liveTutorialTryCommand: wave chips are live', () => {
+  let n = 0
+  const wave = (team: TeamId, zone: string, integ: number, maxInteg = 400): WaveUnitState => ({
+    id: `wave_${team}_${++n}`,
+    team,
+    zone,
+    integ,
+    maxInteg,
+    type: 'line',
+  })
+  const T2 = 'coldstore-t2-chaff'
+  const ctx = (zone: string, waves: WaveUnitState[]) => ({
+    zone,
+    items: EMPTY,
+    team: 'chaff' as TeamId,
+    waves,
+  })
+
+  it('no wave in the zone → the walk to the nearest one, never wave:0', () => {
+    const step = stepOf('strip')
+    const chip = liveTutorialTryCommand(step, ctx(T2, [wave('audit', 'coldstore-t1-chaff', 100)]))
+    expect(chip).toBe('move coldstore-t1-chaff')
+  })
+
+  // Round-4 review: the walk chip offered a level-1 learner `move
+  // coldstore-t1-audit` (into enemy ICE) and `move coldstore-cross`.
+  it('never walks a learner onto the crossing or under a live enemy ICE', () => {
+    const step = stepOf('strip')
+    const ice = initializeIce()
+    const at = (zone: string, withIce = true) =>
+      liveTutorialTryCommand(step, {
+        ...ctx(T2, [wave('audit', zone, 100)]),
+        ...(withIce ? { ice } : {}),
+      })
+    expect(at('coldstore-cross')).toBeNull()
+    expect(at('coldstore-t1-audit')).toBeNull()
+    expect(at('coldstore-t1-audit', false)).toBeNull() // ICE unknown: covered
+    expect(at('landing-terminal')).toBeNull() // the enemy base
+    // A safe zone with a unit nearer than an unsafe one wins over "nothing".
+    const mixed = [wave('audit', 'coldstore-cross', 100), wave('audit', 'coldstore-t3-chaff', 100)]
+    expect(liveTutorialTryCommand(step, { ...ctx(T2, mixed), ice })).toBe('move coldstore-t3-chaff')
+    // From home ground with only unsafe units in sight: the walk out to the lane.
+    expect(
+      liveTutorialTryCommand(step, {
+        ...ctx('rookery-anchor', [wave('audit', 'coldstore-cross', 100)]),
+        ice,
+      }),
+    ).toBe(`move ${T2}`)
+  })
+
+  it('an enemy ICE zone whose ICE is down is fair ground again', () => {
+    const ice = initializeIce().map((t) =>
+      t.zone === 'coldstore-t1-audit' ? { ...t, alive: false, integ: 0 } : t,
+    )
+    expect(
+      liveTutorialTryCommand(stepOf('strip'), {
+        ...ctx(T2, [wave('audit', 'coldstore-t1-audit', 100)]),
+        ice,
+      }),
+    ).toBe('move coldstore-t1-audit')
+  })
+
+  it('names the index of the enemy unit actually in the window', () => {
+    // wave:N counts EVERY unit in the zone: my mule is wave:0, the low guard wave:2.
+    const waves = [wave('chaff', T2, 300), wave('audit', T2, 390), wave('audit', T2, 90)]
+    expect(liveTutorialTryCommand(stepOf('strip'), ctx(T2, waves))).toBe('attack wave:2')
+  })
+
+  it('the attack step (hint-derived chip) is judged the same way', () => {
+    // Only my own unit here, nothing hostile in sight: no legal swing to offer.
+    expect(liveTutorialTryCommand(stepOf('attack'), ctx(T2, [wave('chaff', T2, 300)]))).toBeNull()
+    expect(
+      liveTutorialTryCommand(
+        stepOf('attack'),
+        ctx(T2, [wave('chaff', T2, 300), wave('audit', T2, 300)]),
+      ),
+    ).toBe('attack wave:1')
+  })
+
+  it('burn names only one of YOUR units inside the burn window', () => {
+    const step = stepOf('burn')
+    const waves = [wave('audit', T2, 50), wave('chaff', T2, 390), wave('chaff', T2, 150)]
+    expect(liveTutorialTryCommand(step, ctx(T2, waves))).toBe('burn wave:2')
+    // Own units nearby but healthy (T1 is one hop), the burnable one two hops
+    // back at the base: walk to the one that can actually be burned.
+    const away = [
+      wave('chaff', T2, 390),
+      wave('chaff', 'coldstore-t1-chaff', 390),
+      wave('chaff', 'rookery-terminal', 120),
+    ]
+    expect(liveTutorialTryCommand(step, ctx(T2, away))).toBe('move rookery-terminal')
+  })
+
+  it('nothing in sight: home ground walks out to the lane; on the lane there is no chip', () => {
+    const step = stepOf('strip')
+    expect(liveTutorialTryCommand(step, ctx('rookery-anchor', []))).toBe(`move ${T2}`)
+    expect(liveTutorialTryCommand(step, ctx(T2, []))).toBeNull()
+  })
+
+  it('without wave context it keeps the static drill command', () => {
+    expect(liveTutorialTryCommand(stepOf('strip'), { zone: T2, items: EMPTY })).toBe(
+      'attack wave:0',
+    )
   })
 })
 

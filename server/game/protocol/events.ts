@@ -135,11 +135,20 @@ export interface ScripChangeEvent {
   readonly reason: string
 }
 
+/** A level that brings a power spike (POWER_SPIKE_LEVELS — an ultimate rank:
+ *  6 brings it online, 12 / 18 ranks 2 / 3). */
+export type LevelSpike = 'level_6' | 'level_12' | 'level_18'
+
 export interface LevelUpEvent {
   readonly _tag: 'level_up'
   readonly cycle: number
   readonly playerId: string
   readonly newLevel: number
+  /** Set when `newLevel` is a power-spike level (POWER_SPIKE_LEVELS): the client
+   *  adds the ultimate's rank to the line ("ultimate online" at 6, "ultimate
+   *  rank 2/3" at 12/18). There is no separate power_spike event
+   *  for a level — one level-up is one event. */
+  readonly spike?: LevelSpike
 }
 
 export interface AbilityUsedEvent {
@@ -191,7 +200,8 @@ export interface PowerSpikeEvent {
   readonly _tag: 'power_spike'
   readonly cycle: number
   readonly playerId: string
-  readonly spikeType: 'level_6' | 'level_12' | 'level_18' | 'core_item'
+  /** Item spikes only (buyback); a level spike rides on LevelUpEvent.spike. */
+  readonly spikeType: 'core_item'
   readonly itemId?: string
   readonly message: string
 }

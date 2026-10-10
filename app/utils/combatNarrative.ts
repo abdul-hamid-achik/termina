@@ -18,6 +18,19 @@ import type { TargetType } from '~~/shared/types/hero'
 import { isStructureTarget, npcKind, teamLabel, type CombatLine, type Salience } from './combatLog'
 import { buffLabel } from './buffs'
 import { WARD_LABELS } from '~~/shared/constants/world'
+import { ULTIMATE_RANKS } from '~~/shared/constants/balance'
+
+/**
+ * The level-up line's spike suffix (`level_up.spike`): the level that unlocks
+ * the ultimate brings it online, each later spike level its next rank
+ * (ULTIMATE_RANKS). Anything else adds nothing.
+ */
+function spikeSuffix(spike: unknown): string {
+  if (typeof spike !== 'string') return ''
+  const rank = ULTIMATE_RANKS.indexOf(Number(spike.replace(/^level_/, ''))) + 1
+  if (rank === 0) return ''
+  return rank === 1 ? ' — ultimate online' : ` — ultimate rank ${rank}`
+}
 
 export interface NarrativeContext {
   /** The local player's id (for salience). */
@@ -289,7 +302,9 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         cycle,
         // Power-curve beats, not meta-chatter — `[SYS]` grey is reserved for
         // chat, pings and client notices so those stay scannable.
-        text: `${label(p.playerId)} reached level ${num(p.newLevel)}`,
+        // `spike` marks a power-spike level (6/12/18) — one event, one line,
+        // worded per spike: rank 1 of the ultimate comes online, then ranks 2/3.
+        text: `${label(p.playerId)} reached level ${num(p.newLevel)}${spikeSuffix(p.spike)}`,
         type: 'objective',
         salience: actorSalience(p.playerId, ctx),
       }
@@ -350,14 +365,23 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         salience: actorSalience(p.playerId, ctx),
       }
 
-    case 'power_spike':
-      // The engine already writes human prose here — surface it instead of JSON.
+    case 'power_spike': {
+      // Item spikes only (a level spike rides on level_up.spike). Built from the
+      // id, never the engine's prose: that embeds the player's raw `name`, which
+      // for a bot is its id ("bot_zeta used buyback!" — playtest 3).
+      const itemId = str(p.itemId)
       return {
         cycle,
-        text: str(p.message) || `${label(p.playerId)} hit a power spike`,
+        text:
+          itemId === 'buyback'
+            ? `${label(p.playerId)} used buyback`
+            : itemId
+              ? `${label(p.playerId)} completed ${ctx.itemName(itemId)}`
+              : `${label(p.playerId)} hit a power spike`,
         type: 'objective',
         salience: actorSalience(p.playerId, ctx),
       }
+    }
 
     case 'item_purchased': {
       const buySalience = actorSalience(p.playerId, ctx)
@@ -827,8 +851,17 @@ export function buildCombatLines(
 ): CombatLine[] {
   const { absorbed, rewritten, carries, castHits, whiffs } = pairCombatEvents(events, ctx)
   const mapped: CombatLine[] = []
+  // ONE level-up line per player per level (playtest 3 printed two for one
+  // beat). The server now emits a single level_up; a resent or replayed cycle
+  // must still not repeat it.
+  const levelsSeen = new Set<string>()
   for (const e of events) {
     if (absorbed.has(e)) continue
+    if (e.type === 'level_up') {
+      const key = `${str(e.payload.playerId)}:${num(e.payload.newLevel)}`
+      if (levelsSeen.has(key)) continue
+      levelsSeen.add(key)
+    }
     const line = eventToLine(rewritten.get(e) ?? e, ctx)
     if (!line) continue
     const castAbility = castHits.get(e)

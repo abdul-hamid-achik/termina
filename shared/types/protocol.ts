@@ -90,7 +90,16 @@ export interface TutorialGameOverSummary {
   mastered: boolean
   /** Drills that skipped themselves on exhausted deadlines, in order. */
   skipped: TutorialStepId[]
+  /** WHY the practice ended, explicit (derived from the three fields above):
+   *  `mastered` — every drill performed; `drills_skipped` — the flow reached
+   *  its end but some drills timed out (the last drill's skip is what ends the
+   *  game then — name them, offer the retry); `left_early` — the game ended
+   *  mid-flow (surrender, a lost Terminal, or the tutorial's idle budget —
+   *  TUTORIAL_IDLE_END_CYCLES with no order). Optional only for older payloads. */
+  reason?: TutorialEndReason
 }
+
+export type TutorialEndReason = 'mastered' | 'drills_skipped' | 'left_early'
 
 export interface PlayerEndStats {
   kills: number

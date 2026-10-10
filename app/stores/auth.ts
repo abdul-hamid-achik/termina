@@ -11,6 +11,42 @@ export const useAuthStore = defineStore('auth', () => {
     await fetchSession()
   }
 
+  /**
+   * Make the tab agree with the CURRENT session before anything is keyed by a
+   * player id. The session cookie changes under a tab: a guest who signs in on
+   * another tab is a different player, and this tab's `useUserSession()` keeps
+   * the guest until it is refetched. A practice/queue started on that stale id
+   * subscribed to `game:<id>:p:guest_…` — denied by Ably (40160) — and sat on
+   * "Waiting for the first cycle" forever (playtest 3).
+   *
+   * - `refetch` (default true): re-read the session first.
+   * - `fresh`: a NEW game is about to be adopted — drop all game/lobby state.
+   *   Otherwise state is dropped only when it belongs to a different player.
+   *
+   * Returns the current session's player id (null when signed out); the game
+   * store's playerId is set to it.
+   */
+  async function refreshIdentity(
+    opts: { fresh?: boolean; refetch?: boolean } = {},
+  ): Promise<string | null> {
+    if (opts.refetch !== false) {
+      try {
+        await fetchSession()
+      } catch {
+        // Keep the last known session — the caller's own request will say if
+        // it is really gone.
+      }
+    }
+    const id = typeof user.value?.id === 'string' ? user.value.id : null
+    const game = useGameStore()
+    if (opts.fresh || (game.playerId !== null && game.playerId !== id)) {
+      game.reset()
+      useLobbyStore().reset()
+    }
+    game.playerId = id
+    return id
+  }
+
   function loginOAuth(provider: 'github' | 'discord' = 'github') {
     // Carry ?redirect= across the OAuth round trip (provider handlers cannot
     // see the originating page query). Cookie is short-lived and same-site.
@@ -103,6 +139,7 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     isAuthenticated,
     fetchUser,
+    refreshIdentity,
     login,
     loginOAuth,
     loginWithCredentials,

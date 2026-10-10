@@ -866,3 +866,147 @@ describe('every client-side refusal is a marked stream line (item 4)', () => {
     wrapper.unmount()
   })
 })
+
+// ── Playtest 3 ────────────────────────────────────────────────────────
+describe('playtest 3: GameScreen wiring', () => {
+  const play = (msg: unknown) => {
+    for (const h of messageHandlers) h(msg)
+  }
+  const unit = (id: string, team: 'chaff' | 'audit', zone: string, integ = 300) => ({
+    id,
+    team,
+    zone,
+    integ,
+    maxInteg: 400,
+    type: 'line' as const,
+  })
+
+  it('the toast is told the cycle, and clears on the next accepted order', async () => {
+    const store = seedActiveGame()
+    const wrapper = mountGameScreen()
+    const toast = () => wrapper.findComponent({ name: 'AnnouncementToast' })
+    expect(toast().props('cycle')).toBe(store.cycle)
+    const before = toast().props('clearKey')
+    play({ type: 'action_ack', accepted: false, reason: 'late' })
+    await wrapper.vm.$nextTick()
+    expect(toast().props('clearKey')).toBe(before)
+    play({ type: 'action_ack', accepted: true })
+    await wrapper.vm.$nextTick()
+    expect(toast().props('clearKey')).toBe(before + 1)
+    wrapper.unmount()
+  })
+
+  it('under their ICE with their wave at 250/598 the verdict is DANGER, not an even fight', async () => {
+    const zone = 'coldstore-t2-audit' // an alive audit ICE stands here (fixture)
+    const players = makeRoster()
+    for (const id of Object.keys(players)) players[id] = { ...players[id]!, zone: 'seawall-cross' }
+    players.p1 = { ...players.p1!, zone, integ: 250, maxInteg: 598, alive: true }
+    players.e1 = { ...players.e1!, zone, integ: 500, alive: true }
+    const waves = [1, 2, 3, 4].map((i) => unit(`w${i}`, 'audit', zone))
+    seedActiveGame({ players, waves } as Partial<GameState>)
+    const wrapper = mountGameScreen()
+    await wrapper.vm.$nextTick()
+    const verdict = wrapper.findComponent({ name: 'StatusLines' }).props('verdict') as {
+      label: string
+      action: string
+    }
+    expect(verdict.label).toBe('DANGER')
+    expect(verdict.action).not.toMatch(/Even fight/)
+    wrapper.unmount()
+  })
+
+  function castDrill() {
+    const castStep = TUTORIAL_FLOW.findIndex((s) => s.id === 'cast')
+    const cast = TUTORIAL_FLOW[castStep]!
+    const fill = (t: string) => t.replaceAll('<hero>', 'daemon')
+    const store = seedActiveGame({
+      mode: 'tutorial',
+      tutorialStep: castStep,
+      cycle: 127,
+    } as Partial<GameState>)
+    const wrapper = mountGameScreen()
+    const at = (cycle: number, message: string) => {
+      store.updateFromCycle(
+        makeCycleMessage({ mode: 'tutorial', tutorialStep: castStep, cycle } as Partial<GameState>),
+      )
+      store.addAnnouncement(message, 'info')
+      play({ type: 'announcement', level: 'info', message })
+    }
+    return { cast, fill, wrapper, at }
+  }
+
+  it('one cast-drill coaching line inside the window: a vaguer re-statement folds away', async () => {
+    const { cast, fill, wrapper, at } = castDrill()
+    at(127, fill(cast.help))
+    at(129, cast.help) // `breach <hero>` — says less than the line already printed
+    await wrapper.vm.$nextTick()
+    const coaching = feed(wrapper).filter((t) => t.startsWith('>_ 🎓') && t.includes('breach'))
+    expect(coaching).toHaveLength(1)
+    // A milestone is never folded away.
+    at(129, cast.done)
+    await wrapper.vm.$nextTick()
+    expect(feed(wrapper).some((t) => t.includes(cast.done))).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('the correction to the player’s own cast always prints — every time (round-4 review)', async () => {
+    // It scored below the step's opening help and was dropped inside the
+    // window: the wrong cast went unexplained.
+    const { cast, fill, wrapper, at } = castDrill()
+    at(127, fill(cast.help))
+    at(128, fill(cast.almost!))
+    at(129, fill(cast.almostNoFoe!))
+    at(131, fill(cast.almost!)) // a second wrong cast, inside the repeat window
+    await wrapper.vm.$nextTick()
+    const lines = feed(wrapper)
+    expect(lines.filter((t) => t.includes('That cast met a CLOSED hero'))).toHaveLength(2)
+    expect(lines.filter((t) => t.includes('Cast fired — now the combo'))).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('a notice that says the same order twice prints it once, tagged once', async () => {
+    seedActiveGame({
+      waves: [unit('foe', 'audit', 'coldstore-cross', 90)],
+    } as Partial<GameState>)
+    const wrapper = mountGameScreen()
+    play({
+      type: 'announcement',
+      level: 'info',
+      message:
+        '🎓 A unit in your zone is at 90/400 INTEG. Swing now: `attack wave:0`. A wave unit is in your zone — swing at it: `attack wave:0`.',
+    })
+    await wrapper.vm.$nextTick()
+    const line = feed(wrapper).find((t) => t.includes('Swing now'))!
+    expect(line).not.toContain('A wave unit is in your zone')
+    expect(line.match(/\(enemy guard\)/g)).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('order feedback during a drill is not folded into the drill coaching', async () => {
+    const ice = TUTORIAL_FLOW.findIndex((s) => s.id === 'ice')
+    const store = seedActiveGame({
+      mode: 'tutorial',
+      tutorialStep: ice,
+      cycle: 60,
+    } as Partial<GameState>)
+    const wrapper = mountGameScreen()
+    const say = (cycle: number, message: string) => {
+      store.updateFromCycle(
+        makeCycleMessage({ mode: 'tutorial', tutorialStep: ice, cycle } as Partial<GameState>),
+      )
+      play({ type: 'announcement', level: 'info', message })
+    }
+    say(
+      60,
+      '🎓 A wave unit falls in beside you. One order does the rest: `attack ice:coldstore-t1-audit`.',
+    )
+    say(
+      61,
+      'Holding at coldstore-t2-chaff: INTEG 30% — retype `attack ice:coldstore-t1-audit` to push in anyway',
+    )
+    await wrapper.vm.$nextTick()
+    expect(feed(wrapper).some((t) => t.includes('falls in beside you'))).toBe(true)
+    expect(feed(wrapper).some((t) => t.includes('Holding at'))).toBe(true)
+    wrapper.unmount()
+  })
+})

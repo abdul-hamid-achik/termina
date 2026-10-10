@@ -59,8 +59,12 @@ export type LoggedAction = ActionLogEntry
  *   of an ICE walk + AFK takeover now convert like live); taunt-forced swings
  *   never replace the held order; an item active keeps the walk; Hardened ICE
  *   ordered from range walks; finalSummaryHash carries aiControlled.
+ * 5 (2026-10-10): a held ICE / Terminal walk holds one hop short of enemy fire
+ *   at low INTEG (approachHold); one level_up event per level (no level
+ *   power_spike); tutorial skip clock starts at the first order for the opening
+ *   and ICE drills.
  */
-export const REPLAY_RULESET_VERSION = 4
+export const REPLAY_RULESET_VERSION = 5
 
 /** Per-player scrubber summary — the projection the replay UI renders. */
 export interface FramePlayer {

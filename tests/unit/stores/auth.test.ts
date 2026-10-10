@@ -224,4 +224,48 @@ describe('Auth Store', () => {
       expect(mockNavigateTo).toHaveBeenCalledWith('/api/auth/github', { external: true })
     })
   })
+
+  // Playtest 3: the cookie changes under a tab (a guest signs in elsewhere).
+  describe('refreshIdentity', () => {
+    it('re-reads the session and re-keys a stale game to the current player', async () => {
+      mockUser.value = { id: 'guest_old', guest: true }
+      mockFetchSession.mockImplementation(async () => {
+        mockUser.value = { id: 'github_7' }
+      })
+      const game = useGameStore()
+      game.gameId = 'g_dead'
+      game.playerId = 'guest_old'
+
+      const id = await useAuthStore().refreshIdentity()
+
+      expect(mockFetchSession).toHaveBeenCalledOnce()
+      expect(id).toBe('github_7')
+      expect(game.gameId).toBeNull()
+      expect(game.playerId).toBe('github_7')
+    })
+
+    it('leaves the same player’s live game alone', async () => {
+      mockUser.value = { id: 'github_7' }
+      const game = useGameStore()
+      game.gameId = 'g_live'
+      game.playerId = 'github_7'
+
+      await useAuthStore().refreshIdentity()
+
+      expect(game.gameId).toBe('g_live')
+    })
+
+    it('`fresh` drops the game even for the same player (a new one is coming)', async () => {
+      mockUser.value = { id: 'github_7' }
+      const game = useGameStore()
+      game.gameId = 'g_old'
+      game.playerId = 'github_7'
+
+      await useAuthStore().refreshIdentity({ fresh: true, refetch: false })
+
+      expect(mockFetchSession).not.toHaveBeenCalled()
+      expect(game.gameId).toBeNull()
+      expect(game.playerId).toBe('github_7')
+    })
+  })
 })

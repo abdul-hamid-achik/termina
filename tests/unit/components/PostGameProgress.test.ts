@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import PostGame from '~~/app/components/lobby/PostGame.vue'
 import { makePlayerEndStats, SAMPLE_HEROES } from '~~/app/stories/fixtures'
 import type { TeamId } from '~~/shared/types/game'
@@ -179,7 +180,9 @@ describe('PostGame — what to work on', () => {
         e1: cleanStats(),
       },
     })
-    expect(adviceIds(wrapper)).toEqual(['deaths', 'last-hits', 'burns'])
+    // Worst first (playtest 3): unspent scrip, dying, then farm — burns are a
+    // refinement and only offered once the farm itself is fine.
+    expect(adviceIds(wrapper)).toEqual(['unspent', 'deaths', 'last-hits'])
   })
 
   it('links out to the basics', () => {
@@ -205,6 +208,7 @@ describe('PostGame — practice this', () => {
   const fetchMock = vi.fn().mockResolvedValue({ url: '/game/dev_1' })
 
   beforeEach(() => {
+    setActivePinia(createPinia())
     navigate.mockClear()
     fetchMock.mockClear()
     fetchMock.mockResolvedValue({ gameId: 'dev_1' })
@@ -219,7 +223,7 @@ describe('PostGame — practice this', () => {
   it('starts a practice game straight from the coaching panel', async () => {
     const wrapper = mountPostGame({ stats: { p1: cleanStats({ deaths: 9 }), e1: cleanStats() } })
     await wrapper.get('[data-testid="practice-this-btn"]').trigger('click')
-    await Promise.resolve()
+    await flushPromises() // the launcher re-reads the session first
 
     expect(fetchMock).toHaveBeenCalledWith('/api/game/practice', expect.anything())
     expect(navigate).toHaveBeenCalledWith('/play?gameId=dev_1&tutorial=1')
@@ -228,5 +232,34 @@ describe('PostGame — practice this', () => {
   it('does not offer practice at the end of a practice game', () => {
     const wrapper = mountPostGame({ mode: 'tutorial' })
     expect(wrapper.find('[data-testid="practice-this-btn"]').exists()).toBe(false)
+  })
+})
+
+// Playtest 3: 0 hero damage, 2 deaths and 1,724 scrip unspent were met with
+// `attack wave:0` / `burn wave:0`. The advice reads the player's real problems.
+describe('PostGame — advice from the player’s own end stats', () => {
+  it('names the real problems, worst first, with commands for them', () => {
+    const wrapper = mountPostGame({
+      durationCycles: 300,
+      stats: {
+        p1: cleanStats({
+          kills: 0,
+          deaths: 2,
+          assists: 0,
+          heroDamage: 0,
+          scrip: 1724,
+          lastHits: 6,
+          burns: 0,
+        }),
+        e1: cleanStats(),
+      },
+    })
+    expect(adviceIds(wrapper)).toEqual(['unspent', 'deaths', 'no-hero-damage'])
+    expect(wrapper.get('[data-advice="unspent"]').text()).toContain('1,724')
+    expect(wrapper.get('[data-advice="unspent"]').text()).toMatch(/buy [a-z_]+/)
+    const breach = wrapper.get('[data-advice="no-hero-damage"]').text()
+    expect(breach).toContain(`breach ${THEM.heroId}`)
+    expect(breach).toContain('cast q')
+    expect(wrapper.text()).not.toContain('burn wave:0')
   })
 })

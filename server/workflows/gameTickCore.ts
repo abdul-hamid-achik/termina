@@ -322,7 +322,8 @@ export async function stampPresence(
   lookup: TickDeps['presence'],
 ): Promise<GameState> {
   const checkCycle = state.cycle + 1 // processCycle increments before the AFK block
-  if (!lookup || !isAfkCheckCycle(checkCycle)) return state
+  // The tutorial never AFK-converts (GameLoop) — no sample, no Ably call.
+  if (!lookup || state.mode === 'tutorial' || !isAfkCheckCycle(checkCycle)) return state
   const candidates = presenceCandidates(state, checkCycle)
   if (candidates.length === 0) return state
   let present: Map<string, Set<string>> | null
@@ -705,10 +706,12 @@ export function tutorialGameOverSummary(
 ): TutorialGameOverSummary | null {
   if (mode !== 'tutorial') return null
   const completed = (state.tutorialStep ?? 0) >= TUTORIAL_STEP_COUNT
+  const mastered = completed && tutorialMasteryAchieved(state)
   return {
     completed,
-    mastered: completed && tutorialMasteryAchieved(state),
+    mastered,
     skipped: [...(state.tutorialSkipped ?? [])],
+    reason: mastered ? 'mastered' : completed ? 'drills_skipped' : 'left_early',
   }
 }
 

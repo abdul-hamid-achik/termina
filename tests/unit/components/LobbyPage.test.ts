@@ -3,6 +3,7 @@ import { ref, nextTick } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { useLobbyStore } from '~~/app/stores/lobby'
+import { useGameStore } from '~~/app/stores/game'
 
 // ── useAudio double ─────────────────────────────────────────────────
 // lobby.vue plays through the Web Audio synth (absent in happy-dom) —
@@ -391,6 +392,58 @@ describe('lobby page', () => {
       } finally {
         vi.useRealTimers()
       }
+    })
+  })
+
+  // Playtest 3: a guest signed in on another tab, then visited /lobby. The
+  // status poll (answered for the COOKIE's player) found that player's game,
+  // but the tab paired it with the stale guest id left in the store — the
+  // game opened on a channel Ably refused.
+  describe('session changed under the tab', () => {
+    function staleTab() {
+      const user = ref<{ id: string } | null>({ id: 'guest_old' })
+      const fetchSession = vi.fn(async () => {
+        user.value = { id: MY_ID }
+      })
+      vi.stubGlobal('useUserSession', () => ({
+        loggedIn: ref(true),
+        user,
+        fetch: fetchSession,
+        clear: vi.fn(),
+      }))
+      const game = useGameStore()
+      game.playerId = 'guest_old'
+      return { fetchSession, game }
+    }
+
+    it('resumes the live game as the CURRENT session player', async () => {
+      const { fetchSession, game } = staleTab()
+      neonJoined = true // status-neon: the session's game is live
+      const wrapper = mountLobby()
+      await flushPromises()
+
+      expect(fetchSession).toHaveBeenCalled()
+      expect(game.gameId).toBe('g_neon')
+      expect(game.playerId).toBe(MY_ID)
+      expect(routerPush).toHaveBeenCalledWith('/play')
+      wrapper.unmount()
+    })
+
+    it('queues as the current session player (signed in while the lobby was open)', async () => {
+      const { game, fetchSession } = staleTab()
+      const signIn = fetchSession.getMockImplementation()!
+      fetchSession.mockImplementation(async () => {}) // still the guest at mount
+      const wrapper = mountLobby()
+      await flushPromises()
+      expect(game.playerId).toBe('guest_old')
+
+      fetchSession.mockImplementation(signIn) // …then signed in on another tab
+      await wrapper.get('[data-testid="find-match"]').trigger('click')
+      await flushPromises()
+
+      expect(joinCalls()).toHaveLength(1)
+      expect(game.playerId).toBe(MY_ID)
+      wrapper.unmount()
     })
   })
 })

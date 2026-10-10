@@ -321,10 +321,16 @@ export function annotateWaveRefs(
   waves: WaveUnitState[],
 ): string {
   const inZone = waves.filter((c) => c.zone === player.zone)
-  return text.replace(/(`?[a-z]*\s*wave:(\d+)`?)/g, (match, _whole, idx: string) => {
-    const wave = inZone[Number(idx)]
-    return wave ? `${match} (${waveOwnerLabel(wave, player.team)})` : match
-  })
+  return text.replace(
+    /(`?[a-z]*\s*wave:(\d+)`?)/g,
+    (match, _whole, idx: string, offset: number, whole: string) => {
+      // Already followed by a parenthetical (the server named the unit itself):
+      // a second tag read as "(enemy guard) (…)" — playtest 3.
+      if (whole.startsWith(' (', offset + match.length)) return match
+      const wave = inZone[Number(idx)]
+      return wave ? `${match} (${waveOwnerLabel(wave, player.team)})` : match
+    },
+  )
 }
 
 /**

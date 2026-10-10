@@ -29,9 +29,13 @@ class MockChannel {
     this.name = name
   }
 
+  /** Set to make the next subscribe's attach reject (e.g. Ably 40160). */
+  static subscribeError: (Error & { code?: number }) | null = null
   subscribe(listener: (message: { name: string; data: unknown }) => void) {
     this.listener = listener
-    return Promise.resolve(null)
+    return MockChannel.subscribeError
+      ? Promise.reject(MockChannel.subscribeError)
+      : Promise.resolve(null)
   }
 
   _receive(name: string, data: unknown) {
@@ -178,6 +182,40 @@ describe('useGameChannel', () => {
         expect(connected.value).toBe(true)
       } finally {
         MockChannel.enterError = null
+      }
+    })
+
+    // Playtest 3: a tab holding a stale guest id subscribed to
+    // game:<id>:p:guest_… with a token minted for the signed-in user. Ably
+    // refused the attach (40160) and the HUD waited for a first cycle forever.
+    it('a capability-refused attach (40160) ends the session as changed', async () => {
+      MockChannel.subscribeError = Object.assign(new Error('denied'), { code: 40160 })
+      try {
+        const { useGameStore } = await import('../../../app/stores/game')
+        const store = useGameStore()
+        const { connect } = useGameChannel()
+        connect('game-1', 'guest_old')
+        await vi.advanceTimersByTimeAsync(0)
+        expect(store.sessionEnded).toBeTruthy()
+        expect(store.sessionEndReason).toBe('changed')
+        expect(MockRealtime.last!.close).toHaveBeenCalled()
+      } finally {
+        MockChannel.subscribeError = null
+      }
+    })
+
+    it('any other attach failure is left to Ably’s own retry', async () => {
+      MockChannel.subscribeError = Object.assign(new Error('timeout'), { code: 50003 })
+      try {
+        const { useGameStore } = await import('../../../app/stores/game')
+        const store = useGameStore()
+        const { connect } = useGameChannel()
+        connect('game-1', 'player-1')
+        await vi.advanceTimersByTimeAsync(0)
+        expect(store.sessionEnded).toBeNull()
+        expect(MockRealtime.last!.close).not.toHaveBeenCalled()
+      } finally {
+        MockChannel.subscribeError = null
       }
     })
 

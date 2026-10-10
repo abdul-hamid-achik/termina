@@ -101,4 +101,42 @@ describe('AnnouncementToast', () => {
     // The visible toast is still the amber warning — its level was snapshotted.
     expect(wrapper.find('.announcement-toast > div').classes()).toContain('text-warn')
   })
+
+  // Playtest 3: "! No waves in this zone to attack" sat in the header long
+  // after the order it was about. It is about its own moment: it clears once the
+  // clock is two cycles on, or the moment the next order is accepted.
+  describe('clears when its moment is over', () => {
+    const LONG = 60_000 // the timer alone would keep it up
+
+    it('two cycles after it arrived', async () => {
+      const w = mount(AnnouncementToast, {
+        props: { text: 'No waves in this zone to attack', seq: 0, durationMs: LONG, cycle: 10 },
+      })
+      await w.setProps({ seq: 1 })
+      await w.setProps({ cycle: 11 })
+      expect(w.find('.announcement-toast').exists()).toBe(true)
+      await w.setProps({ cycle: 12 })
+      expect(w.find('.announcement-toast').exists()).toBe(false)
+    })
+
+    it('a toast arriving later counts from its own cycle', async () => {
+      const w = mount(AnnouncementToast, {
+        props: { text: 'a', seq: 0, durationMs: LONG, cycle: 10 },
+      })
+      await w.setProps({ seq: 1 })
+      await w.setProps({ cycle: 13 })
+      await w.setProps({ text: 'b', seq: 2 })
+      await w.setProps({ cycle: 14 })
+      expect(w.find('.announcement-toast').exists()).toBe(true)
+    })
+
+    it('on the next accepted order', async () => {
+      const w = mount(AnnouncementToast, {
+        props: { text: 'No waves in this zone to attack', seq: 0, durationMs: LONG, clearKey: 0 },
+      })
+      await w.setProps({ seq: 1 })
+      await w.setProps({ clearKey: 1 })
+      expect(w.find('.announcement-toast').exists()).toBe(false)
+    })
+  })
 })

@@ -24,6 +24,7 @@ import {
   validateAction,
   convertClosedControlCast,
   approachStructure,
+  approachHold,
   type PlayerAction,
 } from './ActionResolver'
 import {
@@ -54,7 +55,12 @@ import {
   getTalentTree,
 } from '~~/server/game/heroes'
 import { talentUnlockLevel } from '~~/shared/constants/talents'
-import { stampEventZones, toGameEvent, type GameEngineEvent } from '~~/server/game/protocol/events'
+import {
+  stampEventZones,
+  toGameEvent,
+  type GameEngineEvent,
+  type LevelSpike,
+} from '~~/server/game/protocol/events'
 import { getBotPlayerIds, getBotLane, isBot, convertToBot } from '~~/server/game/ai/BotManager'
 import { decideBotAction } from '~~/server/game/ai/BotAI'
 import { engineLog } from '~~/server/utils/log'
@@ -419,6 +425,28 @@ export function processCycle(
     )
     for (const [pid, p] of Object.entries(currentState.players)) {
       if (!p.alive || !p.moveTarget || actedThisTick.has(pid)) continue
+      // A held ICE / Terminal walk does not carry a low-INTEG human under enemy
+      // fire (ActionResolver.approachHold): it stops one hop short, both held
+      // orders dropped, with a notice. Bots and AI-controlled slots re-decide
+      // every cycle and keep their own retreat logic — never held here. Nor is
+      // the tutorial: its ICE drill escorts the player and holds the enemy crew,
+      // and a dropped order there cost the drill its live ICE order — it timed
+      // out and ENDED the practice under a player who was acting.
+      const hold =
+        currentState.mode === 'tutorial' || isBot(pid) || p.aiControlled
+          ? null
+          : approachHold(currentState, pid, actions)
+      if (hold) {
+        currentState = {
+          ...currentState,
+          players: {
+            ...currentState.players,
+            [pid]: { ...currentState.players[pid]!, moveTarget: null, attackTarget: null },
+          },
+        }
+        notices.push({ playerId: pid, message: hold.message })
+        continue
+      }
       actions.push({
         playerId: pid,
         command: { type: 'move', zone: p.moveTarget },
@@ -739,7 +767,11 @@ export function processCycle(
     // event. No-reclaim: POST /api/game/action refuses a converted human's
     // orders (except `surrender`) via the persisted `aiControlled` flag, and
     // detectAFKPlayers skips aiControlled slots so this fires exactly once.
-    if (isAfkCheckCycle(currentState.cycle)) {
+    // Never in the tutorial: it has no teammate to cover, and a converted
+    // human's AI orders would read as the player's own (lastActionCycle, the
+    // drills' order clocks) — an abandoned practice ends on its idle budget
+    // instead (modes/tutorial.ts, TUTORIAL_IDLE_END_CYCLES).
+    if (currentState.mode !== 'tutorial' && isAfkCheckCycle(currentState.cycle)) {
       const primary = isAfkPrimaryCheck(currentState.cycle)
       for (const afk of detectAFKPlayers(currentState)) {
         const player = currentState.players[afk.playerId]
@@ -1599,23 +1631,20 @@ function checkLevelUps(state: GameState, events: GameEngineEvent[]): GameState {
     if (nextLevelXp !== undefined && player.xp >= nextLevelXp) {
       const newLevel = player.level + 1
       players[pid] = levelUpHero(player)
+      // ONE event per level-up, ids only — the client labels it. A key level
+      // (an ultimate rank) is data on the same event: a second `power_spike`
+      // carrying `${player.name} reached level 6!` printed the raw name (a
+      // bot's id) beside the labelled level_up line (playtest 3).
+      const spike = (POWER_SPIKE_LEVELS as readonly number[]).includes(newLevel)
+        ? (`level_${newLevel}` as LevelSpike)
+        : undefined
       events.push({
         _tag: 'level_up',
         cycle: state.cycle,
         playerId: pid,
         newLevel,
+        ...(spike ? { spike } : {}),
       })
-
-      // Power spike notifications for key levels
-      if ((POWER_SPIKE_LEVELS as readonly number[]).includes(newLevel)) {
-        events.push({
-          _tag: 'power_spike',
-          cycle: state.cycle,
-          playerId: pid,
-          spikeType: `level_${newLevel}` as 'level_6' | 'level_12' | 'level_18',
-          message: `${player.name} reached level ${newLevel}! Ultimate powers online.`,
-        })
-      }
 
       changed = true
     }

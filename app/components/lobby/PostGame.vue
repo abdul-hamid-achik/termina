@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import type { TeamId, GameMode } from '~~/shared/types/game'
-import type { PlayerEndStats, TutorialGameOverSummary } from '~~/shared/types/protocol'
+import type {
+  PlayerEndStats,
+  TutorialEndReason,
+  TutorialGameOverSummary,
+} from '~~/shared/types/protocol'
 import { tutorialSkipNotice, type TutorialStepId } from '~~/shared/constants/tutorial'
 import { HEROES } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
-import { computeMvp, displayPlayerName } from '~/utils/postgame'
+import { computeMvp, deriveAdvice, displayPlayerName, type Advice } from '~/utils/postgame'
+import { recommendedItemsForRole } from '~~/shared/constants/itemBuilds'
 // Imported rather than left to Nuxt's auto-import so the component also mounts
 // under the plain-Vite component test runner, which has no unimport pass.
 import { useStartTutorial } from '~/composables/useStartTutorial'
@@ -66,6 +71,18 @@ const mastered = computed(
     finishedTutorial.value &&
     (props.tutorialSummary ? props.tutorialSummary.mastered : skipped.value.length === 0),
 )
+/**
+ * Why the practice ended — the server's own word (game_over.tutorial.reason)
+ * when it sends one, else read off the older fields. Drives the headline and
+ * the wrap-up line, so a learner who left is never told the drills are done.
+ */
+const tutorialEnd = computed<TutorialEndReason | 'finished'>(() => {
+  const reason = props.tutorialSummary?.reason
+  if (reason) return reason
+  if (!finishedTutorial.value) return 'left_early'
+  if (skipped.value.length > 0) return 'drills_skipped'
+  return mastered.value ? 'mastered' : 'finished'
+})
 const skipLine = computed(() =>
   tutorialSkipNotice(skipped.value as readonly TutorialStepId[])?.replace(/^🎓\s*/, ''),
 )
@@ -127,7 +144,8 @@ const myStats = computed(() => {
   return s
 })
 
-// The single standout performer across both teams (the "who carried" beat).
+// The standout performer on the WINNING team (computeMvp — playtest 3 crowned a
+// losing bot over a CHAFF VICTORY).
 const mvp = computed(() => computeMvp([...chaffPlayers.value, ...auditPlayers.value], props.winner))
 
 function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): ScoreRow {
@@ -173,91 +191,37 @@ const csPerMinute = computed(() => {
   return (s.lastHits ?? 0) / mins
 })
 
-interface Advice {
-  id: string
-  /** What the number was — quoted back so the advice is evidently about them. */
-  observation: string
-  /** The literal command to type next game. */
-  command: string
-  detail: string
-}
-
 /**
- * "What to work on" — at most three items, worst first, each naming a real
- * command. Absolute thresholds only where the stat is absolute (deaths, burns);
- * everything farm-shaped is rate-based, because a 40-CS game is strong at ten
- * minutes and weak at thirty.
- *
- * Deliberately never empty: a player who did everything right still gets one
- * "next thing to try", because an empty panel reads as a broken panel.
+ * "What to work on" — derived from THIS player's end stats (deriveAdvice),
+ * worst problem first, at most three, each with a command that parses.
  */
 const advice = computed((): Advice[] => {
   const s = myStats.value
   if (!s) return []
-  const out: Advice[] = []
-  const cs = s.lastHits ?? 0
-  const rate = csPerMinute.value
-
-  if (s.deaths >= 6 || (s.deaths >= 4 && s.deaths > s.kills + s.assists)) {
-    out.push({
-      id: 'deaths',
-      observation: `You died ${s.deaths} times`,
-      command: 'move terminal',
-      detail:
-        'Watch the focus banner: the moment it flips to DANGER you are outnumbered. Retreating costs one cycle — dying costs the respawn plus everything the enemy earns for it.',
-    })
-  }
-
-  if (rate !== null && rate < 2) {
-    out.push({
-      id: 'last-hits',
-      observation: `You last-hit ${cs} wave${cs === 1 ? '' : 's'} (${rate.toFixed(1)}/min)`,
-      command: 'attack wave:0',
-      detail:
-        'Only the killing blow pays scrip, and you do not have to out-damage the unit: once it is inside the strip window it goes down to any swing. Wait for STRIP on the ActionRow rather than swinging every cycle — attack wave:N works too, but the numbers shift each cycle.',
-    })
-  } else if (rate === null && cs < 20) {
-    out.push({
-      id: 'last-hits',
-      observation: `You last-hit ${cs} wave${cs === 1 ? '' : 's'}`,
-      command: 'attack wave:0',
-      detail:
-        'Only the killing blow pays scrip, and you do not have to out-damage the unit: once it is inside the strip window it goes down to any swing. Wait for STRIP on the ActionRow rather than swinging every cycle — attack wave:N works too, but the numbers shift each cycle.',
-    })
-  }
-
-  if ((s.burns ?? 0) === 0) {
-    out.push({
-      id: 'burns',
-      observation: 'You burned 0 waves',
-      command: 'burn wave:0',
-      detail:
-        'When one of YOUR waves drops below half health you can finish it yourself. The enemy laner gets no scrip and less experience for it — it is the cheapest lead in the game.',
-    })
-  }
-
-  if (s.scrip >= 1500) {
-    out.push({
-      id: 'unspent',
-      observation: `You finished holding ${s.scrip.toLocaleString()} unspent scrip`,
-      command: 'buy edge_kit',
-      detail:
-        'Scrip in your pocket does nothing and half of it is lost when you die. Spend it the moment you can afford the next item in your build.',
-    })
-  }
-
-  if (out.length === 0) {
-    out.push({
-      id: 'next',
-      observation: 'Clean game — nothing obvious to fix',
-      command: 'tap coldstore-cross',
-      detail:
-        'Next step up is map control: a camtap on the crossing shows you the enemy before they arrive, which is what turns good farm into won fights.',
-    })
-  }
-
-  return out.slice(0, 3)
+  const me = props.players.find((p) => p.id === props.currentPlayerId)
+  const enemy = props.players.find((p) => me && p.team !== me.team && p.heroId)
+  return deriveAdvice(s, {
+    csPerMinute: csPerMinute.value,
+    enemyHandle: enemy?.heroId,
+    shopItem: affordableItem(me?.heroId, s.scrip, s.items),
+  })
 })
+
+/** The next item of the hero's build the unspent scrip would have bought. */
+function affordableItem(
+  heroId: string | undefined,
+  scrip: number,
+  owned: readonly (string | null)[],
+): string | undefined {
+  const build = recommendedItemsForRole(heroId ? HEROES[heroId]?.role : undefined)
+  const unowned = build.filter((id) => ITEMS[id] && !owned.includes(id))
+  return (
+    unowned.find((id) => ITEMS[id]!.cost <= scrip) ??
+    // Nothing in the build that cheap: the cheapest step of it, so the advice
+    // still names a real item.
+    [...unowned].sort((a, b) => ITEMS[a]!.cost - ITEMS[b]!.cost)[0]
+  )
+}
 
 // Tutorial completion lands in the DB server-side, but the session payload
 // (and with it the new-player funnel on the landing page and lobby) is stamped
@@ -304,9 +268,9 @@ onMounted(async () => {
         <div class="t-caption mb-2 text-text-muted">
           {{
             isTutorial
-              ? !finishedTutorial
+              ? tutorialEnd === 'left_early'
                 ? '// practice ended'
-                : skipped.length > 0
+                : tutorialEnd === 'drills_skipped'
                   ? `// practice finished — ${skipped.length} drill${skipped.length === 1 ? '' : 's'} skipped`
                   : '// tutorial complete'
               : '// match concluded'
@@ -317,9 +281,9 @@ onMounted(async () => {
           :class="winner === 'chaff' ? 'text-chaff' : 'text-audit'"
         >
           <template v-if="isTutorial">{{
-            !finishedTutorial
+            tutorialEnd === 'left_early'
               ? 'PRACTICE ENDED'
-              : skipped.length > 0
+              : tutorialEnd === 'drills_skipped'
                 ? 'DRILLS SKIPPED'
                 : 'PRACTICE COMPLETE'
           }}</template>
@@ -327,18 +291,19 @@ onMounted(async () => {
         </span>
         <p v-if="isTutorial" class="mt-3 text-sm text-text-dim" data-testid="tutorial-wrapup">
           {{
-            !finishedTutorial
-              ? 'Practice ended early — the drills are still there whenever you want them.'
-              : skipLine
-                ? skipLine
-                : mastered
+            tutorialEnd === 'left_early'
+              ? 'Practice ended — you left before the drills finished. They are still there whenever you want them.'
+              : tutorialEnd === 'drills_skipped'
+                ? (skipLine ??
+                  'Practice finished with drills skipped — run it again to bank the basics.')
+                : tutorialEnd === 'mastered'
                   ? "You've got the basics — move, last-hit, cast, and buy. Ready for a real match?"
                   : 'Practice finished — run it again to bank the basics.'
           }}
         </p>
       </div>
 
-      <!-- Match MVP — the standout performer across both teams -->
+      <!-- Match MVP — the standout performer on the winning team -->
       <div
         v-if="mvp"
         class="anim-fade-in-up flex items-center justify-center gap-3 border p-3"
@@ -456,6 +421,10 @@ onMounted(async () => {
               <div class="t-caption mt-0.5 text-text-muted">
                 try:
                 <code class="ml-1 bg-bg-secondary px-1 text-ability">{{ a.command }}</code>
+                <template v-if="a.followUp">
+                  then
+                  <code class="ml-1 bg-bg-secondary px-1 text-ability">{{ a.followUp }}</code>
+                </template>
               </div>
             </li>
           </ul>

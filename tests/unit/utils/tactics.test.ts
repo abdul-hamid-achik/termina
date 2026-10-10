@@ -489,3 +489,78 @@ describe('incomingDamageBreakdownLastCycle', () => {
     expect(incomingDamageLastCycle(events, 'me', 21)).toBe(218)
   })
 })
+
+// Playtest 3: "Even fight … CONTESTED" at 250/598, 1v1, inside the enemy ICE's
+// zone with four hostile units. That is a losing dive, not an even fight.
+describe('zoneVerdict: inside enemy ICE with their wave', () => {
+  const me = {
+    id: 'me',
+    zone: 'coldstore-t1-audit',
+    alive: true,
+    integ: 250,
+    maxInteg: 598,
+    team: 'chaff',
+  }
+  const foe = { id: 'e1', zone: 'coldstore-t1-audit', alive: true, integ: 500, team: 'audit' }
+  const verdict = (o: { integ?: number; waves?: number; ice?: boolean } = {}) =>
+    zoneVerdict({
+      me: { ...me, integ: o.integ ?? me.integ },
+      allies: [],
+      enemies: [foe],
+      enemyIcePresent: o.ice ?? true,
+      incomingLastCycle: 0,
+      enemyWavesHere: o.waves ?? 4,
+      hasReadyAbility: true,
+    })
+
+  it('the playtest case is DANGER with a step-back line, never "Even fight"', () => {
+    const v = verdict()
+    expect(v.threat.label).toBe('DANGER')
+    expect(v.action).not.toMatch(/Even fight/)
+    expect(v.action).toMatch(/ICE/)
+  })
+
+  it('also with no enemy hero there', () => {
+    const v = zoneVerdict({
+      me,
+      allies: [],
+      enemies: [],
+      enemyIcePresent: true,
+      incomingLastCycle: 0,
+      enemyWavesHere: 2,
+      hasReadyAbility: true,
+    })
+    expect(v.threat.label).toBe('DANGER')
+  })
+
+  it('pushing behind your OWN wave with the ICE busy on it is not a dive (round-4 review)', () => {
+    const push = (o: { ice?: number; friendly?: number }) =>
+      zoneVerdict({
+        me,
+        allies: [],
+        enemies: [],
+        enemyIcePresent: true,
+        incomingLastCycle: o.ice ?? 0,
+        npcIncomingLastCycle: o.ice ?? 0,
+        iceIncomingLastCycle: o.ice ?? 0,
+        enemyWavesHere: 2,
+        friendlyWavesHere: o.friendly ?? 3,
+        hasReadyAbility: true,
+      })
+    // 250/598, their wave AND ours here, the ICE shooting our units: no DANGER.
+    const v = push({})
+    expect(v.threat.label).not.toBe('DANGER')
+    expect(v.action).not.toMatch(/Under their ICE with their wave/)
+    // The ICE turned on you last cycle: it is a dive again.
+    expect(push({ ice: 40 }).threat.label).toBe('DANGER')
+    expect(push({ ice: 40 }).action).toMatch(/Under their ICE with their wave/)
+    // No friendly unit for it to shoot first: a dive.
+    expect(push({ friendly: 0 }).threat.label).toBe('DANGER')
+  })
+
+  it('needs all three: ICE, hostile units, and ≤ half INTEG', () => {
+    expect(verdict({ waves: 0 }).threat.label).toBe('CONTESTED')
+    expect(verdict({ ice: false }).threat.label).toBe('CONTESTED')
+    expect(verdict({ integ: 400 }).threat.label).toBe('CONTESTED')
+  })
+})

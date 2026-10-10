@@ -78,8 +78,11 @@ const {
  *  gameId watcher below handles navigating to /play from there. */
 function onMatchFound(gameId: string) {
   queuePolling.stop()
-  gameStore.gameId = gameId
+  // The status poll answers for the session COOKIE's player; the id paired
+  // with the game must be that same player, never a leftover store id (a guest
+  // who signed in on another tab — playtest 3).
   gameStore.playerId = authStore.user?.id ?? null
+  gameStore.gameId = gameId
 }
 
 /** Consecutive `idle` polls tolerated while we believe we are searching. One or
@@ -113,6 +116,9 @@ function beginPolling() {
 
 async function joinQueue() {
   lobbyStore.clearError()
+  // Queue as the CURRENT session's player — the cookie may have changed since
+  // this tab last read it.
+  await authStore.refreshIdentity()
   try {
     const res = await $fetch<{ success: boolean; queueSize: number; gameId?: string }>(
       '/api/queue/join-neon',
@@ -190,6 +196,9 @@ watch(
 // status-neon once and resume polling if still searching.
 onMounted(async () => {
   startBed()
+  // Resume only the CURRENT session's game: re-read the cookie and drop any
+  // game/lobby state keyed by another player before asking the server.
+  await authStore.refreshIdentity()
   if (!authStore.user?.id) return
   if (lobbyStore.queueStatus === 'idle') {
     await recoverQueueState()
@@ -235,7 +244,9 @@ watch(
   (gId) => {
     if (gId) {
       lobbyLog.info('Navigating to /play', { gameId: gId })
-      if (!gameStore.playerId) gameStore.playerId = authStore.user?.id ?? null
+      // Always the session's id: a stale store id (reset() keeps playerId)
+      // opened the session's game on a channel the session cannot read.
+      gameStore.playerId = authStore.user?.id ?? gameStore.playerId
       router.push('/play')
     }
   },

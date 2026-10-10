@@ -195,16 +195,18 @@ describe('eventToLine: scrip noise suppression', () => {
 })
 
 describe('eventToLine: previously-orphaned events get real text', () => {
-  it('surfaces the power-spike message verbatim', () => {
+  it('narrates a buyback spike from the player id, never the engine prose', () => {
+    // The engine's message embeds the raw `name` — a bot's id (playtest 3).
     const line = eventToLine(
       ev('power_spike', {
-        playerId: 'me',
-        spikeType: 'level_6',
-        message: 'You spiked at level 6!',
+        playerId: 'bot_zeta',
+        spikeType: 'core_item',
+        itemId: 'buyback',
+        message: 'bot_zeta used buyback!',
       }),
-      ctx,
+      { ...ctx, entityLabel: (id) => (id === 'bot_zeta' ? 'Proxy' : String(id)) },
     )!
-    expect(line.text).toBe('You spiked at level 6!')
+    expect(line.text).toBe('Proxy used buyback')
     expect(line.type).toBe('objective')
   })
   it('narrates night/day as objective dividers', () => {
@@ -1348,5 +1350,38 @@ describe('a self-targeted cast says what it gave you', () => {
       collapseStructureDamage,
     ).map((l) => l.text)
     expect(out).toEqual(['Socket cast Phase Shift'])
+  })
+})
+
+describe('buildCombatLines: one level-up line per player per level', () => {
+  const proxy: NarrativeContext = {
+    ...ctx,
+    entityLabel: (id) => (id === 'bot_zeta' ? 'Proxy' : id === 'me' ? 'You' : String(id)),
+  }
+  const up = (playerId: string, level: number, cycle = 5, spike?: string) =>
+    ev('level_up', { playerId, newLevel: level, ...(spike ? { spike } : {}) }, cycle)
+  const objectives = (events: GameEvent[]) =>
+    buildCombatLines(events, proxy, collapseStructureDamage).filter((l) => l.type === 'objective')
+
+  it('a spike level says ultimate online on its one line, labelled (playtest 3)', () => {
+    const lines = objectives([up('bot_zeta', 6, 5, 'level_6')])
+    expect(lines.map((l) => l.text)).toEqual(['Proxy reached level 6 — ultimate online'])
+  })
+
+  it('levels 12 and 18 name the ultimate rank they bring, not "online" again (round-4 review)', () => {
+    const lines = objectives([up('bot_zeta', 12, 5, 'level_12'), up('me', 18, 6, 'level_18')])
+    expect(lines.map((l) => l.text)).toEqual([
+      'Proxy reached level 12 — ultimate rank 2',
+      expect.stringMatching(/reached level 18 — ultimate rank 3$/),
+    ])
+  })
+
+  it('drops a resent level-up for the same player and level', () => {
+    const lines = objectives([up('bot_zeta', 5, 4), up('bot_zeta', 5, 5), up('bot_zeta', 6, 9)])
+    expect(lines.map((l) => l.text)).toEqual(['Proxy reached level 5', 'Proxy reached level 6'])
+  })
+
+  it('keeps different players at the same level apart', () => {
+    expect(objectives([up('bot_zeta', 6), up('me', 6)])).toHaveLength(2)
   })
 })

@@ -75,7 +75,9 @@ describe('POST /api/game/practice', () => {
   it('allows a GUEST session — practice vs bots is the one mode a guest can play', async () => {
     sessionUser = { user: { id: 'guest_abc123' } }
     const result = await handler(makeEvent())
-    expect(result).toEqual({ gameId: expect.any(String) })
+    // playerId = the session's player, so a client that just changed session
+    // (guest → signed in) subscribes as the right player (Ably capability).
+    expect(result).toEqual({ gameId: expect.any(String), playerId: 'guest_abc123' })
     expect(startLiveGameMock).toHaveBeenCalledTimes(1)
   })
 
@@ -119,6 +121,6 @@ describe('POST /api/game/practice', () => {
     sessionUser = { user: { id: 'p1' } }
     startLiveGameMock.mockResolvedValueOnce({ gameId: 'prac_xyz' })
     const result = await handler(makeEvent())
-    expect(result).toEqual({ gameId: 'prac_xyz' })
+    expect(result).toEqual({ gameId: 'prac_xyz', playerId: expect.any(String) })
   })
 })

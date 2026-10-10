@@ -24,6 +24,7 @@ import FxBurst, { type FxKind } from '~/components/game/FxBurst.vue'
 import PostGame from '~/components/lobby/PostGame.vue'
 import TerminalPanel from '~/components/ui/TerminalPanel.vue'
 import { useGameStore } from '~/stores/game'
+import { useAuthStore } from '~/stores/auth'
 import { useSettingsStore } from '~/stores/settings'
 import { useGameTransport } from '~/composables/useGameTransport'
 import {
@@ -89,7 +90,17 @@ import { pathDistance } from '~~/shared/pathfinding'
 import { formatTenant, ticksToClock } from '~/utils/strategy'
 import { incomingDamageBreakdownLastCycle, zoneVerdict } from '~/utils/tactics'
 import { arrowTargetZone } from '~/utils/arrowMove'
-import { computeSituationalActions } from '~/utils/situationalActions'
+import { computeSituationalActions, stripTargetString } from '~/utils/situationalActions'
+import {
+  dedupeNoticeSentences,
+  gateNotice,
+  isMilestoneNotice,
+  isOrderResponseNotice,
+  noticeSpecificity,
+  noticeTopic,
+  WALK_HELD_PREFIX,
+  type NoticeRecord,
+} from '~/utils/noticeGate'
 import { routeGameKey } from '~/utils/gameKeys'
 import { escalateRejection, resetRejectionEscalation } from '~/utils/rejectionEscalation'
 import {
@@ -238,7 +249,14 @@ const shopBlockedReason = computed(() =>
 )
 
 onMounted(() => {
-  if (gameStore.gameId && gameStore.playerId) {
+  // An ended session (/play saw the URL's player differ from the session's —
+  // adoptPlayRoute) shows its panel and subscribes nothing.
+  if (gameStore.sessionEnded) {
+    uiLog.info('GameScreen mounted on an ended session — not connecting', {
+      gameId: gameStore.gameId,
+      reason: gameStore.sessionEndReason,
+    })
+  } else if (gameStore.gameId && gameStore.playerId) {
     uiLog.info('GameScreen connecting', { gameId: gameStore.gameId, playerId: gameStore.playerId })
     gameSocket.connect(gameStore.gameId, gameStore.playerId)
   } else {
@@ -570,16 +588,46 @@ const NOTICE_REPEAT_WINDOW = 10
 const noticeLastCycle = new Map<string, number>()
 /** Texts that arrived as server notices — never toasted. */
 const noticeTexts = new Set<string>()
+/** The last coaching line printed per topic (noticeGate) — so a later, more
+ *  specific notice in the same cycle replaces it instead of stacking. */
+const noticeByTopic = new Map<string, NoticeRecord & { line: (typeof localEvents.value)[number] }>()
 function pushNotice(message: string) {
   noticeTexts.add(message)
+  const cycle = gameStore.cycle
+  // A notice answering the player's own order (a second wrong cast's
+  // correction, a held walk) is news every time it is sent — once per order.
+  const answersOrder = isOrderResponseNotice(message)
   const last = noticeLastCycle.get(message)
-  if (last !== undefined && gameStore.cycle - last < NOTICE_REPEAT_WINDOW) return
-  noticeLastCycle.set(message, gameStore.cycle)
+  if (!answersOrder && last !== undefined && cycle - last < NOTICE_REPEAT_WINDOW) return
+  noticeLastCycle.set(message, cycle)
+  // One sentence per command: a notice that says the same order twice is cut
+  // to the first (noticeGate — playtest 3).
+  const cleaned = dedupeNoticeSentences(message)
   // "Swing now: `attack wave:0`" — say whose unit wave:0 is (both crews share
   // the numbering; playtest2 #9).
   const me = gameStore.player
-  const text = me ? annotateWaveRefs(message, me, gameStore.waves) : message
-  localEvents.value.push({ cycle: gameStore.cycle, text: `>_ ${text}`, type: 'system' })
+  const text = `>_ ${me ? annotateWaveRefs(cleaned, me, gameStore.waves) : cleaned}`
+  if (answersOrder || isMilestoneNotice(message)) {
+    localEvents.value.push({ cycle, text, type: 'system' })
+    return
+  }
+  // One coaching line per topic per short window: the most specific one.
+  const topic = noticeTopic(
+    cleaned,
+    gameStore.mode === 'tutorial' ? gameStore.tutorialStep : undefined,
+  )
+  const prev = noticeByTopic.get(topic)
+  const specificity = noticeSpecificity(cleaned)
+  const verdict = gateNotice(prev, specificity, cycle)
+  if (verdict === 'drop') return
+  if (verdict === 'replace' && prev) {
+    prev.line.text = text
+    prev.specificity = specificity
+    return
+  }
+  localEvents.value.push({ cycle, text, type: 'system' })
+  // The reactive proxy of the pushed line — mutating it re-renders the feed.
+  noticeByTopic.set(topic, { cycle, specificity, line: localEvents.value.at(-1)! })
 }
 
 // The transient AnnouncementToast, retriggered per announcement — except the
@@ -588,6 +636,9 @@ function pushNotice(message: string) {
 const toastText = ref('')
 const toastLevel = ref<typeof gameStore.lastAnnouncementLevel>('warning')
 const toastSeq = ref(0)
+/** Bumped when an order is accepted: the toast's complaint is about an order
+ *  that has now been replaced (AnnouncementToast clearKey). */
+const toastClearKey = ref(0)
 let seenAnnouncementSeq = gameStore.announcementSeq
 watch(
   () => gameStore.announcementSeq,
@@ -735,6 +786,23 @@ watch(
     const buffered = gameStore.consumeBufferedCommand()
     if (buffered) {
       handleCommand(buffered)
+    }
+  },
+)
+
+// The server can DROP a walk: a hero at ≤35% INTEG is held before stepping into
+// a live enemy ICE's zone (moveTarget and attackTarget both nulled, plus a
+// "Holding at <zone>" notice). A walk that ends short of its destination is
+// over — the local memory must not keep showing WALKING to it. Arriving at the
+// walk's own destination is not that (this watcher runs before the arrival one
+// below, which must still announce "You arrive at …"): a retarget to an
+// adjacent zone lands with the server's moveTarget going null on that hop.
+watch(
+  () => gameStore.player?.moveTarget ?? null,
+  (target, prev) => {
+    const p = gameStore.player
+    if (target === null && prev && p && p.zone !== prev && p.zone !== walkTarget.value) {
+      walkTarget.value = null
     }
   },
 )
@@ -1099,6 +1167,7 @@ const heroCritical = computed(() => gameStore.isAlive && hpPct.value <= 15)
 
 let firstTickLogged = false
 const unsubOnMessage = gameSocket.onMessage((msg) => {
+  if (msg.type === 'action_ack' && msg.accepted) toastClearKey.value++
   if (msg.type === 'cycle_state') {
     if (!firstTickLogged) {
       firstTickLogged = true
@@ -1114,6 +1183,9 @@ const unsubOnMessage = gameSocket.onMessage((msg) => {
     // (kill/objective headlines) keeps its line AND its toast.
     if (msg.level === 'warning' && !msg.message.startsWith('[ADMIN]')) pushRejection(msg.message)
     else if (msg.level === 'info') {
+      // A held walk (see the moveTarget watcher): covers a single-hop move,
+      // which never had a server moveTarget to lose.
+      if (msg.message.startsWith(WALK_HELD_PREFIX)) walkTarget.value = null
       const skipped = skippedDrillFromNotice(msg.message)
       if (skipped && !skippedDrills.value.includes(skipped)) {
         skippedDrills.value = [...skippedDrills.value, skipped]
@@ -1816,6 +1888,7 @@ const coachInput = computed<CoachInput | null>(() => {
     strippableWaves: zoneWaves.filter(
       (c) => c.team !== p.team && c.integ / (c.maxInteg || c.integ) <= STRIP_HP_THRESHOLD,
     ).length,
+    stripTarget: stripTargetString(p, gameStore.waves),
     attackableIce: !!enemyIce,
     castsMade: coachCasts.value,
     routeVision: active
@@ -2197,6 +2270,12 @@ const rigVerdict = computed(() => {
     incomingLastCycle: incoming.total,
     npcIncomingLastCycle: incoming.npc,
     iceIncomingLastCycle: incoming.ice,
+    enemyWavesHere: gameStore.waves.filter(
+      (w) => w.zone === p.zone && w.team !== p.team && w.integ > 0,
+    ).length,
+    friendlyWavesHere: gameStore.waves.filter(
+      (w) => w.zone === p.zone && w.team === p.team && w.integ > 0,
+    ).length,
     hasReadyAbility: ['Q', 'W', 'E', 'R'].some((s) => abilityButtonState.value[s]?.ready),
   })
 })
@@ -2339,6 +2418,23 @@ const finishedReplayArchived = computed(
   () => !!gameStore.gameId && gameStore.mode !== 'tutorial' && !gameStore.gameId.startsWith('dev_'),
 )
 
+// The session changed under this tab (a guest signed in elsewhere): re-read it
+// now, so the next game — [NEW PRACTICE] or the lobby — is keyed to the player
+// the cookie names, not the guest this tab still remembers (playtest 3).
+watch(
+  () => gameStore.sessionEndReason,
+  (reason) => {
+    if (reason !== 'changed') return
+    try {
+      void useAuthStore()
+        .fetchUser()
+        .catch(() => {})
+    } catch {
+      // No session layer (story/test harness) — the launchers re-read it anyway.
+    }
+  },
+)
+
 function handlePlayAgain() {
   gameStore.reset()
   navigateTo('/lobby')
@@ -2402,7 +2498,13 @@ function handleReturnToMenu() {
     <!-- Transient action-feedback toast: surfaces server rejections (out of
          range, juked target, firewalled Terminal, not enough BW, …) that would
          otherwise die silently in the store -->
-    <AnnouncementToast :text="toastText" :seq="toastSeq" :level="toastLevel" />
+    <AnnouncementToast
+      :text="toastText"
+      :seq="toastSeq"
+      :level="toastLevel"
+      :cycle="gameStore.cycle"
+      :clear-key="toastClearKey"
+    />
 
     <!-- Instant death vignette pulse, fired on the death EVENT (the overlay below
          waits for authoritative isAlive state, which can lag under latency) -->
@@ -2669,6 +2771,7 @@ function handleReturnToMenu() {
               :in-shop-zone="!!gameStore.player && ZONE_MAP[gameStore.player.zone]?.shop === true"
               :ice="gameStore.ice"
               :team="gameStore.player?.team"
+              :waves="gameStore.waves"
               @command="handleCommand"
             />
           </template>

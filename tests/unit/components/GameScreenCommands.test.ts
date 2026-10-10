@@ -464,6 +464,22 @@ describe('GameScreen commands', () => {
       wrapper.unmount()
     })
 
+    it('announces arrival at an ADJACENT retarget made mid-walk (round-4 review)', async () => {
+      // The server nulls moveTarget on the arriving hop; the walk-dropped
+      // watcher (runs first) used to read that as a held walk and erase the
+      // local destination before the arrival watcher could announce it.
+      seedWalkTick('coldstore-t2-chaff', 240)
+      const wrapper = mountGameScreen()
+      await order(wrapper, 'move rookery-anchor')
+      seedWalkTick('coldstore-t3-chaff', 241, { moveTarget: 'rookery-anchor' })
+      await wrapper.vm.$nextTick()
+      await order(wrapper, 'move coldstore-t2-chaff')
+      seedWalkTick('coldstore-t2-chaff', 242)
+      await wrapper.vm.$nextTick()
+      expect(feed(wrapper)).toContain('▸ You arrive at Coldstore T2 (CHAFF)')
+      wrapper.unmount()
+    })
+
     it('does not narrate the respawn jump as an arrival', async () => {
       seedWalkTick('coldstore-cross', 240)
       const wrapper = mountGameScreen()

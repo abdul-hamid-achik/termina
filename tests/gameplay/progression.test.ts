@@ -27,7 +27,7 @@ describe('progression: leveling up', () => {
     ).toBe(true)
   })
 
-  it('reaching level 6 also fires a power_spike (ultimate online)', async () => {
+  it('reaching level 6 is ONE level_up flagged as the ultimate spike (no duplicate power_spike)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
@@ -38,8 +38,12 @@ describe('progression: leveling up', () => {
 
     const me = await game.me()
     expect(me.level).toBe(6)
-    expect(game.lastEvents.some((e) => e._tag === 'level_up' && e.playerId === HUMAN)).toBe(true)
-    expect(game.lastEvents.some((e) => e._tag === 'power_spike' && e.playerId === HUMAN)).toBe(true)
+    const ups = game.lastEvents.filter((e) => e._tag === 'level_up' && e.playerId === HUMAN)
+    expect(ups).toHaveLength(1)
+    expect(ups[0]).toMatchObject({ newLevel: 6, spike: 'level_6' })
+    expect(game.lastEvents.some((e) => e._tag === 'power_spike' && e.playerId === HUMAN)).toBe(
+      false,
+    )
   })
 
   it('leveling up makes the hero stronger — max INTEG/BW grow, not just the level number', async () => {

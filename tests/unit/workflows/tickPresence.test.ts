@@ -49,6 +49,13 @@ describe('stampPresence', () => {
     expect(out.presenceOffline).toEqual({ 60: ['idle'] })
   })
 
+  it('makes no lookup in a tutorial — it never AFK-converts (its idle budget ends it)', async () => {
+    const lookup = present({ 'game:g:p:idle': [] })
+    const s = { ...state(59, [player('idle', 0)]), mode: 'tutorial' } as GameState
+    expect(await stampPresence('g', s, lookup)).toBe(s)
+    expect(lookup).not.toHaveBeenCalled()
+  })
+
   it('makes no lookup off the AFK cadence (one tick early or late)', async () => {
     const lookup = present({})
     for (const cycle of [58, 60, 61, 118]) {

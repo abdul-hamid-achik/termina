@@ -59,5 +59,5 @@ export default defineEventHandler(async (event) => {
     },
   })
 
-  return { gameId: started.gameId }
+  return { gameId: started.gameId, playerId: humanId }
 })

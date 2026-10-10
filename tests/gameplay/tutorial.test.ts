@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { seedGame, HUMAN, ENEMY } from './harness'
 import { HEROES, HERO_IDS } from '~~/shared/constants/heroes'
 import type { HeroId } from '~~/shared/types/hero'
+import type { GameState } from '~~/shared/types/game'
 import {
   TUTORIAL_STEP_COUNT,
   TUTORIAL_STEP_DEADLINE_CYCLES,
@@ -15,6 +16,23 @@ import { SURRENDER_MIN_CYCLE, STRIP_HP_THRESHOLD, LINE_UNIT_HP } from '~~/shared
 /** Index of a drill in the flow, by id — steps are data, tests shouldn't hardcode positions. */
 const stepIndex = (id: (typeof TUTORIAL_FLOW)[number]['id']): number =>
   TUTORIAL_FLOW.findIndex((s) => s.id === id)
+
+/**
+ * The ICE drill with its skip clock one cycle from spent: the step opened a skip
+ * window (+1) ago and the player's LAST order in it was a full window ago (the
+ * ICE clock runs from the latest order) — the next tick skips it.
+ */
+function iceClockSpent(s: GameState): GameState {
+  const window = TUTORIAL_STEP_DEADLINE_CYCLES * TUTORIAL_SKIP_AFTER_DEADLINES
+  return {
+    ...s,
+    tutorialStepSince: s.cycle - window - 1,
+    players: {
+      ...s.players,
+      [HUMAN]: { ...s.players[HUMAN]!, lastActionCycle: s.cycle - window },
+    },
+  }
+}
 
 /** Did the human's action get rejected with a tutorial-lock hint this cycle? */
 function lockedThisTick(rejected: Array<{ playerId: string; reason: string }>): boolean {
@@ -246,11 +264,7 @@ describe('tutorial mode', () => {
       // graduation off the clock rather than an ice hit keeps the test about
       // "graduation ends the game" — and the skip path is the one a truly
       // stuck player takes anyway.
-      await game.patch((s) => ({
-        ...s,
-        tutorialStep: TUTORIAL_STEP_COUNT - 1,
-        tutorialStepSince: s.cycle - TUTORIAL_STEP_DEADLINE_CYCLES * TUTORIAL_SKIP_AFTER_DEADLINES,
-      }))
+      await game.patch((s) => iceClockSpent({ ...s, tutorialStep: TUTORIAL_STEP_COUNT - 1 }))
       await game.tick()
 
       const s = await game.state()
@@ -307,9 +321,21 @@ describe('tutorial mode', () => {
       // dead-end guarantee) — the design change is that arriving this way is
       // COUNTED: every step records a skip and mastery is denied, so the
       // funnel keeps offering practice instead of stamping a false graduation.
+      // (Playtest 3: the opening drills start their skip clock at the player's
+      // first order — a reader is nudged, never skipped — so the "useless"
+      // player here keeps typing a status readout. The ICE drill, whose skip
+      // ENDS the game, restarts its clock on every order: this player types once
+      // there and stops, and it skips a full skip window after that order —
+      // well inside the tutorial's idle budget.)
       const budget =
         TUTORIAL_STEP_COUNT * (TUTORIAL_STEP_DEADLINE_CYCLES * TUTORIAL_SKIP_AFTER_DEADLINES + 2)
+      const iceAt = stepIndex('ice')
+      let typedInIce = false
       for (let i = 0; i < budget; i++) {
+        const at = (await game.state()).tutorialStep!
+        if (at < iceAt || !typedInIce) game.submit({ type: 'status' })
+        // The order resolved on the step's opening cycle belongs to the step before.
+        if (at === iceAt) typedInIce = true
         await game.tick()
         if ((await game.state()).tutorialStep! >= TUTORIAL_STEP_COUNT) break
       }
@@ -494,10 +520,7 @@ describe('tutorial mode', () => {
 
     it('a skipped drill is COUNTED and denies mastery', async () => {
       const game = await seedAtStep('ice')
-      await game.patch((s) => ({
-        ...s,
-        tutorialStepSince: s.cycle - TUTORIAL_STEP_DEADLINE_CYCLES * TUTORIAL_SKIP_AFTER_DEADLINES,
-      }))
+      await game.patch(iceClockSpent)
       await game.tick()
       const s = await game.state()
       expect(s.tutorialStep).toBe(stepIndex('ice') + 1)

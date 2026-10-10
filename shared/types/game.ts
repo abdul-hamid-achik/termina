@@ -183,6 +183,11 @@ export interface GameState {
    *  yet, no enemy hero in range — eventually times out instead of dead-ending
    *  the player. See TUTORIAL_STEP_DEADLINE_CYCLES. */
   tutorialStepSince?: number
+  /** Cycle of the human's first typed order since the current tutorial step
+   *  began (unset until they act; reset on every step change). Server-only.
+   *  The skip clock of TUTORIAL_SKIP_CLOCK_ON_FIRST_ORDER drills runs from it,
+   *  so a player still reading is nudged but never skipped. */
+  tutorialFirstOrderCycle?: number
   /** How many tutorial steps skipped themselves on exhausted deadlines instead
    *  of being genuinely performed. Server-only. Graduation with any skips ends
    *  the game normally but does NOT persist tutorial completion — see

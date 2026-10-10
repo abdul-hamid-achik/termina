@@ -231,6 +231,17 @@ describe('GameScreen', () => {
       wrapper.unmount()
     })
 
+    it('an ended session (another player’s game URL) shows its panel and subscribes nothing', () => {
+      const store = seedActiveGame()
+      store.endSession('You signed in on another tab — this guest practice ended.', 'changed')
+      const wrapper = mountGameScreen()
+      expect(socketSpies.connect).not.toHaveBeenCalled()
+      expect(wrapper.get('[data-testid="session-ended-overlay"]').attributes('data-reason')).toBe(
+        'changed',
+      )
+      wrapper.unmount()
+    })
+
     it('renders the TraceRail header showing AWAITING ORDERS when the player can act', () => {
       seedActiveGame()
       const wrapper = mountGameScreen()
@@ -532,6 +543,45 @@ describe('GameScreen', () => {
       })
       await wrapper.vm.$nextTick()
       expect(wrapper.find('[data-testid="walk-strip"]').text()).toContain('· 2c')
+      wrapper.unmount()
+    })
+
+    // Playtest 3 server contract: a hero at ≤35% INTEG is HELD before stepping
+    // into enemy ICE — the next cycle_state nulls moveTarget short of the
+    // destination. The strip must not keep showing a walk the server dropped.
+    it('drops the walk the server held short of its destination', async () => {
+      seedMap('rookery-terminal')
+      const wrapper = mountGameScreen()
+      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move coldstore-t1-chaff')
+      await wrapper.vm.$nextTick()
+      seedMap('coldstore-t3-chaff', {
+        players: rosterWalking('coldstore-t3-chaff', 'coldstore-t1-chaff'),
+      })
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-testid="walk-strip"]').exists()).toBe(true)
+
+      seedMap('coldstore-t2-chaff', { cycle: 241 }) // held: moveTarget null, not arrived
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-testid="walk-strip"]').exists()).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('a held single-hop walk ("Holding at …" notice) clears the strip', async () => {
+      seedMap('coldstore-t2-chaff')
+      const wrapper = mountGameScreen()
+      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move coldstore-t1-chaff')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-testid="walk-strip"]').exists()).toBe(true)
+
+      const onMessage = socketSpies.onMessage.mock.calls.at(-1)![0] as (msg: unknown) => void
+      onMessage({
+        type: 'announcement',
+        level: 'info',
+        message:
+          'Holding at coldstore-t2-chaff: INTEG 30% — retype `move coldstore-t1-chaff` to push in anyway',
+      })
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-testid="walk-strip"]').exists()).toBe(false)
       wrapper.unmount()
     })
 

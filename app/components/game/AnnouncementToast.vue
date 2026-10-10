@@ -24,8 +24,20 @@ const props = withDefaults(
     level?: ToastLevel
     /** How long the toast stays up, in ms. */
     durationMs?: number
+    /**
+     * The game cycle. A toast is about the moment it arrived: once the clock is
+     * `maxCycles` past that, it goes whatever the timer says — a rejection
+     * left in the header cycles later read as the CURRENT order failing
+     * (playtest 3). Optional: without it only the timer clears the toast.
+     */
+    cycle?: number
+    /** Cycles a toast may outlive its arrival (see `cycle`). */
+    maxCycles?: number
+    /** Bumped when the player's next order is accepted — that order replaces
+     *  whatever the toast was complaining about, so it clears at once. */
+    clearKey?: number
   }>(),
-  { level: 'warning', durationMs: 3200 },
+  { level: 'warning', durationMs: 3200, cycle: undefined, maxCycles: 2, clearKey: 0 },
 )
 
 const visible = ref(false)
@@ -34,6 +46,14 @@ const shown = ref('')
 // change for the NEXT announcement can't recolour the one on screen.
 const shownLevel = ref<ToastLevel>('warning')
 let timer: ReturnType<typeof setTimeout> | null = null
+/** The cycle the visible toast arrived in (undefined without a `cycle` prop). */
+let shownCycle: number | undefined
+
+function hide() {
+  visible.value = false
+  if (timer) clearTimeout(timer)
+  timer = null
+}
 
 watch(
   () => props.seq,
@@ -41,11 +61,25 @@ watch(
     if (seq <= 0 || !props.text) return
     shown.value = props.text
     shownLevel.value = props.level
+    shownCycle = props.cycle
     visible.value = true
     if (timer) clearTimeout(timer)
-    timer = setTimeout(() => {
-      visible.value = false
-    }, props.durationMs)
+    timer = setTimeout(hide, props.durationMs)
+  },
+)
+
+watch(
+  () => props.cycle,
+  (cycle) => {
+    if (!visible.value || cycle === undefined || shownCycle === undefined) return
+    if (cycle - shownCycle >= props.maxCycles) hide()
+  },
+)
+
+watch(
+  () => props.clearKey,
+  () => {
+    if (visible.value) hide()
   },
 )
 

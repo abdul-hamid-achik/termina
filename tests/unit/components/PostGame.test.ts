@@ -244,7 +244,9 @@ describe('PostGame', () => {
       const wrapper = mountPostGame({ mode: 'tutorial', tutorialComplete: false })
       expect(wrapper.text()).not.toContain('tutorial complete')
       expect(wrapper.text()).toContain('practice ended')
-      expect(wrapper.get('[data-testid="tutorial-wrapup"]').text()).toContain('ended early')
+      expect(wrapper.get('[data-testid="tutorial-wrapup"]').text()).toContain(
+        'you left before the drills finished',
+      )
       // A self-initiated exit must not be framed as a win or a loss.
       expect(wrapper.text()).not.toContain('AUDIT VICTORY')
       expect(wrapper.text()).not.toContain('CHAFF VICTORY')
@@ -265,7 +267,9 @@ describe('PostGame', () => {
       expect(mvp.get('[data-testid="mvp-name"]').text()).toContain('you')
     })
 
-    it('can crown a losing-team player who out-performed everyone', () => {
+    // Playtest 3: a bot from the LOSING team was crowned on a CHAFF VICTORY —
+    // the end screen contradicting its own banner.
+    it('crowns from the winning team even when a loser out-scored everyone', () => {
       const stats = smallStats()
       stats.e1 = makePlayerEndStats({
         kills: 20,
@@ -275,8 +279,9 @@ describe('PostGame', () => {
         heroDamage: 50_000,
       })
       const wrapper = mountPostGame({ stats, winner: 'chaff' })
-      // MVP is the absolute best individual game, even on the losing side.
-      expect(wrapper.get('[data-testid="mvp-name"]').text()).toContain('daemon_carry')
+      const mvp = wrapper.get('[data-testid="post-game-mvp"]')
+      expect(mvp.get('[data-testid="mvp-name"]').text()).not.toContain('daemon_carry')
+      expect(mvp.classes()).toContain('border-chaff/60')
     })
   })
 })
@@ -351,6 +356,7 @@ describe('PostGame after a practice game (playtest2 #7)', () => {
       currentPlayerId: 'guest_b24b52530031',
       mode: 'tutorial',
       tutorialComplete: true,
+      winner: 'audit', // the MVP is the winning side's — the Kernel bot
     })
     const text = wrapper.text()
     expect(text).not.toMatch(/bot_|BOT_ENEMY|local_|guest_b24/)
@@ -376,13 +382,13 @@ describe('PostGame after a practice game (playtest2 #7)', () => {
     expect(wrap).not.toContain("You've got the basics")
   })
 
-  it('pluralises the last-hit observation ("1 wave", not "1 waves")', () => {
+  it('pluralises the last-hit observation ("1 wave unit", not "1 wave units")', () => {
     const wrapper = mountPostGame({
       stats: { ...smallStats(), p1: makePlayerEndStats({ lastHits: 1 }) },
     })
     const text = wrapper.get('[data-testid="what-to-work-on"]').text()
-    expect(text).toContain('You last-hit 1 wave')
-    expect(text).not.toContain('1 waves')
+    expect(text).toContain('You stripped 1 wave unit')
+    expect(text).not.toContain('1 wave units')
   })
 })
 
@@ -491,7 +497,32 @@ describe('PostGame reads the tutorial game_over block', () => {
       tutorialSummary: { completed: false, mastered: false, skipped: [] },
     })
     expect(banner(w)).toContain('PRACTICE ENDED')
-    expect(w.get('[data-testid="tutorial-wrapup"]').text()).toContain('ended early')
+    expect(w.get('[data-testid="tutorial-wrapup"]').text()).toContain(
+      'you left before the drills finished',
+    )
+  })
+
+  // Server contract (playtest 3): game_over.tutorial.reason says WHY it ended.
+  it('the explicit reason wins over the reconstructed fields', () => {
+    const left = mountPostGame({
+      mode: 'tutorial',
+      tutorialComplete: true,
+      tutorialSummary: { completed: true, mastered: false, skipped: [], reason: 'left_early' },
+    })
+    expect(banner(left)).toContain('PRACTICE ENDED')
+    expect(left.get('[data-testid="tutorial-wrapup"]').text()).toContain(
+      'you left before the drills finished',
+    )
+    const skippedRun = mountPostGame({
+      mode: 'tutorial',
+      tutorialSummary: { completed: true, mastered: false, skipped: [], reason: 'drills_skipped' },
+    })
+    expect(banner(skippedRun)).toContain('DRILLS SKIPPED')
+    const clean = mountPostGame({
+      mode: 'tutorial',
+      tutorialSummary: { completed: true, mastered: true, skipped: [], reason: 'mastered' },
+    })
+    expect(banner(clean)).toContain('PRACTICE COMPLETE')
   })
 
   it('falls back to the notice-parsed drills when the block is absent', () => {

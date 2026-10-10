@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import CastPage from '~~/app/pages/cast.vue'
 import { HEROES } from '~~/shared/constants/heroes'
@@ -14,6 +15,9 @@ const mockFetch = vi.fn()
 const mockNavigateTo = vi.fn()
 
 beforeEach(() => {
+  // The practice launcher re-reads the session and resets the game/lobby
+  // stores before opening the new game.
+  setActivePinia(createPinia())
   mockFetch.mockReset()
   mockNavigateTo.mockReset()
   mockFetch.mockResolvedValue({ gameId: 'abc' })

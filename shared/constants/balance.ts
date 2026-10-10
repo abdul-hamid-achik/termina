@@ -408,6 +408,15 @@ export const BURN_XP_RATIO = 0.5
  */
 export const STRIP_HP_THRESHOLD = 0.35
 
+/**
+ * Safe-by-default structure walks (playtest 3): a HELD `attack ice:` /
+ * `attack terminal` walk does not take the hop INTO a zone under a living enemy
+ * ICE (a Terminal never shoots heroes) while the walker's INTEG is at or below this
+ * fraction of max — it holds one hop short and says so. A typed order is never
+ * held (retyping pushes in). See ActionResolver.approachHold.
+ */
+export const APPROACH_HOLD_INTEG_RATIO = 0.35
+
 // ── Assist System ────────────────────────────────────────────────
 
 export const ASSIST_XP_RATIO = 0.5
