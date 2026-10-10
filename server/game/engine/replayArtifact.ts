@@ -43,8 +43,11 @@ export type LoggedAction = ActionLogEntry
  * before the change are EXPECTED to diverge. The hash makes divergence
  * detectable regardless — this is the honest label for "recorded under other
  * rules", not the mechanism.
+ *
+ * 2 (2026-10-10): simultaneous hero swings/casts, auto-breach, cycle-start
+ *   death settlement, simultaneous wave-vs-wave, code-point sort order.
  */
-export const REPLAY_RULESET_VERSION = 1
+export const REPLAY_RULESET_VERSION = 2
 
 /** Per-player scrubber summary — the projection the replay UI renders. */
 export interface FramePlayer {
