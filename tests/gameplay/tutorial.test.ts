@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { seedGame, HUMAN } from './harness'
+import { seedGame, HUMAN, ENEMY } from './harness'
+import { HEROES, HERO_IDS } from '~~/shared/constants/heroes'
+import type { HeroId } from '~~/shared/types/hero'
 import {
   TUTORIAL_STEP_COUNT,
   TUTORIAL_STEP_DEADLINE_CYCLES,
@@ -506,6 +508,216 @@ describe('tutorial mode', () => {
     it('a clean run masters the tutorial (no skips)', async () => {
       const game = await seedGame('fresh', { mode: 'tutorial', mapId: 'one_lane' })
       expect(tutorialMasteryAchieved(await game.state())).toBe(true)
+    })
+  })
+
+  /**
+   * The drill that used to be impossible for control heroes. A scripted newbie
+   * that does exactly what the hints say ("breach <hero>, then cast") must
+   * clear the cast drill for EVERY hero the tutorial can hand out — with zero
+   * skips, well inside the deadline.
+   */
+  describe('the cast drill is completable by every hero', () => {
+    const castAt = stepIndex('cast')
+
+    for (const heroId of HERO_IDS) {
+      it(`${heroId}: breach, then cast, no skip`, async () => {
+        const foeHero: HeroId = heroId === 'daemon' ? 'echo' : 'daemon'
+        const game = await seedGame('fresh', {
+          mode: 'tutorial',
+          mapId: 'one_lane',
+          heroSelf: heroId,
+          heroEnemy: foeHero,
+        })
+        const ZONE = 'coldstore-t2-chaff'
+        await game.patch((s) => ({
+          ...s,
+          tutorialStep: castAt,
+          tutorialStepSince: s.cycle,
+          players: {
+            ...s.players,
+            [HUMAN]: {
+              ...s.players[HUMAN]!,
+              zone: ZONE,
+              level: 1,
+              alive: true,
+              cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+              bw: s.players[HUMAN]!.maxBw,
+            },
+            // The foe starts far away: the early nudge has to bring it.
+            [ENEMY]: { ...s.players[ENEMY]!, zone: 'landing-anchor', alive: true },
+          },
+        }))
+
+        let used = 0
+        for (; used < TUTORIAL_STEP_DEADLINE_CYCLES; used++) {
+          const s = await game.state()
+          if ((s.tutorialStep ?? 0) !== castAt) break
+          const me = s.players[HUMAN]!
+          const foe = s.players[ENEMY]!
+          if (foe.zone === me.zone) {
+            const open = foe.buffs.some((b) => b.id === 'breached' && b.source === HUMAN)
+            if (!open) {
+              game.submit({ type: 'breach', target: { kind: 'hero', name: foe.heroId! } })
+            } else {
+              // The first ability whose target the newbie can supply.
+              for (const slot of ['q', 'w', 'e'] as const) {
+                if (me.cooldowns[slot] > 0) continue
+                const type = HEROES[heroId]!.abilities[slot].targetType as string
+                if (type === 'none' || type === 'self') game.cast(slot)
+                else if (type === 'hero') game.cast(slot, { kind: 'hero', name: foe.heroId! })
+                else if (type === 'zone') game.cast(slot, { kind: 'zone', zone: me.zone })
+                else continue
+                break
+              }
+            }
+          }
+          await game.tick()
+        }
+
+        const end = await game.state()
+        expect(end.tutorialStep, `${heroId} stuck on the cast drill after ${used} cycles`).toBe(
+          castAt + 1,
+        )
+        expect(end.tutorialSkips ?? 0).toBe(0)
+        expect(used).toBeLessThan(TUTORIAL_STEP_DEADLINE_CYCLES)
+      })
+    }
+
+    async function seedCastDrill(heroSelf: HeroId, heroEnemy: HeroId = 'daemon') {
+      const game = await seedGame('fresh', {
+        mode: 'tutorial',
+        mapId: 'one_lane',
+        heroSelf,
+        heroEnemy,
+      })
+      await game.patch((s) => ({
+        ...s,
+        tutorialStep: castAt,
+        tutorialStepSince: s.cycle,
+        players: {
+          ...s.players,
+          [HUMAN]: {
+            ...s.players[HUMAN]!,
+            zone: 'coldstore-t2-chaff',
+            level: 1,
+            alive: true,
+            cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+            bw: s.players[HUMAN]!.maxBw,
+          },
+          [ENEMY]: { ...s.players[ENEMY]!, zone: 'landing-anchor', alive: true },
+        },
+      }))
+      return game
+    }
+
+    it('the held target stays in your zone even when its AI walks it away every single cycle', async () => {
+      const game = await seedCastDrill('echo')
+      for (let i = 0; i < 10; i++) {
+        // what a retreating / advancing bot does between cycles
+        await game.patch((s) => ({
+          ...s,
+          players: { ...s.players, [ENEMY]: { ...s.players[ENEMY]!, zone: 'landing-anchor' } },
+        }))
+        await game.tick()
+        const s = await game.state()
+        expect(s.players[ENEMY]!.zone, `cycle +${i + 1}`).toBe(s.players[HUMAN]!.zone)
+      }
+    })
+
+    it('literal `cast q` on a control hero: the auto-breach counts, the next cast clears it (kernel)', async () => {
+      const game = await seedCastDrill('kernel')
+      let cycles = 0
+      for (; cycles < 8; cycles++) {
+        if (((await game.state()).tutorialStep ?? 0) !== castAt) break
+        const foe = (await game.state()).players[ENEMY]!
+        // the try button's command, aimed at whoever is in the zone — no typed breach
+        game.cast(
+          'q',
+          foe.zone === 'coldstore-t2-chaff' ? { kind: 'hero', name: ENEMY } : undefined,
+        )
+        await game.tick()
+      }
+      const end = await game.state()
+      expect(game.allEvents.some((e) => e._tag === 'breach_opened')).toBe(true)
+      expect(end.tutorialStep).toBe(castAt + 1)
+      expect(end.tutorialSkips ?? 0).toBe(0)
+      expect(cycles).toBeLessThanOrEqual(5)
+    })
+
+    it('literal `cast q` on a non-control hero (echo): taught why, then cleared within a few cycles — no skip', async () => {
+      const game = await seedCastDrill('echo')
+      const notices: string[] = []
+      let cycles = 0
+      for (; cycles < TUTORIAL_STEP_DEADLINE_CYCLES; cycles++) {
+        if (((await game.state()).tutorialStep ?? 0) !== castAt) break
+        const s = await game.state()
+        const me = s.players[HUMAN]!
+        game.cast(
+          'q',
+          s.players[ENEMY]!.zone === me.zone ? { kind: 'hero', name: ENEMY } : undefined,
+        )
+        await game.tick()
+      }
+      void notices
+      const end = await game.state()
+      expect(end.tutorialStep).toBe(castAt + 1)
+      expect(end.tutorialSkips ?? 0).toBe(0)
+      expect(tutorialMasteryAchieved(end)).toBe(true)
+      expect(cycles).toBeLessThanOrEqual(TUTORIAL_FLOW[castAt]!.plainCastAfterCycles! + 6)
+    })
+
+    it('a cast with no breach does not clear the drill (control hero, closed foe)', async () => {
+      const game = await seedGame('fresh', {
+        mode: 'tutorial',
+        mapId: 'one_lane',
+        heroSelf: 'echo',
+        heroEnemy: 'daemon',
+      })
+      await game.patch((s) => ({
+        ...s,
+        tutorialStep: castAt,
+        tutorialStepSince: s.cycle,
+        players: {
+          ...s.players,
+          [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-t2-chaff', level: 1 },
+          [ENEMY]: { ...s.players[ENEMY]!, zone: 'coldstore-t2-chaff' },
+        },
+      }))
+      game.cast('w') // echo's self-cast fires fine — but nothing was breached
+      await game.tick()
+      expect((await game.state()).tutorialStep).toBe(castAt)
+    })
+  })
+
+  describe('the opening is not dead time', () => {
+    it('with an empty lane, a practice unit arrives early and the attack drill clears before the deadline', async () => {
+      const game = await seedGame('fresh', { mode: 'tutorial', mapId: 'one_lane' })
+      const at = stepIndex('attack')
+      await game.patch((s) => ({
+        ...s,
+        tutorialStep: at,
+        tutorialStepSince: s.cycle,
+        waves: [],
+        players: {
+          ...s.players,
+          [HUMAN]: { ...s.players[HUMAN]!, zone: 'coldstore-t2-chaff', alive: true },
+          [ENEMY]: { ...s.players[ENEMY]!, zone: 'landing-anchor' },
+        },
+      }))
+      let cycles = 0
+      for (; cycles < TUTORIAL_STEP_DEADLINE_CYCLES; cycles++) {
+        const s = await game.state()
+        if ((s.tutorialStep ?? 0) !== at) break
+        if (s.waves.some((w) => w.zone === 'coldstore-t2-chaff' && w.team === 'audit')) {
+          game.submit({ type: 'attack', target: { kind: 'wave', index: 0 } })
+        }
+        await game.tick()
+      }
+      const end = await game.state()
+      expect(end.tutorialStep).toBeGreaterThan(at)
+      expect(end.tutorialSkips ?? 0).toBe(0)
+      expect(cycles).toBeLessThan(TUTORIAL_STEP_DEADLINE_CYCLES)
     })
   })
 })

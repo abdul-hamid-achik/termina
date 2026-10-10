@@ -10,6 +10,7 @@ import {
 import {
   collapseStructureDamage,
   buildTickStoryView,
+  buildTickRecaps,
   terminalLabel,
   isStructureTarget,
   teamLabel,
@@ -287,9 +288,39 @@ describe('eventToLine: previously-orphaned events get real text', () => {
     expect(invuln.text).toContain('Harden')
     expect(invuln.text).toContain('coldstore-t1-chaff')
 
-    const cd = eventToLine(ev('harden_on_cooldown', { playerId: 'me', remainingTicks: 120 }), ctx)!
-    expect(cd.text).toContain('120c')
-    expect(cd.salience).toBe('mine-out')
+    // A standing-order re-swing is not rejected: this line is its only report.
+    const standing = eventToLine(
+      ev('ice_invulnerable', { zone: 'coldstore-t1-chaff', playerId: 'me', reported: false }),
+      ctx,
+    )
+    expect(standing?.text).toContain('Hardened')
+  })
+
+  it('prints ONE line per failure for the actor — the rejection, not the event too', () => {
+    // A typed swing at Hardened ice and an early Harden are both refused in the
+    // rejected channel; the matching event must not print a second line for the
+    // actor. Their crew still reads it.
+    expect(
+      eventToLine(
+        ev('ice_invulnerable', { zone: 'coldstore-t1-chaff', playerId: 'me', reported: true }),
+        ctx,
+      ),
+    ).toBeNull()
+    expect(
+      eventToLine(ev('harden_on_cooldown', { playerId: 'me', remainingTicks: 120 }), ctx),
+    ).toBeNull()
+
+    const mate = eventToLine(
+      ev('harden_on_cooldown', { playerId: 'ally1', remainingTicks: 120 }),
+      ctx,
+    )!
+    expect(mate.text).toContain('120c')
+    expect(mate.text).toContain('Harden')
+    const mateIce = eventToLine(
+      ev('ice_invulnerable', { zone: 'coldstore-t1-chaff', playerId: 'ally1', reported: true }),
+      ctx,
+    )
+    expect(mateIce?.text).toContain('Hardened')
   })
 })
 
@@ -697,8 +728,13 @@ describe('narration drift guard', () => {
 
   it('every GameEngineEvent renders a line or is explicitly suppressed', () => {
     const missing: string[] = []
+    // harden_on_cooldown is the crew's line: the actor reads the paired rejection
+    // instead (one line per failure), so it is probed from a team-mate.
+    const ACTOR_SILENCED: Record<string, Record<string, unknown>> = {
+      harden_on_cooldown: { playerId: 'ally1' },
+    }
     for (const tag of unionTags()) {
-      const line = eventToLine(ev(tag, PROBE), ctx)
+      const line = eventToLine(ev(tag, { ...PROBE, ...ACTOR_SILENCED[tag] }), ctx)
       if (SUPPRESSED.has(tag)) {
         expect(line, `${tag} is allow-listed as suppressed but rendered a line`).toBeNull()
       } else if (!line || line.text.trim() === '') {
@@ -922,5 +958,158 @@ describe('eventToLine: damage metadata for the cycle recap', () => {
     expect(line.dmgAmount).toBeUndefined()
     // The narrative line itself still names the hit and its number.
     expect(line.text).toContain('100')
+  })
+})
+
+describe('auto-breach and resisted control lines', () => {
+  it('a converted breach tells me what happened and what to do next', () => {
+    const line = eventToLine(
+      ev('breach_opened', {
+        playerId: 'me',
+        targetId: 'enemy1',
+        durationCycles: 5,
+        fromAbility: 'q',
+        fromAbilityName: 'Interrupt',
+      }),
+      ctx,
+    )!
+    expect(line.text).toBe(
+      'enemy1 was CLOSED — you BREACHED enemy1 instead of Interrupt. Cast again: the breach holds 5 cycles.',
+    )
+    expect(line.salience).toBe('mine-out')
+  })
+  it('a teammate’s converted breach reads as an ordinary breach', () => {
+    const line = eventToLine(
+      ev('breach_opened', {
+        playerId: 'ally1',
+        targetId: 'enemy1',
+        durationCycles: 5,
+        fromAbility: 'q',
+        fromAbilityName: 'Interrupt',
+      }),
+      ctx,
+    )!
+    expect(line.text).toBe('ally1 BREACHED enemy1 (5c)')
+  })
+  it('my resisted control names the status, the target and the fix', () => {
+    const line = eventToLine(
+      ev('control_resisted', {
+        playerId: 'me',
+        targetId: 'enemy1',
+        status: 'taunt',
+        ability: 'e',
+        abilityName: 'Core Dump',
+        reason: 'CLOSED — breach first',
+      }),
+      ctx,
+    )!
+    expect(line.text).toBe(
+      'Your Core Dump taunt on enemy1 was RESISTED — enemy1 is CLOSED, breach first',
+    )
+    expect(line.salience).toBe('mine-out')
+  })
+  it('someone else’s resisted control is third person', () => {
+    const line = eventToLine(
+      ev('control_resisted', {
+        playerId: 'enemy1',
+        targetId: 'me',
+        status: 'feared',
+        ability: 'r',
+        abilityName: 'Panic',
+        reason: 'CLOSED — breach first',
+      }),
+      ctx,
+    )!
+    expect(line.text).toBe("enemy1's Panic fear on You was RESISTED — You are CLOSED")
+  })
+})
+
+describe('buildCombatLines: newly delivered combat events print once', () => {
+  const build = (events: GameEvent[]) =>
+    buildCombatLines(events, ctx, (lines) =>
+      collapseStructureDamage(lines, ({ baseText }) => baseText),
+    )
+
+  it('a delivered damage event renders exactly one second-person line', () => {
+    const lines = build([
+      ev('damage', {
+        sourceId: 'enemy1',
+        targetId: 'me',
+        amount: 80,
+        damageType: 'kinetic',
+        zone: 'z',
+      }),
+    ])
+    expect(lines.map((l) => l.text)).toEqual(['enemy1 hit You for 80 kinetic'])
+    expect(lines[0]!.salience).toBe('mine-in')
+  })
+
+  it('kill + the victim death fold into one kill line carrying the respawn timer', () => {
+    const lines = build([
+      ev('kill', { killerId: 'enemy1', victimId: 'me', assisters: [] }, 10),
+      ev('death', { playerId: 'me', respawnCycle: 22 }, 10),
+    ])
+    expect(lines.map((l) => l.text)).toEqual(['enemy1 terminated You — respawn 12c'])
+    expect(lines[0]!.salience).toBe('mine-in')
+  })
+
+  it('a death with no kill (an NPC finished you) still prints its own line', () => {
+    const lines = build([ev('death', { playerId: 'me', respawnCycle: 22 }, 10)])
+    expect(lines.map((l) => l.text)).toEqual(['You were terminated — respawn 12c'])
+  })
+
+  it('trap_triggered + its damage → one trap line the recap counts once', () => {
+    const lines = build([
+      ev('damage', { sourceId: 'enemy1', targetId: 'me', amount: 40, damageType: 'code' }, 3),
+      ev('trap_triggered', { owner: 'enemy1', targetId: 'me', zone: 'z', damage: 40 }, 3),
+    ])
+    expect(lines).toHaveLength(1)
+    expect(lines[0]!.text).toContain('trap caught You')
+    expect(lines[0]!.dmgAmount).toBe(40)
+    expect(buildTickRecaps(lines).get(3)!.taken).toBe(40)
+  })
+
+  it("Mirror Shell: the bounce is the damage line; the block line doesn't repeat the number", () => {
+    const lines = build([
+      ev('damage', { sourceId: 'ally1', targetId: 'me', amount: 50, damageType: 'code' }, 4),
+      ev(
+        'spell_blocked',
+        { casterId: 'me', targetId: 'ally1', source: 'mirror_shell', reflected: 50 },
+        4,
+      ),
+      // The engine's cast INTEG diff books the same bounce as me hitting myself.
+      ev('damage', { sourceId: 'me', targetId: 'me', amount: 50, damageType: 'code' }, 4),
+    ])
+    expect(lines).toHaveLength(2)
+    expect(lines[1]!.text).toContain('reflected')
+    expect(lines[1]!.text).not.toContain('50')
+    expect(buildTickRecaps(lines).get(4)!.taken).toBe(50)
+  })
+
+  it("someone else's Tenant hits fold out of the story; mine and the aggregate stay", () => {
+    const lines = build([
+      ev('damage', { sourceId: 'me', targetId: 'tenant', amount: 60, damageType: 'kinetic' }, 5),
+      ev('damage', { sourceId: 'ally1', targetId: 'tenant', amount: 70, damageType: 'kinetic' }, 5),
+      ev('tenant_damage', { damage: 130, integ: 870, maxInteg: 1000 }, 5),
+    ])
+    expect(buildTickStoryView(lines).map((l) => l.text)).toEqual([
+      'You hit tenant for 60 kinetic',
+      'Tenant takes 130 (870/1000)',
+    ])
+    expect(lines).toHaveLength(3) // verbose keeps the ally's hit
+  })
+
+  it('lane NPC chip on someone else folds out of the story view; on me it stays', () => {
+    const lines = build([
+      ev('damage', { sourceId: 'wave-3', targetId: 'ally1', amount: 12, damageType: 'kinetic' }, 6),
+      ev(
+        'damage',
+        { sourceId: 'neutral_x_1', targetId: 'enemy1', amount: 9, damageType: 'kinetic' },
+        6,
+      ),
+      ev('damage', { sourceId: 'wave-4', targetId: 'me', amount: 11, damageType: 'kinetic' }, 6),
+    ])
+    expect(buildTickStoryView(lines).map((l) => l.text)).toEqual(['wave-4 hit You for 11 kinetic'])
+    expect(lines).toHaveLength(3) // verbose keeps all three
   })
 })

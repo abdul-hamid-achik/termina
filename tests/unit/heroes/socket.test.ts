@@ -305,7 +305,7 @@ describe('Socket Hero', () => {
   })
 
   describe('Passive: Handshake', () => {
-    it('grants vision buff of attacked target for 5 ticks', () => {
+    it("reveals the attacked target to Socket's team for 5 cycles (the buff the vision pass reads)", () => {
       const player = makePlayer()
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -316,9 +316,15 @@ describe('Socket Hero', () => {
         payload: { attackerId: 'p1', targetId: 'e1' },
       })
 
-      expect(hasBuff(updated.players['p1']!, 'handshake_vision_e1')).toBe(true)
-      const visionBuff = updated.players['p1']!.buffs.find((b) => b.id === 'handshake_vision_e1')
-      expect(visionBuff!.cyclesRemaining).toBe(5)
+      const reveal = updated.players['e1']!.buffs.find((b) => b.id === 'revealed')
+      expect(reveal).toBeDefined()
+      expect(reveal!.cyclesRemaining).toBe(5)
+      // VisionCalculator only honours a reveal whose SOURCE is on the viewing team.
+      expect(reveal!.source).toBe('p1')
+      // The consumer-less marker buff is gone.
+      expect(updated.players['p1']!.buffs.some((b) => b.id.startsWith('handshake_vision_'))).toBe(
+        false,
+      )
     })
 
     it('stacks a link on the target and slows at 3 stacks (Persistent Connection)', () => {
@@ -335,7 +341,7 @@ describe('Socket Hero', () => {
       expect(hasBuff(state.players['e1']!, 'slow')).toBe(false)
       expect(state.players['e1']!.buffs.find((b) => b.id === 'socket_link')!.stacks).toBe(2)
 
-      // Third attack hits 3 stacks → slow 20% for 2 ticks, link resets.
+      // Third attack hits 3 stacks → slow 20% for 2 cycles, link resets.
       state = resolvePassive(state, 'p1', attack)
       const slow = state.players['e1']!.buffs.find((b) => b.id === 'slow')
       expect(slow?.stacks).toBe(20)
@@ -354,7 +360,8 @@ describe('Socket Hero', () => {
         payload: { attackerId: 'e1', targetId: 'p1' },
       })
 
-      expect(hasBuff(updated.players['p1']!, 'handshake_vision_e1')).toBe(false)
+      expect(hasBuff(updated.players['p1']!, 'revealed')).toBe(false)
+      expect(hasBuff(updated.players['e1']!, 'revealed')).toBe(false)
     })
 
     it('does not trigger on non-attack events', () => {
@@ -368,10 +375,7 @@ describe('Socket Hero', () => {
         payload: {},
       })
 
-      const hasVision = updated.players['p1']!.buffs.some((b) =>
-        b.id.startsWith('handshake_vision_'),
-      )
-      expect(hasVision).toBe(false)
+      expect(hasBuff(updated.players['e1']!, 'revealed')).toBe(false)
     })
   })
 })

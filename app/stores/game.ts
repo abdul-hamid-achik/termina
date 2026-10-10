@@ -31,6 +31,10 @@ import { playerNetWorth } from '~/utils/strategy'
 
 /** How many ticks of team net-worth history to keep for the trend sparkline. */
 const NET_WORTH_HISTORY_MAX = 40
+/** How many raw events the feed is rebuilt from. Sized for the fog filter
+ *  delivering every visible damage/heal/status event (a fight in sight is
+ *  dozens per cycle) — the old 200 left barely a minute of scrollback. */
+export const EVENT_HISTORY_CAP = 500
 
 /** How often (ms) the client-side cycle countdown refreshes. */
 const COUNTDOWN_REFRESH_MS = 100
@@ -448,9 +452,8 @@ export const useGameStore = defineStore('game', () => {
   function addEvents(newEvents: GameEvent[]) {
     if (newEvents.length === 0) return
     events.value.push(...newEvents)
-    // Keep last 200 events
-    if (events.value.length > 200) {
-      events.value = events.value.slice(-200)
+    if (events.value.length > EVENT_HISTORY_CAP) {
+      events.value = events.value.slice(-EVENT_HISTORY_CAP)
     }
     // Expose the new batch + bump the monotonic seq so reactive consumers fire
     // even after the 200-cap freezes events.length.

@@ -121,7 +121,7 @@ function resolveQ(
   })
 }
 
-// W: Timeout — silence 1 tick + attack reduction debuff (-20%) for 3 ticks
+// W: Timeout — silence 1 cycle (one gated action) + attack reduction debuff (-20%) for 3 cycles
 function resolveW(
   state: GameState,
   player: PlayerState,
@@ -185,7 +185,7 @@ function resolveW(
   })
 }
 
-// E: Tracepath — self-buff: reveal (vision) + move speed for 3 ticks
+// E: Tracepath — self-buff: vision two hops out for 3 cycles (vision only)
 function resolveE(
   state: GameState,
   player: PlayerState,
@@ -219,7 +219,6 @@ function resolveE(
             ability: 'e',
             buff: 'tracepath',
             visionDuration: 3,
-            speedDuration: 2,
           },
         },
       ],
@@ -227,7 +226,7 @@ function resolveE(
   })
 }
 
-// R: Flood — AoE DoT to all enemies in zone (damage over 3 ticks) + slow 40% for 3 ticks
+// R: Flood — AoE DoT to every enemy hero in the zone at cast (damage over 3 cycles) + 40% slow for 3 cycles
 function resolveR(
   state: GameState,
   player: PlayerState,
@@ -285,7 +284,7 @@ function resolveR(
 }
 
 // ── Passive: Latency ─────────────────────────────────────────────
-// On attack by this player, add 'latency' debuff to target (+1 tick to next cooldown).
+// On attack by this player, add 'latency' debuff to target (+1 cycle to its next ability cooldown).
 
 function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent): GameState {
   if (event.type !== 'attack' || event.payload['attackerId'] !== playerId) return state

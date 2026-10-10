@@ -1,6 +1,7 @@
 import { Effect } from 'effect'
 import type { GameState, PlayerState, GameEvent } from '~~/shared/types/game'
 import type { TargetRef } from '~~/shared/types/commands'
+import { areAdjacent } from '~~/server/game/map/topology'
 import {
   type AbilitySlot,
   type AbilityResult,
@@ -20,6 +21,7 @@ import {
   getBuffStacks,
   updatePlayer,
   updatePlayers,
+  hasBuff,
 } from './_base'
 
 // ── Scaling Values ────────────────────────────────────────────────
@@ -65,7 +67,7 @@ function resolveHeroAbility(
   }
 }
 
-// Q: Allocate — self buff +25 attack for 3 ticks
+// Q: Allocate — self buff +25 attack for 3 cycles
 function resolveQ(
   state: GameState,
   player: PlayerState,
@@ -162,7 +164,7 @@ function resolveW(
   })
 }
 
-// E: Pointer Dereference — dash to enemy, kinetic damage + stun 1 tick
+// E: Pointer Dereference — dash to an enemy (same or adjacent zone), kinetic damage + stun 1 cycle
 function resolveE(
   state: GameState,
   player: PlayerState,
@@ -182,14 +184,44 @@ function resolveE(
     }
 
     const targetPlayer = findTargetPlayer(state, target)
-    if (!targetPlayer || !targetPlayer.alive || targetPlayer.zone !== player.zone) {
+    // Pointer Dereference is a dash: it reaches an enemy in your zone OR an
+    // adjacent one, and carries Malloc into the target's zone ("closing the gap").
+    const dashes = !!targetPlayer && targetPlayer.zone !== player.zone
+    if (
+      !targetPlayer ||
+      !targetPlayer.alive ||
+      (dashes && !areAdjacent(player.zone, targetPlayer.zone))
+    ) {
       return yield* Effect.fail(
-        new InvalidTargetError({ target: target.name, reason: 'Target not in same zone or dead' }),
+        new InvalidTargetError({
+          target: target.name,
+          reason: 'Target not in your zone or an adjacent one, or dead',
+        }),
+      )
+    }
+    // A root pins Malloc in place: the dash half cannot fire, so the cast is
+    // refused before any BW is spent (Hardshell's debuff immunity walks through
+    // it, as it does for a step). A same-zone target needs no dash.
+    if (dashes && hasBuff(player, 'root') && !hasBuff(player, 'airgap')) {
+      return yield* Effect.fail(
+        new InvalidTargetError({
+          target: target.name,
+          reason: `Rooted — Pointer Dereference cannot dash to ${targetPlayer.name}`,
+        }),
       )
     }
 
     let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'e', E_COOLDOWN)
+    const fromZone = caster.zone
+    if (dashes) {
+      // Moving cancels a teleport channel, same as a step does.
+      caster = {
+        ...caster,
+        zone: targetPlayer.zone,
+        buffs: caster.buffs.filter((b) => b.id !== 'tp_channeling' && b.id !== 'tp_destination'),
+      }
+    }
 
     const damage = scaleValue(E_DAMAGE, level)
     let updatedTarget = dealDamage(targetPlayer, damage, 'kinetic')
@@ -215,6 +247,7 @@ function resolveE(
             damageType: 'kinetic',
             effect: 'stun',
             duration: 1,
+            ...(dashes ? { dashedFrom: fromZone, dashedTo: targetPlayer.zone } : {}),
           },
         },
       ],

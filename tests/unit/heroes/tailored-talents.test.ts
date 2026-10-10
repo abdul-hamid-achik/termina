@@ -4,8 +4,8 @@ import { HEROES } from '~~/shared/constants/heroes'
 
 /**
  * Structural guard for the HERO-TAILORED talent trees (replacing the bland
- * generic menu, one hero per increment — see termina-talent-identity). Adding a
- * newly-tailored hero is just appending its id here; this catches the whole
+ * generic menu — see termina-talent-identity). Runs for every hero in the
+ * registry; this catches the whole
  * no-op talent bug class without a bespoke per-hero behavioral test (the engine
  * application itself is proven once in malloc.test.ts + tests/gameplay/talents).
  *
@@ -16,19 +16,9 @@ import { HEROES } from '~~/shared/constants/heroes'
  * nuke. This asserts every tailored damage_boost sits on a real instant-damage
  * ability.
  */
-const TAILORED_HEROES = [
-  'malloc',
-  'cipher',
-  'sentry',
-  'socket',
-  'mutex',
-  'thread',
-  'lambda',
-  'cron',
-  'traceroute',
-  'null_ref',
-  'ping',
-] as const
+// Every hero now has a hand-written tree (the generic placeholder menu is gone),
+// so the guard walks the whole registry instead of a growing allow-list.
+const TAILORED_HEROES = Object.keys(TALENT_TREES) as Array<keyof typeof TALENT_TREES>
 
 describe('Tailored talent trees', () => {
   for (const heroId of TAILORED_HEROES) {
@@ -68,6 +58,15 @@ describe('Tailored talent trees', () => {
             dealsInstantDamage,
             `${heroId} ${t.id} boosts ${t.abilityId} which deals no instant damage (silent no-op)`,
           ).toBe(true)
+        }
+      })
+
+      it('gives every talent a real name (name !== description, no placeholders)', () => {
+        for (const t of Object.values(tree.tiers).flat()) {
+          expect(t.name.trim().length, `${t.id} name`).toBeGreaterThan(0)
+          expect(t.description.trim().toLowerCase(), `${t.id} name === description`).not.toBe(
+            t.name.trim().toLowerCase(),
+          )
         }
       })
 

@@ -3,7 +3,7 @@ import type {
   GameEngineEvent,
   TenantDamageEvent,
   TenantRespawnEvent,
-  TenantKilledInternalEvent,
+  TenantKilledEvent,
   BackupPickedEvent,
 } from '~~/server/game/protocol/events'
 import { TENANT_ATTACK, TENANT_BACKUP_CYCLES, TENANT_SCRIP } from '~~/shared/constants/balance'
@@ -149,7 +149,7 @@ export function processTenantDamage(
       events.push({
         _tag: 'tenant_killed',
         cycle: state.cycle,
-      } satisfies TenantKilledInternalEvent)
+      } satisfies TenantKilledEvent)
 
       return {
         state: { ...state, players, tenant, backup },

@@ -299,6 +299,45 @@ describe('TerminalSystem', () => {
       expect(checkTerminalWin(chaffDown)).toBe('audit')
     })
 
+    describe('both Terminals fall in the same cycle (no draw — a fair tie-break)', () => {
+      const withTerminals = (s: GameState, chaff: number, audit: number, alive: boolean) => ({
+        ...s,
+        terminals: {
+          chaff: { ...s.terminals.chaff, integ: chaff, alive },
+          audit: { ...s.terminals.audit, integ: audit, alive },
+        },
+      })
+      const bothDown = (s: GameState) => withTerminals(s, 0, 0, false)
+
+      it('the Terminal that held more INTEG when the cycle opened wins — either side', () => {
+        const s = makeGameState()
+        expect(checkTerminalWin(bothDown(s), withTerminals(s, 300, 200, true))).toBe('chaff')
+        expect(checkTerminalWin(bothDown(s), withTerminals(s, 200, 300, true))).toBe('audit')
+      })
+
+      it('equal opening INTEG: more of its own ICE standing wins', () => {
+        const s = makeGameState()
+        const start = withTerminals(s, 250, 250, true)
+        const auditIceGone: GameState = {
+          ...bothDown(s),
+          ice: s.ice.map((i) => (i.team === 'audit' ? { ...i, alive: false, integ: 0 } : i)),
+        }
+        expect(checkTerminalWin(auditIceGone, start)).toBe('chaff')
+        const chaffIceGone: GameState = {
+          ...bothDown(s),
+          ice: s.ice.map((i) => (i.team === 'chaff' ? { ...i, alive: false, integ: 0 } : i)),
+        }
+        expect(checkTerminalWin(chaffIceGone, start)).toBe('audit')
+      })
+
+      it('a dead-even cycle falls to the seeded coin, and both sides can win it', () => {
+        const s = makeGameState()
+        const start = withTerminals(s, 250, 250, true)
+        expect(checkTerminalWin(bothDown(s), start, 0)).toBe('chaff')
+        expect(checkTerminalWin(bothDown(s), start, 1)).toBe('audit')
+      })
+    })
+
     it('returns null for legacy states without terminals', () => {
       const state = makeGameState()
       const legacy = { ...state } as Partial<GameState>

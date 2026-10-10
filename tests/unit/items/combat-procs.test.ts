@@ -509,7 +509,7 @@ describe('Item actives — forced movement', () => {
     expect(getDistance(newZone, 'rookery-anchor')).toBeLessThan(
       getDistance('coldstore-cross', 'rookery-anchor'),
     )
-    expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_force_staff')).toBe(true)
+    expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_shove_splice')).toBe(true)
   })
 
   it('kickback_splice pushes the caster away from a targeted enemy', () => {
@@ -539,7 +539,7 @@ describe('Item actives — forced movement', () => {
     )
     // target stays put (push self away).
     expect(r.state.players['p2']!.zone).toBe('coldstore-cross')
-    expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_hurricane_pike')).toBe(true)
+    expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_kickback_splice')).toBe(true)
     // post-thrust attack steroid (read in getEffectiveAttack)
     const steroid = r.state.players['p1']!.buffs.find((b) => b.id === 'kickback_splice_attacks')
     expect(steroid?.stacks).toBe(30)
@@ -637,7 +637,7 @@ describe('Cryo Routine active (was a dead effect — buffs consumed nowhere)', (
     expect(r.state.players['p3']!.integ).toBeLessThan(s3)
     expect(r.state.players['p2']!.buffs.some((b) => b.id === 'slow')).toBe(true)
     expect(r.state.players['p3']!.buffs.some((b) => b.id === 'slow')).toBe(true)
-    expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_shivas_guard')).toBe(true)
+    expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_cryo_routine')).toBe(true)
   })
 
   it('spares allies and out-of-zone enemies', () => {
@@ -778,6 +778,6 @@ describe('Refresher Orb active resets all ability cooldowns', () => {
     })
     const r = run(state, [{ playerId: 'p1', command: { type: 'use', item: 'redline_splice' } }])
     expect(r.state.players['p1']!.cooldowns).toEqual({ q: 0, w: 0, e: 0, r: 0 })
-    expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_refresher_orb')).toBe(true)
+    expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_redline_splice')).toBe(true)
   })
 })

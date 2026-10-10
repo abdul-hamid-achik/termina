@@ -36,6 +36,7 @@ const E_MANA = abilityBwTable('sentry', 'e')
 const E_COOLDOWN = [12, 11, 10, 9] as const
 const E_SLOW_VALUE = 30
 const E_SLOW_DURATION = 2
+const E_REVEAL_DURATION = 2
 
 const R_MANA = abilityBwTable('sentry', 'r')
 const R_COOLDOWN = [60, 55, 50] as const
@@ -64,7 +65,7 @@ function resolveHeroAbility(
   }
 }
 
-// Q: Mend Protocol — heal ally
+// Q: Mend Protocol — heal an allied hero (or Sentry himself)
 function resolveQ(
   state: GameState,
   player: PlayerState,
@@ -122,7 +123,7 @@ function resolveQ(
   })
 }
 
-// W: Barrier — shield ally
+// W: Barrier — shield an allied hero (or Sentry himself)
 function resolveW(
   state: GameState,
   player: PlayerState,
@@ -207,7 +208,7 @@ function resolveW(
   })
 }
 
-// E: Scan Pulse — reveal zone + slow enemies
+// E: Scan Pulse — reveal + slow every enemy hero in the zone
 function resolveE(
   state: GameState,
   player: PlayerState,
@@ -223,13 +224,23 @@ function resolveE(
     caster = setCooldown(caster, 'e', scaleValue(E_COOLDOWN, level))
 
     const enemies = getEnemiesInZone(state, player)
+    // "Reveal zone and slow": every enemy hero standing here is both revealed to
+    // Sentry's team (the buff the vision pass reads) and slowed.
     const slowed = enemies.map((e) =>
-      applyBuff(e, {
-        id: 'slow',
-        stacks: E_SLOW_VALUE,
-        cyclesRemaining: E_SLOW_DURATION,
-        source: player.id,
-      }),
+      applyBuff(
+        applyBuff(e, {
+          id: 'slow',
+          stacks: E_SLOW_VALUE,
+          cyclesRemaining: E_SLOW_DURATION,
+          source: player.id,
+        }),
+        {
+          id: 'revealed',
+          stacks: 1,
+          cyclesRemaining: E_REVEAL_DURATION,
+          source: player.id,
+        },
+      ),
     )
 
     return {
@@ -243,6 +254,7 @@ function resolveE(
             ability: 'e',
             zone: player.zone,
             effect: 'reveal',
+            revealDuration: E_REVEAL_DURATION,
             slow: E_SLOW_VALUE,
             duration: E_SLOW_DURATION,
             targets: enemies.map((e) => e.id),

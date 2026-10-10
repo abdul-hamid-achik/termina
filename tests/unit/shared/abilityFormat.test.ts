@@ -20,14 +20,18 @@ describe('formatEffect', () => {
     expect(formatEffect(effect({ type: 'damage', value: 25 }))).toBe('25 kinetic dmg')
   })
   it('formats durations in cycles', () => {
-    expect(formatEffect(effect({ type: 'slow', value: 30, duration: 2 }))).toBe('30% slow for 2t')
-    expect(formatEffect(effect({ type: 'stun', duration: 1 }))).toBe('stun 1t')
-    expect(formatEffect(effect({ type: 'stun' }))).toBe('stun 1t')
+    expect(formatEffect(effect({ type: 'slow', value: 30, duration: 2 }))).toBe(
+      '30% slow for 2 cycles',
+    )
+    expect(formatEffect(effect({ type: 'stun', duration: 1 }))).toBe('stun 1 cycle')
+    expect(formatEffect(effect({ type: 'stun' }))).toBe('stun 1 cycle')
   })
   it('formats heal / shield / dot / execute', () => {
     expect(formatEffect(effect({ type: 'heal', value: 50 }))).toBe('heal 50')
     expect(formatEffect(effect({ type: 'shield', value: 100 }))).toBe('shield 100')
-    expect(formatEffect(effect({ type: 'dot', value: 90, duration: 3 }))).toBe('90 dmg over 3t')
+    expect(formatEffect(effect({ type: 'dot', value: 90, duration: 3 }))).toBe(
+      '90 dmg over 3 cycles',
+    )
     expect(formatEffect(effect({ type: 'execute', value: 15 }))).toBe('execute < 15% integ')
   })
   it('prefers an authored description for buffs', () => {
@@ -37,12 +41,12 @@ describe('formatEffect', () => {
   })
 
   it.each([
-    [{ type: 'silence', duration: 2 }, 'silence 2t'],
+    [{ type: 'silence', duration: 2 }, 'silence 2 cycles'],
     [{ type: 'silence' }, 'silence'],
-    [{ type: 'root', duration: 2 }, 'root 2t'],
+    [{ type: 'root', duration: 2 }, 'root 2 cycles'],
     [{ type: 'root' }, 'root'],
-    [{ type: 'taunt', duration: 1 }, 'taunt 1t'],
-    [{ type: 'fear', duration: 2 }, 'fear 2t'],
+    [{ type: 'taunt', duration: 1 }, 'taunt 1 cycle'],
+    [{ type: 'fear', duration: 2 }, 'fear 2 cycles'],
     [{ type: 'teleport' }, 'teleport'],
     [{ type: 'reveal' }, 'reveal'],
   ] as const)('formats %o as "%s"', (input, expected) => {
@@ -75,7 +79,7 @@ describe('abilitySummary', () => {
           effect({ type: 'slow', value: 30, duration: 2 }),
         ]),
       ),
-    ).toBe('40 code dmg · 30% slow for 2t')
+    ).toBe('40 code dmg · 30% slow for 2 cycles')
   })
   it('falls back to "utility" when there are no effects', () => {
     expect(abilitySummary(ability([]))).toBe('utility')

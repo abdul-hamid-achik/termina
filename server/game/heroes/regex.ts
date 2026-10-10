@@ -9,6 +9,7 @@ import {
   InvalidTargetError,
   registerHero,
   scaleValue,
+  getAbilityLevel,
   abilityBwTable,
   findTargetPlayer,
   dealAbilityDamage,
@@ -125,7 +126,7 @@ function resolveQ(
   })
 }
 
-// W: Capture Group — root + DoT
+// W: Capture Group — root (one gated action) + DoT
 function resolveW(
   state: GameState,
   player: PlayerState,
@@ -321,7 +322,8 @@ function resolveR(
 }
 
 // ── Passive: Pattern Cache ────────────────────────────────────────
-// Casting an ability on the same target within 3 ticks deals 15% bonus damage.
+// Casting a damaging ability (Match, Capture Group, Catastrophic Backtracking) on the
+// same target within 3 cycles of your last cast on it adds 15% of that ability's damage as bonus code damage.
 
 function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent): GameState {
   if (event.type !== 'ability_cast' || event.payload['playerId'] !== playerId) return state
@@ -340,7 +342,15 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   const lastCastTick = player.buffs.find((b) => b.id === 'patternCacheTick')?.stacks ?? 0
 
   const currentCycle = state.cycle
-  const damage = event.payload['damage'] as number | undefined
+  // Capture Group (W) deals no instant damage, so the cast event carries none —
+  // count its whole damage-over-time total, otherwise the passive's "any damaging
+  // ability" skipped one of the kit's three damaging abilities.
+  const ability = event.payload['ability'] as string | undefined
+  const damage =
+    (event.payload['damage'] as number | undefined) ??
+    (ability === 'w'
+      ? scaleValue(W_DOT_DAMAGE, getAbilityLevel(player.level, 'w')) * W_DOT_DURATION
+      : undefined)
 
   if (lastTarget === targetId && currentCycle - lastCastTick <= 3 && damage) {
     const bonusDamage = Math.round(damage * PATTERN_MATCH_BONUS)

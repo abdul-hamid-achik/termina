@@ -47,7 +47,44 @@ const R_BW_PER_CYCLE = 15
 const PASSIVE_HEAL = 40
 const PASSIVE_TICK_INTERVAL = 4
 
-const DEBUFF_IDS = ['stun', 'silence', 'root', 'slow', 'dot', 'debuff']
+/**
+ * Everything Purge strips: every effect the HUD flags as a debuff (see
+ * app/utils/buffs.ts kind: 'negative') — hard control, slows, damage-over-time,
+ * damage amps and stat shreds — matched by EXACT id. The previous substring list
+ * cleansed stun/silence/root/slow/DoTs and silently left taunt, fear, hex,
+ * Yield, Magic Vuln, Magic Shred, Invalidate, Encryption Key, Timeout and Latency
+ * on the target while the description promised "all debuffs".
+ *
+ * The three deliberate exceptions are not afflictions Purge can scrub:
+ * `breached` is the access state (flushed by `breach self` / AIRGAP), `revealed`
+ * is positional information, and `ethereal` is an item's own trade-off.
+ */
+export const PURGEABLE_DEBUFF_IDS: ReadonlySet<string> = new Set([
+  'stun',
+  'silence',
+  'root',
+  'taunt',
+  'feared',
+  'hex',
+  'slow',
+  'broadcast_slow',
+  'socket_link',
+  'attackReduction',
+  'latency',
+  'veil_discord',
+  'magic_vuln_40',
+  'magicVulnerability',
+  'yield',
+  'mrShred',
+  'antiHeal',
+  'encryptionKey',
+  'dot_magical',
+  'dpi_dot',
+  'flood_dot',
+  'inject_dot',
+  'voidZone_dot',
+])
+export const PURGE_EXEMPT_DEBUFF_IDS: readonly string[] = ['breached', 'revealed', 'ethereal']
 
 // ── Ability Resolver ──────────────────────────────────────────────
 
@@ -70,7 +107,7 @@ function resolveHeroAbility(
   }
 }
 
-// Q: Uptime — Buff target ally: +15 attack, +5 plate for 3 ticks
+// Q: Uptime — Buff target ally: +15 attack, +5 plate for 3 cycles
 function resolveQ(
   state: GameState,
   player: PlayerState,
@@ -173,7 +210,7 @@ function resolveW(
 
     // Remove all debuffs from target
     const cleansedBuffs = (targetPlayer.id === player.id ? caster : targetPlayer).buffs.filter(
-      (b) => !DEBUFF_IDS.some((debuffId) => b.id.includes(debuffId)),
+      (b) => !PURGEABLE_DEBUFF_IDS.has(b.id),
     )
     let updatedTarget =
       targetPlayer.id === player.id
@@ -210,7 +247,7 @@ function resolveW(
   })
 }
 
-// E: Kill Signal — Kinetic damage to target enemy + taunt for 1 tick
+// E: Kill Signal — Kinetic damage to target enemy + taunt for 1 cycle (one gated action)
 function resolveE(
   state: GameState,
   player: PlayerState,

@@ -292,7 +292,7 @@ describe('Daemon Hero', () => {
       const state = makeState([player])
 
       const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'seawall-cross' }),
+        resolveAbility(state, 'p1', 'w', { kind: 'zone', zone: 'seawall-cross' }),
       )
 
       const decoyEvent = result.events.find((e) => e.type === 'decoy_spawned')
@@ -306,7 +306,7 @@ describe('Daemon Hero', () => {
       const state = makeState([player])
 
       const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'seawall-cross' }),
+        resolveAbility(state, 'p1', 'w', { kind: 'zone', zone: 'seawall-cross' }),
       )
 
       const updated = result.state.players['p1']!
@@ -321,7 +321,7 @@ describe('Daemon Hero', () => {
       const state = makeState([player])
 
       const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'seawall-cross' }),
+        resolveAbility(state, 'p1', 'w', { kind: 'zone', zone: 'seawall-cross' }),
       )
 
       const wards = result.state.zones['seawall-cross']!.wards
@@ -337,7 +337,7 @@ describe('Daemon Hero', () => {
       const state = makeState([player])
 
       const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'cache-seawall' }),
+        resolveAbility(state, 'p1', 'r', { kind: 'zone', zone: 'cache-seawall' }),
       )
 
       expect(result.state.players['p1']!.zone).toBe('cache-seawall')
@@ -348,7 +348,7 @@ describe('Daemon Hero', () => {
       const state = makeState([player])
 
       const result = Effect.runSyncExit(
-        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'cache-seawall' }),
+        resolveAbility(state, 'p1', 'r', { kind: 'zone', zone: 'cache-seawall' }),
       )
 
       expect(result._tag).toBe('Failure')
@@ -359,7 +359,7 @@ describe('Daemon Hero', () => {
       const state = makeState([player])
 
       const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'cache-seawall' }),
+        resolveAbility(state, 'p1', 'r', { kind: 'zone', zone: 'cache-seawall' }),
       )
 
       const updated = result.state.players['p1']!
@@ -378,7 +378,7 @@ describe('Daemon Hero', () => {
       const state = makeState([player])
 
       const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'cache-seawall' }),
+        resolveAbility(state, 'p1', 'r', { kind: 'zone', zone: 'cache-seawall' }),
       )
 
       expect(hasBuff(result.state.players['p1']!, 'stealth')).toBe(false)
@@ -395,7 +395,7 @@ describe('Daemon Hero', () => {
       const state = makeState([player])
 
       const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'cache-seawall' }),
+        resolveAbility(state, 'p1', 'r', { kind: 'zone', zone: 'cache-seawall' }),
       )
 
       // R_COOLDOWN (60) − 10

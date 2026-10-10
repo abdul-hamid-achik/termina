@@ -41,10 +41,11 @@ const R_COOLDOWN = 55
 // leftover from the old, inert "-1 move speed" model — making the ult dead.)
 const R_SLOW_PERCENT = [20, 30, 40] as const
 
-const HANDSHAKE_VISION_TICKS = 5
+const HANDSHAKE_VISION_TICKS = 5 // cycles the attacked target stays revealed to Socket's team
 
-// Persistent Connection: basic attacks stack a 'link' on the target; at 3 stacks
-// it's slowed 20% for 2 ticks and the link resets. Stacks persist a short window.
+// Persistent Connection: basic attacks reveal the target (Handshake) and stack a
+// 'link' on it; at 3 stacks it's slowed 20% for 2 cycles and the link resets.
+// Stacks persist a short window.
 const LINK_STACKS_TO_SLOW = 3
 const LINK_SLOW_PERCENT = 20
 const LINK_SLOW_DURATION = 2
@@ -71,7 +72,7 @@ function resolveHeroAbility(
   }
 }
 
-// Q: Bind — root target hero for 2 ticks (can't move but can attack/cast)
+// Q: Bind — root target hero (can't move but can attack/cast)
 function resolveQ(
   state: GameState,
   player: PlayerState,
@@ -253,7 +254,7 @@ function resolveE(
   })
 }
 
-// R: Broadcast — all enemy heroes on map lose 1 movement speed for 3 ticks
+// R: Broadcast — every enemy hero on the map is slowed (% of move attempts fail) for 3 cycles
 function resolveR(
   state: GameState,
   player: PlayerState,
@@ -311,14 +312,6 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   const targetPlayer = state.players[targetId]
   if (!targetPlayer || targetPlayer.heroId === null) return state
 
-  // Vision of the attacked target (Handshake).
-  const updated = applyBuff(player, {
-    id: `handshake_vision_${targetId}`,
-    stacks: 1,
-    cyclesRemaining: HANDSHAKE_VISION_TICKS,
-    source: targetId,
-  })
-
   // Link stack on the target → slow at 3 stacks, then reset.
   const linkStacks = (targetPlayer.buffs.find((b) => b.id === 'socket_link')?.stacks ?? 0) + 1
   let updatedTarget: PlayerState
@@ -344,7 +337,19 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
     })
   }
 
-  return updatePlayers(state, [updated, updatedTarget])
+  // Handshake: vision of the attacked target. 'revealed' is the one buff the
+  // vision pass reads (VisionCalculator.isRevealedToTeam — the viewing team sees the
+  // target through fog for its duration). The old `handshake_vision_<id>` buff on
+  // Socket himself had no reader anywhere, so the passive's first clause was a
+  // sentence with no mechanic behind it.
+  updatedTarget = applyBuff(updatedTarget, {
+    id: 'revealed',
+    stacks: 1,
+    cyclesRemaining: HANDSHAKE_VISION_TICKS,
+    source: playerId,
+  })
+
+  return updatePlayer(state, updatedTarget)
 }
 
 registerHero('socket', resolveHeroAbility, resolveHeroPassive)

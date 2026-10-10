@@ -121,7 +121,7 @@ function resolveQ(
   })
 }
 
-// W: Fork Bomb — create decoy in adjacent zone for 3 ticks
+// W: Fork Bomb — decoy in the target zone for 3 cycles (vision of that zone)
 function resolveW(
   state: GameState,
   player: PlayerState,
@@ -134,11 +134,12 @@ function resolveW(
       return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
-    const zoneId =
-      target?.kind === 'zone' ? target.zone : target?.kind === 'hero' ? target.name : undefined
-    if (!zoneId) {
+    // A ZONE target only (zone:<id>) on a zone of this map — a hero handle is not
+    // a place, and the cast must be refused before BW and cooldown are spent.
+    const zoneId = target?.kind === 'zone' ? target.zone : undefined
+    if (!zoneId || !state.zones[zoneId]) {
       return yield* Effect.fail(
-        new InvalidTargetError({ target: 'none', reason: 'Requires a zone target' }),
+        new InvalidTargetError({ target: zoneId ?? 'none', reason: 'Requires a zone of this map' }),
       )
     }
 
@@ -279,8 +280,7 @@ function resolveR(
       return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
-    const zoneId =
-      target?.kind === 'zone' ? target.zone : target?.kind === 'hero' ? target.name : undefined
+    const zoneId = target?.kind === 'zone' ? target.zone : undefined
     if (!zoneId || !state.zones[zoneId]) {
       return yield* Effect.fail(
         new InvalidTargetError({ target: zoneId ?? 'none', reason: 'Invalid zone target' }),

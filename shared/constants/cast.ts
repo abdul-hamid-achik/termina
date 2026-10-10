@@ -56,7 +56,7 @@ export const CAST: Record<HeroId, OperatorBio> = {
     handleRationale:
       'A background process with no controlling terminal. Legally dead, no flag, never in the foreground. Exact.',
     kitReading:
-      'Stealth Process — go two ticks without acting and the city forgets you are there, because on paper you are not there. The +50% opener is that nobody schedules a guard rotation around a corpse. Inject is a slow poison, the tool of someone who is never in a hurry. Fork Bomb is a false record spawned in a room she is not in. Sudo is not a spell — it is a credential that was never revoked, because the account was never closed. Root Access is the same trick at city scale.',
+      'Stealth Process — go two cycles without acting and the city forgets you are there, because on paper you are not there. The +50% opener is that nobody schedules a guard rotation around a corpse. Inject is a slow poison, the tool of someone who is never in a hurry. Fork Bomb is a false record spawned in a room she is not in. Sudo is not a spell — it is a credential that was never revoked, because the account was never closed. Root Access is the same trick at city scale.',
   },
   kernel: {
     realName: 'Ibrahim Sowah',
@@ -110,7 +110,7 @@ export const CAST: Record<HeroId, OperatorBio> = {
     handleRationale:
       'Her kit is Encryption Key and Encrypt. She strips two defence per hit until the seam is a door.',
     kitReading:
-      'Encryption Key strips 2 defence per hit, stacking to four — the seam being widened, one pass at a time, which is why the tip already tells you to land two attacks before you burst. Encrypt is the badge and the clipboard: two ticks of obviously belonging, broken the instant she does something a visitor would not do. Decrypt reveals and silences, because the thing that actually stops a breach is somebody phoning it in. Brute Force is what she does when the polite way is off the table.',
+      'Encryption Key strips 2 defence per hit, stacking to four — the seam being widened, one pass at a time, which is why the tip already tells you to land two attacks before you burst. Encrypt is the badge and the clipboard: two cycles of obviously belonging, broken the instant she does something a visitor would not do. Decrypt reveals and silences, because the thing that actually stops a breach is somebody phoning it in. Brute Force is what she does when the polite way is off the table.',
   },
   firewall: {
     realName: 'Abel Gebre',
@@ -128,16 +128,16 @@ export const CAST: Record<HeroId, OperatorBio> = {
     handleRationale:
       'A pointer to nothing that crashes whatever dereferences it. Her implant is keyed to kills and does not negotiate.',
     kitReading:
-      "Void Drain is the dose — a kill restores 15% BW and cuts two ticks off every cooldown, so she is at her most capable in the moments immediately after a kill and degrading at all other times. Void Bolt shreds ice because the first thing the implant does is find what is thin. Null Pointer silences: it severs the target's link to their own body, which is precisely what she was built to do. Dereference's execute bonus is her finding the person in the room who is already dying.",
+      "Void Drain is the dose — a kill restores 15% BW and cuts two cycles off every cooldown, so she is at her most capable in the moments immediately after a kill and degrading at all other times. Void Bolt shreds ice because the first thing the implant does is find what is thin. Null Pointer silences: it severs the target's link to their own body, which is precisely what she was built to do. Dereference's execute bonus is her finding the person in the room who is already dying.",
   },
   lambda: {
     realName: 'Nadia Kaur',
     origin: 'street',
-    bio: 'Nadia counts in threes. She was a percussionist before she was anything else — the kind of kid who could hold a triplet against a four while doing her homework — and when she picked up a secondhand deck with a cooked cooling loop, that turned out to be the entire skill. The deck gives her about four seconds before the heat forces a dump. Three commands, then out. She practised the three-in-four until it was muscle, the way she had practised everything else, and now she has the fastest hands in the city on hardware that would kill anyone who thought about it. She still taps.',
+    bio: 'Nadia counts in threes. She was a percussionist before she was anything else — the kind of kid who could hold a triplet against a four while doing her homework — and when she picked up a secondhand deck with a cooked cooling loop, that turned out to be the entire skill. The deck gives her about four cycles before the heat forces a dump. Three commands, then out. She practised the three-in-four until it was muscle, the way she had practised everything else, and now she has the fastest hands in the city on hardware that would kill anyone who thought about it. She still taps.',
     handleRationale:
-      'An anonymous function — quick, composable, gone. Her ability is Closure: three casts inside four ticks.',
+      'An anonymous function — quick, composable, gone. Her ability is Closure: three casts inside four cycles.',
     kitReading:
-      'Closure IS the person — three casts inside four ticks and the fourth is free and 30% harder, because that is the shape her hands make. Invoke is cheap and quick, the note that keeps time. Map is a spread, a hand across the kit. Return is the exit she marks BEFORE the run, because she has never once trusted the deck not to cook. Reduce is the downbeat everything else was leading to, and it only stuns if she actually kept the rhythm.',
+      'Closure IS the person — three casts inside four cycles and the fourth is free and 30% harder, because that is the shape her hands make. Invoke is cheap and quick, the note that keeps time. Map is a spread, a hand across the kit. Return is the exit she marks BEFORE the run, because she has never once trusted the deck not to cook. Reduce is the downbeat everything else was leading to, and it only stuns if she actually kept the rhythm.',
   },
   mutex: {
     realName: 'Dragos Lupu',
@@ -155,16 +155,16 @@ export const CAST: Record<HeroId, OperatorBio> = {
     handleRationale:
       'Latency, made a weapon. Her passive is Latency; her reach ability is ICMP Echo.',
     kitReading:
-      'Latency adds a tick to your next cooldown every time she hits you — she is not killing you, she is making you late, cumulatively. ICMP Echo reaching an ADJACENT zone for 60% is the entire childhood: hit the next building without going to the next building. Timeout silences and drops your damage, cutting your link mid-sentence. Tracepath extends her sight two hops out, which is a girl on a walkway seeing three streets over. Flood makes one zone genuinely not worth standing in.',
+      'Latency adds a cycle to your next cooldown every time she hits you — she is not killing you, she is making you late, cumulatively. ICMP Echo reaching an ADJACENT zone for 60% is the entire childhood: hit the next building without going to the next building. Timeout silences and drops your damage, cutting your link mid-sentence. Tracepath extends her sight two hops out, which is a girl on a walkway seeing three streets over. Flood makes one zone genuinely not worth standing in.',
   },
   cron: {
     realName: 'Perla Batac',
     origin: 'street',
-    bio: "Dr. Perla Batac was struck off for treating people who could not produce a payer, which is the only kind of person on Mercy Lane, and she has continued to do so for eleven years out of a converted laundrette. She works on a clock because she learned trauma medicine somewhere the clock was the only thing keeping anyone honest: every four minutes, look at the room, find the worst one, treat them. She does not distinguish between patients on the basis of who they work for, and has stitched people back together specifically so they could go and try to kill each other again. She calls this 'not my department'.",
+    bio: "Dr. Perla Batac was struck off for treating people who could not produce a payer, which is the only kind of person on Mercy Lane, and she has continued to do so for eleven years out of a converted laundrette. She works on a clock because she learned trauma medicine somewhere the clock was the only thing keeping anyone honest: every fourth cycle, look at the room, find the worst one, treat them. She does not distinguish between patients on the basis of who they work for, and has stitched people back together specifically so they could go and try to kill each other again. She calls this 'not my department'.",
     handleRationale:
-      'A scheduled task. Her ability IS Scheduled Task — every 4th tick, the lowest ally, whether anyone asked or not.',
+      'A scheduled task. Her ability IS Scheduled Task — every 4th cycle, the lowest ally, whether anyone asked or not.',
     kitReading:
-      'Scheduled Task IS rounds — every 4th tick, automatically, the lowest ally in her zone gets treated whether or not anybody asked. Purge is a cleanse because she carries counter-agents for corporate debilitators and knows the dosages by heart. Uptime is stimulants and a shot of confidence. Kill Signal is the part nobody expects: she will taunt a hostile onto herself and eat the hit, because a doctor who will not get between a patient and a weapon is not much of a doctor. Crontab is a field hospital running for four ticks whether or not she is conscious for all of it.',
+      'Scheduled Task IS rounds — every 4th cycle, automatically, the lowest ally in her zone gets treated whether or not anybody asked. Purge is a cleanse because she carries counter-agents for corporate debilitators and knows the dosages by heart. Uptime is stimulants and a shot of confidence. Kill Signal is the part nobody expects: she will taunt a hostile onto herself and eat the hit, because a doctor who will not get between a patient and a weapon is not much of a doctor. Crontab is a field hospital running for four cycles whether or not she is conscious for all of it.',
   },
   traceroute: {
     realName: 'Arun Nadesan',
@@ -173,7 +173,7 @@ export const CAST: Record<HeroId, OperatorBio> = {
     handleRationale:
       'Counts hops. His passive IS Hop Count; his root is TTL. He hits hardest on arrival.',
     kitReading:
-      "Hop Count is momentum — +20% per zone crossed to three stacks, decaying two ticks after he stops. Arrive fast or do not arrive. Probe's +35% against an isolated target is the courier's rule about crowds, inverted and weaponised. TTL is a delayed root: he sets it and it catches you a beat later, the way something left on a rail catches the next thing along. Next Hop marks his own way out BEFORE he commits, which is the only thing separating a courier from a corpse. Full Trace is the whole network lit up at once and two ticks of him moving through it faster than anyone can report him.",
+      "Hop Count is momentum — +20% per zone crossed to three stacks, decaying two cycles after he stops. Arrive fast or do not arrive. Probe's +35% against an isolated target is the courier's rule about crowds, inverted and weaponised. TTL is a root that closes the instant it is set: he lays it on the rail and whatever is standing on it stops. Next Hop marks his own way out BEFORE he commits — one cycle away and the shadow pulls him home — which is the only thing separating a courier from a corpse. Full Trace is the whole network lit up at once and two cycles of him moving through it faster than anyone can report him.",
   },
   thread: {
     realName: 'Teguh Ariwibowo',
@@ -182,7 +182,7 @@ export const CAST: Record<HeroId, OperatorBio> = {
     handleRationale:
       'Concurrency. Multithread, Fork, Sync Barrier — a harness built so one body could tend the machines four used to.',
     kitReading:
-      "Multithread splashes to a second target, and a third at level 10, because the harness was built to do several things at once and does not care that the things are now people. Fork is him spinning up another line. Sync Barrier scales with allies in the zone — a man off a shop floor, whose safety was always other workers standing near him. Yield marks a target so the whole TEAM hits it harder: a foreman's call. Thread Pool is the harness fully open, four ticks of him not picking targets at all, just working the room at rate.",
+      "Multithread splashes to a second target, and a third at level 10, because the harness was built to do several things at once and does not care that the things are now people. Fork is him spinning up another line. Sync Barrier scales with allies in the zone — a man off a shop floor, whose safety was always other workers standing near him. Yield marks a target so the whole TEAM hits it harder: a foreman's call. Thread Pool is the harness fully open, four cycles of him not picking targets at all, just working the room at rate.",
   },
   cache: {
     realName: 'Idris Faruq',

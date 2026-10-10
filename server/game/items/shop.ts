@@ -25,6 +25,15 @@ import {
   isDamageImmune,
 } from '~~/server/game/engine/DamageCalculator'
 
+/**
+ * Buff id that carries an item's active cooldown. The single source of truth for
+ * both the writers (every `use*` below) and the readers (useItem, validateAction,
+ * BotAI, the client). Always keyed by the REAL item id from shared/constants/items.ts.
+ */
+export function itemCooldownId(itemId: string): string {
+  return `item_cd_${itemId}`
+}
+
 // ── Typed Errors ──────────────────────────────────────────────────
 /* eslint-disable unicorn/throw-new-error */
 
@@ -215,7 +224,7 @@ export function useItem(
     }
 
     // Check cooldown (stored as buff)
-    const cdBuff = player.buffs.find((b) => b.id === `item_cd_${itemId}`)
+    const cdBuff = player.buffs.find((b) => b.id === itemCooldownId(itemId))
     if (cdBuff && cdBuff.cyclesRemaining > 0) {
       return yield* Effect.fail(
         new ItemOnCooldownError({ itemId, cyclesRemaining: cdBuff.cyclesRemaining }),
@@ -419,7 +428,7 @@ function useSmokeOfDeceit(state: GameState, player: PlayerState, slot: number): 
 function useDustOfAppearance(state: GameState, player: PlayerState, slot: number): GameState {
   let updated = consumeItem(player, slot)
   updated = applyBuff(updated, {
-    id: 'item_cd_tracer_dust',
+    id: itemCooldownId('tracer_dust'),
     stacks: 1,
     cyclesRemaining: 0, // No cooldown
     source: 'tracer_dust',
@@ -479,7 +488,7 @@ function useBlinkModule(
 
     let updated: PlayerState = { ...player, zone: zoneId }
     updated = applyBuff(updated, {
-      id: 'item_cd_blink_module',
+      id: itemCooldownId('jump_shunt'),
       stacks: 1,
       cyclesRemaining: 12,
       source: 'jump_shunt',
@@ -523,7 +532,7 @@ function useForceStaff(
     // Apply cooldown to caster
     if (targetPlayer.id !== player.id) {
       const caster = applyBuff(player, {
-        id: 'item_cd_force_staff',
+        id: itemCooldownId('shove_splice'),
         stacks: 1,
         cyclesRemaining: 12,
         source: 'shove_splice',
@@ -532,7 +541,7 @@ function useForceStaff(
     }
 
     updated = applyBuff(updated, {
-      id: 'item_cd_force_staff',
+      id: itemCooldownId('shove_splice'),
       stacks: 1,
       cyclesRemaining: 12,
       source: 'shove_splice',
@@ -590,7 +599,7 @@ function useHurricanePike(
       source: 'kickback_splice',
     })
     updated = applyBuff(updated, {
-      id: 'item_cd_hurricane_pike',
+      id: itemCooldownId('kickback_splice'),
       stacks: 1,
       cyclesRemaining: 14,
       source: 'kickback_splice',
@@ -619,7 +628,7 @@ function useSilverEdge(state: GameState, player: PlayerState): GameState {
     source: 'ghostwire_edge',
   })
   updated = applyBuff(updated, {
-    id: 'item_cd_silver_edge',
+    id: itemCooldownId('ghostwire_edge'),
     stacks: 1,
     cyclesRemaining: 18,
     source: 'ghostwire_edge',
@@ -656,7 +665,7 @@ function useBurnout(
     const newInteg = Math.max(0, targetPlayer.integ - damage)
 
     const updatedCaster = applyBuff(player, {
-      id: 'item_cd_burnout',
+      id: itemCooldownId('burnout'),
       stacks: 1,
       cyclesRemaining: 18,
       source: 'burnout',
@@ -706,7 +715,7 @@ function useEtherealBlade(
     })
 
     const updatedCaster = applyBuff(player, {
-      id: 'item_cd_ethereal_blade',
+      id: itemCooldownId('phase_shim'),
       stacks: 1,
       cyclesRemaining: 15,
       source: 'phase_shim',
@@ -726,7 +735,7 @@ function useFirewallItem(state: GameState, player: PlayerState): GameState {
     source: 'ablative_shell',
   })
   updated = applyBuff(updated, {
-    id: 'item_cd_firewall_item',
+    id: itemCooldownId('ablative_shell'),
     stacks: 1,
     cyclesRemaining: 30,
     source: 'ablative_shell',
@@ -742,7 +751,7 @@ function useBlackKingBar(state: GameState, player: PlayerState): GameState {
     source: 'hardshell',
   })
   updated = applyBuff(updated, {
-    id: 'item_cd_hardshell',
+    id: itemCooldownId('hardshell'),
     stacks: 1,
     cyclesRemaining: 25,
     source: 'hardshell',
@@ -758,7 +767,7 @@ function useBladeMail(state: GameState, player: PlayerState): GameState {
     source: 'spite_plate',
   })
   updated = applyBuff(updated, {
-    id: 'item_cd_spite_plate',
+    id: itemCooldownId('spite_plate'),
     stacks: 1,
     cyclesRemaining: 18,
     source: 'spite_plate',
@@ -774,7 +783,7 @@ function useGhostScepter(state: GameState, player: PlayerState): GameState {
     source: 'phase_shunt',
   })
   updated = applyBuff(updated, {
-    id: 'item_cd_ghost_scepter',
+    id: itemCooldownId('phase_shunt'),
     stacks: 1,
     cyclesRemaining: 20,
     source: 'phase_shunt',
@@ -806,7 +815,7 @@ function useLotusOrb(
   // Apply cooldown to caster
   if (targetPlayer.id !== player.id) {
     const caster = applyBuff(player, {
-      id: 'item_cd_lotus_orb',
+      id: itemCooldownId('mirror_shell'),
       stacks: 1,
       cyclesRemaining: 15,
       source: 'mirror_shell',
@@ -815,7 +824,7 @@ function useLotusOrb(
   }
 
   updated = applyBuff(updated, {
-    id: 'item_cd_lotus_orb',
+    id: itemCooldownId('mirror_shell'),
     stacks: 1,
     cyclesRemaining: 15,
     source: 'mirror_shell',
@@ -834,7 +843,7 @@ function useStackOverflow(state: GameState, player: PlayerState): GameState {
     source: 'stack_overflow',
   })
   updated = applyBuff(updated, {
-    id: 'item_cd_stack_overflow',
+    id: itemCooldownId('stack_overflow'),
     stacks: 1,
     cyclesRemaining: 20,
     source: 'stack_overflow',
@@ -849,7 +858,7 @@ function useRefresherOrb(state: GameState, player: PlayerState): GameState {
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
   }
   updated = applyBuff(updated, {
-    id: 'item_cd_refresher_orb',
+    id: itemCooldownId('redline_splice'),
     stacks: 1,
     cyclesRemaining: 40,
     source: 'redline_splice',
@@ -893,7 +902,7 @@ function useEulsScepter(
     // Apply cooldown to caster
     if (targetPlayer.id !== player.id) {
       const caster = applyBuff(player, {
-        id: 'item_cd_euls_scepter',
+        id: itemCooldownId('stasis_shunt'),
         stacks: 1,
         cyclesRemaining: 15,
         source: 'stasis_shunt',
@@ -902,7 +911,7 @@ function useEulsScepter(
     }
 
     updated = applyBuff(updated, {
-      id: 'item_cd_euls_scepter',
+      id: itemCooldownId('stasis_shunt'),
       stacks: 1,
       cyclesRemaining: 15,
       source: 'stasis_shunt',
@@ -946,7 +955,7 @@ function useScytheOfVyse(
     })
 
     const updatedCaster = applyBuff(player, {
-      id: 'item_cd_scythe_of_vyse',
+      id: itemCooldownId('lockout_shunt'),
       stacks: 1,
       cyclesRemaining: 20,
       source: 'lockout_shunt',
@@ -971,7 +980,7 @@ function useVeilOfDiscord(state: GameState, player: PlayerState): GameState {
   )
   // Only the cooldown marker stays on the caster.
   const caster = applyBuff(player, {
-    id: 'item_cd_veil_of_discord',
+    id: itemCooldownId('discord_routine'),
     stacks: 1,
     cyclesRemaining: 15,
     source: 'discord_routine',
@@ -1000,7 +1009,7 @@ function useShivasGuard(state: GameState, player: PlayerState): GameState {
     players[enemy.id] = { ...slowed, integ: Math.max(0, slowed.integ - dmg) }
   }
   players[player.id] = applyBuff(player, {
-    id: 'item_cd_shivas_guard',
+    id: itemCooldownId('cryo_routine'),
     stacks: 1,
     cyclesRemaining: 20,
     source: 'cryo_routine',

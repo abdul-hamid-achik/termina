@@ -211,9 +211,16 @@ describe('combat', () => {
     expect((await game.player(ENEMY)).alive).toBe(true) // not lethal, just a chip
 
     // Tick 2 (within the window): drop the enemy to 1 INTEG and let the HUMAN finish it.
+    // The ally's attack is a standing order — stand it down, or it swings again
+    // in the same cycle and (attacks being simultaneous) an equal hitter's
+    // credit goes to the sorted-first id.
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [ENEMY]: { ...s.players[ENEMY]!, integ: 1 } },
+      players: {
+        ...s.players,
+        [ENEMY]: { ...s.players[ENEMY]!, integ: 1 },
+        [ALLY]: { ...s.players[ALLY]!, attackTarget: null },
+      },
     }))
     const allyBefore = await game.player(ALLY)
     game.attackHero(ENEMY, HUMAN)
@@ -1085,6 +1092,9 @@ describe('attackType basic-attack mitigation (R4-08)', () => {
 })
 
 describe('BREACH teaching rejection (R4-11)', () => {
+  // Auto-breach: with breach available the cast becomes a breach (see
+  // autoBreach.test.ts). The teaching rejection remains for a caster who
+  // cannot breach — here, breach is on cooldown.
   it('casting a stun at a closed target names the target and the word breach', async () => {
     // kernel Q = Interrupt stun
     const game = await seedGame('laning_combat', { heroSelf: 'kernel', heroEnemy: 'echo' })
@@ -1097,6 +1107,7 @@ describe('BREACH teaching rejection (R4-11)', () => {
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
           bw: 300,
           maxBw: 300,
+          buffs: [{ id: 'item_cd_breach', stacks: 1, cyclesRemaining: 3, source: HUMAN }],
         },
         [ENEMY]: {
           ...s.players[ENEMY]!,

@@ -120,7 +120,7 @@ function resolveQ(
   })
 }
 
-// W: Encrypt — stealth for 2 ticks
+// W: Encrypt — stealth for 2 cycles (broken by attacking or taking damage)
 function resolveW(
   state: GameState,
   player: PlayerState,
@@ -134,11 +134,15 @@ function resolveW(
 
     let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'w', W_COOLDOWN)
-    caster = applyBuff(caster, {
+    // Stamped with the cast cycle: hits that land in the SAME cycle were
+    // committed alongside the cast (batch clock) and must not cancel it — see
+    // the passive below.
+    caster = applyBuff(removeBuff(caster, 'stealth'), {
       id: 'stealth',
       stacks: 1,
       cyclesRemaining: 2,
       source: player.id,
+      appliedCycle: state.cycle,
     })
 
     return {
@@ -154,7 +158,7 @@ function resolveW(
   })
 }
 
-// E: Decrypt — reveal target for 3 ticks + silence for 1 tick
+// E: Decrypt — reveal target for 3 cycles + silence for 1 cycle (one gated action)
 function resolveE(
   state: GameState,
   player: PlayerState,
@@ -285,9 +289,32 @@ function resolveR(
 }
 
 // ── Passive: Encryption Key ─────────────────────────────────────
-// Each attack reduces target plate by 2 for 3 ticks, stacking up to 4.
+// Each attack reduces target plate by 2 for 3 cycles, stacking up to 4.
 
 function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent): GameState {
+  // Encrypt's stealth ends the moment Cipher does something a visitor would not:
+  // attacking, or taking damage ("Taking damage or attacking breaks stealth").
+  // Her own Q/E/R already drop it in their resolvers; the basic attack and the
+  // incoming hit are the two routes that did not, so a stealthed Cipher could
+  // swing and be hit while staying invisible. Mirrors daemon's Stealth Process.
+  // Encrypt's own cast event is excluded or it would cancel itself, and so is
+  // every hit of the cycle Encrypt was cast in: the passive sees the whole
+  // cycle's damage at once, and a swing or DoT that landed alongside the cast
+  // was committed in the same batch — it must not cancel the stealth before it
+  // has ever been up. A hit in any later cycle breaks it as before.
+  const self = state.players[playerId]
+  const stealth = self?.buffs.find((b) => b.id === 'stealth')
+  if (self && stealth) {
+    const attacked = event.type === 'attack' && event.payload['attackerId'] === playerId
+    const hit =
+      event.type === 'damage_taken' &&
+      event.payload['targetId'] === playerId &&
+      stealth.appliedCycle !== event.cycle
+    if (attacked || hit) {
+      state = updatePlayer(state, removeBuff(self, 'stealth'))
+    }
+  }
+
   if (event.type !== 'attack' || event.payload['attackerId'] !== playerId) return state
 
   const player = state.players[playerId]

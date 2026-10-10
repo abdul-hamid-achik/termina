@@ -531,7 +531,7 @@ describe('Shop', () => {
         expect(has('enemy_2', 'veil_discord')).toBe(false) // out of zone
         // Caster no longer self-debuffs; it just holds the cooldown marker.
         expect(has('player_1', 'veil_discord')).toBe(false)
-        expect(has('player_1', 'item_cd_veil_of_discord')).toBe(true)
+        expect(has('player_1', 'item_cd_discord_routine')).toBe(true)
       }
     })
 
@@ -1004,7 +1004,7 @@ describe('Shop', () => {
         expect(s.players['enemy_2']!.integ).toBe(600)
         expect(s.players['enemy_2']!.buffs.some((b) => b.id === 'slow')).toBe(false)
         // Caster keeps only the cooldown marker.
-        expect(s.players['player_1']!.buffs.some((b) => b.id === 'item_cd_shivas_guard')).toBe(true)
+        expect(s.players['player_1']!.buffs.some((b) => b.id === 'item_cd_cryo_routine')).toBe(true)
       }
     })
 
@@ -1055,7 +1055,7 @@ describe('Shop', () => {
         // Reflect buff lands on the ally; the caster only carries the cooldown.
         expect(s.players['ally_1']!.buffs.some((b) => b.id === 'mirror_shell')).toBe(true)
         expect(s.players['player_1']!.buffs.some((b) => b.id === 'mirror_shell')).toBe(false)
-        expect(s.players['player_1']!.buffs.some((b) => b.id === 'item_cd_lotus_orb')).toBe(true)
+        expect(s.players['player_1']!.buffs.some((b) => b.id === 'item_cd_mirror_shell')).toBe(true)
       }
     })
 

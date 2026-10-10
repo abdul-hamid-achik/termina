@@ -110,6 +110,10 @@ function resolveQ(
     // (max 3 stacks = +60%). Previously the stacks built up but nothing read them.
     damage = Math.round(damage * getHopCountMultiplier(player))
 
+    // Full Trace (R): "+50% damage". The buff was only read by the basic-attack
+    // multiplier, so the one damaging ability in the kit ignored it.
+    damage = Math.round(damage * (1 + getBuffStacks(player, 'fullTraceDmg') / 100))
+
     const updatedTarget = dealDamage(targetPlayer, damage, 'kinetic')
 
     return {
@@ -132,7 +136,7 @@ function resolveQ(
   })
 }
 
-// W: TTL — Apply root debuff to target for 2 ticks
+// W: TTL — root the target now (immediate, one gated action; no delay)
 function resolveW(
   state: GameState,
   player: PlayerState,
@@ -187,8 +191,8 @@ function resolveW(
   })
 }
 
-// E: Next Hop — Drop a return shadow at the current zone. After E_SHADOW_DURATION
-// ticks the shadow expires and snaps the caster back to where it was dropped (the
+// E: Next Hop — Drop a return shadow at the current zone. When the shadow expires
+// (end of the NEXT cycle: one cycle of action away) the caster is snapped back to where it was dropped (the
 // teleport-back is resolved in _base.ts cycleAllBuffs, keyed off the buff's
 // `destination`). Lets Traceroute dive a lane, do damage, then bounce to safety.
 function resolveE(
@@ -232,7 +236,7 @@ function resolveE(
   })
 }
 
-// R: Full Trace — Reveal all enemies for 3 ticks + self damage buff 50% for 2 ticks
+// R: Full Trace — Reveal all enemies for 3 cycles + self damage buff 50% (basic attacks and Probe) for 2 cycles
 function resolveR(
   state: GameState,
   player: PlayerState,
@@ -289,7 +293,8 @@ function resolveR(
 
 // ── Passive: Hop Count ───────────────────────────────────────────
 // On 'move' event by this player, increment hopCount stacks (max 3).
-// Each stack = +20% damage. Stacks decay after 2 ticks of no movement.
+// Each stack = +20% damage on basic attacks and Probe (EffectiveStats.getAttackMultiplier
+// + resolveQ). Stacks decay after 2 cycles of no movement.
 
 function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent): GameState {
   if (event.type !== 'move') return state

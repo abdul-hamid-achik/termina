@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { useGameStore } from '~~/app/stores/game'
+import { useGameStore, EVENT_HISTORY_CAP } from '~~/app/stores/game'
 import type { CycleStateMessage, PlayerEndStats } from '~~/shared/types/protocol'
 import type { PlayerState, GameEvent, TeamState, ZoneRuntimeState } from '~~/shared/types/game'
 
@@ -705,19 +705,17 @@ describe('Game Store', () => {
         expect(store.events).toHaveLength(2)
       })
 
-      it('caps events at 200', () => {
+      it('caps events at EVENT_HISTORY_CAP, keeping the newest', () => {
         const store = useGameStore()
 
-        // Add 250 events
-        const batch: GameEvent[] = Array.from({ length: 250 }, (_, i) => ({
+        const batch: GameEvent[] = Array.from({ length: EVENT_HISTORY_CAP + 50 }, (_, i) => ({
           cycle: i,
           type: 'test',
           payload: {},
         }))
         store.addEvents(batch)
 
-        expect(store.events).toHaveLength(200)
-        // Should keep the last 200
+        expect(store.events).toHaveLength(EVENT_HISTORY_CAP)
         expect(store.events[0]!.cycle).toBe(50)
       })
     })
@@ -1013,16 +1011,16 @@ describe('Game Store — overhaul state (fog-safe lastSeen / net worth / objecti
     expect(store.allyPlayers.map((p) => p.id)).toEqual(['a1'])
   })
 
-  it('bumps eventSeq + exposes latestEvents so game-feel survives the 200-cap', () => {
+  it('bumps eventSeq + exposes latestEvents so game-feel survives the event cap', () => {
     const store = useGameStore()
     const mk = (n: number): GameEvent[] =>
       Array.from({ length: n }, (_, i) => ({ cycle: 1, type: 'damage', payload: { amount: i } }))
-    store.addEvents(mk(150))
-    expect(store.events.length).toBe(150)
+    store.addEvents(mk(EVENT_HISTORY_CAP - 50))
+    expect(store.events.length).toBe(EVENT_HISTORY_CAP - 50)
     const seqAfter150 = store.eventSeq
-    // Push past the 200 cap — events.length pins at 200 but eventSeq keeps moving.
+    // Push past the cap — events.length pins at the cap but eventSeq keeps moving.
     store.addEvents(mk(100))
-    expect(store.events.length).toBe(200)
+    expect(store.events.length).toBe(EVENT_HISTORY_CAP)
     expect(store.eventSeq).toBe(seqAfter150 + 100)
     expect(store.latestEvents.length).toBe(100)
   })

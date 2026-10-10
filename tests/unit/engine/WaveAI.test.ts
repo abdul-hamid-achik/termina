@@ -885,3 +885,54 @@ describe('WaveAI', () => {
     })
   })
 })
+
+describe('wave-vs-wave fights are simultaneous (batch clock)', () => {
+  const CYCLE = 600 // non-default time: escalated wave damage, well past spawn.
+  const dmg = waveUnitAttack('line', CYCLE)
+
+  function fight(order: 'chaff-first' | 'audit-first', chaffInteg: number, auditInteg: number) {
+    const chaff = makeWave({ id: 'wc', team: 'chaff', zone: 'coldstore-cross', integ: chaffInteg })
+    const audit = makeWave({ id: 'wa', team: 'audit', zone: 'coldstore-cross', integ: auditInteg })
+    const state = makeGameState({
+      cycle: CYCLE,
+      waves: order === 'chaff-first' ? [chaff, audit] : [audit, chaff],
+    })
+    return applyWaveActions(state, runWaveAI(state)).state
+  }
+
+  it.each(['chaff-first', 'audit-first'] as const)(
+    'mutually lethal blows both land, whatever the array order (%s)',
+    (order) => {
+      const after = fight(order, dmg, dmg)
+      expect(after.waves.map((w) => w.id)).toEqual([])
+    },
+  )
+
+  it.each(['chaff-first', 'audit-first'] as const)(
+    'a unit downed this cycle still lands its blow on the survivor (%s)',
+    (order) => {
+      const after = fight(order, dmg, dmg * 10)
+      expect(after.waves.find((w) => w.id === 'wc')).toBeUndefined()
+      const survivor = after.waves.find((w) => w.id === 'wa')!
+      expect(survivor.integ).toBe(dmg * 10 - dmg)
+    },
+  )
+
+  it('shares the kill XP with each side that downed the other', () => {
+    const laners = {
+      c: makePlayer({ id: 'c', team: 'chaff', zone: 'coldstore-cross', xp: 0 }),
+      a: makePlayer({ id: 'a', team: 'audit', zone: 'coldstore-cross', xp: 0 }),
+    }
+    const state = makeGameState({
+      cycle: CYCLE,
+      players: laners,
+      waves: [
+        makeWave({ id: 'wc', team: 'chaff', zone: 'coldstore-cross', integ: dmg }),
+        makeWave({ id: 'wa', team: 'audit', zone: 'coldstore-cross', integ: dmg }),
+      ],
+    })
+    const after = applyWaveActions(state, runWaveAI(state)).state
+    expect(after.players['c']!.xp).toBeGreaterThan(0)
+    expect(after.players['a']!.xp).toBe(after.players['c']!.xp)
+  })
+})

@@ -15,13 +15,19 @@ import { findPath } from '~~/shared/pathfinding'
 import { HEROES, isHeroId } from '~~/shared/constants/heroes'
 import { scripLead, formatScripShort, sparkline } from '~/utils/strategy'
 import { getTalentTree, talentUnlockLevel } from '~~/shared/constants/talents'
-import { getAbilityBwCost } from '~~/shared/utils/ability'
+import {
+  getAbilityBwCost,
+  abilityTargetError,
+  abilityReach,
+  abilityExcludesSelf,
+} from '~~/shared/utils/ability'
 import {
   BUYBACK_BASE_COST,
   BUYBACK_COST_PER_LEVEL,
   SURRENDER_MIN_CYCLE,
   BURN_HP_THRESHOLD,
   STRIP_HP_THRESHOLD,
+  BREACH_BW_COST,
   waveUnitMaxHp,
 } from '~~/shared/constants/balance'
 
@@ -108,6 +114,28 @@ function hpPct(p: PlayerState): number {
  * with a resolved target string, or `{ error }` when there's no valid target
  * so the caller can surface a hint instead of burning the cycle.
  */
+/** A learned, ready slot of the caster's kit that fires with no team-mate in
+ *  reach (self / untargeted / a self-viable heal or shield), other than `not`. */
+function selfCastableSlot(player: PlayerState, not: AbilityDef): string | null {
+  const hero = player.heroId ? HEROES[player.heroId] : undefined
+  if (!hero) return null
+  for (const slot of ['q', 'w', 'e', 'r'] as const) {
+    const def = hero.abilities[slot]
+    if (!def || def.id === not.id) continue
+    if (slot === 'r' && player.level < 6) continue
+    if ((player.cooldowns?.[slot] ?? 0) > 0) continue
+    const t = def.targetType as string
+    const selfOk =
+      t === 'self' ||
+      t === 'none' ||
+      (t === 'ally' &&
+        !abilityExcludesSelf(def) &&
+        def.effects.some((e) => e.type === 'heal' || e.type === 'shield' || e.type === 'buff'))
+    if (selfOk) return slot
+  }
+  return null
+}
+
 export function pickAbilityTargetString(
   ability: AbilityDef,
   player: PlayerState,
@@ -124,16 +152,52 @@ export function pickAbilityTargetString(
     targetType === 'ally' ||
     ((targetType === 'hero' || targetType === 'unit') && isSupportiveAbility(ability))
   ) {
-    const selfViable = ability.effects.some((e) => e.type === 'heal' || e.type === 'shield')
+    const selfViable =
+      !abilityExcludesSelf(ability) &&
+      ability.effects.some((e) => e.type === 'heal' || e.type === 'shield')
     const candidates = selfViable ? [...allies, player] : allies
-    if (candidates.length === 0) return { error: `No ally in your zone for ${ability.name}` }
+    if (candidates.length === 0) {
+      // Say why, and what WILL fire: a buff like Uptime needs a team-mate, so a
+      // quick `cast q` alone in the lane (the tutorial's try button) should
+      // point at a slot that works on yourself instead of just refusing.
+      const alt = selfCastableSlot(player, ability)
+      return {
+        error: `No ally in your zone for ${ability.name} — it needs a team-mate, not you${
+          alt ? `. Try \`cast ${alt}\`` : ''
+        }`,
+      }
+    }
     const target = candidates.reduce((a, b) => (hpPct(a) <= hpPct(b) ? a : b))
     return { target: `hero:${target.id}` }
   }
 
   if (targetType === 'hero' || targetType === 'unit') {
-    if (enemies.length === 0) return { error: `No enemy in your zone for ${ability.name}` }
-    const target = enemies.reduce((a, b) => (a.integ < b.integ ? a : b))
+    // Aim where the engine will accept: a few abilities reach past the caster's
+    // own zone (Ping's ICMP Echo, Malloc's dash) or ONLY next door (Socket's
+    // Accept). The same-zone pick below used to hand those a target the resolver
+    // then refused, or no target at all when the only enemy stood next door.
+    const reach = abilityReach(ability)
+    const adjacentZones = ZONE_MAP[player.zone]?.adjacentTo ?? []
+    const nextDoor = Object.values(allPlayers).filter(
+      (p) => p.alive && p.team !== player.team && adjacentZones.includes(p.zone),
+    )
+    const pool =
+      reach === 'adjacent'
+        ? nextDoor
+        : reach === 'near' && enemies.length === 0
+          ? nextDoor
+          : enemies
+    if (pool.length === 0) {
+      return {
+        error:
+          reach === 'adjacent'
+            ? `No enemy in a neighbouring zone for ${ability.name}`
+            : reach === 'near'
+              ? `No enemy in your zone or next door for ${ability.name}`
+              : `No enemy in your zone for ${ability.name}`,
+      }
+    }
+    const target = pool.reduce((a, b) => (a.integ < b.integ ? a : b))
     return { target: `hero:${target.id}` }
   }
 
@@ -715,6 +779,46 @@ function hasDebuff(player: PlayerState, type: DebuffType): boolean {
  * instead of wasting the player's one action this cycle.
  * Returns an error string, or null if the command would be accepted.
  */
+/** Hard-control effect types — mirrors the engine's HARD_CONTROL_BUFF_IDS
+ *  (server/game/heroes/_base.ts), with the `fear` effect applying `feared`. */
+const HARD_CONTROL_EFFECTS: ReadonlySet<string> = new Set([
+  'stun',
+  'silence',
+  'root',
+  'taunt',
+  'fear',
+  'hex',
+  'cyclone',
+])
+
+/**
+ * The CLOSED enemy a single-target hard-control cast is aimed at, or null —
+ * mirrors the engine's closedControlTarget: alive enemy hero in the caster's
+ * zone, not breached, not airgapped, and the ability is `targetType: 'hero'` with a control effect.
+ */
+function closedControlTarget(
+  ability: AbilityDef,
+  player: PlayerState,
+  target: TargetRef | undefined,
+  context: GameContext,
+): PlayerState | null {
+  if (target?.kind !== 'hero' || ability.targetType !== 'hero') return null
+  if (!ability.effects.some((e) => HARD_CONTROL_EFFECTS.has(e.type))) return null
+  const needle = target.name.toLowerCase()
+  const found = Object.values(context.allPlayers).find(
+    (p) => p.id === target.name || p.heroId === target.name || p.name.toLowerCase() === needle,
+  )
+  // Outside the caster's zone (or fogged — no zone) the cast is left to the
+  // engine's resolver: a dash/swap lands and the control fizzles. Same rule as
+  // the engine's closedControlTarget.
+  if (!found || found.zone !== player.zone) return null
+  if (found.team === player.team || !found.alive) return null
+  const buffs = found.buffs ?? []
+  if (buffs.some((b) => b.id === 'breached' && b.cyclesRemaining > 0)) return null
+  if (buffs.some((b) => b.id === 'airgap')) return null
+  return found
+}
+
 export function validateCommand(command: Command, context: GameContext): string | null {
   const player = context.player
   if (!player) return null
@@ -875,6 +979,23 @@ export function validateCommand(command: Command, context: GameContext): string 
       if (command.ability === 'r' && player.level < 6) return 'Ultimate unlocks at level 6'
       const cd = player.cooldowns[command.ability]
       if (cd > 0) return `${ability.name} on cooldown (${cd} cycle${cd === 1 ? '' : 's'})`
+      // Auto-breach mirror (ActionResolver.convertClosedControlCast): hard
+      // control aimed at a CLOSED enemy becomes a breach of that enemy when the
+      // caster can breach — so it is NOT refused for the ability's own BW — and
+      // is refused with the engine's blocker text when the caster cannot.
+      const closed = closedControlTarget(ability, player, command.target, context)
+      if (closed) {
+        const n = closed.name
+        if (player.bw < BREACH_BW_COST) {
+          return `${n} is CLOSED — need ${BREACH_BW_COST} BW to breach ${n} (have ${Math.floor(player.bw)})`
+        }
+        const bcd = player.buffs.find((b) => b.id === 'item_cd_breach' && b.cyclesRemaining > 0)
+        if (bcd) {
+          const c = bcd.cyclesRemaining
+          return `${n} is CLOSED — breach ready in ${c} cycle${c === 1 ? '' : 's'}`
+        }
+        return null
+      }
       // What the ENGINE will charge at this level, not the rank-1 figure in the
       // registry. Validating against the flat cost told the player a cast was
       // affordable and then the server refused it — the pre-flight existed
@@ -883,6 +1004,33 @@ export function validateCommand(command: Command, context: GameContext): string 
       if (player.bw < cost) {
         return `Not enough BW (need ${cost}, have ${player.bw})`
       }
+      // Same question the engine asks before it spends anything (shared rule):
+      // a heal thrown at an enemy, a Bind thrown at a team-mate, or a Daemon
+      // zone cast at a hero handle is refused here instead of burning the cycle.
+      const gameZones = context.visibleZones
+      const hasGameZones = Object.keys(gameZones).length > 0
+      const targetError = abilityTargetError(
+        ability,
+        player.team,
+        command.target,
+        {
+          hero: (ref) => {
+            if (ref.kind !== 'hero') return undefined
+            const found = Object.values(context.allPlayers).find(
+              (p) =>
+                p.id === ref.name ||
+                p.heroId === ref.name ||
+                p.name.toLowerCase() === ref.name.toLowerCase(),
+            )
+            return found ? { id: found.id, name: found.name, team: found.team } : undefined
+          },
+          // `visibleZones` is this game's full zone set; before it hydrates, fall back to
+          // the global ids (the engine still has the final say).
+          zoneExists: (zone) => (hasGameZones ? !!gameZones[zone] : ZONE_IDS.includes(zone)),
+        },
+        player.id,
+      )
+      if (targetError) return targetError
       return null
     }
     case 'buy': {
@@ -1128,7 +1276,14 @@ export function useCommands() {
         if (!['q', 'w', 'e', 'r'].includes(ability))
           return { command: null, error: 'Usage: cast <q|w|e|r> [target]' }
         const targetStr = tokens[2]
-        const target = targetStr ? parseTarget(targetStr) : undefined
+        let target = targetStr ? parseTarget(targetStr) : undefined
+        // `cast w seawall` — a bare zone word names a zone for the zone-aimed casts
+        // (Daemon's Fork Bomb / Root Access). Heroes and `zone:`-prefixed targets
+        // were already handled above, so this only ever rescues an unparsed word.
+        if (targetStr && !target) {
+          const resolved = resolveZoneAlias(targetStr, team)
+          if (ZONE_IDS.includes(resolved)) target = { kind: 'zone', zone: resolved }
+        }
         return { command: { type: 'cast', ability, target: target ?? undefined }, error: null }
       }
 

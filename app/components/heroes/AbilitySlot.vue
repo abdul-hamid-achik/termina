@@ -8,7 +8,7 @@ const props = defineProps<{
   /** Display key: Q / W / E / R, or ◆ for the passive. */
   slotKey: string
   ability: AbilityDef
-  /** Ticks of cooldown remaining; 0/undefined = ready. */
+  /** Cycles of cooldown remaining; 0/undefined = ready. */
   cooldownRemaining?: number
   /** Current BW, to dim unaffordable casts; undefined = not tracked. */
   bwAvailable?: number
@@ -62,7 +62,7 @@ function onClick() {
       </span>
       <span class="text-[0.85rem] font-bold text-text-primary">{{ ability.name }}</span>
       <span v-if="onCooldown" class="ml-auto text-[0.7rem] text-gold"
-        >CD {{ cooldownRemaining }}t</span
+        >CD {{ cooldownRemaining }}c</span
       >
       <span v-else-if="unaffordable" class="ml-auto text-[0.7rem] text-audit">no bw</span>
     </div>

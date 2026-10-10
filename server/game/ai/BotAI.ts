@@ -33,7 +33,7 @@ import { TERMINAL_ZONES } from '~~/server/game/engine/TerminalSystem'
 import { fastGameFactor } from '~~/server/game/engine/fastGame'
 import { getAbilityLevel } from '~~/server/game/heroes/_base'
 import { getAbilityBwCost } from '~~/shared/utils/ability'
-import { getBotDifficultyConfig, type BotDifficultyConfig } from './BotManager'
+import { getBotDifficultyConfig, isGameBot, type BotDifficultyConfig } from './BotManager'
 
 // Item build orders now live in shared/constants/itemBuilds (the SINGLE source
 // shared with the shop UI, which recommends them to the human player). The bot
@@ -129,6 +129,32 @@ function needsBreach(target: PlayerState, ability: AbilityDef): boolean {
     ability.damageType === 'code' ||
     ability.effects.some((e) => e.type === 'damage' && e.damageType === 'code')
   return hardControl || primarilyCode
+}
+
+/** True when the ability carries single-target hard control (refused outright by a closed target). */
+function carriesHardControl(ability: AbilityDef): boolean {
+  return ability.effects.some((e) => HARD_CONTROL_EFFECTS.has(e.type))
+}
+
+/**
+ * What to do with a single-target cast at an enemy hero: just `cast`, `breach`
+ * first, or `skip` the cast. Hard control into a CLOSED target is refused by the
+ * engine ("<target> is CLOSED — breach <target> first"), so a bot that cannot
+ * breach this cycle (no BW, or breach on cooldown) must not open with it. Easy
+ * bots (threatAssessment off) stay naive on purpose and cast anyway.
+ */
+function closedTargetGate(
+  bot: PlayerState,
+  enemy: PlayerState,
+  ability: AbilityDef,
+  config: BotDifficultyConfig,
+): 'cast' | 'breach' | 'skip' {
+  if (!config.threatAssessment || !needsBreach(enemy, ability)) return 'cast'
+  const onCooldown = bot.buffs.some((b) => b.id === 'item_cd_breach' && b.cyclesRemaining > 0)
+  if (bot.bw >= BREACH_BW_COST && !onCooldown) return 'breach'
+  // Code damage into a closed target still lands (halved) when BW is short, but
+  // a breach on cooldown keeps the old conservative skip; hard control never lands.
+  return onCooldown || carriesHardControl(ability) ? 'skip' : 'cast'
 }
 
 /** Canonical shop cost; an unknown item is treated as unaffordable (never bought). */
@@ -639,6 +665,37 @@ export function shouldRetreatFromThreat(
   return false
 }
 
+/**
+ * Will this enemy hero walk out of the zone THIS cycle?
+ *
+ * The batch clock resolves movement before attacks and casts, so an order aimed
+ * at a hero who retreats lands on an empty room ("Target is not in your zone")
+ * and burns the bot's one action. For an enemy BOT the retreat rule is a pure
+ * function of state (shouldRetreatFromThreat, including its deterministic
+ * reaction roll), so it can be read ahead of time. Humans are not predictable
+ * — they may stand and fight — so they are always treated as staying. A hero in
+ * its own shop zone buys/stands instead of walking, so it is not predicted
+ * to leave either.
+ */
+function predictsFlight(state: GameState, enemy: PlayerState, gameId: string | undefined): boolean {
+  if (!gameId || !isGameBot(gameId, enemy.id)) return false
+  if (isShopZoneFor(enemy.zone, enemy.team)) return false
+  // A hero who cannot step this cycle cannot flee: validateAction refuses the
+  // move of a rooted / stunned / taunted hero (Hardshell walks through those
+  // three) and of a cycloned or hexed one. Idling beside a held, low-INTEG
+  // enemy — the tutorial's pinned foe included — wastes the kill.
+  if (cannotMoveThisCycle(enemy)) return false
+  return shouldRetreatFromThreat(state, enemy, getBotDifficultyConfig(gameId, enemy.id))
+}
+
+/** Mirrors validateAction's move gate: would a `move` from this hero be refused? */
+function cannotMoveThisCycle(p: PlayerState): boolean {
+  const ids = new Set(p.buffs.map((b) => b.id))
+  if (ids.has('cyclone') || ids.has('hex')) return true
+  if (ids.has('airgap')) return false
+  return ids.has('root') || ids.has('stun') || ids.has('taunt')
+}
+
 function tryGetAbilityCommand(
   state: GameState,
   bot: PlayerState,
@@ -666,17 +723,15 @@ function tryGetAbilityCommand(
     }
     // R4-12: medium+ bots breach before hard control / code into a closed target.
     // Easy bots (threatAssessment off) stay naive — they cast and waste the cycle.
-    if (config.threatAssessment && target.kind === 'hero' && bot.bw >= BREACH_BW_COST) {
+    if (target.kind === 'hero') {
       const enemy = enemiesInZone.find(
         (e) => e.id === target.name || e.name === target.name || e.heroId === target.name,
       )
-      if (enemy && needsBreach(enemy, ability)) {
-        if (bot.buffs.some((b) => b.id === 'item_cd_breach' && b.cyclesRemaining > 0)) {
-          // On cooldown — don't waste the cast into a closed target either;
-          // fall through to the next ability.
-          continue
-        }
-        return { type: 'breach', target }
+      if (enemy) {
+        const gate = closedTargetGate(bot, enemy, ability, config)
+        if (gate === 'breach') return { type: 'breach', target }
+        // Can't open this one (no breach available) — try the next ability.
+        if (gate === 'skip') continue
       }
     }
     return { type: 'cast', ability: slot, target }
@@ -844,17 +899,13 @@ function tryCombo(
           return { type: 'cast', ability: nextAbility.ability }
         }
         // R4-12: breach before the next combo step if the target is closed.
-        if (config.threatAssessment && target.kind === 'hero' && bot.bw >= BREACH_BW_COST) {
+        if (target.kind === 'hero') {
           const ability = HEROES[heroId]!.abilities[nextAbility.ability]
           const enemy = enemiesInZone.find(
             (e) => e.id === target.name || e.name === target.name || e.heroId === target.name,
           )
-          if (
-            enemy &&
-            ability &&
-            needsBreach(enemy, ability) &&
-            !bot.buffs.some((b) => b.id === 'item_cd_breach' && b.cyclesRemaining > 0)
-          ) {
+          const gate = enemy && ability ? closedTargetGate(bot, enemy, ability, config) : 'cast'
+          if (gate === 'breach') {
             // Don't advance combo index — re-try this step next cycle after breach.
             comboStates.set(bot.id, {
               currentCombo: comboState.currentCombo,
@@ -862,6 +913,11 @@ function tryCombo(
               lastComboTick: state.cycle,
             })
             return { type: 'breach', target }
+          }
+          if (gate === 'skip') {
+            // Can't breach — abandon the rotation rather than burn the cycle.
+            comboStates.delete(bot.id)
+            return null
           }
         }
         return { type: 'cast', ability: nextAbility.ability, target }
@@ -915,9 +971,24 @@ function tryCombo(
         comboStates.delete(bot.id)
         continue
       }
-      return target === null
-        ? { type: 'cast', ability: firstAbility.ability }
-        : { type: 'cast', ability: firstAbility.ability, target }
+      if (target === null) return { type: 'cast', ability: firstAbility.ability }
+      // The opener is the cast most often fired into a closed target: breach
+      // first (re-opening the combo next cycle) or, if that's impossible, don't
+      // start a rotation whose first step the engine will refuse.
+      if (target.kind === 'hero') {
+        const enemy = enemiesInZone.find(
+          (e) => e.id === target.name || e.name === target.name || e.heroId === target.name,
+        )
+        const gate = enemy
+          ? closedTargetGate(bot, enemy, HEROES[heroId]!.abilities[firstAbility.ability], config)
+          : 'cast'
+        if (gate !== 'cast') {
+          comboStates.delete(bot.id)
+          if (gate === 'breach') return { type: 'breach', target }
+          continue
+        }
+      }
+      return { type: 'cast', ability: firstAbility.ability, target }
     }
   }
   return null
@@ -1714,12 +1785,9 @@ export function decideBotAction(
     // Buyback when the game needs us (Terminal threatened or allies teamfighting)
     const buybackCmd = tryBuyback(state, bot, hasZone)
     if (buybackCmd) return buybackCmd
-    if (bot.respawnCycle !== null && state.cycle >= bot.respawnCycle) {
-      const fountain = getFountainZone(bot.team)
-      if (bot.zone !== fountain) {
-        return { type: 'move', zone: fountain }
-      }
-    }
+    // No order here: a dead player's orders are always refused ("Player is
+    // dead"), and the respawn that revives it (end of cycle) already places it
+    // AT its fountain — a walk-home move was dead on arrival every single time.
     return null
   }
   // Any shop zone, not just the fountain. Bases sell too, and a bot walks
@@ -1835,23 +1903,31 @@ export function decideBotAction(
     if (backupCmd) return backupCmd
   }
   const enemyWaves = getEnemyWavesInZone(state, bot)
-  if (enemyHeroes.length > 0) {
+  // Enemies who stay to fight. A hero about to retreat is gone before any attack
+  // or cast resolves (movement phase first), so aiming at it only wastes the
+  // action; if EVERY enemy here is leaving, fall through to farming/pushing.
+  const engageable = enemyHeroes.filter((e) => !predictsFlight(state, e, gameId))
+  if (enemyHeroes.length > 0 && engageable.length === 0) {
+    const denyLeaving = tryBurn(state, bot, config)
+    if (denyLeaving) return denyLeaving
+  }
+  if (engageable.length > 0) {
     // Pop a combat item (Hardshell/Spite Plate to survive, Stack Overflow/Veil to amp)
     // before committing to a combo or right-click. One use per cycle, naturally
     // rate-limited by each item's cooldown, so this can't starve the bot's
     // damage — it falls through to the combo/ability/attack below once items
     // are spent or on cooldown.
-    const itemCmd = tryUseCombatItem(bot, enemyHeroes, getAlliedHeroesInZone(state, bot), config)
+    const itemCmd = tryUseCombatItem(bot, engageable, getAlliedHeroesInZone(state, bot), config)
     if (itemCmd) return itemCmd
-    const comboCmd = tryCombo(state, bot, enemyHeroes, config)
+    const comboCmd = tryCombo(state, bot, engageable, config)
     if (comboCmd) return comboCmd
-    const abilityCmd = tryGetAbilityCommand(state, bot, enemyHeroes, config)
+    const abilityCmd = tryGetAbilityCommand(state, bot, engageable, config)
     if (abilityCmd) return abilityCmd
     // Below the burst, above the right-click: denying a dying allied wave
     // starves the laner opposite of scrip + XP for the same one action.
     const denyCmd = tryBurn(state, bot, config)
     if (denyCmd) return denyCmd
-    const target = enemyHeroes.reduce((a, b) => (a.integ < b.integ ? a : b))
+    const target = engageable.reduce((a, b) => (a.integ < b.integ ? a : b))
     return { type: 'attack', target: { kind: 'hero', name: target.id } }
   }
   // Win condition: hit the enemy Terminal when standing in their base and it's exposed

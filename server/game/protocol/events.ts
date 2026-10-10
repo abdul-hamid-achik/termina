@@ -1,4 +1,5 @@
-import type { TeamId } from '~~/shared/types/game'
+import type { GameState, TeamId } from '~~/shared/types/game'
+import { ZONE_MAP, ZONES } from '~~/shared/constants/zones'
 import type { DamageType } from '~~/shared/types/hero'
 
 // ── Tagged game event types ─────────────────────────────────────
@@ -10,6 +11,9 @@ export interface DamageEvent {
   readonly targetId: string
   readonly amount: number
   readonly damageType: DamageType
+  /** Where the effect LANDED — stamped by `stampEventZones`, never by hand.
+   *  The per-player fog filter's location test (see LOCATED_EVENT_TAGS). */
+  readonly zone?: string
 }
 
 export interface HealEvent {
@@ -18,6 +22,9 @@ export interface HealEvent {
   readonly sourceId: string
   readonly targetId: string
   readonly amount: number
+  /** Where the effect LANDED — stamped by `stampEventZones`, never by hand.
+   *  The per-player fog filter's location test (see LOCATED_EVENT_TAGS). */
+  readonly zone?: string
 }
 
 export interface KillEvent {
@@ -30,6 +37,9 @@ export interface KillEvent {
   readonly victimStreak?: number
   /** The killer's kill streak AFTER this kill — drives the spree callout. */
   readonly killerStreak?: number
+  /** Where the effect LANDED — stamped by `stampEventZones`, never by hand.
+   *  The per-player fog filter's location test (see LOCATED_EVENT_TAGS). */
+  readonly zone?: string
 }
 
 export interface DeathEvent {
@@ -37,6 +47,9 @@ export interface DeathEvent {
   readonly cycle: number
   readonly playerId: string
   readonly respawnCycle: number
+  /** Where the effect LANDED — stamped by `stampEventZones`, never by hand.
+   *  The per-player fog filter's location test (see LOCATED_EVENT_TAGS). */
+  readonly zone?: string
 }
 
 export interface IceKillEvent {
@@ -95,7 +108,13 @@ export interface AbilityUsedEvent {
   readonly playerId: string
   readonly abilityId: string
   readonly targetId?: string
+  /** The caster's resulting cooldown — private: VisionCalculator strips it for
+   *  viewers off the caster's team. */
   readonly cooldown?: number
+  /** Where the CASTER stood — stamped by `stampEventZones`, never by hand.
+   *  Lets anyone who can see the caster's zone (an AoE's victims included)
+   *  read the cast line (see LOCATED_EVENT_TAGS). */
+  readonly zone?: string
 }
 
 /**
@@ -114,6 +133,9 @@ export interface StatusAppliedEvent {
   readonly status: string
   /** The engine's real remaining duration, not the ability's advertised one. */
   readonly cyclesRemaining: number
+  /** Where the effect LANDED — stamped by `stampEventZones`, never by hand.
+   *  The per-player fog filter's location test (see LOCATED_EVENT_TAGS). */
+  readonly zone?: string
 }
 
 export interface CooldownEvent {
@@ -185,13 +207,21 @@ export interface SpellBlockedEvent {
   readonly source: 'intercept_shell' | 'ablative_shell' | 'mirror_shell'
   /** For Lotus Orb: the damage bounced back to the caster (omitted for a pure block). */
   readonly reflected?: number
+  /** Where the effect LANDED — stamped by `stampEventZones`, never by hand.
+   *  The per-player fog filter's location test (see LOCATED_EVENT_TAGS). */
+  readonly zone?: string
 }
 
+/**
+ * The Tenant fell. ONE event: the engine (TenantAI) emits it with just the
+ * cycle; `killerTeam` / `scripAwarded` are optional so a producer that knows
+ * the killing crew can name it (combatNarrative renders both shapes).
+ */
 export interface TenantKilledEvent {
   readonly _tag: 'tenant_killed'
   readonly cycle: number
-  readonly killerTeam: TeamId
-  readonly scripAwarded: number
+  readonly killerTeam?: TeamId
+  readonly scripAwarded?: number
 }
 
 export interface NeutralKilledEvent {
@@ -209,6 +239,9 @@ export interface TenantDamageEvent {
   readonly damage: number
   readonly integ: number
   readonly maxInteg: number
+  /** Where the effect LANDED — stamped by `stampEventZones`, never by hand.
+   *  The per-player fog filter's location test (see LOCATED_EVENT_TAGS). */
+  readonly zone?: string
 }
 
 export interface TenantRespawnEvent {
@@ -216,11 +249,6 @@ export interface TenantRespawnEvent {
   readonly cycle: number
   readonly integ: number
   readonly maxInteg: number
-}
-
-export interface TenantKilledInternalEvent {
-  readonly _tag: 'tenant_killed'
-  readonly cycle: number
 }
 
 export interface BackupPickedEvent {
@@ -288,6 +316,12 @@ export interface IceInvulnerableEvent {
   readonly _tag: 'ice_invulnerable'
   readonly cycle: number
   readonly zone: string
+  /** The hero whose swing bounced. */
+  readonly playerId?: string
+  /** True when that hero's typed order was ALSO refused through the rejected
+   *  channel — the feed then prints the rejection for them, not this line too
+   *  (a standing-order re-swing is not rejected, so this line is its only one). */
+  readonly reported?: boolean
 }
 
 export interface SurrenderVoteEvent {
@@ -328,6 +362,26 @@ export interface BreachOpenedEvent {
   readonly playerId: string
   readonly targetId: string
   readonly durationCycles: number
+  /** Auto-breach: the player ordered this control ability at a CLOSED hero and
+   *  the engine breached instead (ActionResolver.convertClosedControlCast).
+   *  Absent on a typed `breach`. */
+  readonly fromAbility?: 'q' | 'w' | 'e' | 'r'
+  readonly fromAbilityName?: string
+}
+
+/** Hard control from a resolved cast fizzled on a CLOSED (non-breached) hero —
+ *  mostly AoE control, since single-target control at a CLOSED hero is
+ *  converted into a breach. One per target+status. `playerId` is the CASTER
+ *  (it is also what the per-player vision filter keys team visibility on). */
+export interface ControlResistedEvent {
+  readonly _tag: 'control_resisted'
+  readonly cycle: number
+  readonly playerId: string
+  readonly targetId: string
+  readonly status: string
+  readonly ability: 'q' | 'w' | 'e' | 'r'
+  readonly abilityName: string
+  readonly reason: string
 }
 
 export type GameEngineEvent =
@@ -355,7 +409,6 @@ export type GameEngineEvent =
   | NeutralKilledEvent
   | TenantDamageEvent
   | TenantRespawnEvent
-  | TenantKilledInternalEvent
   | BackupPickedEvent
   | BackupUsedEvent
   | TalentSelectedEvent
@@ -371,6 +424,7 @@ export type GameEngineEvent =
   | AfkTakeoverEvent
   | DoubleCastEvent
   | BreachOpenedEvent
+  | ControlResistedEvent
 
 /** Convert an engine event to the wire GameEvent format. */
 export function toGameEvent(event: GameEngineEvent): {
@@ -380,4 +434,105 @@ export function toGameEvent(event: GameEngineEvent): {
 } {
   const { _tag, cycle, ...payload } = event
   return { cycle, type: _tag, payload: payload as Record<string, unknown> }
+}
+
+// ── Event location (fog) ────────────────────────────────────────
+
+/**
+ * Tags whose `zone` is a LOCATION STAMP: where the effect landed, written by
+ * `stampEventZones` at the end of the phase that emitted the event (so a hero
+ * who is hit and then walks away is located where the hit landed, not where
+ * they ended the cycle). The per-player fog filter uses it as the event's
+ * location — and redacts it for a viewer who can't see that zone, because an
+ * event visible only through an allied hero (my DoT ticking on an enemy who
+ * walked into fog) must not hand over the enemy's position.
+ *
+ * Events whose `zone` is SEMANTIC (ward_placed, cache_picked, ice_kill,
+ * trap_triggered, neutral_killed, ice_invulnerable) carry it from their
+ * producer and are not in this set.
+ */
+export const LOCATED_EVENT_TAGS: ReadonlySet<string> = new Set([
+  'damage',
+  'heal',
+  'kill',
+  'death',
+  'status_applied',
+  'spell_blocked',
+  'tenant_damage',
+  'ability_used',
+])
+
+/** The Tenant's pit. TenantAI and BotAI hard-code the same id. */
+export const TENANT_ZONE = 'hollow'
+
+const TERMINAL_ZONE: Record<string, string | undefined> = Object.fromEntries(
+  ZONES.filter((z) => z.type === 'base' && (z.team === 'chaff' || z.team === 'audit')).map((z) => [
+    z.team,
+    z.id,
+  ]),
+)
+
+/** The positional slice of state `stampEventZones` reads (resolveActions
+ *  stamps mid-resolution from its own working copies). */
+export interface EventZoneLookup {
+  readonly players: GameState['players']
+  readonly waves: readonly { readonly id: string; readonly zone: string }[]
+  readonly neutrals?: readonly { readonly id: string; readonly zone: string }[]
+}
+
+/** Zone of any engine entity id: hero, wave, neutral, `ice_<zone>`,
+ *  `terminal_<team>`, `tenant`. Undefined when the entity is gone/unknown. */
+export function entityZone(id: unknown, s: EventZoneLookup): string | undefined {
+  if (typeof id !== 'string' || !id) return undefined
+  const player = s.players[id]
+  if (player) return player.zone
+  if (id === 'tenant') return TENANT_ZONE
+  if (id.startsWith('ice_')) {
+    const zone = id.slice('ice_'.length)
+    return ZONE_MAP[zone] ? zone : undefined
+  }
+  if (id.startsWith('terminal_')) return TERMINAL_ZONE[id.slice('terminal_'.length)]
+  return s.waves.find((w) => w.id === id)?.zone ?? s.neutrals?.find((n) => n.id === id)?.zone
+}
+
+/** [subject, fallback] entity ids that locate an event: the effect lands on
+ *  the subject; the actor is the fallback for a subject already removed (a
+ *  wave stripped by the hit that is being stamped). */
+function locatingIds(e: GameEngineEvent): [unknown, unknown] | null {
+  switch (e._tag) {
+    case 'damage':
+    case 'heal':
+    case 'status_applied':
+      return [e.targetId, e.sourceId]
+    case 'spell_blocked':
+      return [e.targetId, e.casterId]
+    case 'kill':
+      return [e.victimId, e.killerId]
+    case 'death':
+      return [e.playerId, null]
+    case 'tenant_damage':
+      return ['tenant', null]
+    case 'ability_used':
+      return [e.playerId, null]
+    default:
+      return null
+  }
+}
+
+/**
+ * Stamp `zone` onto every LOCATED event in `events[from..]` that lacks one,
+ * from the positions in `s`. Call it at the end of each phase that emits
+ * events (positions only change in the movement phase, on teleports and on
+ * respawn), so the stamp is the zone at resolution time. Never overwrites an
+ * existing zone — the earliest stamp wins. Mutates the array (not the events).
+ */
+export function stampEventZones(events: GameEngineEvent[], s: EventZoneLookup, from = 0): void {
+  for (let i = from; i < events.length; i++) {
+    const e = events[i]!
+    if ('zone' in e && e.zone) continue
+    const ids = locatingIds(e)
+    if (!ids) continue
+    const zone = entityZone(ids[0], s) ?? entityZone(ids[1], s)
+    if (zone) events[i] = { ...e, zone } as GameEngineEvent
+  }
 }

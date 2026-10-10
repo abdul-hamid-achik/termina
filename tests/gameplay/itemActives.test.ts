@@ -79,3 +79,63 @@ describe('item-active combat credit', () => {
     expect(statuses[0]).toMatchObject({ sourceId: HUMAN, targetId: ENEMY })
   })
 })
+
+describe('item-active cooldowns (item_cd_<itemId>)', () => {
+  it('a second use inside the cooldown is rejected with a reason; the first use lands', async () => {
+    const game = await seedGame('laning', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          zone: 'coldstore-cross',
+          items: ['hardshell', null, null, null, null, null],
+        },
+      },
+    }))
+
+    game.submit({ type: 'use', item: 'hardshell' })
+    await game.tick()
+    expect(game.lastRejected).toEqual([])
+    const afterFirst = await game.me()
+    expect(afterFirst.buffs.some((b) => b.id === 'airgap')).toBe(true)
+    expect(afterFirst.buffs.some((b) => b.id === 'item_cd_hardshell')).toBe(true)
+
+    // Next cycle: well inside the 25-cycle cooldown.
+    game.submit({ type: 'use', item: 'hardshell' })
+    await game.tick()
+    expect(game.lastRejected.some((r) => r.playerId === HUMAN && /cooldown/i.test(r.reason))).toBe(
+      true,
+    )
+  })
+
+  it('a legacy-id item (jump_shunt) is also gated: second blink is refused', async () => {
+    const game = await seedGame('laning', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          zone: 'coldstore-cross',
+          items: ['jump_shunt', null, null, null, null, null],
+        },
+      },
+    }))
+    game.submit({
+      type: 'use',
+      item: 'jump_shunt',
+      target: { kind: 'hero', name: 'coldstore-t1-chaff' },
+    })
+    await game.tick()
+    expect((await game.me()).buffs.some((b) => b.id === 'item_cd_jump_shunt')).toBe(true)
+    game.submit({
+      type: 'use',
+      item: 'jump_shunt',
+      target: { kind: 'hero', name: 'coldstore-cross' },
+    })
+    await game.tick()
+    expect(game.lastRejected.some((r) => /cooldown/i.test(r.reason))).toBe(true)
+  })
+})

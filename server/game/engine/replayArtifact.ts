@@ -4,6 +4,7 @@ import type { ActionLogEntry, GameMode, GameState, TeamId } from '~~/shared/type
 import type { NewMatchReplay } from '~~/server/db/schema'
 import { createInMemoryStateManager } from '~~/server/game/engine/StateManager'
 import { processCycle, submitReplayAction } from '~~/server/game/engine/GameLoop'
+import { compareCodePoints } from '~~/server/game/engine/rng'
 
 /**
  * The durable replay artifact.
@@ -123,13 +124,13 @@ export function finalSummaryHash(state: GameState): string {
       .map((id) => frame.players[id]),
     waves: (state.waves ?? [])
       .map((w) => [w.zone, w.team, w.type, w.integ, w.maxInteg ?? null] as const)
-      .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+      .sort((a, b) => compareCodePoints(JSON.stringify(a), JSON.stringify(b))),
     neutrals: (state.neutrals ?? [])
       .map((n) => [n.zone, n.type, n.integ, n.maxInteg, n.alive] as const)
-      .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+      .sort((a, b) => compareCodePoints(JSON.stringify(a), JSON.stringify(b))),
     ice: (state.ice ?? [])
       .map((t) => [t.zone, t.team, t.integ, t.alive, t.invulnerable] as const)
-      .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+      .sort((a, b) => compareCodePoints(JSON.stringify(a), JSON.stringify(b))),
     terminals: {
       chaff: [state.terminals?.chaff.integ ?? null, state.terminals?.chaff.alive ?? null],
       audit: [state.terminals?.audit.integ ?? null, state.terminals?.audit.alive ?? null],

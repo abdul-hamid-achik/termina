@@ -122,7 +122,10 @@ export function resolveTerminalAttack(
   if (!terminal.alive) {
     return { state, events: [], rejected: 'The enemy Terminal is already destroyed' }
   }
-  if (!terminal.vulnerable) {
+  // Derived from the ICE as it stands NOW, not from the stored flag: the flag is
+  // only recomputed at GameLoop step 5.7, after hero actions, so reading it would
+  // bounce a swing made in the very cycle the last T3 fell.
+  if (!terminal.vulnerable && !isTerminalVulnerable(state, targetTeam)) {
     return {
       state,
       events: [],
@@ -167,12 +170,48 @@ export function resolveTerminalAttack(
   }
 }
 
-/** A team wins when the enemy Terminal is destroyed. */
-export function checkTerminalWin(state: GameState): TeamId | null {
+/**
+ * A team wins when the enemy Terminal is destroyed.
+ *
+ * Both Terminals can fall in the same cycle (the batch clock lands every swing
+ * together). The match has no draw — game_over, MMR and the matches row all
+ * need a winner — so the tie is broken fairly instead of by which `if` came
+ * first (it used to be audit, always):
+ *   1. the Terminal that held more INTEG when the cycle opened (it was the one
+ *      further from falling);
+ *   2. else the team with more of its own ICE INTEG standing at cycle end;
+ *   3. else a coin from the game's deterministic seed — same replay, same call.
+ * `cycleStart` defaults to `state` (direct callers without a pre-cycle state).
+ */
+export function checkTerminalWin(
+  state: GameState,
+  cycleStart: GameState = state,
+  coinSeed = 0,
+): TeamId | null {
   if (!state.terminals) return null
-  if (!state.terminals.chaff.alive) return 'audit'
-  if (!state.terminals.audit.alive) return 'chaff'
+  const chaffDown = !state.terminals.chaff.alive
+  const auditDown = !state.terminals.audit.alive
+  if (chaffDown && auditDown) return sameCycleTerminalTieBreak(state, cycleStart, coinSeed)
+  if (chaffDown) return 'audit'
+  if (auditDown) return 'chaff'
   return null
+}
+
+function sameCycleTerminalTieBreak(
+  state: GameState,
+  cycleStart: GameState,
+  coinSeed: number,
+): TeamId {
+  const opening = (t: TeamId) => cycleStart.terminals?.[t]?.integ ?? 0
+  if (opening('chaff') !== opening('audit')) {
+    return opening('chaff') > opening('audit') ? 'chaff' : 'audit'
+  }
+  const iceStanding = (t: TeamId) =>
+    (state.ice ?? []).reduce((sum, i) => (i.team === t && i.alive ? sum + i.integ : sum), 0)
+  if (iceStanding('chaff') !== iceStanding('audit')) {
+    return iceStanding('chaff') > iceStanding('audit') ? 'chaff' : 'audit'
+  }
+  return (coinSeed & 1) === 0 ? 'chaff' : 'audit'
 }
 
 function getAttackerTeam(state: GameState, attackerId: string): TeamId | null {

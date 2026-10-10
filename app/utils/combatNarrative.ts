@@ -120,10 +120,24 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         sourceLabel: source,
         targetLabel: victim,
       }
-      // Repeated chip on a ice/Core collapses into one running line.
-      if (isStructureTarget(p.targetId)) {
+      // Repeated chip on a ice/Core/the Tenant collapses into one running line.
+      if (isStructureTarget(p.targetId) || p.targetId === 'tenant') {
         line.dedupKey = `dmg:${str(p.sourceId)}->${str(p.targetId)}`
       }
+      // Lane NPCs (waves, Silt dwellers) chipping someone ELSE is the steady
+      // background of every cycle in sight — story view drops it, verbose keeps
+      // it. Hits on ME stay: they are the answer to "why am I low?".
+      const sourceId = str(p.sourceId)
+      if (
+        (sourceId.startsWith('wave') || sourceId.startsWith('neutral')) &&
+        line.salience !== 'mine-in'
+      ) {
+        line.minor = true
+      }
+      // Someone else's swings on the Tenant: the per-cycle `tenant_damage`
+      // aggregate already tells the story (5 allies in the pit = 5 lines a
+      // cycle otherwise). Mine stay — they're my action's feedback.
+      if (p.targetId === 'tenant' && line.salience !== 'mine-out') line.minor = true
       // Someone else's wave farming — story mode folds these into the per-cycle
       // farm digest. My own hits stay explicit (they're my action's feedback).
       const target = str(p.targetId)
@@ -150,9 +164,13 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         ? `  assist: ${assisters.map((a) => label(a)).join(', ')}`
         : ''
       const flair = killFlair(num(p.victimStreak), num(p.killerStreak))
+      // `respawnCycle` rides along only when buildCombatLines folded the
+      // victim's paired `death` event into this line.
+      const respawn =
+        p.respawnCycle != null ? ` — respawn ${Math.max(0, num(p.respawnCycle) - cycle)}c` : ''
       return {
         cycle,
-        text: `${label(p.killerId)} terminated ${label(p.victimId)}${flair}${assistText}`,
+        text: `${label(p.killerId)} terminated ${label(p.victimId)}${respawn}${flair}${assistText}`,
         type: 'kill',
         salience: salience(p.killerId, p.victimId, ctx),
         killerHeroId: ctx.heroIdOf(p.killerId),
@@ -340,7 +358,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       }
 
     case 'tenant_killed':
-      // Two events share this tag: the public one carries killerTeam+scrip.
+      // One event: killerTeam + scripAwarded are optional (the engine emits cycle only).
       return p.killerTeam
         ? {
             cycle,
@@ -465,11 +483,42 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
           salience: actorSalience(p.playerId, ctx),
         }
       }
+      // Auto-breach: a control cast into a CLOSED hero became this breach.
+      // Only the caster needs the why and the next step; everyone else just
+      // sees the breach.
+      if (str(p.fromAbility) && ctx.playerId && p.playerId === ctx.playerId) {
+        const target = label(p.targetId)
+        const ability = str(p.fromAbilityName) || str(p.fromAbility).toUpperCase()
+        return {
+          cycle,
+          text: `${target} was CLOSED — you BREACHED ${target} instead of ${ability}. Cast again: the breach holds ${duration} cycles.`,
+          type: 'system',
+          salience: actorSalience(p.playerId, ctx),
+        }
+      }
       return {
         cycle,
         text: `${label(p.playerId)} BREACHED ${label(p.targetId)} (${duration}c)`,
         type: 'system',
         salience: actorSalience(p.playerId, ctx),
+      }
+    }
+
+    case 'control_resisted': {
+      // Hard control that fizzled on a CLOSED hero (mostly AoE control —
+      // single-target control at a CLOSED hero is converted into a breach).
+      const status = str(p.status) === 'feared' ? 'fear' : str(p.status)
+      const ability = str(p.abilityName) || str(p.ability).toUpperCase()
+      const target = label(p.targetId)
+      const mine = !!ctx.playerId && p.playerId === ctx.playerId
+      const text = mine
+        ? `Your ${ability} ${status} on ${target} was RESISTED — ${target} is CLOSED, breach first`
+        : `${label(p.playerId)}'s ${ability} ${status} on ${target} was RESISTED — ${target} ${target === 'You' ? 'are' : 'is'} CLOSED`
+      return {
+        cycle,
+        text,
+        type: 'ability',
+        salience: salience(p.playerId, p.targetId, ctx),
       }
     }
 
@@ -497,6 +546,9 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       }
 
     case 'ice_invulnerable':
+      // One line per failure: a typed swing was also refused through the
+      // rejected channel, and that rejection is the actor's line.
+      if (p.reported === true && ctx.playerId && p.playerId === ctx.playerId) return null
       return {
         cycle,
         text: `The ice in ${zname(p.zone)} is Hardened — attacks do nothing until it expires`,
@@ -505,10 +557,13 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       }
 
     case 'harden_on_cooldown': {
+      // Always paired with a rejection the actor already reads ("Harden is not
+      // ready — Nc remaining"); this line is for their crew.
+      if (ctx.playerId && p.playerId === ctx.playerId) return null
       const left = num(p.remainingTicks)
       return {
         cycle,
-        text: `Harden is not ready — ${left}c remaining`,
+        text: `${label(p.playerId)} tried to Harden — not ready, ${left}c remaining`,
         type: 'system',
         salience: actorSalience(p.playerId, ctx),
       }
@@ -526,6 +581,78 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 }
 
 /**
+ * The engine reports several single beats as TWO events; printed naively each
+ * reads twice. Pair them so the feed says it once:
+ *  - `kill` + the victim's `death` (same cycle) → one kill line carrying the
+ *    respawn timer; the death line is absorbed.
+ *  - `trap_triggered` + its `damage` (owner → target) → one trap line that
+ *    carries the damage number for the recap; the damage line is absorbed.
+ *  - Mirror Shell `spell_blocked` + the reflected `damage` → the damage line
+ *    stays (its salience is the caster's), the block line drops its "(-N)",
+ *    and the engine's duplicate caster→caster self-hit is absorbed.
+ * Pure: identity-keyed on the input events, nothing mutated.
+ */
+function pairCombatEvents(events: GameEvent[]): {
+  absorbed: Set<GameEvent>
+  rewritten: Map<GameEvent, GameEvent>
+  carries: Map<GameEvent, GameEvent>
+} {
+  const absorbed = new Set<GameEvent>()
+  const rewritten = new Map<GameEvent, GameEvent>()
+  const carries = new Map<GameEvent, GameEvent>()
+  const unclaimed = (pred: (d: GameEvent) => boolean) =>
+    events.find((d) => !absorbed.has(d) && !carries.has(d) && pred(d))
+
+  for (const e of events) {
+    const p = e.payload
+    if (e.type === 'kill') {
+      const death = unclaimed(
+        (d) => d.type === 'death' && d.cycle === e.cycle && d.payload.playerId === p.victimId,
+      )
+      if (death) {
+        absorbed.add(death)
+        rewritten.set(e, { ...e, payload: { ...p, respawnCycle: death.payload.respawnCycle } })
+      }
+    } else if (e.type === 'trap_triggered') {
+      const hit = unclaimed(
+        (d) =>
+          d.type === 'damage' &&
+          d.cycle === e.cycle &&
+          d.payload.sourceId === p.owner &&
+          d.payload.targetId === p.targetId,
+      )
+      if (hit) {
+        absorbed.add(hit)
+        carries.set(e, hit)
+      }
+    } else if (e.type === 'spell_blocked' && p.source === 'mirror_shell' && num(p.reflected) > 0) {
+      const bounce = events.find(
+        (d) =>
+          d.type === 'damage' &&
+          d.cycle === e.cycle &&
+          d.payload.sourceId === p.targetId &&
+          d.payload.targetId === p.casterId &&
+          num(d.payload.amount) === num(p.reflected),
+      )
+      if (bounce) rewritten.set(e, { ...e, payload: { ...p, reflected: 0 } })
+      // The cast resolver's INTEG diff ALSO books the bounce as the caster
+      // hitting themself (ActionResolver resolveHeroCast's per-player delta
+      // loop) — a phantom "You hit You" that doubles the recap. Absorb it.
+      const phantom = unclaimed(
+        (d) =>
+          d.type === 'damage' &&
+          d.cycle === e.cycle &&
+          d.payload.sourceId === p.casterId &&
+          d.payload.targetId === p.casterId &&
+          num(d.payload.amount) === num(p.reflected),
+      )
+      if (phantom) absorbed.add(phantom)
+    }
+  }
+  return { absorbed, rewritten, carries }
+}
+
+/**
  * Build the full line list from an event stream: map each event, drop the
  * suppressed ones, then collapse repeated structure/Tenant chip.
  */
@@ -537,10 +664,21 @@ export function buildCombatLines(
     format: (info: { baseText: string; count: number; total: number }) => string,
   ) => CombatLine[],
 ): CombatLine[] {
+  const { absorbed, rewritten, carries } = pairCombatEvents(events)
   const mapped: CombatLine[] = []
   for (const e of events) {
-    const line = eventToLine(e, ctx)
-    if (line) mapped.push(line)
+    if (absorbed.has(e)) continue
+    const line = eventToLine(rewritten.get(e) ?? e, ctx)
+    if (!line) continue
+    const hit = carries.get(e)
+    if (hit) {
+      // This line now stands for the absorbed damage event: carry its number
+      // and labels so the per-cycle recap still counts the hit exactly once.
+      line.dmgAmount = num(hit.payload.amount)
+      line.sourceLabel = ctx.entityLabel(hit.payload.sourceId)
+      line.targetLabel = ctx.entityLabel(hit.payload.targetId)
+    }
+    mapped.push(line)
   }
   return collapse(mapped, ({ baseText, count, total }) => `${baseText} ×${count} (${total} total)`)
 }

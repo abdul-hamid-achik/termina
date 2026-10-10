@@ -131,6 +131,11 @@ export function awardKill(
   // caller resets killStreak to 0 on death before this runs, so reading it off
   // the (already-reset) state here would zero out every shutdown bounty.
   victimStreak?: number,
+  // The state the comeback multiplier reads net worth from. handleDeaths passes
+  // the cycle's PRE-death snapshot so a kill credited earlier in the same death
+  // sweep (a mutual kill) cannot shift the bounty of the next one — the batch
+  // clock settles every death of a cycle against the same books.
+  bountyBasis: GameState = state,
 ): GameState {
   let updatedState = state
   const victim = state.players[victimId]
@@ -144,7 +149,7 @@ export function awardKill(
   // ending a fed player's run pays out — anti-snowball, not pro-snowball.
   const streak = Math.min(victimStreak ?? victim.killStreak ?? 0, 10)
   const baseGold = KILL_BOUNTY_BASE + KILL_BOUNTY_PER_STREAK * streak
-  const killerGold = Math.round(baseGold * comebackMultiplier(state, killer.team))
+  const killerGold = Math.round(baseGold * comebackMultiplier(bountyBasis, killer.team))
   updatedState = updatePlayerGold(updatedState, killerId, killerGold)
 
   // Assist scrip split - exclude killer from assisters to prevent double-dipping

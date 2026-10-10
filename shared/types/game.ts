@@ -10,6 +10,10 @@ export interface BuffState {
   cyclesRemaining: number
   source: string
   destination?: string
+  /** The cycle this buff was cast — set only where a rule must tell "landed this
+   *  cycle" apart from "already up" (Cipher Encrypt ignores the hits of the
+   *  cycle it was cast in: the batch clock lands them together). */
+  appliedCycle?: number
 }
 
 export interface PlayerState {

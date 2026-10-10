@@ -7,9 +7,14 @@ import type { AbilityDef, AbilityEffect, AbilityEffectType } from '~~/shared/typ
  * effect-to-text logic drifting across the UI.
  */
 
-/** Concise label for one ability effect, e.g. "40 code dmg", "30% slow for 2t". */
+/** "1 cycle" / "3 cycles" — the player-facing time unit (1 cycle = 4 s), never ticks. */
+function cycles(n: number): string {
+  return `${n} ${n === 1 ? 'cycle' : 'cycles'}`
+}
+
+/** Concise label for one ability effect, e.g. "40 code dmg", "30% slow for 2 cycles". */
 export function formatEffect(e: AbilityEffect): string {
-  const dur = e.duration ? ` ${e.duration}t` : ''
+  const dur = e.duration ? ` ${cycles(e.duration)}` : ''
   switch (e.type) {
     case 'damage':
       return `${e.value} ${e.damageType ?? 'kinetic'} dmg`
@@ -20,11 +25,11 @@ export function formatEffect(e: AbilityEffect): string {
     case 'dot':
       // `value` is the TOTAL damage dealt across the duration (the convention
       // the engine + hero data use), not per-cycle.
-      return `${e.value} dmg${e.duration ? ` over ${e.duration}t` : ''}`
+      return `${e.value} dmg${e.duration ? ` over ${cycles(e.duration)}` : ''}`
     case 'slow':
-      return `${e.value}% slow${e.duration ? ` for ${e.duration}t` : ''}`
+      return `${e.value}% slow${e.duration ? ` for ${cycles(e.duration)}` : ''}`
     case 'stun':
-      return `stun${dur || ' 1t'}`
+      return `stun${dur || ` ${cycles(1)}`}`
     case 'silence':
       return `silence${dur}`
     case 'root':
@@ -70,7 +75,7 @@ export interface AbilityImpact {
   burst: number
   /** Approx damage each cycle (each DoT's total spread over its duration). */
   dotPerTick: number
-  /** Ticks the longest DoT lasts. */
+  /** Cycles the longest DoT lasts. */
   dotDuration: number
   /** Total damage over the ability's full duration (burst + every DoT's total). */
   total: number
@@ -86,7 +91,7 @@ export interface AbilityControl {
   kind: AbilityEffectType
   /** Short uppercase label, e.g. "STUNNED", "SLOW 30%". */
   label: string
-  /** Ticks the control lasts on the dummy (always ≥ 1). */
+  /** Cycles the control lasts on the dummy (always ≥ 1). */
   duration: number
 }
 

@@ -20,9 +20,9 @@ export type TalentTier = 10 | 15 | 20 | 25
 export type TalentType =
   | 'stat_bonus' // +X to a stat
   | 'ability_boost' // Enhances specific ability
-  | 'cooldown_reduce' // -Xs cooldown on ability
+  | 'cooldown_reduce' // -X cycles of cooldown on ability (1 cycle = 4 s)
   | 'bw_cost_reduce' // -X% BW cost
-  | 'damage_boost' // +X% damage
+  | 'damage_boost' // ability removes X% more INTEG from each enemy it hits
   | 'special' // Unique hero-specific effect
 
 /**
@@ -47,9 +47,9 @@ export interface Talent {
   }
   // Ability modifications
   abilityId?: 'q' | 'w' | 'e' | 'r'
-  cooldownReduction?: number // ticks
-  bwCostReduction?: number // percentage
-  damageBoost?: number // percentage
+  cooldownReduction?: number // CYCLES (1 cycle = 4 s) off the cooldown; floor 1 — never seconds
+  bwCostReduction?: number // percentage of the BW the cast spent, refunded after the cast
+  damageBoost?: number // percentage: extra N% of the INTEG each enemy LOST to the cast (post-mitigation)
   // Special effects
   specialEffect?: string // Description of unique effect
   /**
@@ -136,8 +136,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       15: [
         {
           id: 'echo_15_left',
-          name: '-2s Echo Stun CD',
-          description: 'Echo Stun cooldown reduced by 2 seconds',
+          name: '-2 Cycles Resonance CD',
+          description: 'Resonance (Q) cooldown reduced by 2 cycles',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'q',
@@ -145,8 +145,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'echo_15_right',
-          name: '-2s Echo Location CD',
-          description: 'Echo Location cooldown reduced by 2 seconds',
+          name: '-2 Cycles Phase Shift CD',
+          description: 'Phase Shift (W) cooldown reduced by 2 cycles',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'w',
@@ -156,8 +156,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       20: [
         {
           id: 'echo_20_left',
-          name: '+30% Echo Damage',
-          description: 'Echo abilities deal 30% more damage',
+          name: '+30% Resonance INTEG Removed',
+          description: 'Resonance (Q) removes 30% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 20,
           abilityId: 'q',
@@ -165,8 +165,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'echo_20_right',
-          name: '+15% Iceance',
-          description: 'Increases iceance by 15%',
+          name: '+15 ICE',
+          description: 'Increases ICE by 15 — less code damage taken',
           type: 'stat_bonus',
           tier: 20,
           statBonus: { stat: 'ice', value: 15 },
@@ -175,13 +175,13 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'echo_25_left',
-          name: 'Double Echo',
-          description: 'Echo Streak (Q) has a 25% chance to cast twice',
+          name: 'Double Resonance',
+          description: 'Resonance (Q) has a 25% chance to cast twice',
           type: 'special',
           tier: 25,
           abilityId: 'q',
           castEffect: 'double_cast',
-          specialEffect: 'Double Echo (Q) — 25% chance to cast twice',
+          specialEffect: 'Double Resonance (Q) — 25% chance to cast twice',
         },
         {
           id: 'echo_25_right',
@@ -213,8 +213,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'daemon_10_right',
-          name: '+8 Iceance',
-          description: 'Increases iceance by 8',
+          name: '+8 ICE',
+          description: 'Increases ICE by 8',
           type: 'stat_bonus',
           tier: 10,
           statBonus: { stat: 'ice', value: 8 },
@@ -232,8 +232,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'daemon_15_right',
-          name: '-3s Fork Bomb CD',
-          description: 'Fork Bomb cooldown reduced by 3 seconds',
+          name: '-3 Cycles Fork Bomb CD',
+          description: 'Fork Bomb cooldown reduced by 3 cycles',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'w',
@@ -243,8 +243,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       20: [
         {
           id: 'daemon_20_left',
-          name: '-3s Sudo Cooldown',
-          description: 'Sudo (execute) cooldown reduced by 3 seconds',
+          name: '-3 Cycles Sudo CD',
+          description: 'Sudo (execute) cooldown reduced by 3 cycles',
           type: 'cooldown_reduce',
           tier: 20,
           abilityId: 'e',
@@ -262,8 +262,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'daemon_25_left',
-          name: '-10s Root Access CD',
-          description: 'Root Access (teleport) cooldown reduced by 10 seconds',
+          name: '-10 Cycles Root Access CD',
+          description: 'Root Access (teleport) cooldown reduced by 10 cycles',
           type: 'cooldown_reduce',
           tier: 25,
           abilityId: 'r',
@@ -290,15 +290,16 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'kernel_10_left',
           name: '+200 INTEG',
-          description: '+200 INTEG',
+          description: '+200 INTEG — more health to hold the front line',
           type: 'stat_bonus',
           tier: 10,
           statBonus: { stat: 'integ', value: 200 },
         },
         {
           id: 'kernel_10_right',
-          name: '+15 Defense',
-          description: '+15 Defense',
+          name: '+15 Plate',
+          description:
+            '+15 Plate — less kinetic damage taken while Core Dump has enemies hitting you',
           type: 'stat_bonus',
           tier: 10,
           statBonus: { stat: 'plate', value: 15 },
@@ -316,8 +317,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'kernel_15_right',
-          name: '-4s Buffer CD',
-          description: 'Buffer (shield) cooldown reduced by 4 seconds',
+          name: '-4 Cycles Buffer CD',
+          description: 'Buffer (shield) cooldown reduced by 4 cycles',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'w',
@@ -327,8 +328,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       20: [
         {
           id: 'kernel_20_left',
-          name: '-3s Core Dump CD',
-          description: 'Core Dump (taunt) cooldown reduced by 3 seconds',
+          name: '-3 Cycles Core Dump CD',
+          description: 'Core Dump (taunt) cooldown reduced by 3 cycles',
           type: 'cooldown_reduce',
           tier: 20,
           abilityId: 'e',
@@ -337,7 +338,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'kernel_20_right',
           name: '+300 INTEG',
-          description: '+300 INTEG',
+          description: '+300 INTEG — a bigger pool for the hits Core Dump pulls onto you',
           type: 'stat_bonus',
           tier: 20,
           statBonus: { stat: 'integ', value: 300 },
@@ -346,8 +347,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'kernel_25_left',
-          name: '-10s Panic CD',
-          description: 'Panic (fear) cooldown reduced by 10 seconds',
+          name: '-10 Cycles Panic CD',
+          description: 'Panic (fear) cooldown reduced by 10 cycles',
           type: 'cooldown_reduce',
           tier: 25,
           abilityId: 'r',
@@ -355,8 +356,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'kernel_25_right',
-          name: '+20 Iceance',
-          description: 'Increases iceance by 20',
+          name: '+20 ICE',
+          description: '+20 ICE — less code damage taken from enemy casters',
           type: 'stat_bonus',
           tier: 25,
           statBonus: { stat: 'ice', value: 20 },
@@ -372,7 +373,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'regex_10_left',
           name: '+150 BW',
-          description: '+150 BW',
+          description:
+            '+150 BW — more bandwidth to chain Match, Capture Group and Catastrophic Backtracking',
           type: 'stat_bonus',
           tier: 10,
           statBonus: { stat: 'bw', value: 150 },
@@ -380,7 +382,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'regex_10_right',
           name: '+12 Attack',
-          description: '+12 Attack',
+          description: '+12 Attack — raises basic-attack damage between casts',
           type: 'stat_bonus',
           tier: 10,
           statBonus: { stat: 'attack', value: 12 },
@@ -389,8 +391,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       15: [
         {
           id: 'regex_15_left',
-          name: '+40% Match Damage',
-          description: 'Match deals 40% more damage',
+          name: '+40% Match INTEG Removed',
+          description: 'Match (Q) removes 40% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 15,
           abilityId: 'q',
@@ -409,8 +411,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       20: [
         {
           id: 'regex_20_left',
-          name: '-2s Capture Group CD',
-          description: 'Capture Group (root) cooldown reduced by 2 seconds',
+          name: '-2 Cycles Capture Group CD',
+          description: 'Capture Group (root) cooldown reduced by 2 cycles',
           type: 'cooldown_reduce',
           tier: 20,
           abilityId: 'w',
@@ -418,8 +420,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'regex_20_right',
-          name: '+20% Ice',
-          description: '+20% Ice',
+          name: '+20 ICE',
+          description: '+20 ICE — less code damage taken for a low-INTEG caster',
           type: 'stat_bonus',
           tier: 20,
           statBonus: { stat: 'ice', value: 20 },
@@ -428,8 +430,9 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'regex_25_left',
-          name: '+30% Backtracking Damage',
-          description: 'Catastrophic Backtracking deals 30% more damage',
+          name: '+30% Catastrophic Backtracking INTEG Removed',
+          description:
+            'Catastrophic Backtracking (R) removes 30% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 25,
           abilityId: 'r',
@@ -444,7 +447,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           tier: 25,
           abilityId: 'r',
           castEffect: 'global_ultimate',
-          specialEffect: 'Global Backtracking (R) — silence + BW-burn any hero, anywhere',
+          specialEffect: 'Global Backtracking (R) — target a hero in any zone, no range limit',
         },
       ],
     },
@@ -458,15 +461,15 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'firewall_10_left',
           name: '+250 INTEG',
-          description: '+250 INTEG',
+          description: '+250 INTEG — more health to hold the front line after Access Control',
           type: 'stat_bonus',
           tier: 10,
           statBonus: { stat: 'integ', value: 250 },
         },
         {
           id: 'firewall_10_right',
-          name: '+20 Defense',
-          description: '+20 Defense',
+          name: '+20 Plate',
+          description: '+20 Plate — less kinetic damage taken while the taunt holds',
           type: 'stat_bonus',
           tier: 10,
           statBonus: { stat: 'plate', value: 20 },
@@ -484,8 +487,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'firewall_15_right',
-          name: '-3s DMZ CD',
-          description: 'DMZ (shield) cooldown reduced by 3 seconds',
+          name: '-3 Cycles DMZ CD',
+          description: 'DMZ (shield) cooldown reduced by 3 cycles',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'w',
@@ -495,8 +498,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       20: [
         {
           id: 'firewall_20_left',
-          name: '+35% Port Block Damage',
-          description: 'Port Block deals 35% more damage',
+          name: '+35% Port Block INTEG Removed',
+          description: 'Port Block (Q) removes 35% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 20,
           abilityId: 'q',
@@ -505,7 +508,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'firewall_20_right',
           name: '+400 INTEG',
-          description: '+400 INTEG',
+          description: '+400 INTEG — more health to soak what Access Control pulls onto you',
           type: 'stat_bonus',
           tier: 20,
           statBonus: { stat: 'integ', value: 400 },
@@ -514,8 +517,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'firewall_25_left',
-          name: '-12s Deep Packet CD',
-          description: 'Deep Packet Inspection (root) cooldown reduced by 12 seconds',
+          name: '-12 Cycles Deep Packet Inspection CD',
+          description: 'Deep Packet Inspection (root) cooldown reduced by 12 cycles',
           type: 'cooldown_reduce',
           tier: 25,
           abilityId: 'r',
@@ -523,8 +526,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'firewall_25_right',
-          name: '+25 Iceance',
-          description: 'Increases iceance by 25',
+          name: '+25 ICE',
+          description: '+25 ICE — less code damage taken from enemy casters',
           type: 'stat_bonus',
           tier: 25,
           statBonus: { stat: 'ice', value: 25 },
@@ -540,7 +543,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'proxy_10_left',
           name: '+100 BW',
-          description: '+100 BW',
+          description: '+100 BW — more bandwidth for Cache Shield and Load Balance',
           type: 'stat_bonus',
           tier: 10,
           statBonus: { stat: 'bw', value: 100 },
@@ -548,7 +551,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'proxy_10_right',
           name: '+10 Attack',
-          description: '+10 Attack',
+          description: '+10 Attack — raises basic-attack damage between casts',
           type: 'stat_bonus',
           tier: 10,
           statBonus: { stat: 'attack', value: 10 },
@@ -557,8 +560,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       15: [
         {
           id: 'proxy_15_left',
-          name: '-2s Packet Redirect CD',
-          description: 'Packet Redirect cooldown reduced by 2 seconds',
+          name: '-2 Cycles Packet Redirect CD',
+          description: 'Packet Redirect cooldown reduced by 2 cycles',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'q',
@@ -577,8 +580,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       20: [
         {
           id: 'proxy_20_left',
-          name: '+50% Packet Redirect Damage',
-          description: 'Packet Redirect deals 50% more damage',
+          name: '+50% Packet Redirect INTEG Removed',
+          description: 'Packet Redirect (Q) removes 50% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 20,
           abilityId: 'q',
@@ -586,8 +589,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'proxy_20_right',
-          name: '+15% Ice',
-          description: '+15% Ice',
+          name: '+15 ICE',
+          description: '+15 ICE — less code damage taken by the support soaking for the team',
           type: 'stat_bonus',
           tier: 20,
           statBonus: { stat: 'ice', value: 15 },
@@ -596,8 +599,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'proxy_25_left',
-          name: '-12s Reverse Proxy CD',
-          description: 'Reverse Proxy (swap) cooldown reduced by 12 seconds',
+          name: '-12 Cycles Reverse Proxy CD',
+          description: 'Reverse Proxy (swap) cooldown reduced by 12 cycles',
           type: 'cooldown_reduce',
           tier: 25,
           abilityId: 'r',
@@ -606,7 +609,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'proxy_25_right',
           name: '+250 Max BW',
-          description: 'Increases maximum BW by 250',
+          description: '+250 Max BW — a deeper pool for Reverse Proxy and the rest of the kit',
           type: 'stat_bonus',
           tier: 25,
           statBonus: { stat: 'bw', value: 250 },
@@ -643,8 +646,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       15: [
         {
           id: 'malloc_15_left',
-          name: '+30% Free() Damage',
-          description: 'Free() (W) deals 30% more — a bigger execute',
+          name: '+30% Free() INTEG Removed',
+          description: 'Free() (W) removes 30% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 15,
           abilityId: 'w',
@@ -652,8 +655,9 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'malloc_15_right',
-          name: '-2s Pointer Dereference CD',
-          description: 'Pointer Dereference (E) cooldown reduced — dash + stun more often',
+          name: '-2 Cycles Pointer Dereference CD',
+          description:
+            'Pointer Dereference (E) cooldown reduced by 2 cycles — dash + stun more often',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'e',
@@ -663,8 +667,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       20: [
         {
           id: 'malloc_20_left',
-          name: '+40% Stack Overflow Damage',
-          description: 'Stack Overflow (R) AoE deals 40% more',
+          name: '+40% Stack Overflow INTEG Removed',
+          description: 'Stack Overflow (R) removes 40% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 20,
           abilityId: 'r',
@@ -673,7 +677,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'malloc_20_right',
           name: '+350 INTEG',
-          description: '+350 INTEG',
+          description: '+350 INTEG — a bigger pool for the late line dive',
           type: 'stat_bonus',
           tier: 20,
           statBonus: { stat: 'integ', value: 350 },
@@ -682,8 +686,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'malloc_25_left',
-          name: '-10s Stack Overflow CD',
-          description: 'Stack Overflow (R) ultimate cooldown reduced',
+          name: '-10 Cycles Stack Overflow CD',
+          description: 'Stack Overflow (R) ultimate cooldown reduced by 10 cycles',
           type: 'cooldown_reduce',
           tier: 25,
           abilityId: 'r',
@@ -691,8 +695,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'malloc_25_right',
-          name: '+20 Iceance',
-          description: '+20 Iceance — survive enemy nukes',
+          name: '+20 ICE',
+          description: '+20 ICE — survive enemy nukes',
           type: 'stat_bonus',
           tier: 25,
           statBonus: { stat: 'ice', value: 20 },
@@ -727,8 +731,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       15: [
         {
           id: 'cipher_15_left',
-          name: '+30% XOR Strike Damage',
-          description: 'XOR Strike (Q) deals 30% more burst',
+          name: '+30% XOR Strike INTEG Removed',
+          description: 'XOR Strike (Q) removes 30% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 15,
           abilityId: 'q',
@@ -736,8 +740,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'cipher_15_right',
-          name: '-2s Encrypt CD',
-          description: 'Encrypt (W) stealth cooldown reduced — reposition more often',
+          name: '-2 Cycles Encrypt CD',
+          description: 'Encrypt (W) stealth cooldown reduced by 2 cycles — reposition more often',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'w',
@@ -747,8 +751,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       20: [
         {
           id: 'cipher_20_left',
-          name: '+40% Brute Force Damage',
-          description: 'Brute Force (R) deals 40% more across its 6 strikes',
+          name: '+40% Brute Force INTEG Removed',
+          description: 'Brute Force (R) removes 40% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 20,
           abilityId: 'r',
@@ -757,7 +761,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'cipher_20_right',
           name: '+250 INTEG',
-          description: '+250 INTEG',
+          description: '+250 INTEG — more health for the fragile assassin',
           type: 'stat_bonus',
           tier: 20,
           statBonus: { stat: 'integ', value: 250 },
@@ -766,8 +770,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'cipher_25_left',
-          name: '-10s Brute Force CD',
-          description: 'Brute Force (R) ultimate cooldown reduced',
+          name: '-10 Cycles Brute Force CD',
+          description: 'Brute Force (R) ultimate cooldown reduced by 10 cycles',
           type: 'cooldown_reduce',
           tier: 25,
           abilityId: 'r',
@@ -775,8 +779,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'cipher_25_right',
-          name: '+18 Iceance',
-          description: '+18 Iceance',
+          name: '+18 ICE',
+          description: '+18 ICE — less code damage taken',
           type: 'stat_bonus',
           tier: 25,
           statBonus: { stat: 'ice', value: 18 },
@@ -802,8 +806,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'sentry_10_right',
-          name: '+15 Iceance',
-          description: '+15 Iceance',
+          name: '+15 ICE',
+          description: '+15 ICE — less code damage taken while peeling for the team',
           type: 'stat_bonus',
           tier: 10,
           statBonus: { stat: 'ice', value: 15 },
@@ -812,8 +816,9 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       15: [
         {
           id: 'sentry_15_left',
-          name: '-2s Mend Protocol CD',
-          description: 'Mend Protocol (Q) heal cooldown reduced — top allies up more often',
+          name: '-2 Cycles Mend Protocol CD',
+          description:
+            'Mend Protocol (Q) heal cooldown reduced by 2 cycles — top allies up more often',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'q',
@@ -832,8 +837,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       20: [
         {
           id: 'sentry_20_left',
-          name: '-3s Scan Pulse CD',
-          description: 'Scan Pulse (E) cooldown reduced — more reveals + slows',
+          name: '-3 Cycles Scan Pulse CD',
+          description: 'Scan Pulse (E) cooldown reduced by 3 cycles — more reveals + slows',
           type: 'cooldown_reduce',
           tier: 20,
           abilityId: 'e',
@@ -851,8 +856,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'sentry_25_left',
-          name: '-12s Fortify CD',
-          description: 'Fortify (R) team-shield ultimate cooldown reduced',
+          name: '-12 Cycles Fortify CD',
+          description: 'Fortify (R) team-shield ultimate cooldown reduced by 12 cycles',
           type: 'cooldown_reduce',
           tier: 25,
           abilityId: 'r',
@@ -898,8 +903,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       15: [
         {
           id: 'socket_15_left',
-          name: '-3s Bind CD',
-          description: 'Bind (Q) root cooldown reduced — lock targets down more often',
+          name: '-3 Cycles Bind CD',
+          description: 'Bind (Q) root cooldown reduced by 3 cycles — lock targets down more often',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'q',
@@ -907,8 +912,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'socket_15_right',
-          name: '-4s Listen CD',
-          description: 'Listen (W) trap cooldown reduced — keep more traps armed',
+          name: '-4 Cycles Listen CD',
+          description: 'Listen (W) trap cooldown reduced by 4 cycles — keep more traps armed',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'w',
@@ -918,8 +923,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       20: [
         {
           id: 'socket_20_left',
-          name: '-5s Accept CD',
-          description: 'Accept (E) pull cooldown reduced — drag enemies in more often',
+          name: '-5 Cycles Accept CD',
+          description: 'Accept (E) pull cooldown reduced by 5 cycles — drag enemies in more often',
           type: 'cooldown_reduce',
           tier: 20,
           abilityId: 'e',
@@ -937,8 +942,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'socket_25_left',
-          name: '-12s Broadcast CD',
-          description: 'Broadcast (R) global-slow ultimate cooldown reduced',
+          name: '-12 Cycles Broadcast CD',
+          description: 'Broadcast (R) global-slow ultimate cooldown reduced by 12 cycles',
           type: 'cooldown_reduce',
           tier: 25,
           abilityId: 'r',
@@ -946,8 +951,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'socket_25_right',
-          name: '+18 Iceance',
-          description: '+18 Iceance',
+          name: '+18 ICE',
+          description: '+18 ICE — less code damage taken',
           type: 'stat_bonus',
           tier: 25,
           statBonus: { stat: 'ice', value: 18 },
@@ -983,8 +988,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       15: [
         {
           id: 'mutex_15_left',
-          name: '+30% Lock Damage',
-          description: 'Lock (Q) deals 30% more on the nuke+root',
+          name: '+30% Lock INTEG Removed',
+          description: 'Lock (Q) removes 30% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 15,
           abilityId: 'q',
@@ -992,8 +997,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'mutex_15_right',
-          name: '-2s Spinlock CD',
-          description: 'Spinlock (E) cooldown reduced — more AoE strikes + slows',
+          name: '-2 Cycles Spinlock CD',
+          description: 'Spinlock (E) cooldown reduced by 2 cycles — more AoE strikes + slows',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'e',
@@ -1003,8 +1008,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       20: [
         {
           id: 'mutex_20_left',
-          name: '+40% Priority Inversion Damage',
-          description: 'Priority Inversion (R) AoE deals 40% more',
+          name: '+40% Priority Inversion INTEG Removed',
+          description: 'Priority Inversion (R) removes 40% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 20,
           abilityId: 'r',
@@ -1012,8 +1017,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'mutex_20_right',
-          name: '+12 Defense',
-          description: '+12 Defense — synergises with the Deadlock tank stacks',
+          name: '+12 Plate',
+          description: '+12 Plate — synergises with the Deadlock tank stacks',
           type: 'stat_bonus',
           tier: 20,
           statBonus: { stat: 'plate', value: 12 },
@@ -1022,8 +1027,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'mutex_25_left',
-          name: '-12s Priority Inversion CD',
-          description: 'Priority Inversion (R) fear ultimate cooldown reduced',
+          name: '-12 Cycles Priority Inversion CD',
+          description: 'Priority Inversion (R) fear ultimate cooldown reduced by 12 cycles',
           type: 'cooldown_reduce',
           tier: 25,
           abilityId: 'r',
@@ -1031,8 +1036,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'mutex_25_right',
-          name: '+20 Iceance',
-          description: '+20 Iceance',
+          name: '+20 ICE',
+          description: '+20 ICE — less code damage taken',
           type: 'stat_bonus',
           tier: 25,
           statBonus: { stat: 'ice', value: 20 },
@@ -1068,8 +1073,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       15: [
         {
           id: 'thread_15_left',
-          name: '+30% Fork Damage',
-          description: 'Fork (Q) deals 30% more burst',
+          name: '+30% Fork INTEG Removed',
+          description: 'Fork (Q) removes 30% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 15,
           abilityId: 'q',
@@ -1077,8 +1082,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'thread_15_right',
-          name: '-2s Sync Barrier CD',
-          description: 'Sync Barrier (W) shield cooldown reduced',
+          name: '-2 Cycles Sync Barrier CD',
+          description: 'Sync Barrier (W) shield cooldown reduced by 2 cycles',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'w',
@@ -1096,8 +1101,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'thread_20_right',
-          name: '-2s Yield CD',
-          description: 'Yield (E) mark cooldown reduced — keep targets vulnerable',
+          name: '-2 Cycles Yield CD',
+          description: 'Yield (E) mark cooldown reduced by 2 cycles — keep targets vulnerable',
           type: 'cooldown_reduce',
           tier: 20,
           abilityId: 'e',
@@ -1107,8 +1112,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'thread_25_left',
-          name: '-12s Thread Pool CD',
-          description: 'Thread Pool (R) AoE-attack ultimate cooldown reduced',
+          name: '-12 Cycles Thread Pool CD',
+          description: 'Thread Pool (R) AoE-attack ultimate cooldown reduced by 12 cycles',
           type: 'cooldown_reduce',
           tier: 25,
           abilityId: 'r',
@@ -1116,8 +1121,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'thread_25_right',
-          name: '+18 Iceance',
-          description: '+18 Iceance',
+          name: '+18 ICE',
+          description: '+18 ICE — less code damage taken',
           type: 'stat_bonus',
           tier: 25,
           statBonus: { stat: 'ice', value: 18 },
@@ -1153,8 +1158,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       15: [
         {
           id: 'lambda_15_left',
-          name: '+35% Invoke Damage',
-          description: 'Invoke (Q) deals 35% more — a harder-hitting combo opener',
+          name: '+35% Invoke INTEG Removed',
+          description: 'Invoke (Q) removes 35% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 15,
           abilityId: 'q',
@@ -1162,8 +1167,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'lambda_15_right',
-          name: '-3s Map CD',
-          description: 'Map (E) cooldown reduced — slow + nuke the zone more often',
+          name: '-3 Cycles Map CD',
+          description: 'Map (E) cooldown reduced by 3 cycles — slow + nuke the zone more often',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'e',
@@ -1173,8 +1178,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       20: [
         {
           id: 'lambda_20_left',
-          name: '+40% Map Damage',
-          description: 'Map (E) AoE deals 40% more across the slowed zone',
+          name: '+40% Map INTEG Removed',
+          description: 'Map (E) removes 40% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 20,
           abilityId: 'e',
@@ -1182,8 +1187,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'lambda_20_right',
-          name: '-4s Return CD',
-          description: 'Return (W) cooldown reduced — reposition and escape more often',
+          name: '-4 Cycles Return CD',
+          description: 'Return (W) cooldown reduced by 4 cycles — reposition and escape more often',
           type: 'cooldown_reduce',
           tier: 20,
           abilityId: 'w',
@@ -1193,8 +1198,9 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'lambda_25_left',
-          name: '-12s Reduce CD',
-          description: 'Reduce (R) ultimate cooldown reduced — channel the nuke more often',
+          name: '-12 Cycles Reduce CD',
+          description:
+            'Reduce (R) ultimate cooldown reduced by 12 cycles — channel the nuke more often',
           type: 'cooldown_reduce',
           tier: 25,
           abilityId: 'r',
@@ -1203,7 +1209,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'lambda_25_right',
           name: 'Double Cast',
-          description: 'Your Q has a 25% chance to cast twice',
+          description: 'Invoke (Q) has a 25% chance to cast twice',
           type: 'special',
           tier: 25,
           abilityId: 'q',
@@ -1241,8 +1247,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       15: [
         {
           id: 'cron_15_left',
-          name: '+35% Kill Signal Damage',
-          description: 'Kill Signal (E) deals 35% more kinetic burst',
+          name: '+35% Kill Signal INTEG Removed',
+          description: 'Kill Signal (E) removes 35% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 15,
           abilityId: 'e',
@@ -1250,8 +1256,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'cron_15_right',
-          name: '-3s Uptime CD',
-          description: 'Uptime (Q) cooldown reduced — keep an ally buffed more often',
+          name: '-3 Cycles Uptime CD',
+          description: 'Uptime (Q) cooldown reduced by 3 cycles — keep an ally buffed more often',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'q',
@@ -1261,8 +1267,9 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       20: [
         {
           id: 'cron_20_left',
-          name: '-4s Purge CD',
-          description: 'Purge (W) cooldown reduced — cleanse + shield allies more often',
+          name: '-4 Cycles Purge CD',
+          description:
+            'Purge (W) cooldown reduced by 4 cycles — cleanse + shield allies more often',
           type: 'cooldown_reduce',
           tier: 20,
           abilityId: 'w',
@@ -1281,8 +1288,9 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'cron_25_left',
-          name: '-12s Crontab CD',
-          description: 'Crontab (R) ultimate cooldown reduced — heal the team more often',
+          name: '-12 Cycles Crontab CD',
+          description:
+            'Crontab (R) ultimate cooldown reduced by 12 cycles — heal the team more often',
           type: 'cooldown_reduce',
           tier: 25,
           abilityId: 'r',
@@ -1290,8 +1298,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'cron_25_right',
-          name: '+18 Iceance',
-          description: '+18 Iceance — survive enemy nukes while channeling support',
+          name: '+18 ICE',
+          description: '+18 ICE — survive enemy nukes while channeling support',
           type: 'stat_bonus',
           tier: 25,
           statBonus: { stat: 'ice', value: 18 },
@@ -1328,8 +1336,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       15: [
         {
           id: 'traceroute_15_left',
-          name: '+35% Probe Damage',
-          description: 'Probe (Q) deals 35% more — bigger pick-off on isolated targets',
+          name: '+35% Probe INTEG Removed',
+          description: 'Probe (Q) removes 35% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 15,
           abilityId: 'q',
@@ -1337,8 +1345,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'traceroute_15_right',
-          name: '-3s TTL CD',
-          description: 'TTL (W) trap cooldown reduced — lock down targets more often',
+          name: '-3 Cycles TTL CD',
+          description: 'TTL (W) trap cooldown reduced by 3 cycles — lock down targets more often',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'w',
@@ -1348,8 +1356,9 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       20: [
         {
           id: 'traceroute_20_left',
-          name: '-3s Next Hop CD',
-          description: 'Next Hop (E) cooldown reduced — reposition and chase more often',
+          name: '-3 Cycles Next Hop CD',
+          description:
+            'Next Hop (E) cooldown reduced by 3 cycles — reposition and chase more often',
           type: 'cooldown_reduce',
           tier: 20,
           abilityId: 'e',
@@ -1368,8 +1377,9 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'traceroute_25_left',
-          name: '-12s Full Trace CD',
-          description: 'Full Trace (R) ultimate cooldown reduced — reveal + amp more often',
+          name: '-12 Cycles Full Trace CD',
+          description:
+            'Full Trace (R) ultimate cooldown reduced by 12 cycles — reveal + amp more often',
           type: 'cooldown_reduce',
           tier: 25,
           abilityId: 'r',
@@ -1377,8 +1387,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'traceroute_25_right',
-          name: '+18 Iceance',
-          description: '+18 Iceance — survive enemy nukes on the dive',
+          name: '+18 ICE',
+          description: '+18 ICE — survive enemy nukes on the dive',
           type: 'stat_bonus',
           tier: 25,
           statBonus: { stat: 'ice', value: 18 },
@@ -1395,8 +1405,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       10: [
         {
           id: 'null_ref_10_left',
-          name: '+30% Void Bolt Damage',
-          description: 'Void Bolt (Q) deals 30% more — harder poke into the resist shred',
+          name: '+30% Void Bolt INTEG Removed',
+          description: 'Void Bolt (Q) removes 30% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 10,
           abilityId: 'q',
@@ -1414,8 +1424,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       15: [
         {
           id: 'null_ref_15_left',
-          name: '-2s Void Bolt CD',
-          description: 'Void Bolt (Q) cooldown reduced — chain the magic-resist shred',
+          name: '-2 Cycles Void Bolt CD',
+          description: 'Void Bolt (Q) cooldown reduced by 2 cycles — chain the magic-resist shred',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'q',
@@ -1423,8 +1433,9 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'null_ref_15_right',
-          name: '-3s Null Pointer CD',
-          description: 'Null Pointer (W) silence cooldown reduced — lock a caster more often',
+          name: '-3 Cycles Null Pointer CD',
+          description:
+            'Null Pointer (W) silence cooldown reduced by 3 cycles — lock a caster more often',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'w',
@@ -1434,8 +1445,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       20: [
         {
           id: 'null_ref_20_left',
-          name: '+40% Dereference Damage',
-          description: 'Dereference (R) AoE nuke deals 40% more before the execute bonus',
+          name: '+40% Dereference INTEG Removed',
+          description: 'Dereference (R) removes 40% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 20,
           abilityId: 'r',
@@ -1443,8 +1454,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'null_ref_20_right',
-          name: '-3s Void Zone CD',
-          description: 'Void Zone (E) cooldown reduced — keep the DoT + reveal up',
+          name: '-3 Cycles Void Zone CD',
+          description: 'Void Zone (E) cooldown reduced by 3 cycles — keep the DoT + reveal up',
           type: 'cooldown_reduce',
           tier: 20,
           abilityId: 'e',
@@ -1454,8 +1465,9 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'null_ref_25_left',
-          name: '-12s Dereference CD',
-          description: 'Dereference (R) ultimate cooldown reduced — execute teamfights faster',
+          name: '-12 Cycles Dereference CD',
+          description:
+            'Dereference (R) ultimate cooldown reduced by 12 cycles — execute teamfights faster',
           type: 'cooldown_reduce',
           tier: 25,
           abilityId: 'r',
@@ -1484,8 +1496,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       10: [
         {
           id: 'ping_10_left',
-          name: '+30% ICMP Echo Damage',
-          description: 'ICMP Echo (Q) probes for 30% more code damage',
+          name: '+30% ICMP Echo INTEG Removed',
+          description: 'ICMP Echo (Q) removes 30% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 10,
           abilityId: 'q',
@@ -1503,8 +1515,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       15: [
         {
           id: 'ping_15_left',
-          name: '-3s ICMP Echo CD',
-          description: 'ICMP Echo (Q) cooldown reduced — relentless cross-zone poke',
+          name: '-3 Cycles ICMP Echo CD',
+          description: 'ICMP Echo (Q) cooldown reduced by 3 cycles — relentless cross-zone poke',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'q',
@@ -1512,8 +1524,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'ping_15_right',
-          name: '-3s Timeout CD',
-          description: 'Timeout (W) silence comes back sooner — lock down casters',
+          name: '-3 Cycles Timeout CD',
+          description: 'Timeout (W) silence cooldown reduced by 3 cycles — lock down casters',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'w',
@@ -1523,8 +1535,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       20: [
         {
           id: 'ping_20_left',
-          name: '+40% ICMP Echo Damage',
-          description: 'ICMP Echo (Q) deals 40% more — the poke becomes a nuke',
+          name: '+40% ICMP Echo INTEG Removed',
+          description: 'ICMP Echo (Q) removes 40% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 20,
           abilityId: 'q',
@@ -1542,8 +1554,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'ping_25_left',
-          name: '-12s Flood CD',
-          description: 'Flood (R) ultimate cooldown reduced — zone control more often',
+          name: '-12 Cycles Flood CD',
+          description: 'Flood (R) ultimate cooldown reduced by 12 cycles — zone control more often',
           type: 'cooldown_reduce',
           tier: 25,
           abilityId: 'r',
@@ -1551,8 +1563,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'ping_25_right',
-          name: '+18 Iceance',
-          description: '+18 Iceance — outlast enemy nukes',
+          name: '+18 ICE',
+          description: '+18 ICE — outlast enemy nukes',
           type: 'stat_bonus',
           tier: 25,
           statBonus: { stat: 'ice', value: 18 },
@@ -1581,8 +1593,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'cache_10_right',
-          name: '+15 Defense',
-          description: '+15 Defense — tank through enemy focus fire',
+          name: '+15 Plate',
+          description: '+15 Plate — tank through enemy focus fire',
           type: 'stat_bonus',
           tier: 10,
           statBonus: { stat: 'plate', value: 15 },
@@ -1591,8 +1603,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       15: [
         {
           id: 'cache_15_left',
-          name: '+30% Cache Hit Damage',
-          description: 'Cache Hit (Q) deals 30% more — a bigger burst from stored energy',
+          name: '+30% Cache Hit INTEG Removed',
+          description: 'Cache Hit (Q) removes 30% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 15,
           abilityId: 'q',
@@ -1600,8 +1612,9 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'cache_15_right',
-          name: '-3s Flush CD',
-          description: 'Flush (W) shield cooldown reduced — convert energy to plate more often',
+          name: '-3 Cycles Flush CD',
+          description:
+            'Flush (W) shield cooldown reduced by 3 cycles — convert energy to plate more often',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'w',
@@ -1611,8 +1624,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       20: [
         {
           id: 'cache_20_left',
-          name: '+40% Eviction Damage',
-          description: 'Eviction (R) AoE deals 40% more — a devastating cache purge',
+          name: '+40% Eviction INTEG Removed',
+          description: 'Eviction (R) removes 40% more INTEG from each enemy it hits',
           type: 'damage_boost',
           tier: 20,
           abilityId: 'r',
@@ -1620,8 +1633,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'cache_20_right',
-          name: '-3s Invalidate CD',
-          description: 'Invalidate (E) cooldown reduced — more anti-heal + code burst',
+          name: '-3 Cycles Invalidate CD',
+          description: 'Invalidate (E) cooldown reduced by 3 cycles — more anti-heal + code burst',
           type: 'cooldown_reduce',
           tier: 20,
           abilityId: 'e',
@@ -1631,8 +1644,9 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'cache_25_left',
-          name: '-12s Eviction CD',
-          description: 'Eviction (R) ultimate cooldown reduced — unleash the cache more often',
+          name: '-12 Cycles Eviction CD',
+          description:
+            'Eviction (R) ultimate cooldown reduced by 12 cycles — unleash the cache more often',
           type: 'cooldown_reduce',
           tier: 25,
           abilityId: 'r',
@@ -1640,8 +1654,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'cache_25_right',
-          name: '+22 Iceance',
-          description: '+22 Iceance — shrug off code nukes',
+          name: '+22 ICE',
+          description: '+22 ICE — shrug off code nukes',
           type: 'stat_bonus',
           tier: 25,
           statBonus: { stat: 'ice', value: 22 },

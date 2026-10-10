@@ -66,7 +66,7 @@ describe('AbilitySlot', () => {
     it('shows the remaining cooldown, disables the button and blocks casting', async () => {
       const wrapper = mountSlot({ interactive: true, bwAvailable: 100, cooldownRemaining: 2 })
 
-      expect(wrapper.text()).toContain('CD 2t')
+      expect(wrapper.text()).toContain('CD 2c')
       expect(wrapper.find('button').attributes('disabled')).toBeDefined()
       expect(wrapper.classes()).toContain('opacity-50')
 
@@ -110,7 +110,7 @@ describe('AbilitySlot', () => {
 
   it('shows the cooldown (not "no bw") when both on cooldown and unaffordable', () => {
     const wrapper = mountSlot({ interactive: true, bwAvailable: 0, cooldownRemaining: 3 })
-    expect(wrapper.text()).toContain('CD 3t')
+    expect(wrapper.text()).toContain('CD 3c')
     expect(wrapper.text()).not.toContain('no bw')
     expect(wrapper.find('button').attributes('disabled')).toBeDefined()
   })
@@ -118,7 +118,7 @@ describe('AbilitySlot', () => {
   it('applies cooldown dimming even on a non-interactive slot', () => {
     const wrapper = mountSlot({ cooldownRemaining: 2 })
     expect(wrapper.element.tagName).toBe('DIV')
-    expect(wrapper.text()).toContain('CD 2t')
+    expect(wrapper.text()).toContain('CD 2c')
     expect(wrapper.classes()).toContain('opacity-50')
   })
 })

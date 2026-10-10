@@ -198,6 +198,50 @@ describe('useGameChannel', () => {
       expect(addEventsSpy).toHaveBeenCalledWith([])
     })
 
+    it('a redelivered cycle_state does not feed its events a second time (no double-printed lines)', async () => {
+      const { useGameStore } = await import('../../../app/stores/game')
+      const store = useGameStore()
+      vi.spyOn(store, 'updateFromCycle').mockImplementation(() => {})
+      const addEventsSpy = vi.spyOn(store, 'addEvents').mockImplementation(() => {})
+
+      const { connect } = useGameChannel()
+      connect('game-1', 'player-1')
+      MockRealtime.last!.connection._setState('connected')
+
+      const events = [
+        { cycle: 5, type: 'damage', payload: { sourceId: 'x', targetId: 'player-1', amount: 9 } },
+      ]
+      MockRealtime.last!.channel!._receive('cycle_state', { cycle: 5, state: { events } })
+      MockRealtime.last!.channel!._receive('cycle_state', { cycle: 5, state: { events } })
+      MockRealtime.last!.channel!._receive('cycle_state', { cycle: 6, state: { events: [] } })
+
+      expect(addEventsSpy).toHaveBeenCalledTimes(2)
+      expect(addEventsSpy.mock.calls.map((c) => c[0])).toEqual([events, []])
+    })
+
+    it('a server announcement (a rejected order) reaches the toast once and the feed handler once', async () => {
+      const { useGameStore } = await import('../../../app/stores/game')
+      const store = useGameStore()
+      const toastSpy = vi.spyOn(store, 'addAnnouncement')
+
+      const { connect, onMessage } = useGameChannel()
+      connect('game-1', 'player-1')
+      MockRealtime.last!.connection._setState('connected')
+      const received: Array<{ type: string }> = []
+      onMessage((msg) => received.push(msg))
+
+      MockRealtime.last!.channel!._receive('announcement', {
+        message: 'Cannot move while rooted',
+        level: 'warning',
+      })
+
+      expect(toastSpy).toHaveBeenCalledTimes(1)
+      expect(toastSpy).toHaveBeenCalledWith('Cannot move while rooted', 'warning')
+      expect(received).toEqual([
+        { type: 'announcement', message: 'Cannot move while rooted', level: 'warning' },
+      ])
+    })
+
     it('routes an Ably game_over message to setGameOver (the tick workflow publishes it in the final batch)', async () => {
       const { useGameStore } = await import('../../../app/stores/game')
       const store = useGameStore()

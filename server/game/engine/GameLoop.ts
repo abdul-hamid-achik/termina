@@ -19,7 +19,12 @@ import {
   HARDEN_DURATION_CYCLES,
 } from '~~/shared/constants/balance'
 import { scaledRespawnTicks, fastGameFactor } from './fastGame'
-import { resolveActions, validateAction, type PlayerAction } from './ActionResolver'
+import {
+  resolveActions,
+  validateAction,
+  convertClosedControlCast,
+  type PlayerAction,
+} from './ActionResolver'
 import {
   advanceTutorialAfterTick,
   tutorialMasteryAchieved,
@@ -36,7 +41,7 @@ import { resolveKineticHit } from './CombatResolver'
 import { spawnWaveUnits, spawnCaches } from '~~/server/game/map/spawner'
 import { spawnSiltDwellers, runNeutralAI, applyNeutralActions } from './NeutralAI'
 import { removeExpiredWards } from '~~/server/game/map/zones'
-import { mix, mulberry32, hashStringToSeed } from './rng'
+import { mix, mulberry32, hashStringToSeed, compareCodePoints } from './rng'
 // Importing from '~~/server/game/heroes' (not '../heroes/_base') guarantees every hero's
 // registerHero() side effect has run before the first tick resolves a cast.
 import {
@@ -47,7 +52,7 @@ import {
   getTalentTree,
 } from '~~/server/game/heroes'
 import { talentUnlockLevel } from '~~/shared/constants/talents'
-import { toGameEvent, type GameEngineEvent } from '~~/server/game/protocol/events'
+import { stampEventZones, toGameEvent, type GameEngineEvent } from '~~/server/game/protocol/events'
 import { getBotPlayerIds, getBotLane, isBot, convertToBot } from '~~/server/game/ai/BotManager'
 import { decideBotAction } from '~~/server/game/ai/BotAI'
 import { engineLog } from '~~/server/utils/log'
@@ -298,6 +303,15 @@ export function processCycle(
     const allEvents: GameEngineEvent[] = []
     const rejectedActions: Array<{ playerId: string; reason: string }> = []
     const notices: Array<{ playerId: string; message: string }> = []
+    // Location stamps for the fog filter (LOCATED_EVENT_TAGS): called at the
+    // end of every phase that emits combat events, against the state as that
+    // phase left it — so each event is located where it resolved, before a
+    // later teleport/respawn moves anyone.
+    let locatedUpTo = 0
+    const locateNewEvents = () => {
+      stampEventZones(allEvents, currentState, locatedUpTo)
+      locatedUpTo = allEvents.length
+    }
 
     // THE BATCH CLOCK IS CANON: resolution must be deterministic given the same
     // state+actions, so every random draw this cycle (crits, procs, neutral/cache
@@ -415,10 +429,13 @@ export function processCycle(
 
     // 2. Validate actions against current state (filter out already-handled commands)
     const validActions: PlayerAction[] = []
-    for (const action of actions) {
-      if (action.command.type === 'buyback' || action.command.type === 'surrender') {
+    for (const drained of actions) {
+      if (drained.command.type === 'buyback' || drained.command.type === 'surrender') {
         continue // Already handled
       }
+      // Auto-breach: a control cast into a CLOSED hero the caster can breach
+      // becomes that breach (ActionResolver.convertClosedControlCast).
+      const action = convertClosedControlCast(currentState, drained)
       const error = validateAction(currentState, action)
       if (error === null) {
         validActions.push(action)
@@ -439,6 +456,7 @@ export function processCycle(
     const resolved = yield* resolveActions(currentState, validActions, rng)
     currentState = resolved.state
     allEvents.push(...resolved.events)
+    locateNewEvents()
     // Casts/moves that failed inside resolution (BW, bad target, slow)
     // reach onActionRejected player feedback through the same channel as
     // validation failures.
@@ -491,9 +509,6 @@ export function processCycle(
       }
     }
 
-    // 3.5. Track ice kills and update team stats
-    currentState = trackIceKills(currentState, preIce, allEvents)
-
     // 3.6. Apply inCombat buffs based on damage events
     currentState = applyInCombatBuffs(currentState, resolved.events)
 
@@ -502,6 +517,7 @@ export function processCycle(
     const trapResult = processTraps(currentState)
     currentState = trapResult.state
     allEvents.push(...trapResult.events)
+    locateNewEvents()
 
     // 3.7. Expire harden invulnerability
     currentState = expireGlyph(currentState)
@@ -514,6 +530,13 @@ export function processCycle(
     })
     currentState = npcResult.state
     allEvents.push(...npcResult.events)
+    locateNewEvents()
+
+    // 5.0. Track ice kills from ANY source (a hero swing in step 3, or a wave /
+    // Tenant felling ICE just now) in one pass against the pre-resolution
+    // snapshot, so each fallen ICE counts once and emits one ice_kill. It used
+    // to run before NPC AI and never saw wave-felled ICE (scoreboard 0:0).
+    currentState = trackIceKills(currentState, preIce, allEvents)
 
     // 5.65. Being shot by ice, a wave or a silt dweller is combat too —
     // it must gate fountain regen and the "out of combat" item passives exactly
@@ -542,6 +565,7 @@ export function processCycle(
     const dotResult = processDoTs(currentState)
     currentState = dotResult.state
     allEvents.push(...dotResult.events)
+    locateNewEvents()
 
     // 10.6. Tick all buffs (decrement durations, remove expired)
     const eventsBeforeBuffTick = currentState.events.length
@@ -602,8 +626,10 @@ export function processCycle(
 
     // 11. Handle deaths — check for newly dead players, attribute kills.
     // Damage dealt this cycle (attacks, abilities, DoTs) feeds assist credit.
+    locateNewEvents() // the DMZ bridge above
     trackHeroDamage(gameId, currentState, allEvents)
     currentState = handleDeaths(gameId, currentState, allEvents, resolved.heroAttackers)
+    locateNewEvents()
 
     // 11.5. Hero passives — after handleDeaths (so kill events exist for
     // null_ref's Void Drain), before level ups. Actions rejected during
@@ -612,6 +638,7 @@ export function processCycle(
       (a) => !resolved.rejected.some((r) => r.playerId === a.playerId),
     )
     currentState = runHeroPassives(currentState, succeededActions, allEvents, preTickZones)
+    locateNewEvents()
 
     // 12. Check level ups
     currentState = checkLevelUps(currentState, allEvents)
@@ -620,7 +647,7 @@ export function processCycle(
     const winner =
       currentState.phase === 'ended'
         ? (currentState.winner ?? null)
-        : checkWinCondition(currentState)
+        : checkWinCondition(currentState, state, mix(rngSeed ^ 0x7e3a1, currentState.cycle))
     if (winner) {
       currentState = { ...currentState, phase: 'ended', winner }
       yield* Effect.logInfo('Win condition met').pipe(Effect.annotateLogs({ gameId, winner }))
@@ -654,8 +681,9 @@ export function processCycle(
     // player down. convertToBot adds them to the bot roster, so the driver at
     // the top of this pipeline issues their actions from next cycle; we flag the
     // slot `aiControlled` for the UI and emit an afk_takeover event. No-reclaim:
-    // the action ingress drops a reconnecting human's input via isGameBot, and
-    // detectAFKPlayers skips aiControlled slots so this fires exactly once.
+    // POST /api/game/action refuses a converted human's orders (except
+    // `surrender`) via the persisted `aiControlled` flag, and detectAFKPlayers
+    // skips aiControlled slots so this fires exactly once.
     if (currentState.cycle % 60 === 0) {
       for (const afk of detectAFKPlayers(currentState)) {
         const player = currentState.players[afk.playerId]
@@ -693,6 +721,7 @@ export function processCycle(
       }
     }
 
+    locateNewEvents() // anything emitted since (level-ups, day/night, AFK)
     // 14. Store events on state — merge instead of overwrite so wire-format
     // events pushed directly onto state during the tick (e.g. cycleAllBuffs'
     // teleport_complete) aren't dropped.
@@ -823,46 +852,58 @@ export function processSpecialActions(
       }
     } else if (action.command.type === 'select_talent') {
       const player = currentState.players[action.playerId]
-      if (player && player.heroId) {
-        const talentTree = getTalentTree(player.heroId)
-        if (talentTree) {
-          const tierKey = `tier${action.command.tier}` as keyof typeof player.talents
-          const selectedTalentId = action.command.talentId
+      // Every exit that spends the order says why — a talent pick that
+      // resolves to nothing used to vanish without a line.
+      const talentTree = player?.heroId ? getTalentTree(player.heroId) : undefined
+      if (!player || !player.heroId || !talentTree) {
+        if (player) {
+          rejectedActions.push({
+            playerId: action.playerId,
+            reason: player.heroId ? 'No talent tree for this operator' : 'Pick an operator first',
+          })
+        }
+      } else {
+        const tierKey = `tier${action.command.tier}` as keyof typeof player.talents
+        const selectedTalentId = action.command.talentId
 
-          const tierTalents = talentTree.tiers[action.command.tier]
-          const isValidTalent = tierTalents.some((t) => t.id === selectedTalentId)
-          const alreadySelected = player.talents[tierKey] !== null
-          // The tier NUMBER is an identity, not a level requirement — read the
-          // unlock level from the balance table (see TALENT_UNLOCK_LEVEL).
-          const requiredLevel = talentUnlockLevel(action.command.tier)
+        const tierTalents: ReadonlyArray<{ id: string; name: string }> =
+          talentTree.tiers[action.command.tier] ?? []
+        if (tierTalents.length === 0) {
+          rejectedActions.push({ playerId: action.playerId, reason: 'Invalid talent tier' })
+          continue
+        }
+        const isValidTalent = tierTalents.some((t) => t.id === selectedTalentId)
+        const alreadySelected = (player.talents[tierKey] ?? null) !== null
+        // The tier NUMBER is an identity, not a level requirement — read the
+        // unlock level from the balance table (see TALENT_UNLOCK_LEVEL).
+        const requiredLevel = talentUnlockLevel(action.command.tier)
 
-          if (isValidTalent && !alreadySelected && player.level >= requiredLevel) {
-            const updatedPlayers = { ...currentState.players }
-            updatedPlayers[action.playerId] = {
-              ...player,
-              talents: { ...player.talents, [tierKey]: selectedTalentId },
-            }
-            currentState = { ...currentState, players: updatedPlayers }
-
-            const selectedTalent = tierTalents.find((t) => t.id === selectedTalentId)
-            events.push({
-              _tag: 'talent_selected',
-              cycle: currentState.cycle,
-              playerId: action.playerId,
-              talentId: selectedTalentId,
-              tier: action.command.tier,
-              talentName: selectedTalent?.name || 'Unknown',
-            })
-          } else {
-            rejectedActions.push({
-              playerId: action.playerId,
-              reason: alreadySelected
-                ? 'Talent already selected for this tier'
-                : isValidTalent
-                  ? `Requires level ${requiredLevel}`
-                  : 'Invalid talent',
-            })
+        if (isValidTalent && !alreadySelected && player.level >= requiredLevel) {
+          const updatedPlayers = { ...currentState.players }
+          updatedPlayers[action.playerId] = {
+            ...player,
+            talents: { ...player.talents, [tierKey]: selectedTalentId },
           }
+          currentState = { ...currentState, players: updatedPlayers }
+
+          const selectedTalent = tierTalents.find((t) => t.id === selectedTalentId)
+          events.push({
+            _tag: 'talent_selected',
+            cycle: currentState.cycle,
+            playerId: action.playerId,
+            talentId: selectedTalentId,
+            tier: action.command.tier,
+            talentName: selectedTalent?.name || 'Unknown',
+          })
+        } else {
+          rejectedActions.push({
+            playerId: action.playerId,
+            reason: alreadySelected
+              ? 'Talent already selected for this tier'
+              : isValidTalent
+                ? `Requires level ${requiredLevel}`
+                : 'Invalid talent',
+          })
         }
       }
     }
@@ -1231,7 +1272,31 @@ function handleDeaths(
   let teams = { ...state.teams }
   let changed = false
 
-  for (const [pid, player] of Object.entries(players)) {
+  // Every death of this cycle is settled against the SAME pre-sweep books —
+  // the batch clock commits the cycle at once, so in a mutual kill neither
+  // death may see the other's credit. Without this the victim processed second
+  // carried the kill (and streak) credited a moment earlier, inflating the
+  // other's shutdown bounty, and which side that was depended on player-map key
+  // order (chaff usually first — a side bias).
+  const before = state.players
+  const bountyBasis = state
+  const dyingThisCycle = new Set(
+    Object.entries(before)
+      .filter(
+        ([, p]) => !p.alive && p.respawnCycle === null && !p.buffs.some((b) => b.id === 'backup'),
+      )
+      .map(([id]) => id),
+  )
+  // Last Word drops are collected and moved after the sweep, all victims first,
+  // so a mutual kill between two holders cannot pass one Last Word twice.
+  const lastWordDrops: Array<{ victimId: string; killerId: string; count: number }> = []
+
+  for (const pid of Object.keys(players).sort(compareCodePoints)) {
+    // Read the LIVE entry, not a loop-start snapshot: in a mutual kill the
+    // victim processed second was already credited (kills, scrip, XP) as the
+    // killer of the first, and a stale copy would erase that. Streak and
+    // bounty inputs come from `before` instead (see above).
+    const player = players[pid]!
     if (!player.alive && player.respawnCycle === null) {
       if (player.buffs.some((b) => b.id === 'backup')) {
         players[pid] = {
@@ -1325,18 +1390,19 @@ function handleDeaths(
           [killerId, ...assisters].map((id): [string, number] => [id, players[id]?.scrip ?? 0]),
         )
         const tempState: GameState = { ...state, players }
-        // `player` is the loop's original victim — its killStreak still holds the
-        // pre-death value (players[pid] was reset to 0 above). Pass it so the
-        // shutdown bounty actually scales with how fed the victim was.
-        const awarded = awardKill(tempState, killerId, pid, assisters, player.killStreak)
+        // The victim's streak as it stood when the cycle opened — not the live
+        // entry, which a kill credited earlier in this sweep may have bumped.
+        const victimStreak = before[pid]?.killStreak ?? 0
+        const awarded = awardKill(tempState, killerId, pid, assisters, victimStreak, bountyBasis)
         players = { ...awarded.players }
 
-        // Increment kill count + streak
+        // Increment kill count + streak. A killer who also died this cycle
+        // carries no streak out of it, whichever death the sweep reached first.
         const killer = players[killerId]!
         players[killerId] = {
           ...killer,
           kills: killer.kills + 1,
-          killStreak: (killer.killStreak ?? 0) + 1,
+          killStreak: dyingThisCycle.has(killerId) ? 0 : (killer.killStreak ?? 0) + 1,
         }
 
         // Increment assist counts
@@ -1382,19 +1448,8 @@ function handleDeaths(
         // claimed by the killer (its defining high-risk drawback — feeding a hero
         // hands them +100 attack). No ground-pickup system: if the killer has no
         // free slot the Rapier is destroyed, but the victim loses it either way.
-        const rapierVictim = players[pid]!
-        if (rapierVictim.items.includes('last_word')) {
-          const victimItems = [...rapierVictim.items]
-          const killerItems = [...players[killerId]!.items]
-          for (let i = 0; i < victimItems.length; i++) {
-            if (victimItems[i] !== 'last_word') continue
-            victimItems[i] = null
-            const freeSlot = killerItems.indexOf(null)
-            if (freeSlot !== -1) killerItems[freeSlot] = 'last_word'
-          }
-          players[pid] = { ...rapierVictim, items: victimItems }
-          players[killerId] = { ...players[killerId]!, items: killerItems }
-        }
+        const carried = (before[pid]?.items ?? []).filter((i) => i === 'last_word').length
+        if (carried > 0) lastWordDrops.push({ victimId: pid, killerId, count: carried })
 
         // Increment team kill counter
         const killerTeam = players[killerId]!.team
@@ -1412,7 +1467,7 @@ function handleDeaths(
           killerId,
           victimId: pid,
           assisters,
-          victimStreak: player.killStreak ?? 0,
+          victimStreak,
           killerStreak: players[killerId]?.killStreak ?? 0,
         } as GameEngineEvent)
 
@@ -1435,6 +1490,26 @@ function handleDeaths(
 
       changed = true
     }
+  }
+
+  // Last Word moves after every death is settled: strip each victim's first,
+  // then hand them to the killers, so the outcome is the same in any order.
+  for (const drop of lastWordDrops) {
+    const victim = players[drop.victimId]!
+    let left = drop.count
+    players[drop.victimId] = {
+      ...victim,
+      items: victim.items.map((i) => (i === 'last_word' && left-- > 0 ? null : i)),
+    }
+  }
+  for (const drop of [...lastWordDrops].sort((a, b) => compareCodePoints(a.victimId, b.victimId))) {
+    const killer = players[drop.killerId]!
+    const killerItems = [...killer.items]
+    for (let n = 0; n < drop.count; n++) {
+      const freeSlot = killerItems.indexOf(null)
+      if (freeSlot !== -1) killerItems[freeSlot] = 'last_word'
+    }
+    players[drop.killerId] = { ...killer, items: killerItems }
   }
 
   // Backup expiry sweep: cycleBuffs preserves the backup buff at cyclesRemaining ===
@@ -1571,8 +1646,12 @@ function trackIceKills(
  * Terminal becomes attackable once any of its team's T3 ice is down —
  * see TerminalSystem for the vulnerability/attack rules.
  */
-function checkWinCondition(state: GameState): TeamId | null {
-  return checkTerminalWin(state)
+function checkWinCondition(
+  state: GameState,
+  cycleStart: GameState,
+  coinSeed: number,
+): TeamId | null {
+  return checkTerminalWin(state, cycleStart, coinSeed)
 }
 
 // NOTE: the server used to maintain a global `state.lastSeen` here (and auto-emit

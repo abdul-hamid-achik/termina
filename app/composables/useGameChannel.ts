@@ -56,6 +56,10 @@ export function useGameChannel() {
   // Monotonic per-connection order counter, echoed back in action_ack —
   // mirrors useGameSocket's actionSeq.
   let actionSeq = 0
+  // Highest cycle whose events were already fed to the store. A cycle_state
+  // that Ably redelivers (resume after a blip) must not print its combat lines
+  // a second time — the feed is built from the store's event list.
+  let lastIngestedCycle = -1
   const handlers: Array<(msg: ServerMessage) => void> = []
 
   const gameStore = useGameStore()
@@ -93,6 +97,7 @@ export function useGameChannel() {
     }
     gameStore.playerId = playerId
     hasConnectedOnce = false
+    lastIngestedCycle = -1
     _open()
   }
 
@@ -163,7 +168,10 @@ export function useGameChannel() {
         // Doing this in the shared gameMessageRouter instead would double-add
         // them on the WS path, where the separate 'events' message still
         // fires — hence handling it here, not there.
-        gameStore.addEvents(data.state.events ?? [])
+        if (data.cycle > lastIngestedCycle) {
+          lastIngestedCycle = data.cycle
+          gameStore.addEvents(data.state.events ?? [])
+        }
         _notifyHandlers(msg)
         break
       }

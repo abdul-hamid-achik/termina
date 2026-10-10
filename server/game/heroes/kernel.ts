@@ -57,7 +57,7 @@ function resolveHeroAbility(
   }
 }
 
-// Q: Interrupt — stun target hero for 1 tick
+// Q: Interrupt — stun target hero for 1 cycle (one gated action)
 function resolveQ(
   state: GameState,
   player: PlayerState,
@@ -113,7 +113,7 @@ function resolveQ(
   })
 }
 
-// W: Buffer — shield self for INTEG amount, lasts 3 ticks
+// W: Buffer — shield self, lasts 3 cycles
 function resolveW(
   state: GameState,
   player: PlayerState,
@@ -154,7 +154,7 @@ function resolveW(
   })
 }
 
-// E: Core Dump — taunt all enemies in zone for 2 ticks
+// E: Core Dump — taunt all enemies in zone
 function resolveE(
   state: GameState,
   player: PlayerState,
@@ -198,7 +198,11 @@ function resolveE(
   })
 }
 
-// R: Panic — force all enemies in zone to move to random adjacent zone next cycle
+// R: Panic — every enemy in the zone is displaced to a random adjacent zone THIS
+// cycle (immediately, not next cycle) and feared. The fear uses 2 for one gated
+// action like every other cast-applied control (see applyBuff); with 1 it was
+// reaped the same cycle and never gated anything. It still needs a breached
+// target to land — the displacement does not.
 function resolveR(
   state: GameState,
   player: PlayerState,
@@ -220,7 +224,7 @@ function resolveR(
       const randomZone = adjacent[Math.floor(rng() * adjacent.length)] ?? e.zone
       return applyBuff(
         { ...e, zone: randomZone },
-        { id: 'feared', stacks: 1, cyclesRemaining: 1, source: player.id },
+        { id: 'feared', stacks: 1, cyclesRemaining: 2, source: player.id },
       )
     })
 

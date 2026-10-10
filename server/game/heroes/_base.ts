@@ -1,7 +1,7 @@
-import { Effect, Data } from 'effect'
+import { Effect, Data, type Exit } from 'effect'
 import type { GameState, PlayerState, BuffState, GameEvent } from '~~/shared/types/game'
 import type { TargetRef } from '~~/shared/types/commands'
-import type { DamageType } from '~~/shared/types/hero'
+import type { AbilityDef, DamageType } from '~~/shared/types/hero'
 import { HEROES } from '~~/shared/constants/heroes'
 import {
   calculateEffectiveDamage,
@@ -11,7 +11,7 @@ import {
 import { getEffectivePlate, getEffectiveIce } from '~~/server/game/engine/EffectiveStats'
 import { getTalentTree } from '~~/shared/constants/talents'
 import { getAbilityLevel } from '~~/shared/constants/balance'
-import { abilityBwTable } from '~~/shared/utils/ability'
+import { abilityBwTable, abilityTargetError } from '~~/shared/utils/ability'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
@@ -177,6 +177,45 @@ export function isBreached(player: PlayerState): boolean {
   return player.buffs.some((b) => b.id === 'breached' && b.cyclesRemaining > 0)
 }
 
+/** One hard-control effect that fizzled on a CLOSED (non-breached) target. */
+export interface ControlResisted {
+  readonly targetId: string
+  /** The buff id that failed to land (`stun`, `root`, `silence`, `taunt`, `feared`, ...). */
+  readonly status: string
+}
+
+/** Why the control did not land — the line the player needs to learn BREACH. */
+export const CONTROL_RESISTED_REASON = 'CLOSED — breach first'
+
+// Collector for the cast currently being resolved, so every applyBuff site can
+// report a fizzle without each resolver being edited (an AoE with six control
+// sites would otherwise need six hand-written checks). It is only ever set
+// inside `withControlTrace`, which runs the resolver to completion
+// SYNCHRONOUSLY (runSyncExit) and restores the previous slot in `finally` — no
+// other fiber or tick can run, and so none can attach to or steal this cast's
+// trace, even when the caller itself is an async fiber that yields.
+let controlTrace: ControlResisted[] | null = null
+
+/** Run `resolve` with its own fresh fizzle trace; return the exit and the trace. */
+function withControlTrace<A, E>(
+  resolve: () => Effect.Effect<A, E>,
+): { exit: Exit.Exit<A, E>; resisted: ControlResisted[] } {
+  const resisted: ControlResisted[] = []
+  const previous = controlTrace
+  controlTrace = resisted
+  try {
+    return { exit: Effect.runSyncExit(Effect.suspend(resolve)), resisted }
+  } finally {
+    controlTrace = previous
+  }
+}
+
+function recordControlResisted(targetId: string, status: string): void {
+  if (!controlTrace) return
+  if (controlTrace.some((r) => r.targetId === targetId && r.status === status)) return
+  controlTrace.push({ targetId, status })
+}
+
 /**
  * Why cast-applied control disables (stun/silence/root/taunt) use cyclesRemaining
  * 2, not 1, to gate ONE future action: the debuff is applied during the resolve
@@ -195,7 +234,10 @@ export function applyBuff(player: PlayerState, buff: BuffState): PlayerState {
   // Hard control fails on a closed (non-breached) target. Kinetic never needs
   // access; this gate is control-only. Self-applied control (source === target
   // id) always lands — e.g. mutex Critical Section self-root. Non-control ids pass.
+  // The fizzle is not silent: while a cast is resolving (see resolveAbility),
+  // it is recorded so the cast can report WHO resisted WHAT and why.
   if (isHardControlBuffId(buff.id) && !isBreached(player) && buff.source !== player.id) {
+    recordControlResisted(player.id, buff.id)
     return player
   }
 
@@ -585,7 +627,12 @@ export function cycleAllBuffs(state: GameState): GameState {
   // DMZ explosions are collected here and applied AFTER the per-player tick loop:
   // the loop writes each player's own ticked state back from a snapshot, which
   // would clobber cross-player (enemy) damage applied mid-loop.
-  const explosions: { casterId: string; zone: string; damage: number }[] = []
+  const explosions: {
+    casterId: string
+    zone: string
+    damage: number
+    trigger: 'expired' | 'broken'
+  }[] = []
 
   for (const [_pid, player] of Object.entries(updated.players)) {
     if (!player.alive) continue
@@ -596,9 +643,17 @@ export function cycleAllBuffs(state: GameState): GameState {
     // it expires (last tick) — Traceroute's Next Hop (nextHopShadow) and Lambda's
     // Return (returnMark). Both stash the origin zone in buff.destination.
     const returnShadow = player.buffs.find((b) => b.id === 'nextHopShadow' || b.id === 'returnMark')
-    // Firewall DMZ: a marker riding alongside the W shield; when it ends it
-    // explodes for code damage to enemies in the caster's zone.
-    const dmzExpiring = player.buffs.find((b) => b.id === 'dmz' && b.cyclesRemaining === 1)
+    // Firewall DMZ: a marker riding alongside the W shield; when the shield
+    // expires (marker runs out) OR breaks (no shield HP left while the marker
+    // still has time) it explodes for code damage to enemies in the caster's
+    // zone. "Breaks" = the whole shield pool is spent, so a second shield held
+    // at the same time (item, Sentry) keeps the DMZ armed until that one goes too.
+    const dmz = player.buffs.find((b) => b.id === 'dmz')
+    const dmzExpiring = dmz !== undefined && dmz.cyclesRemaining === 1
+    const dmzBroken =
+      dmz !== undefined &&
+      !dmzExpiring &&
+      !player.buffs.some((b) => b.id === 'shield' && b.stacks > 0)
 
     if (tpChannelingBuff && tpChannelingBuff.cyclesRemaining === 1 && tpDestBuff?.destination) {
       const tpDestination = tpDestBuff.destination
@@ -639,10 +694,15 @@ export function cycleAllBuffs(state: GameState): GameState {
           source: returnShadow.id === 'returnMark' ? 'return' : 'next_hop',
         },
       })
-    } else if (dmzExpiring) {
-      // Drop the expiring dmz (+ shield) now; queue the blast for after the loop.
-      updated = updatePlayer(updated, cycleBuffs(player))
-      explosions.push({ casterId: player.id, zone: player.zone, damage: dmzExpiring.stacks })
+    } else if (dmz && (dmzExpiring || dmzBroken)) {
+      // Drop the dmz (+ shield) now; queue the blast for after the loop.
+      updated = updatePlayer(updated, removeBuff(cycleBuffs(player), 'dmz'))
+      explosions.push({
+        casterId: player.id,
+        zone: player.zone,
+        damage: dmz.stacks,
+        trigger: dmzExpiring ? 'expired' : 'broken',
+      })
     } else {
       const ticked = cycleBuffs(player)
       if (ticked !== player) {
@@ -678,6 +738,7 @@ export function cycleAllBuffs(state: GameState): GameState {
           playerId: ex.casterId,
           ability: 'w',
           effect: 'dmz_explosion',
+          trigger: ex.trigger,
           damage: ex.damage,
           victims,
         },
@@ -749,11 +810,108 @@ export function resolveAbility(
       )
     }
 
-    const result = yield* resolver.ability(state, player, ability, abilityLevel, target, rng)
+    // Aim the cast at the right SIDE before anything is spent: a heal thrown at
+    // an enemy or a stun thrown at a team-mate is a rejected order, not a
+    // resolved cast that burns the cycle, the BW and the cooldown.
+    const abilityDef = HEROES[player.heroId]?.abilities[ability]
+    if (abilityDef) {
+      const rejection = checkAbilityTarget(state, player, abilityDef, target)
+      if (rejection) {
+        return yield* Effect.fail(
+          new InvalidTargetError({ target: targetLabel(target), reason: rejection }),
+        )
+      }
+    }
+
+    // Hard control that fizzles on a CLOSED target is collected while the
+    // resolver runs (see applyBuff) and reported on the way out.
+    const { exit, resisted } = withControlTrace(() =>
+      resolver.ability(state, player, ability, abilityLevel, target, rng),
+    )
+    const result = yield* exit
     const withTalents = applyAbilityTalents(state, result, player, ability)
     const withLatency = applyLatencyPenalty(withTalents, player, ability)
-    return applyArcaneRefund(withLatency, player)
+    return reportControlResisted(
+      applyArcaneRefund(withLatency, player),
+      player,
+      ability,
+      resisted,
+      state.cycle,
+    )
   })
+}
+
+/** A short label for a rejected target, for the InvalidTargetError. */
+function targetLabel(target?: TargetRef): string {
+  if (!target) return 'none'
+  if (target.kind === 'hero') return target.name
+  if (target.kind === 'zone') return target.zone
+  return target.kind
+}
+
+/**
+ * The side/shape check every targeted hero ability shares (the rule itself lives
+ * in shared/utils/ability.ts so the client pre-flight asks the same question).
+ * The per-hero resolvers own range, liveness and BW; this owns which TEAM the
+ * target may be on and whether a zone-typed ability was aimed at a real zone.
+ * Returns the rejection text, or null when the cast may proceed.
+ */
+export function checkAbilityTarget(
+  state: GameState,
+  caster: PlayerState,
+  ability: AbilityDef,
+  target?: TargetRef,
+): string | null {
+  return abilityTargetError(
+    ability,
+    caster.team,
+    target,
+    {
+      hero: (ref) => findTargetPlayer(state, ref),
+      zoneExists: (zone) => !!state.zones[zone],
+    },
+    caster.id,
+  )
+}
+
+/**
+ * Make a fizzled hard control honest. The resolver's own `ability_cast` payload
+ * still names the stun/root/silence it TRIED to apply, so the cast is annotated
+ * with `resisted` and each fizzle also gets a `control_resisted` event naming
+ * the target, the effect and the fix. The cast still costs what it costs — the
+ * order was legal, the target was closed, and now the player is told so.
+ */
+function reportControlResisted(
+  result: AbilityResult,
+  caster: PlayerState,
+  slot: AbilitySlot,
+  resisted: readonly ControlResisted[],
+  cycle: number,
+): AbilityResult {
+  if (resisted.length === 0) return result
+  let annotated = false
+  const events: GameEvent[] = result.events.map((e) => {
+    if (annotated || e.type !== 'ability_cast' || e.payload['playerId'] !== caster.id) return e
+    annotated = true
+    return {
+      ...e,
+      payload: { ...e.payload, resisted: resisted.map((r) => ({ ...r })) },
+    }
+  })
+  for (const r of resisted) {
+    events.push({
+      cycle,
+      type: 'control_resisted',
+      payload: {
+        playerId: caster.id,
+        ability: slot,
+        targetId: r.targetId,
+        status: r.status,
+        reason: CONTROL_RESISTED_REASON,
+      },
+    })
+  }
+  return { ...result, events }
 }
 
 /**
@@ -763,9 +921,10 @@ export function resolveAbility(
  * - bwCostReduction: refund a % of the BW the resolver actually spent
  * - damageBoost: amplify the cast by an extra % of each enemy's INTEG lost
  *   (post-mitigation approximation, clamped at 0 with alive recomputed)
- * Talents of type 'special'/'ability_boost' carrying only specialEffect
- * strings (e.g. double_cast_chance_25, global_ultimate) are explicit no-ops —
- * implementing them requires per-hero work and is out of scope.
+ * `specialEffect` on a talent is a DISPLAY string only. The exotic mechanics
+ * (double cast, spell lifesteal, global ultimate, AOE+ ...) are carried by the
+ * talent's `castEffect` and applied where the cast is bridged
+ * (ActionResolver.resolveHeroCast) or read via hasTalentCastEffect — not here.
  */
 function applyAbilityTalents(
   preState: GameState,
@@ -831,7 +990,8 @@ function applyAbilityTalents(
         players = { ...players, [pid]: { ...post, integ: newInteg, alive: newInteg > 0 } }
       }
     }
-    // 'special' / 'ability_boost' specialEffect-only talents: intentional no-op
+    // castEffect talents (double cast, lifesteal, global ult, AOE+) are applied
+    // by the cast bridge / hero resolvers, not by this generic stat pass.
   }
 
   return { ...result, state: { ...result.state, players } }

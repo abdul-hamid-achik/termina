@@ -168,7 +168,7 @@ function resolveW(
   })
 }
 
-// E: Yield — mark target enemy: they take 25% bonus damage for 3 ticks
+// E: Yield — mark target enemy: they take 25% bonus damage for 3 cycles
 function resolveE(
   state: GameState,
   player: PlayerState,
@@ -223,7 +223,7 @@ function resolveE(
   })
 }
 
-// R: Thread Pool — self buff: attacks hit all enemies in zone for 4 ticks
+// R: Thread Pool — self buff: attacks hit all enemies in zone for 4 cycles
 function resolveR(
   state: GameState,
   player: PlayerState,
@@ -263,7 +263,8 @@ function resolveR(
 }
 
 // ── Passive: Multithread ─────────────────────────────────────────
-// On attack, splash 40% of damage to 1 additional random enemy in zone (2 at level 10+).
+// On attack, splash 40% of damage to 1 additional enemy in the zone (2 at level 10+).
+// Deterministic: the first other enemies in state order — there is no randomness here.
 
 function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent): GameState {
   if (event.type !== 'attack' || event.payload['attackerId'] !== playerId) return state

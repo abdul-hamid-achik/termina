@@ -38,13 +38,29 @@ function resolveOneLaneZone(word: string): string | null {
 /** Minimal tutorial-mode state for the pure advancement helper. The human's
  *  zone matters for the move step (it holds until they leave base/fountain).
  *  `cycle`/`tutorialStepSince` drive the step deadline. */
-function tutorialState(step: number, humanZone = 'coldstore-cross', cycle = 0): GameState {
+function tutorialState(
+  step: number,
+  humanZone = 'coldstore-cross',
+  cycle = 0,
+  /** Seed an enemy hero in the human's zone that the human has BREACHED. */
+  breachedFoe?: boolean,
+): GameState {
+  const players: Record<string, unknown> = { p1: { id: 'p1', zone: humanZone } }
+  if (breachedFoe !== undefined) {
+    players.bot_foe = {
+      id: 'bot_foe',
+      team: 'audit',
+      zone: humanZone,
+      alive: true,
+      buffs: breachedFoe ? [{ id: 'breached', stacks: 1, cyclesRemaining: 4, source: 'p1' }] : [],
+    }
+  }
   return {
     mode: 'tutorial',
     tutorialStep: step,
     tutorialStepSince: 0,
     cycle,
-    players: { p1: { id: 'p1', zone: humanZone } },
+    players,
   } as unknown as GameState
 }
 
@@ -117,7 +133,7 @@ describe('tutorial flow', () => {
     ] as const
 
     // Staged verbs: locked at step 0, each unlocked by its own drill.
-    const STAGED_LOCKED_AT_0 = ['attack', 'burn', 'cast', 'buy', 'tap'] as const
+    const STAGED_LOCKED_AT_0 = ['attack', 'burn', 'cast', 'breach', 'buy', 'tap'] as const
 
     // Advanced actions stay gated until free play (they aren't part of the
     // drill sequence and would only confuse a brand-new player).
@@ -275,9 +291,9 @@ describe('tutorial flow', () => {
     it('a typed-and-accepted cast does NOT clear the cast drill — only the ability_used event does', () => {
       // The core of the redesign: the OLD tutorial advanced on the accepted
       // command. Now the objective is engine truth. Same accepted action, no
-      // event → held; with the event → cleared.
+      // event → held; with the event (after a breach of an enemy) → cleared.
       const held = advanceTutorialAfterTick(
-        tutorialState(stepIndex('cast')),
+        tutorialState(stepIndex('cast'), 'coldstore-cross', 0, true),
         [{ playerId: 'p1', command: { type: 'cast', ability: 'q' } }],
         [],
         [],
@@ -285,12 +301,25 @@ describe('tutorial flow', () => {
       expect(held.state.tutorialStep).toBe(stepIndex('cast'))
 
       const cleared = advanceTutorialAfterTick(
-        tutorialState(stepIndex('cast')),
+        tutorialState(stepIndex('cast'), 'coldstore-cross', 0, true),
         [],
         [],
         [{ _tag: 'ability_used', cycle: 1, playerId: 'p1' } as never],
       )
       expect(cleared.state.tutorialStep).toBe(stepIndex('cast') + 1)
+    })
+
+    it('the cast drill is "breach, then cast": a cast with NO breach on an enemy does not clear it', () => {
+      // Control heroes only ever landed ~10% of their casts because nobody
+      // taught BREACH. A cast that fires without an enemy hero opened by the
+      // player is not the lesson.
+      const closed = advanceTutorialAfterTick(
+        tutorialState(stepIndex('cast'), 'coldstore-cross', 0, false),
+        [],
+        [],
+        [{ _tag: 'ability_used', cycle: 1, playerId: 'p1' } as never],
+      )
+      expect(closed.state.tutorialStep).toBe(stepIndex('cast'))
     })
 
     it("ignores bots' events (only the human drives the tutorial)", () => {
@@ -381,6 +410,268 @@ describe('tutorial flow', () => {
           expect(step.skipNote, `${step.id} needs a skipNote`).toBeTruthy()
           expect(step.done, `${step.id} needs a done note`).toBeTruthy()
         }
+      })
+    })
+  })
+
+  describe('BREACH is taught (control heroes are stuck without it)', () => {
+    it('unlocks breach with the cast drill — and not before', () => {
+      const castAt = stepIndex('cast')
+      expect(isCommandAllowedInTutorial('breach', castAt)).toBe(true)
+      expect(isCommandAllowedInTutorial('breach', castAt - 1)).toBe(false)
+      expect(isCommandAllowedInTutorial('breach', 0)).toBe(false)
+    })
+
+    it('the cast drill copy teaches "breach, then cast" (hint, help, done)', () => {
+      const cast = TUTORIAL_FLOW[stepIndex('cast')]!
+      for (const [label, text] of [
+        ['hint', cast.hint],
+        ['help', cast.help],
+      ] as const) {
+        expect(text.toLowerCase(), `cast ${label} should name breach`).toContain('breach')
+      }
+      // The try button must stay a command the player can fire as typed.
+      expect(tutorialTryCommand(stepIndex('cast'))).toBe('cast q')
+    })
+
+    it('the engine rejection ("breach X first") is never a locked verb at the drill that causes it', () => {
+      // A cast refused with "CLOSED — breach X first" while `breach` is gated by
+      // the tutorial would be a dead end with a lecture on top.
+      expect(isCommandAllowedInTutorial('cast', stepIndex('cast'))).toBe(true)
+      expect(isCommandAllowedInTutorial('breach', stepIndex('cast'))).toBe(true)
+    })
+  })
+
+  describe('the opening is not dead time', () => {
+    it('the "still home" notice names the SAME destination as the first move hint', () => {
+      const hintZone = /move ([a-z0-9-]+)/.exec(tutorialHint(0) ?? '')?.[1]
+      expect(hintZone).toBeTruthy()
+      const state = tutorialState(0, 'rookery-terminal')
+      const next = advanceTutorialAfterTick(
+        state,
+        [{ playerId: 'p1', command: { type: 'move', zone: hintZone! } }],
+        [],
+      )
+      expect(next.notice).toContain(hintZone!)
+      // …and never sends them anywhere else (T1 is the contested lip).
+      const named = [...(next.notice ?? '').matchAll(/coldstore-[a-z0-9-]+/g)].map((m) => m[0])
+      expect(new Set(named)).toEqual(new Set([hintZone]))
+    })
+
+    it('a drill with an early nudge sets the world up before the 15-cycle deadline', () => {
+      const early = TUTORIAL_FLOW.filter((st) => st.earlyNudgeCycles !== undefined)
+      expect(early.map((st) => st.id)).toEqual(expect.arrayContaining(['attack']))
+      for (const st of early) {
+        expect(st.earlyNudgeCycles!).toBeGreaterThan(0)
+        expect(st.earlyNudgeCycles!).toBeLessThan(TUTORIAL_STEP_DEADLINE_CYCLES)
+      }
+    })
+
+    it('attack: with no enemy unit in the lane, a practice unit arrives early and the help is pushed', () => {
+      const at = stepIndex('attack')
+      const early = TUTORIAL_FLOW[at]!.earlyNudgeCycles!
+      const state = {
+        ...tutorialState(at, 'coldstore-t2-chaff', early),
+        waves: [],
+      } as unknown as GameState
+      const next = advanceTutorialAfterTick(state, [], [])
+      expect(next.state.tutorialStep).toBe(at) // nudge, not a skip or a fake clear
+      expect(next.state.waves.some((w) => w.zone === 'coldstore-t2-chaff')).toBe(true)
+      expect(next.notice).toBe(TUTORIAL_FLOW[at]!.help)
+    })
+
+    it('attack: an enemy unit already in the zone means no practice unit and no noise', () => {
+      const at = stepIndex('attack')
+      const early = TUTORIAL_FLOW[at]!.earlyNudgeCycles!
+      const state = {
+        ...tutorialState(at, 'coldstore-t2-chaff', early),
+        players: { p1: { id: 'p1', team: 'chaff', zone: 'coldstore-t2-chaff' } },
+        waves: [
+          { id: 'wave-1', team: 'audit', zone: 'coldstore-t2-chaff', integ: 100, type: 'line' },
+        ],
+      } as unknown as GameState
+      const next = advanceTutorialAfterTick(state, [], [])
+      expect(next.state.waves).toHaveLength(1)
+      expect(next.notice).toBeNull()
+    })
+
+    describe('the cast drill pins a training target in your zone', () => {
+      const at = stepIndex('cast')
+      const ZONE = 'coldstore-t2-chaff'
+      const zones = Object.fromEntries(ONE_LANE_ZONES.map((z) => [z.id, {}]))
+      const foe = (zone: string, extra: Record<string, unknown> = {}) => ({
+        id: 'bot_near',
+        name: 'bot_near',
+        heroId: 'daemon',
+        team: 'audit',
+        zone,
+        alive: true,
+        buffs: [] as unknown[],
+        ...extra,
+      })
+      const stateAt = (elapsed: number, players: Record<string, unknown>) =>
+        ({
+          mode: 'tutorial',
+          tutorialStep: at,
+          tutorialStepSince: 10,
+          cycle: 10 + elapsed,
+          zones,
+          waves: [],
+          players: {
+            p1: { id: 'p1', team: 'chaff', zone: ZONE, alive: true, buffs: [], bw: 0, maxBw: 200 },
+            ...players,
+          },
+        }) as unknown as GameState
+
+      it('the cycle after the step opens, the nearest foe is brought in, held, and NAMED in the notice', () => {
+        const state = stateAt(1, {
+          bot_far: foe('landing-anchor', { id: 'bot_far', name: 'bot_far', heroId: 'kernel' }),
+          bot_near: foe('coldstore-cross'),
+        })
+        const next = advanceTutorialAfterTick(state, [], [])
+        expect(next.state.tutorialStep).toBe(at)
+        expect(next.state.players.bot_near!.zone).toBe(ZONE)
+        expect(next.state.players.bot_far!.zone).toBe('landing-anchor')
+        // held: it cannot walk off or fight back while the player learns
+        expect(
+          (next.state.players.bot_near as { buffs: Array<{ id: string }> }).buffs.some(
+            (b) => b.id === 'stun',
+          ),
+        ).toBe(true)
+        expect(next.state.players.p1!.bw).toBe(200) // BW to breach AND cast
+        expect(next.notice).toContain('daemon') // the handle `breach <hero>` needs
+        expect(next.notice).not.toContain('<hero>')
+        expect(next.notice).toContain('breach daemon')
+      })
+
+      it('a foe that wandered off is pulled back EVERY cycle (the target stays in your zone)', () => {
+        let state = stateAt(1, { bot_near: foe(ZONE) })
+        for (let elapsed = 2; elapsed <= 12; elapsed++) {
+          state = {
+            ...state,
+            cycle: 10 + elapsed,
+            players: {
+              ...state.players,
+              bot_near: { ...state.players.bot_near!, zone: 'coldstore-cross' },
+            },
+          } as GameState
+          state = advanceTutorialAfterTick(state, [], []).state
+          expect(state.players.bot_near!.zone, `cycle +${elapsed}`).toBe(ZONE)
+        }
+      })
+
+      it('a player parked on home ground is never handed a foe', () => {
+        const state = stateAt(1, { bot_far: foe('landing-anchor') })
+        const home = {
+          ...state,
+          players: {
+            ...state.players,
+            p1: { ...state.players.p1!, zone: 'rookery-terminal' },
+          },
+        } as GameState
+        const next = advanceTutorialAfterTick(home, [], [])
+        expect(next.state.players.bot_far!.zone).toBe('landing-anchor')
+      })
+
+      it('a cast that fired WITHOUT a breach does not clear the drill — it says why, by name', () => {
+        const state = stateAt(3, { bot_near: foe(ZONE) })
+        const next = advanceTutorialAfterTick(
+          state,
+          [],
+          [],
+          [{ _tag: 'ability_used', cycle: 13, playerId: 'p1', targetId: 'bot_near' } as never],
+        )
+        expect(next.state.tutorialStep).toBe(at)
+        expect(next.notice).toContain('breach daemon')
+        expect(next.notice).toBe(TUTORIAL_FLOW[at]!.almost!.replaceAll('<hero>', 'daemon'))
+      })
+
+      it('an untargeted cast that DAMAGED the closed foe also gets the CLOSED line', () => {
+        const next = advanceTutorialAfterTick(
+          stateAt(3, { bot_near: foe(ZONE) }),
+          [],
+          [],
+          [
+            { _tag: 'ability_used', cycle: 13, playerId: 'p1' } as never,
+            { _tag: 'damage', cycle: 13, sourceId: 'p1', targetId: 'bot_near', amount: 9 } as never,
+          ],
+        )
+        expect(next.notice).toBe(TUTORIAL_FLOW[at]!.almost!.replaceAll('<hero>', 'daemon'))
+      })
+
+      it('a self-heal / shield never "met a CLOSED hero" — it is asked for the breach half', () => {
+        const next = advanceTutorialAfterTick(
+          stateAt(3, { bot_near: foe(ZONE) }),
+          [],
+          [],
+          [
+            { _tag: 'ability_used', cycle: 13, playerId: 'p1', targetId: 'p1' } as never,
+            { _tag: 'heal', cycle: 13, sourceId: 'p1', targetId: 'p1', amount: 40 } as never,
+          ],
+        )
+        expect(next.state.tutorialStep).toBe(at)
+        expect(next.notice).not.toContain('CLOSED hero')
+        expect(next.notice).toBe(TUTORIAL_FLOW[at]!.almostNoFoe!.replaceAll('<hero>', 'daemon'))
+      })
+
+      it("a cast typed ON a deadline cycle still gets that deadline's BW refill", () => {
+        // Still at home (so the plain-cast escape hatch cannot clear the drill):
+        // the self-cast is answered AND the deadline's refill lands.
+        const state = stateAt(TUTORIAL_STEP_DEADLINE_CYCLES, { bot_far: foe('landing-anchor') })
+        const home = {
+          ...state,
+          players: { ...state.players, p1: { ...state.players.p1!, zone: 'rookery-terminal' } },
+        } as GameState
+        const next = advanceTutorialAfterTick(
+          home,
+          [],
+          [],
+          [{ _tag: 'ability_used', cycle: 25, playerId: 'p1', targetId: 'p1' } as never],
+        )
+        expect(next.state.tutorialStep).toBe(at)
+        expect(next.state.players.p1!.bw).toBe(200)
+        expect(next.notice).toContain(TUTORIAL_FLOW[at]!.almostNoFoe!.slice(0, 20))
+      })
+
+      it('on home ground the cast notice never claims a foe is held there', () => {
+        const state = stateAt(1, { bot_far: foe('landing-anchor') })
+        const home = {
+          ...state,
+          players: { ...state.players, p1: { ...state.players.p1!, zone: 'rookery-terminal' } },
+        } as GameState
+        const next = advanceTutorialAfterTick(home, [], [])
+        expect(next.notice).toContain('Step out of your base first')
+      })
+
+      it('a typed OR auto-converted breach (the foe is open, sourced from you) then a cast clears it', () => {
+        const open = foe(ZONE, {
+          buffs: [{ id: 'breached', stacks: 1, cyclesRemaining: 4, source: 'p1' }],
+        })
+        const next = advanceTutorialAfterTick(
+          stateAt(3, { bot_near: open }),
+          [],
+          [],
+          [{ _tag: 'ability_used', cycle: 13, playerId: 'p1' } as never],
+        )
+        expect(next.state.tutorialStep).toBe(at + 1)
+        expect(next.state.tutorialSkips ?? 0).toBe(0)
+      })
+
+      it('escape hatch: a few cycles in (plainCastAfterCycles) a plain cast at the pinned foe clears it, NO skip counted', () => {
+        const next = advanceTutorialAfterTick(
+          stateAt(TUTORIAL_FLOW[at]!.plainCastAfterCycles!, { bot_near: foe(ZONE) }),
+          [],
+          [],
+          [{ _tag: 'ability_used', cycle: 25, playerId: 'p1' } as never],
+        )
+        expect(next.state.tutorialStep).toBe(at + 1)
+        expect(next.state.tutorialSkips ?? 0).toBe(0)
+      })
+
+      it('the hint is in the order a literal follower should act: breach first, then cast', () => {
+        const hint = tutorialHint(at)!
+        expect(hint.indexOf('breach')).toBeLessThan(hint.indexOf('cast q'))
+        expect(tutorialTryCommand(at)).toBe('cast q') // the button stays a command that fires as typed
       })
     })
   })

@@ -967,7 +967,7 @@ describe('ActionResolver', () => {
       expect(p1.zone).toBe('coldstore-cross')
       // Not a consumable — stays in inventory, goes on cooldown
       expect(p1.items[0]).toBe('jump_shunt')
-      expect(p1.buffs.some((b) => b.id === 'item_cd_blink_module')).toBe(true)
+      expect(p1.buffs.some((b) => b.id === 'item_cd_jump_shunt')).toBe(true)
     })
 
     it('black king bar applies the airgap buff', () => {

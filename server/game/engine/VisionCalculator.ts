@@ -5,9 +5,11 @@ import type {
   FoggedPlayer,
   PlayerVisibleState,
   TeamId,
+  GameEvent,
 } from '~~/shared/types/game'
 import { ZONE_MAP, ZONES } from '~~/shared/constants/zones'
 import { SNIFFER_TRUE_SIGHT_RADIUS, NIGHT_VISION_PENALTY } from '~~/shared/constants/balance'
+import { LOCATED_EVENT_TAGS } from '~~/server/game/protocol/events'
 
 export type { FoggedPlayer, PlayerVisibleState }
 
@@ -443,16 +445,27 @@ export function filterStateForPlayer(
   // get for free.
   const filteredNeutrals = (state.neutrals ?? []).filter((n) => visible.has(n.zone))
 
-  // Filter events: only show events relevant to visible zones or the player's team
-  const filteredEvents = state.events.filter((e) => {
-    // Always show team-relevant events
-    if (e.payload['team'] === team) return true
-    if (e.payload['playerId'] && state.players[e.payload['playerId'] as string]?.team === team)
-      return true
-    // Show events in visible zones
-    if (e.payload['zone'] && visible.has(e.payload['zone'] as string)) return true
-    return false
-  })
+  // Enemies the viewer cannot see even where they stand: stealthed, with no
+  // true sight or reveal on them. An event that gets through on LOCATION alone
+  // must not name one (a stealthed Daemon hitting a wave in my sight).
+  const unseenEnemies = new Set<string>()
+  for (const [pid, p] of Object.entries(state.players)) {
+    if (
+      p.team !== team &&
+      p.alive &&
+      isInvisible(p) &&
+      !trueSightZones.has(p.zone) &&
+      !revealedEnemies.has(pid)
+    ) {
+      unseenEnemies.add(pid)
+    }
+  }
+
+  const filteredEvents: GameEvent[] = []
+  for (const e of state.events) {
+    const delivered = eventForViewer(e, state, team, visible, unseenEnemies)
+    if (delivered) filteredEvents.push(delivered)
+  }
 
   return {
     cycle: state.cycle,
@@ -479,4 +492,104 @@ export function filterStateForPlayer(
     mode: state.mode,
     tutorialStep: state.tutorialStep,
   }
+}
+
+// ── Per-viewer event visibility ─────────────────────────────────
+
+/**
+ * Events every player receives regardless of fog — each mirrors state that is
+ * already broadcast unfogged (`timeOfDay`, `tenant`, `terminals`, `ice`,
+ * `phase`/`winner`), so delivering the event leaks nothing new. Several of
+ * these carry the LOSING/OWNING `team`, which used to hide them from exactly
+ * the crew that caused them (the winners never saw `surrendered` or
+ * `terminal_destroyed`; razing enemy ice out of sight printed nothing).
+ */
+const GLOBAL_EVENT_TYPES: ReadonlySet<string> = new Set([
+  'night_falls',
+  'day_breaks',
+  'tenant_killed',
+  'tenant_respawn',
+  'terminal_destroyed',
+  'ice_kill',
+  'harden_used',
+  'surrendered',
+])
+
+/** Every payload key that names a participant. `casterId` (spell_blocked) and
+ *  `owner` (trap_triggered) are easy to miss — without them a viewer's ally is
+ *  "not referenced" by a block on their spell or a trap they set. */
+const PARTICIPANT_KEYS = [
+  'playerId',
+  'sourceId',
+  'targetId',
+  'killerId',
+  'victimId',
+  'casterId',
+  'owner',
+] as const
+
+function participants(payload: Record<string, unknown>): string[] {
+  const ids: string[] = []
+  for (const key of PARTICIPANT_KEYS) {
+    const v = payload[key]
+    if (typeof v === 'string' && v) ids.push(v)
+  }
+  const assisters = payload['assisters']
+  if (Array.isArray(assisters)) {
+    for (const a of assisters) if (typeof a === 'string' && a) ids.push(a)
+  }
+  return ids
+}
+
+/**
+ * THE per-viewer event rule. An event reaches a viewer on team T when ANY of:
+ *  1. its type is global (GLOBAL_EVENT_TYPES);
+ *  2. `payload.team === T` (team-owned: harden, surrender votes, own wards…);
+ *  3. it names a HERO on team T in any participant slot (PARTICIPANT_KEYS +
+ *     assisters) — "an enemy's damage to my ally is visible". Only heroes
+ *     count: own waves give no vision, so "enemy X hit my wave" in fog would
+ *     hand over X's position. Own ice/Terminal need no entry — their zones
+ *     are always lit, so rule 4 covers them;
+ *  4. `payload.zone` is in the viewer's visible set (incl. reveals) AND no
+ *     participant is a stealthed enemy the viewer can't see. Combat events get
+ *     that zone from `stampEventZones` (where the effect landed, at the end of
+ *     the phase that resolved it).
+ * Otherwise it is dropped: two enemies fighting in fog stays hidden.
+ *
+ * A LOCATED stamp (LOCATED_EVENT_TAGS) is redacted when its zone is not
+ * visible — an event delivered by rule 1–3 must not reveal where an unseen
+ * enemy is (my ally's DoT ticking on someone who walked into fog). An enemy's
+ * `ability_used` also loses its `cooldown` (private timing).
+ */
+export function eventForViewer(
+  e: GameEvent,
+  state: GameState,
+  team: TeamId,
+  visible: ReadonlySet<string>,
+  unseenEnemies: ReadonlySet<string> = new Set(),
+): GameEvent | null {
+  const payload = e.payload
+  const zone = typeof payload['zone'] === 'string' ? (payload['zone'] as string) : undefined
+  const zoneVisible = zone !== undefined && visible.has(zone)
+  const ids = participants(payload)
+  const delivered =
+    GLOBAL_EVENT_TYPES.has(e.type) ||
+    payload['team'] === team ||
+    ids.some((id) => state.players[id]?.team === team) ||
+    (zoneVisible && !ids.some((id) => unseenEnemies.has(id)))
+  if (!delivered) return null
+  let out = e
+  if (zone !== undefined && !zoneVisible && LOCATED_EVENT_TAGS.has(e.type)) {
+    const { zone: _zone, ...rest } = out.payload
+    out = { ...out, payload: rest }
+  }
+  // An enemy's cast line says WHAT they cast; their resulting cooldown is their
+  // team's business (it used to ride along whenever the cast named one of us).
+  if (e.type === 'ability_used' && state.players[String(payload['playerId'])]?.team !== team) {
+    if ('cooldown' in out.payload) {
+      const { cooldown: _cooldown, ...rest } = out.payload
+      out = { ...out, payload: rest }
+    }
+  }
+  return out
 }

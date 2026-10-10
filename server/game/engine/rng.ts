@@ -52,3 +52,13 @@ export function hashStringToSeed(input: string): number {
   }
   return h >>> 0
 }
+
+/**
+ * Locale-free string order for every deterministic sort in tick resolution.
+ * `localeCompare()` without an explicit locale follows the host's ICU locale,
+ * so two servers could order the same ids differently and replay a cycle to a
+ * different outcome. Plain UTF-16 code-unit order is the same everywhere.
+ */
+export function compareCodePoints(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0
+}

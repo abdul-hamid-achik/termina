@@ -46,7 +46,12 @@ import {
 
 const HERO_RESOLVERS = {
   cache: { ability: cacheAbility, passive: cachePassive, events: ['damage_taken'] as const },
-  cipher: { ability: cipherAbility, passive: cipherPassive, events: ['attack'] as const },
+  cipher: {
+    ability: cipherAbility,
+    passive: cipherPassive,
+    // damage_taken: taking damage breaks Encrypt's stealth.
+    events: ['attack', 'damage_taken'] as const,
+  },
   cron: { ability: cronAbility, passive: cronPassive, events: ['tick_end'] as const },
   daemon: {
     ability: daemonAbility,

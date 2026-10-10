@@ -262,6 +262,18 @@ function resolveR(
         new InvalidTargetError({ target: target.name, reason: 'Target must be an ally' }),
       )
     }
+    // …and not Proxy: a swap with yourself moves no one, and because the
+    // "swapped target" is the pre-cast copy of the caster, writing it back
+    // would erase the BW and cooldown just spent — a free, repeatable
+    // invulnerability. (shared/utils/ability.ts refuses it earlier too.)
+    if (targetPlayer.id === player.id) {
+      return yield* Effect.fail(
+        new InvalidTargetError({
+          target: target.name,
+          reason: 'Reverse Proxy needs another allied hero — not yourself',
+        }),
+      )
+    }
 
     let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'r', R_COOLDOWN)

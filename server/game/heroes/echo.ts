@@ -67,7 +67,8 @@ function resolveHeroAbility(
   }
 }
 
-// Q: Resonance — kinetic damage to target hero, bounces to nearby enemy
+// Q: Resonance — kinetic damage to target hero, bounces to ONE other enemy hero in
+// the same zone (the first listed) for 50%
 function resolveQ(
   state: GameState,
   player: PlayerState,
@@ -239,7 +240,8 @@ function resolveE(
   })
 }
 
-// R: Cascade — 6 attacks over 3 ticks, each dealing kinetic damage
+// R: Cascade — 6 hits, all resolved within the cast cycle (not spread over later
+// cycles), each dealing kinetic damage
 function resolveR(
   state: GameState,
   player: PlayerState,

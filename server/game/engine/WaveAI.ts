@@ -203,9 +203,19 @@ export function applyWaveActions(
   let terminals = state.terminals
   const events: GameEngineEvent[] = []
 
+  // THE BATCH CLOCK IS CANON: a wave-vs-wave exchange is simultaneous. Every
+  // fight was decided against the waves as they stood when the phase OPENED, so a
+  // unit that an earlier action in this list just downed still lands its own
+  // blow — array order (chaff is pushed first) must not decide who survives a
+  // mutual kill. Mirrors the phase-start snapshot strip and burn already use.
+  const liveAtPhaseStart = new Set(state.waves.filter((c) => c.integ > 0).map((c) => c.id))
+
   for (const action of actions) {
     const wave = waves.find((c) => c.id === action.waveId)
-    if (!wave || wave.integ <= 0) continue
+    if (!wave) continue
+    const downedThisPhase =
+      wave.integ <= 0 && action.action === 'attack_wave' && liveAtPhaseStart.has(wave.id)
+    if (wave.integ <= 0 && !downedThisPhase) continue
 
     switch (action.action) {
       case 'move': {
