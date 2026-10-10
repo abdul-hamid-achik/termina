@@ -8,6 +8,11 @@ let _client: ReturnType<typeof postgres> | null = null
 function createDb() {
   const config = useRuntimeConfig()
   const connectionString = (config.database as { url: string }).url
+  if (!connectionString) {
+    throw new Error(
+      'NUXT_DATABASE_URL is not set — inject it with `tvault -p termina-local run -- …` locally; it is a Vercel env var in prod/preview',
+    )
+  }
   // Connection pool tuned for a game server. prepare:false is REQUIRED for
   // Neon's transaction-mode pooler (PgBouncer) — the default Vercel↔Neon
   // connection string — which multiplexes sessions and can't reuse named

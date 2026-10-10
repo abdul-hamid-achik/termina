@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { H3Event } from 'h3'
+import { pgUrl } from '../../helpers/pgUrl'
 
 const { execute } = vi.hoisted(() => ({ execute: vi.fn() }))
 vi.mock('~~/server/db', () => ({ useDb: () => ({ execute }) }))
@@ -15,6 +16,9 @@ vi.stubGlobal('setResponseStatus', (_event: H3Event, status: number) => {
   responseStatus = status
 })
 
+const runtimeConfig = { database: { url: '' } }
+vi.stubGlobal('useRuntimeConfig', () => runtimeConfig)
+
 const makeEvent = () => ({}) as H3Event
 
 // oxlint-disable-next-line typescript/consistent-type-imports -- the module is dynamically re-imported per test (vi.resetModules) to reset the schema-contract cache; typeof import() is the idiomatic way to type it
@@ -23,6 +27,7 @@ type ReadyHandler = (event: H3Event) => Promise<{
   status: string
   schema?: string
   missingColumns?: string[]
+  deployment?: { env: string; appDb: string | null; tickDb: string | null; dbMatch: boolean | null }
   timestamp: number
 }>
 
@@ -134,5 +139,47 @@ describe('GET /api/ready', () => {
     expect(responseStatus).toBe(503)
     expect(result.status).toBe('schema_check_failed')
     expect(result.missingColumns).toBeUndefined()
+  })
+
+  describe('deployment fingerprint (which database is this deployment on?)', () => {
+    const MAIN = pgUrl({ host: 'ep-fixture-main-pooler.db.example.test', database: 'neondb' })
+    const MAIN_DIRECT = pgUrl({ host: 'ep-fixture-main.db.example.test', database: 'neondb' })
+    const PREVIEW = pgUrl({ host: 'ep-fixture-preview-pooler.db.example.test', database: 'neondb' })
+
+    it('reports env + matching app/tick fingerprints without leaking the URL', async () => {
+      vi.stubEnv('VERCEL_ENV', 'production')
+      vi.stubEnv('DATABASE_URL', MAIN_DIRECT)
+      runtimeConfig.database.url = MAIN
+      const { handler, columns } = await freshReadyHandler()
+      execute.mockResolvedValue(rowsFor(columns))
+      const result = await handler(makeEvent())
+      expect(result.deployment?.env).toBe('production')
+      expect(result.deployment?.appDb).toMatch(/^[0-9a-f]{10}$/)
+      expect(result.deployment?.appDb).toBe(result.deployment?.tickDb)
+      expect(result.deployment?.dbMatch).toBe(true)
+      expect(JSON.stringify(result)).not.toContain('ep-fixture-main')
+      vi.unstubAllEnvs()
+    })
+
+    it('flags an API/tick database split (the API on one branch, the Workflow tick on another)', async () => {
+      vi.stubEnv('DATABASE_URL', PREVIEW)
+      runtimeConfig.database.url = MAIN
+      const { handler, columns } = await freshReadyHandler()
+      execute.mockResolvedValue(rowsFor(columns))
+      const result = await handler(makeEvent())
+      expect(result.deployment?.dbMatch).toBe(false)
+      vi.unstubAllEnvs()
+    })
+
+    it('is also present on a not-ready response', async () => {
+      vi.stubEnv('DATABASE_URL', MAIN)
+      runtimeConfig.database.url = MAIN
+      const { handler, columns } = await freshReadyHandler()
+      execute.mockResolvedValue(rowsFor(columns, columns[0]))
+      const result = await handler(makeEvent())
+      expect(responseStatus).toBe(503)
+      expect(result.deployment?.dbMatch).toBe(true)
+      vi.unstubAllEnvs()
+    })
   })
 })

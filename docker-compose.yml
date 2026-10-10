@@ -1,15 +1,18 @@
 services:
   postgres:
     image: postgres:17-alpine
+    # Credentials come from the environment — run compose through
+    # `tvault -p termina-local run -- docker compose up -d` (or export them).
+    # Nothing secret lives in this file.
     environment:
-      POSTGRES_USER: termina
-      POSTGRES_PASSWORD: termina
-      POSTGRES_DB: termina
+      POSTGRES_USER: ${TERMINA_POSTGRES_USER:-termina}
+      POSTGRES_PASSWORD: ${TERMINA_POSTGRES_PASSWORD:?set TERMINA_POSTGRES_PASSWORD (tvault -p termina-local)}
+      POSTGRES_DB: ${TERMINA_POSTGRES_DB:-termina}
     # Host port remapped off the default 5432 so termina's Postgres can run
     # alongside another project's DB. Override with TERMINA_POSTGRES_PORT if 5433
     # is also taken. Container-internal port stays 5432.
     ports:
-      - '${TERMINA_POSTGRES_PORT:-5433}:5432'
+      - '127.0.0.1:${TERMINA_POSTGRES_PORT:-5433}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

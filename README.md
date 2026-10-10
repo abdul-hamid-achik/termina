@@ -117,8 +117,12 @@ NUXT_OAUTH_DISCORD_CLIENT_SECRET=
 ABLY_API_KEY=
 
 # Database (host port 5433 — off the default 5432 so it can run alongside
-# another project's Postgres; override the host port via TERMINA_POSTGRES_PORT)
-DATABASE_URL=postgresql://termina:termina@localhost:5433/termina
+# another project's Postgres; override the host port via TERMINA_POSTGRES_PORT).
+# Values live in tvault `termina-local`; nothing here should hold a real URL.
+DATABASE_URL=
+NUXT_DATABASE_URL=
+TEST_DATABASE_URL=
+TERMINA_POSTGRES_PASSWORD=
 ```
 
 See `.env.example` for the complete list (incl. `WORKFLOW_START_KEY`).

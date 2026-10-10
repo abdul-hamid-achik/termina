@@ -97,7 +97,10 @@ export default defineNuxtConfig({
       github: { clientId: '', clientSecret: '', redirectURL: '' },
       discord: { clientId: '', clientSecret: '', redirectURL: '' },
     },
-    database: { url: 'postgresql://termina:termina@localhost:5433/termina' },
+    // ← NUXT_DATABASE_URL (Vercel env in prod/preview; tvault `termina-local`
+    // locally). Deliberately empty: useDb() fails loudly instead of silently
+    // connecting somewhere unexpected.
+    database: { url: '' },
     // Transactional email (Resend). apiKey ← NUXT_RESEND_API_KEY (secret); from
     // ← NUXT_RESEND_FROM (needs a verified domain in Resend). Empty apiKey =
     // emails are logged + skipped (see server/utils/email.ts). redirectTo ←

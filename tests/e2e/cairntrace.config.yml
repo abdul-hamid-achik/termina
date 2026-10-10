@@ -18,13 +18,11 @@ retention:
 webServer:
   cwd: ../.. # repo root, relative to this config's dir (tests/e2e)
   build: bun run build # rebuilt on every fresh boot; skipped when a server is reused
-  # Flush the test Redis db (db1) BEFORE the server starts: on boot the game
-  # server resumes in-progress games from db1 snapshots, so a stale seeded game
-  # would come back as a zombie. Local e2e always uses the disposable termina_test
-  # database on the compose host port; CI keeps its injected NUXT_DATABASE_URL.
-  # `exec` hands signals straight to node for clean teardown. (The command already
-  # runs under `/bin/sh -c`.)
-  command: 'redis-cli -p 6380 -n 1 flushdb >/dev/null 2>&1 || true; if [ -n "${CI:-}" ] && [ -n "${NUXT_DATABASE_URL:-}" ]; then :; else export NUXT_DATABASE_URL="postgresql://termina:termina@localhost:5433/termina_test"; fi; exec node .output/server/index.mjs'
+  # Local e2e uses the disposable termina_test database and a test session
+  # secret from the environment (tvault `termina-local`); CI keeps its injected
+  # NUXT_DATABASE_URL. `exec` hands signals straight to node for clean
+  # teardown. (The command already runs under `/bin/sh -c`.)
+  command: 'if [ -n "${CI:-}" ] && [ -n "${NUXT_DATABASE_URL:-}" ]; then :; else export NUXT_DATABASE_URL="${TEST_DATABASE_URL:?set TEST_DATABASE_URL (tvault -p termina-local)}"; fi; export NUXT_SESSION_PASSWORD="${TEST_SESSION_PASSWORD:?set TEST_SESSION_PASSWORD (tvault -p termina-local)}"; export ABLY_API_KEY="${TEST_ABLY_API_KEY:?set TEST_ABLY_API_KEY (tvault -p termina-local)}"; exec node .output/server/index.mjs'
   url: http://127.0.0.1:3000 # readiness probe (and where specs are addressed)
   readyTimeoutMs: 90000 # prod server boot headroom (covers boot, not the build)
   env:
@@ -39,8 +37,6 @@ webServer:
     TERMINA_TEST_HOOKS: "1"
     TERMINA_DISABLE_RATE_LIMIT: "1"
     NUXT_SESSION_COOKIE_SECURE: "false" # let the prod session cookie ride plain HTTP on 127.0.0.1
-    NUXT_SESSION_PASSWORD: "e2e_session_password_at_least_32_chars_long"
-    NUXT_REDIS_URL: "redis://localhost:6380/1" # db1 isolation; matches the flush above
     # Fast game: 500ms ticks + shrunken structure HP (server/game/engine/fastGame.ts,
     # inert in production). In-game UI flows (feed digest, shop, scoreboard) would
     # otherwise wait 4s per tick for anything to happen.

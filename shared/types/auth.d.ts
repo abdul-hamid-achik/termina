@@ -30,7 +30,6 @@ declare module '@nuxt/schema' {
       github: { clientId: string; clientSecret: string }
       discord: { clientId: string; clientSecret: string }
     }
-    redis: { url: string }
     database: { url: string }
     resend: { apiKey: string; from: string; redirectTo: string }
     appUrl: string

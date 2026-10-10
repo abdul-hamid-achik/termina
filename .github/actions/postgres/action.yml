@@ -15,6 +15,9 @@ inputs:
   postgres-image:
     description: Postgres image tag (passed in from the workflow env for one source of truth)
     required: true
+  postgres-password:
+    description: Password for the throwaway container (repository secret CI_POSTGRES_PASSWORD; composite actions cannot read secrets themselves)
+    required: true
   postgres-db:
     description: Database created on first boot
     required: false
@@ -25,8 +28,13 @@ runs:
   steps:
     - name: Start Postgres (with pull retry)
       shell: bash
+      env:
+        CI_PG_PASSWORD: ${{ inputs.postgres-password }}
       run: |
         set -euo pipefail
+        if [ -z "$CI_PG_PASSWORD" ]; then
+          echo "::error::CI_POSTGRES_PASSWORD secret is not set"; exit 1
+        fi
         pull_retry() {
           for i in 1 2 3 4 5; do
             if docker pull "$1"; then return 0; fi
@@ -37,7 +45,7 @@ runs:
         }
         pull_retry "${{ inputs.postgres-image }}"
         docker run -d --name postgres \
-          -e POSTGRES_USER=termina -e POSTGRES_PASSWORD=termina -e POSTGRES_DB=${{ inputs.postgres-db }} \
+          -e POSTGRES_USER=termina -e POSTGRES_PASSWORD="$CI_PG_PASSWORD" -e POSTGRES_DB=${{ inputs.postgres-db }} \
           -p 5432:5432 \
           --health-cmd "pg_isready -U termina" \
           --health-interval 5s --health-timeout 5s --health-retries 20 \

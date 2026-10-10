@@ -3,11 +3,16 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import * as schema from '~~/server/db/schema'
 
 // Real Postgres connection for integration tests. Points at a disposable test DB
-// (TEST_DATABASE_URL, default termina_test) — never the dev/prod DB. CI provisions
-// it as a service + `drizzle-kit push`es the schema; locally: docker compose up +
-// `DATABASE_URL=…/termina_test npx drizzle-kit push --force`.
-const url =
-  process.env.TEST_DATABASE_URL ?? 'postgresql://termina:termina@localhost:5433/termina_test'
+// (TEST_DATABASE_URL) — never the dev/prod DB. CI injects it from a GitHub
+// Actions secret; locally it lives in tvault `termina-local`:
+//   tvault -p termina-local run -- bun run test:db
+//   tvault -p termina-local run -- bun run test:integration
+const url = process.env.TEST_DATABASE_URL
+if (!url) {
+  throw new Error(
+    'TEST_DATABASE_URL is not set — run integration tests through `tvault -p termina-local run -- …`',
+  )
+}
 
 export const client = postgres(url, { max: 4, onnotice: () => {} })
 export const testDb = drizzle(client, { schema })

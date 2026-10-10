@@ -16,9 +16,14 @@ permissions:
 
 env:
   # Integration tests (tests/helpers/test-db.ts) read TEST_DATABASE_URL; drizzle-kit
-  # reads DATABASE_URL. Both point at the CI Postgres published on localhost:5432.
-  TEST_DATABASE_URL: postgresql://termina:termina@localhost:5432/termina_test
-  DATABASE_URL: postgresql://termina:termina@localhost:5432/termina_test
+  # reads DATABASE_URL. Both point at the throwaway CI Postgres on localhost:5432,
+  # and come from repository secrets (TEST_DATABASE_URL must use the same password
+  # as CI_POSTGRES_PASSWORD) — no connection string is written in this file.
+  TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+  DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+  # Test-server secrets (serve:test / e2e) — throwaway values, still secrets.
+  TEST_SESSION_PASSWORD: ${{ secrets.TEST_SESSION_PASSWORD }}
+  TEST_ABLY_API_KEY: ${{ secrets.TEST_ABLY_API_KEY }}
   # Single source of truth for the Bun runtime + service image tag across jobs.
   BUN_VERSION: '1.3.13'
   POSTGRES_IMAGE: postgres:17-alpine
@@ -123,6 +128,7 @@ jobs:
       - uses: ./.github/actions/postgres
         with:
           postgres-image: ${{ env.POSTGRES_IMAGE }}
+          postgres-password: ${{ secrets.CI_POSTGRES_PASSWORD }}
       - uses: ./.github/actions/bun-setup
         with:
           bun-version: ${{ env.BUN_VERSION }}
@@ -186,21 +192,23 @@ jobs:
     timeout-minutes: 20
     env:
       HITSPEC_VERSION: '2.14.1'
-      NUXT_DATABASE_URL: postgresql://termina:termina@localhost:5432/termina_test
-      NUXT_SESSION_PASSWORD: ci_session_password_at_least_32_chars_long
+      NUXT_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+      NUXT_SESSION_PASSWORD: ${{ secrets.TEST_SESSION_PASSWORD }}
       NUXT_SESSION_COOKIE_SECURE: 'false'
       TERMINA_TEST_HOOKS: '1'
       TERMINA_DISABLE_RATE_LIMIT: '1'
       HOST: 127.0.0.1
       PORT: '3000'
       # TokenRequest minting is a LOCAL HMAC signature (no Ably round trip) —
-      # a fake key exercises the real /api/auth/ably-token path end to end.
-      ABLY_API_KEY: 'fakeapp.fakekey:fake-secret-for-local-hmac-signing'
+      # a throwaway key-shaped secret exercises the real /api/auth/ably-token
+      # path end to end without a real Ably app.
+      ABLY_API_KEY: ${{ secrets.TEST_ABLY_API_KEY }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/postgres
         with:
           postgres-image: ${{ env.POSTGRES_IMAGE }}
+          postgres-password: ${{ secrets.CI_POSTGRES_PASSWORD }}
       - uses: ./.github/actions/bun-setup
         with:
           bun-version: ${{ env.BUN_VERSION }}

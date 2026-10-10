@@ -110,7 +110,9 @@ expect status 400
 expect body.message contains "Party not found"
 <<<
 
-### Party start-coop: rejected when not in a party
+### Party start-coop: rejected when there is no party to claim
+# start-coop atomically claims (deletes) the party before starting, so "never
+# had a party" and "already started / disbanded" are the same 409 conflict.
 # @name partyStartCoopNoParty
 # @depends partyJoinNotFound
 POST {{baseUrl}}/api/party/start-coop
@@ -120,6 +122,6 @@ Cookie: {{partyCookie}}
 {}
 
 >>>
-expect status 400
-expect body.message contains "not in a party"
+expect status 409
+expect body.message contains "No party to start"
 <<<

@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { useDb } from '~~/server/db'
 import { logger } from '~~/server/utils/log'
+import { dbFingerprint } from '~~/server/utils/dbFingerprint'
 
 /**
  * Readiness probe.
@@ -22,6 +23,7 @@ export default defineEventHandler(async (event) => {
   setHeader(event, 'content-type', 'application/json')
 
   const schema = await checkSchemaContract()
+  const deployment = deploymentFingerprint()
 
   if (!schema.ok) {
     setResponseStatus(event, 503)
@@ -29,13 +31,41 @@ export default defineEventHandler(async (event) => {
       status: schema.errored ? 'schema_check_failed' : 'schema_drift',
       schema: schema.errored ? 'unknown' : 'drift',
       ...(schema.errored ? {} : { missingColumns: schema.missing }),
+      deployment,
       timestamp: Date.now(),
     }
   }
 
   setResponseStatus(event, 200)
-  return { status: 'ready', schema: 'ready', timestamp: Date.now() }
+  return { status: 'ready', schema: 'ready', deployment, timestamp: Date.now() }
 })
+
+/**
+ * Which database is this deployment on? Non-secret hashes of the Neon endpoint
+ * behind the API's connection (`runtimeConfig.database.url`, i.e.
+ * NUXT_DATABASE_URL) and the Workflow tick's (`DATABASE_URL`). After a
+ * `vercel promote`, compare production's `appDb` with the preview
+ * deployment's: they must differ (main vs preview branch). `dbMatch: false`
+ * means the API and the tick talk to different databases — a misconfigured
+ * deployment (reported, not failed, so a monitor can alert on it).
+ */
+function deploymentFingerprint(): {
+  env: string
+  appDb: string | null
+  tickDb: string | null
+  dbMatch: boolean | null
+} {
+  const appDb = dbFingerprint((useRuntimeConfig().database as { url?: string } | undefined)?.url)
+  const tickDb = dbFingerprint(process.env.DATABASE_URL)
+  const dbMatch = appDb && tickDb ? appDb === tickDb : null
+  if (dbMatch === false) {
+    logger.error('[ready] the API and the Workflow tick are configured with different databases', {
+      appDb,
+      tickDb,
+    })
+  }
+  return { env: process.env.VERCEL_ENV ?? 'local', appDb, tickDb, dbMatch }
+}
 
 /**
  * Sentinel (table, column) pairs the running code currently depends on,
