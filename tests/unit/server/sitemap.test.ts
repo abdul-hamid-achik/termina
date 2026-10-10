@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { SITEMAP_PATHS, SITE_ORIGIN, buildSitemapXml } from '../../../server/utils/sitemap'
+import { SITE_ORIGIN } from '../../../shared/constants/site'
+import { SITEMAP_PATHS, buildSitemapXml } from '../../../server/utils/sitemap'
 
 const root = resolve(__dirname, '../../..')
 

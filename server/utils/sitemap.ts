@@ -1,5 +1,6 @@
+import { SITE_ORIGIN } from '~~/shared/constants/site'
+
 // Sitemap source of truth. Canonical host is www (the apex 308-redirects to it).
-export const SITE_ORIGIN = 'https://www.terminamoba.com'
 
 // Public, indexable pages only. Auth/app pages (/login, /lobby, /play,
 // /profile/*, /replay/*, /admin, account recovery) and /api are deliberately
