@@ -55,6 +55,8 @@ import {
   WAVE_SCRIP_MAX,
   WAVE_XP,
   WAVE_XP_SHARED,
+  XP_CATCHUP_PER_LEVEL,
+  XP_CATCHUP_MAX,
 } from '~~/shared/constants/balance'
 import { talentUnlockLevel } from '~~/shared/constants/talents'
 import { STRUCTURE_LABELS } from '~~/shared/constants/world'
@@ -365,7 +367,7 @@ const concepts = [
   {
     term: 'Levels & XP',
     icon: '^',
-    desc: `Gain XP from wave kills and hero kills, up to level ${MAX_LEVEL}. Q/W/E are usable from level 1 and get stronger at levels ${BASIC_ABILITY_RANKS.join(', ')}. Your ultimate (R) unlocks at level ${ULTIMATE_UNLOCK_LEVEL} and strengthens at ${ULTIMATE_RANKS.slice(1).join(' and ')}. Reaching levels ${talentLevelList} each grants a one-time talent choice (a left/right power pick): use \`talent <tier> <left|right>\`${talentTierNote}.`,
+    desc: `Gain XP from wave kills and hero kills, up to level ${MAX_LEVEL}. Behind your own team's average level? Every XP gain is worth +${Math.round(XP_CATCHUP_PER_LEVEL * 100)}% per level behind, up to ×${XP_CATCHUP_MAX}. Q/W/E are usable from level 1 and get stronger at levels ${BASIC_ABILITY_RANKS.join(', ')}. Your ultimate (R) unlocks at level ${ULTIMATE_UNLOCK_LEVEL} and strengthens at ${ULTIMATE_RANKS.slice(1).join(' and ')}. Reaching levels ${talentLevelList} each grants a one-time talent choice (a left/right power pick): use \`talent <tier> <left|right>\`${talentTierNote}.`,
   },
   {
     term: 'Abilities',

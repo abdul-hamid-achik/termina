@@ -160,6 +160,19 @@ export const XP_COMEBACK_PENALTY_MAX = 0.3
 export const XP_COMEBACK_FULL_LEVEL_GAP = 5
 
 /**
+ * Individual catch-up XP (playtest 5: a human who never last-hit sat at Lv2 at
+ * 10:00 while their allied bots were Lv5–7). A hero below their OWN team's
+ * average level — teammates only, alive or dead, the hero excluded — earns
+ * ×(1 + XP_CATCHUP_PER_LEVEL × levels behind) on EVERY XP grant (strip,
+ * presence, burn, Silt, kill, assist), capped at ×XP_CATCHUP_MAX. Never below
+ * ×1: being ahead of your team costs nothing (the team-level comeback above
+ * already handles a lead against the enemy). Applied in one place —
+ * XpDistributor.awardXp / xpCatchupMultiplier.
+ */
+export const XP_CATCHUP_PER_LEVEL = 0.5
+export const XP_CATCHUP_MAX = 2.0
+
+/**
  * Tier-25 "double cast" exotic talent: each cast of the talented ability has
  * this chance to fire a second time (paying BW again).
  */

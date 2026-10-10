@@ -66,8 +66,11 @@ export type LoggedAction = ActionLogEntry
  * 6 (2026-10-10): the approach hold reads the PREDICTED fire of the next hop
  *   (enemy units + ICE that would shoot the walker, vs current INTEG) instead
  *   of INTEG%; a wave felled by ICE pays presence XP to the ICE crew there.
+ * 7 (2026-10-10): individual XP catch-up — every XP grant goes through
+ *   XpDistributor.awardXp (×1 + 0.5 per level behind the hero's own team
+ *   average, cap ×2).
  */
-export const REPLAY_RULESET_VERSION = 6
+export const REPLAY_RULESET_VERSION = 7
 
 /** Per-player scrubber summary — the projection the replay UI renders. */
 export interface FramePlayer {

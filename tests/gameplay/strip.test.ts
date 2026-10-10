@@ -182,7 +182,15 @@ async function seedTwoAttackers(wave: {
     players: {
       ...s.players,
       [HUMAN]: { ...s.players[HUMAN]!, zone: 'seawall-cross', alive: true },
-      [ALLY]: { ...s.players[ALLY]!, zone: 'seawall-cross', alive: true },
+      // Same level as the human (laning_combat levels only the human): a
+      // level-1 ally would be behind its team and draw catch-up XP, which is
+      // not what the split tests measure.
+      [ALLY]: {
+        ...s.players[ALLY]!,
+        zone: 'seawall-cross',
+        alive: true,
+        level: s.players[HUMAN]!.level,
+      },
     },
     waves: [{ id: 'target', zone: 'seawall-cross', type: 'line' as const, ...wave }],
   }))

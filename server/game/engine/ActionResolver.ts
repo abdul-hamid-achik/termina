@@ -103,7 +103,7 @@ import type { ItemStats } from '~~/shared/types/items'
 import { runAntiCheatChecks, type CheatDetection } from '~~/server/utils/AntiCheat'
 import { wsLog } from '~~/server/utils/log'
 import { isRealProduction } from '~~/server/utils/testHooks'
-import { awardZoneXp } from './XpDistributor'
+import { awardXp, awardZoneXp, catchupXp } from './XpDistributor'
 import { compareCodePoints } from './rng'
 
 /** Ticks before Intercept Shell recharges its spell-block after spending one. */
@@ -1096,7 +1096,7 @@ function resolveDenyPhase(
       playerUpdates[playerId] = {
         ...playerUpdates[playerId],
         scrip: denier.scrip + scripShare,
-        xp: denier.xp + Math.floor(burnXp / burners.length),
+        xp: denier.xp + catchupXp(players, playerId, Math.floor(burnXp / burners.length)),
       }
 
       events.push({
@@ -2590,9 +2590,8 @@ function resolvePostShopPhases(
         Math.floor(payload / claimants.length) + (i < payload % claimants.length ? 1 : 0)
       const tempState: GameState = { ...state, players, waves, ice }
       players = { ...awardLastHit(tempState, playerId, waveType, scripShare).players }
-      const killer = players[playerId]
-      if (!killer) continue
-      players = { ...players, [playerId]: { ...killer, xp: killer.xp + xpShare } }
+      if (!players[playerId]) continue
+      players = awardXp(players, playerId, xpShare)
       // The reward line the feed shows ("last-hit +38g") — this event existed in
       // the protocol but was never emitted, so the player's own farming was the
       // one thing the combat log stayed silent about.
@@ -2644,10 +2643,11 @@ function resolvePostShopPhases(
         Math.floor(stats.scrip / claimants.length) + (i < stats.scrip % claimants.length ? 1 : 0)
       const xpShare =
         Math.floor(stats.xp / claimants.length) + (i < stats.xp % claimants.length ? 1 : 0)
-      players = {
-        ...players,
-        [playerId]: { ...killer, scrip: killer.scrip + scripShare, xp: killer.xp + xpShare },
-      }
+      players = awardXp(
+        { ...players, [playerId]: { ...killer, scrip: killer.scrip + scripShare } },
+        playerId,
+        xpShare,
+      )
       events.push({
         _tag: 'neutral_killed' as const,
         cycle: state.cycle,

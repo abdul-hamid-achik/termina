@@ -34,6 +34,7 @@ import {
 } from '~~/server/game/modes/tutorial'
 import { tutorialSkipNotice } from '~~/shared/constants/tutorial'
 import { distributePassiveScrip, awardKill, xpComebackMultiplier } from './ScripDistributor'
+import { awardXp } from './XpDistributor'
 import { runWaveAI, applyWaveActions, enforceWaveZoneCap } from './WaveAI'
 import { ensureTerminals, updateTerminalVulnerability, checkTerminalWin } from './TerminalSystem'
 import { runIceAI, applyIceActions } from './IceAI'
@@ -1513,16 +1514,16 @@ function handleDeaths(
         const killXp = Math.round(
           (HERO_KILL_XP_BASE + HERO_KILL_XP_PER_LEVEL * victim.level) * xpMult,
         )
-        players[killerId] = { ...killerForXp, xp: killerForXp.xp + killXp }
+        // Individual catch-up rides on top, per recipient (XpDistributor.awardXp).
+        players = awardXp(players, killerId, killXp)
 
         // Award assisters a fraction of the kill XP (ASSIST_XP_RATIO). Derived
-        // from the already-adjusted killXp, so assisters share the comeback too.
+        // from the TEAM-adjusted killXp — before the killer's own catch-up — so
+        // assisters share the team comeback but each gets only their OWN
+        // individual catch-up, never the killer's.
         const assistXp = Math.floor(killXp * ASSIST_XP_RATIO)
         for (const assistId of assisters) {
-          const assister = players[assistId]
-          if (assister) {
-            players[assistId] = { ...assister, xp: assister.xp + assistXp }
-          }
+          players = awardXp(players, assistId, assistXp)
         }
 
         // Segfault Blade passive: reset all cooldowns on hero kill
