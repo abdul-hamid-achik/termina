@@ -33,7 +33,10 @@ import { TERMINAL_ZONES } from '~~/server/game/engine/TerminalSystem'
 import { fastGameFactor } from '~~/server/game/engine/fastGame'
 import { getAbilityLevel } from '~~/server/game/heroes/_base'
 import { getAbilityBwCost } from '~~/shared/utils/ability'
-import { getBotDifficultyConfig, isGameBot, type BotDifficultyConfig } from './BotManager'
+import { getBotDifficultyConfig, isBot, isGameBot, type BotDifficultyConfig } from './BotManager'
+import { disableBlockReason } from '~~/server/game/engine/disables'
+import { compareCodePoints } from '~~/server/game/engine/rng'
+import { isTrainingWave } from '~~/shared/constants/tutorial'
 
 // Item build orders now live in shared/constants/itemBuilds (the SINGLE source
 // shared with the shop UI, which recommends them to the human player). The bot
@@ -365,12 +368,24 @@ function getAlliedHeroesInZone(state: GameState, bot: PlayerState): PlayerState[
   )
 }
 
+/**
+ * The lane wave units a bot may see, strip, burn or lean on for support in
+ * `zone`. Tutorial TRAINING units are excluded everywhere: they belong to the
+ * human's drill alone (an ally bot stripping the replanted unit every cycle
+ * was a free 40-scrip pump; an enemy bot stripped the player's burn-drill
+ * unit). Callers that turn a pick into `wave:N` must still index into ALL the
+ * zone's units — the resolver does — never into this filtered list.
+ */
+function laneWavesIn(state: GameState, zone: string): WaveUnitState[] {
+  return state.waves.filter((c) => c.zone === zone && c.integ > 0 && !isTrainingWave(c))
+}
+
 function getEnemyWavesInZone(state: GameState, bot: PlayerState): WaveUnitState[] {
-  return state.waves.filter((c) => c.zone === bot.zone && c.team !== bot.team && c.integ > 0)
+  return laneWavesIn(state, bot.zone).filter((c) => c.team !== bot.team)
 }
 
 function getAlliedWavesInZone(state: GameState, bot: PlayerState): WaveUnitState[] {
-  return state.waves.filter((c) => c.zone === bot.zone && c.team === bot.team && c.integ > 0)
+  return laneWavesIn(state, bot.zone).filter((c) => c.team === bot.team)
 }
 
 function getEnemyIceInZone(state: GameState, bot: PlayerState): IceState | undefined {
@@ -1386,9 +1401,70 @@ function cheapestSellableItem(bot: PlayerState): string | null {
   return [...sellable].sort((a, b) => itemCost(a) - itemCost(b))[0]!
 }
 
+/**
+ * The verbs this hero's own disables leave it right now — the exact gates
+ * validateAction applies (disableBlockReason is their single source), so a bot
+ * never issues an order the engine is certain to refuse.
+ */
+interface BotVerbs {
+  move: boolean
+  attack: boolean
+  cast: boolean
+}
+
+function botVerbs(bot: PlayerState): BotVerbs {
+  return {
+    move: disableBlockReason(bot, 'move') === null,
+    attack: disableBlockReason(bot, 'attack') === null,
+    cast: disableBlockReason(bot, 'cast') === null,
+  }
+}
+
+/**
+ * The enemy a taunt forces this hero to swing at this cycle, or null. Mirrors
+ * resolveActions' taunt override exactly (not AIRGAPPED; not stunned, feared or
+ * in ghost form; the taunter alive, an enemy, in this zone): the engine REPLACES
+ * such a hero's order with that swing, so anything else the bot picks is lost.
+ */
+function forcedTaunter(state: GameState, p: PlayerState): PlayerState | null {
+  if (!p.alive || p.buffs.some((b) => b.id === 'airgap')) return null
+  if (p.buffs.some((b) => b.id === 'stun' || b.id === 'feared' || b.id === 'ghost_form')) {
+    return null
+  }
+  const taunt = p.buffs.find((b) => b.id === 'taunt')
+  if (!taunt) return null
+  const taunter = state.players[taunt.source]
+  return taunter?.alive && taunter.zone === p.zone && taunter.team !== p.team ? taunter : null
+}
+
+/**
+ * Harden is ONE team-wide order per cooldown, and every bot on the team sees the
+ * same falling ICE — so several used to issue it in the same cycle and all but
+ * one were refused ("Harden is not ready"). Exactly one bot per team is the
+ * hardener each cycle: the lowest player id (code-point order) among the team's
+ * alive bots whose harden would actually resolve (not cycloned/hexed — refused
+ * outright — and not taunt-forced, whose order the engine replaces).
+ */
+function isTeamHardener(state: GameState, bot: PlayerState, gameId: string | undefined): boolean {
+  const isTeamBot = (id: string) => (gameId ? isGameBot(gameId, id) : isBot(id))
+  const eligible = Object.values(state.players)
+    .filter(
+      (p) =>
+        p.team === bot.team &&
+        p.alive &&
+        isTeamBot(p.id) &&
+        disableBlockReason(p, 'harden') === null &&
+        forcedTaunter(state, p) === null,
+    )
+    .map((p) => p.id)
+    .sort(compareCodePoints)
+  return eligible[0] === bot.id
+}
+
 /** Harden/fortification — pop team-wide ice invulnerability when the enemy
  *  team is diving a ice and it's about to fall. Only one harden per team
- *  per cooldown, so this is reserved for desperate saves. */
+ *  per cooldown, so this is reserved for desperate saves. Only the team's
+ *  designated hardener (isTeamHardener) asks. */
 function tryGlyph(state: GameState, bot: PlayerState): Command | null {
   // Harden is a team command — any teammate can issue it. Check cooldown.
   const teamState = state.teams[bot.team]
@@ -1519,9 +1595,7 @@ function tryRotate(
 
   // Busy where you are: clearing a wave or in a fight beats walking away.
   if (getEnemyHeroesInZone(state, bot).length > 0) return null
-  if (state.waves.some((c) => c.zone === bot.zone && c.team !== bot.team && c.integ > 0)) {
-    return null
-  }
+  if (getEnemyWavesInZone(state, bot).length > 0) return null
 
   const key = `${gameId}|${bot.id}`
   const last = lastRotation.get(key)
@@ -1604,7 +1678,8 @@ function tryBurn(state: GameState, bot: PlayerState, config: BotDifficultyConfig
   let bestHp = Infinity
   for (let i = 0; i < zoneWaves.length; i++) {
     const wave = zoneWaves[i]!
-    if (wave.team !== bot.team || wave.integ <= 0) continue
+    // Skip (not filter) a training unit: `i` must stay the resolver's index.
+    if (wave.team !== bot.team || wave.integ <= 0 || isTrainingWave(wave)) continue
     if (wave.integ > (wave.maxInteg ?? waveUnitMaxHp(wave.type, 0)) * BURN_HP_THRESHOLD) continue
     if (wave.integ < bestHp) {
       bestHp = wave.integ
@@ -1776,6 +1851,69 @@ export function decideBotAction(
   assignedLane: string,
   gameId?: string,
 ): Command | null {
+  if (!bot.alive) return decideUnheld(state, bot, assignedLane, gameId, botVerbs(bot))
+  // Cycloned / hexed bots fall through to the final check below, which refuses
+  // every verb for them (disableBlockReason) and so issues nothing.
+  const can = botVerbs(bot)
+  // Taunted (and able to swing): the engine replaces any order with a swing at
+  // the taunter, so issue exactly that.
+  const taunter = forcedTaunter(state, bot)
+  if (taunter) return { type: 'attack', target: { kind: 'hero', name: taunter.id } }
+  // Harden is team-wide, so the designated hardener asks wherever it stands —
+  // even mid-fight — before anything else.
+  if (isTeamHardener(state, bot, gameId)) {
+    const hardenCmd = tryGlyph(state, bot)
+    if (hardenCmd) return hardenCmd
+  }
+  const cmd = decideUnheld(state, bot, assignedLane, gameId, can)
+  if (!cmd || disableBlockReason(bot, cmd.type) === null) return cmd
+  // The tree picked a verb this bot's own disables refuse (a rooted bot's
+  // walk, a silenced bot's cast). Use the cycle on a swing it CAN make here.
+  return heldFallback(state, bot, can, gameId)
+}
+
+/**
+ * A held bot's best legal use of the cycle: swing at the weakest enemy hero in
+ * the zone, else the wave, else an ICE its own wave is pushing — or nothing.
+ */
+function heldFallback(
+  state: GameState,
+  bot: PlayerState,
+  can: BotVerbs,
+  gameId: string | undefined,
+): Command | null {
+  if (!can.attack) return null
+  // Same rule as the tree's `engageable`: a hero about to retreat is gone
+  // before the swing resolves (movement first), so don't aim at it.
+  const enemies = getEnemyHeroesInZone(state, bot).filter((e) => !predictsFlight(state, e, gameId))
+  if (enemies.length > 0) {
+    const target = enemies.reduce((a, b) => (a.integ < b.integ ? a : b))
+    return { type: 'attack', target: { kind: 'hero', name: target.id } }
+  }
+  const enemyWaves = getEnemyWavesInZone(state, bot)
+  if (enemyWaves.length > 0) {
+    const config = getBotDifficultyConfig(gameId ?? '', bot.id)
+    const waveTarget = pickWaveTarget(enemyWaves, bot, state.cycle, config)
+    const waveIdx = state.waves.filter((c) => c.zone === bot.zone).indexOf(waveTarget)
+    return { type: 'attack', target: { kind: 'wave', index: waveIdx } }
+  }
+  const enemyIce = getEnemyIceInZone(state, bot)
+  if (enemyIce && getAlliedWavesInZone(state, bot).length > 0) {
+    return { type: 'attack', target: { kind: 'ice', zone: enemyIce.zone } }
+  }
+  return null
+}
+
+/** The decision tree proper. Disable-aware where a skipped branch matters (a
+ *  retreat a rooted bot cannot walk; casts and combos — which advance combo
+ *  state — while silenced); decideBotAction re-checks whatever it returns. */
+function decideUnheld(
+  state: GameState,
+  bot: PlayerState,
+  assignedLane: string,
+  gameId: string | undefined,
+  can: BotVerbs,
+): Command | null {
   const config = getBotDifficultyConfig(gameId ?? '', bot.id)
   // Restrict pathfinding to the live game's zone set so subset maps
   // (one-lane, two-lane) produce in-bounds paths instead of routing
@@ -1820,7 +1958,7 @@ export function decideBotAction(
     if (isInFountain(bot)) {
       if (getHpPercent(bot) >= 95 && getMpPercent(bot) >= 95) {
         const nextZone = getNextLaneZone(bot, assignedLane, hasZone)
-        if (nextZone) return { type: 'move', zone: nextZone }
+        if (nextZone && can.move) return { type: 'move', zone: nextZone }
       }
       return null
     }
@@ -1863,7 +2001,8 @@ export function decideBotAction(
       // through both. Prefer Blink (it lands on the exact retreat zone); else
       // Shove Splice, which auto-shoves toward our own fountain (same direction).
       // Unimpaired, a normal move is free — don't waste an item cooldown.
-      const movementImpaired = bot.buffs.some((b) => b.id.includes('root') || b.id.includes('slow'))
+      const movementImpaired =
+        !can.move || bot.buffs.some((b) => b.id.includes('root') || b.id.includes('slow'))
       if (
         movementImpaired &&
         itemOffCooldown(bot, 'jump_shunt') &&
@@ -1874,17 +2013,17 @@ export function decideBotAction(
       if (movementImpaired && itemOffCooldown(bot, 'shove_splice')) {
         return { type: 'use', item: 'shove_splice' }
       }
-      return { type: 'move', zone: path[1]! }
+      // Held in place (stunned/rooted/taunted, no escape item): fall through and
+      // fight from here instead of ordering a walk the engine refuses.
+      if (can.move) return { type: 'move', zone: path[1]! }
+    } else {
+      return null
     }
-    return null
   }
   // Spend a calm cycle (no enemy hero in zone) banking an unlocked talent so bots
   // aren't permanently down 1–4 talents on human players, then dropping a ward
   // on a strategic spot for team vision.
   if (enemyHeroes.length === 0) {
-    // Harden to save a critically low ice from an enemy push (team-wide, any zone)
-    const glyphCmd = tryGlyph(state, bot)
-    if (glyphCmd) return glyphCmd
     const talentCmd = tryPickTalent(bot)
     if (talentCmd) return talentCmd
     const wardCmd = tryPlaceWard(state, bot)
@@ -1919,10 +2058,14 @@ export function decideBotAction(
     // are spent or on cooldown.
     const itemCmd = tryUseCombatItem(bot, engageable, getAlliedHeroesInZone(state, bot), config)
     if (itemCmd) return itemCmd
-    const comboCmd = tryCombo(state, bot, engageable, config)
-    if (comboCmd) return comboCmd
-    const abilityCmd = tryGetAbilityCommand(state, bot, engageable, config)
-    if (abilityCmd) return abilityCmd
+    // Silenced/stunned/feared: no cast (and no combo step — tryCombo advances
+    // the rotation as it picks, so a refused cast would desync it).
+    if (can.cast) {
+      const comboCmd = tryCombo(state, bot, engageable, config)
+      if (comboCmd) return comboCmd
+      const abilityCmd = tryGetAbilityCommand(state, bot, engageable, config)
+      if (abilityCmd) return abilityCmd
+    }
     // Below the burst, above the right-click: denying a dying allied wave
     // starves the laner opposite of scrip + XP for the same one action.
     const denyCmd = tryBurn(state, bot, config)
@@ -2011,7 +2154,7 @@ export function decideBotAction(
     const advancingIntoEnemy = !isOwnSide(nextZone, bot.team)
     const hasLaneSupport =
       getAlliedWavesInZone(state, bot).length > 0 ||
-      state.waves.some((c) => c.zone === nextZone && c.team === bot.team && c.integ > 0) ||
+      laneWavesIn(state, nextZone).some((c) => c.team === bot.team) ||
       getAlliedHeroesInZone(state, bot).length > 0
     if (!advancingIntoEnemy || hasLaneSupport) {
       return { type: 'move', zone: nextZone }

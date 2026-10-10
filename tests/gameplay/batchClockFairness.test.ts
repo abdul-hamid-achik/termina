@@ -273,19 +273,19 @@ describe('casts are committed when their phase opens', () => {
 })
 
 describe('breach is committed only by a hero standing when the breach phase opens', () => {
-  it('a hero dropped by a swing this cycle breaches nobody', async () => {
+  // The breach phase opens BEFORE movement (owner decision), so a swing that
+  // drops the caster later the same cycle comes too late to stop it. Only a
+  // phase-0 item kill beats it — see breachTiming.test.ts.
+  it('a hero dropped by a swing LATER this cycle has already breached', async () => {
     const game = await duel('kernel', { [HUMAN]: { integ: 5 } })
     game.submit({ type: 'breach', target: { kind: 'hero', name: ENEMY } }, HUMAN)
     game.attackHero(HUMAN, ENEMY)
     await game.tick()
     const ps = await playersOf(game)
     expect(ps[HUMAN]!.alive).toBe(false)
-    expect(ps[ENEMY]!.buffs.some((b) => b.id === 'breached')).toBe(false)
-    expect(game.lastEvents.some((e) => e._tag === 'breach_opened')).toBe(false)
-    expect(game.lastRejected).toContainEqual({
-      playerId: HUMAN,
-      reason: 'You went down before your breach landed',
-    })
+    expect(ps[ENEMY]!.buffs.some((b) => b.id === 'breached' && b.source === HUMAN)).toBe(true)
+    expect(game.lastEvents.some((e) => e._tag === 'breach_opened')).toBe(true)
+    expect(game.lastRejected.filter((r) => r.playerId === HUMAN)).toEqual([])
   })
 
   it('a standing hero still breaches', async () => {

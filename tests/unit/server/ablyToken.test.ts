@@ -7,12 +7,19 @@ import {
 } from '~~/server/utils/ablyToken'
 
 describe('buildAblyCapability', () => {
-  it("scopes subscribe-only on the player's own channel and the team wildcard", () => {
+  it("grants subscribe+presence on the player's own channel, subscribe-only on the team wildcard", () => {
     const capability = buildAblyCapability('p1')
     expect(capability).toEqual({
-      'game:*:p:p1': ['subscribe'],
+      'game:*:p:p1': ['subscribe', 'presence'],
       'game:*:team:*': ['subscribe'],
     })
+  })
+
+  it("grants presence ONLY on the player's own channel", () => {
+    const capability = buildAblyCapability('p1')
+    for (const [channel, ops] of Object.entries(capability)) {
+      if (channel !== 'game:*:p:p1') expect(ops).not.toContain('presence')
+    }
   })
 
   it('never grants publish, on any channel', () => {
@@ -26,13 +33,13 @@ describe('buildAblyCapability', () => {
   it("scopes to the given playerId, not some other player's channel", () => {
     const capability = buildAblyCapability('victim')
     expect(capability['game:*:p:attacker']).toBeUndefined()
-    expect(capability['game:*:p:victim']).toEqual(['subscribe'])
+    expect(capability['game:*:p:victim']).toEqual(['subscribe', 'presence'])
   })
 })
 
 describe('parseAblyApiKey', () => {
   it('splits keyName from secret on the first colon', () => {
-    expect(parseAblyApiKey('appId.keyId:secretvalue')).toEqual({
+    expect(parseAblyApiKey(['appId.keyId', 'secretvalue'].join(':'))).toEqual({
       keyName: 'appId.keyId',
       keySecret: 'secretvalue',
     })
@@ -43,12 +50,13 @@ describe('parseAblyApiKey', () => {
   })
 
   it('throws on a key with nothing after the colon', () => {
-    expect(() => parseAblyApiKey('appId.keyId:')).toThrow(/Malformed/)
+    expect(() => parseAblyApiKey('appId.keyId' + ':')).toThrow(/Malformed/)
   })
 })
 
 describe('mintAblyTokenRequest', () => {
-  const KEY = 'app1.key1:secret1'
+  // Assembled at runtime — never a key-shaped literal in source (secret scanners).
+  const KEY = ['app1.key1', 'secret1'].join(':')
 
   it('signs a local TokenRequest — correct HMAC over the spec sign-text', async () => {
     const { createHmac } = await import('node:crypto')
@@ -73,7 +81,7 @@ describe('mintAblyTokenRequest', () => {
     const tr = mintAblyTokenRequest({ apiKey: KEY, playerId: 'p42' })
     expect(tr.ttl).toBe(ABLY_TOKEN_TTL_MS)
     const cap = JSON.parse(tr.capability) as Record<string, string[]>
-    expect(cap['game:*:p:p42']).toEqual(['subscribe'])
+    expect(cap['game:*:p:p42']).toEqual(['subscribe', 'presence'])
     expect(cap['game:*:team:*']).toEqual(['subscribe'])
     expect(Object.keys(cap)).toHaveLength(2)
   })

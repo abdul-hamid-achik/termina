@@ -6,6 +6,9 @@ import {
   TUTORIAL_STEP_DEADLINE_CYCLES,
   TUTORIAL_SKIP_AFTER_DEADLINES,
   TUTORIAL_ENROUTE_NOTICE,
+  TUTORIAL_FIRST_MOVE_ZONE,
+  TRAINING_WAVE_PREFIX,
+  isTrainingWave,
   type TutorialStep,
 } from '~~/shared/constants/tutorial'
 import { pathDistance } from '~~/shared/pathfinding'
@@ -173,17 +176,118 @@ function objectiveMet(
   }
 }
 
-/** A practice wave unit for nudges, prefix-compatible with spawner ids. */
+/** A training wave unit (inert to the NPC pass — see TRAINING_WAVE_PREFIX). */
 function practiceUnit(team: TeamId, zone: string, cycle: number, integ?: number): WaveUnitState {
   const full = waveUnitMaxHp('line', 0)
   return {
-    id: `wave-tut-${team}-${cycle}`,
+    id: `${TRAINING_WAVE_PREFIX}${team}-${cycle}`,
     team,
     zone,
     integ: integ ?? full,
     maxInteg: full,
     type: 'line',
   }
+}
+
+/** The drills that act on a wave unit standing in the player's zone. */
+type UnitDrill = 'attack' | 'strip' | 'burn'
+const UNIT_DRILLS: ReadonlySet<TutorialStep['id']> = new Set<TutorialStep['id']>([
+  'attack',
+  'strip',
+  'burn',
+])
+const isUnitDrill = (id: TutorialStep['id']): id is UnitDrill => UNIT_DRILLS.has(id)
+
+/** The unit a drill needs as `wave:0`, as (team, INTEG ceiling as a fraction of max | null). */
+function drillTarget(
+  drill: UnitDrill,
+  humanTeam: TeamId,
+): { team: TeamId; window: number | null; verb: 'attack' | 'burn' } {
+  const enemy: TeamId = humanTeam === 'chaff' ? 'audit' : 'chaff'
+  switch (drill) {
+    case 'attack':
+      return { team: enemy, window: null, verb: 'attack' }
+    case 'strip':
+      return { team: enemy, window: STRIP_HP_THRESHOLD, verb: 'attack' }
+    case 'burn':
+      return { team: humanTeam, window: BURN_HP_THRESHOLD, verb: 'burn' }
+  }
+}
+
+/** Whether `w` is a valid target for the drill (right team, alive, inside the window). */
+function fitsDrill(w: WaveUnitState, target: ReturnType<typeof drillTarget>): boolean {
+  if (w.team !== target.team || w.integ <= 0) return false
+  if (target.window === null) return true
+  return w.integ <= (w.maxInteg ?? waveUnitMaxHp(w.type, 0)) * target.window
+}
+
+/**
+ * Keep a TRAINING UNIT for the attack / strip / burn drill standing in the
+ * player's zone as `wave:0`.
+ *
+ * Why this exists (live playtest, Oct 2026): a level-1 hero parked at their T2
+ * almost never sees a unit in the window — the lines meet and die at the
+ * crossing, the player's own ICE finishes any leaker, and an own unit walks
+ * through. The old once-per-deadline nudge planted a unit that the SAME tick's
+ * NPC pass then shot dead (enemy) or walked off (own) before anything was shown.
+ * The planted unit is now inert (isTrainingWave) and re-checked EVERY cycle: if
+ * the zone's first unit already fits the drill (a natural one — or the planted
+ * one) nothing changes; otherwise stale training units in the zone are swept and
+ * a fresh one is put in front, so it is always `wave:0`.
+ *
+ * Returns the planted unit when the world changed (the caller tells the player),
+ * null when nothing needed doing. A player on home ground, or dead, gets nothing:
+ * there is no lane to put a unit on.
+ */
+function upkeepTrainingUnit(
+  state: GameState,
+  drill: UnitDrill,
+  humanId: string,
+): { state: GameState; planted: WaveUnitState | null } {
+  const human = state.players[humanId]
+  if (!human || human.alive === false || isHomeGround(human.zone)) return { state, planted: null }
+  const waves = state.waves ?? []
+  const target = drillTarget(drill, human.team)
+  const first = waves.find((w) => w.zone === human.zone)
+  if (first && fitsDrill(first, target)) return { state, planted: null }
+
+  const fraction = target.window === null ? 1 : target.window * 0.8
+  const full = waveUnitMaxHp('line', 0)
+  const integ = target.window === null ? full : Math.max(1, Math.floor(full * fraction))
+  const planted = practiceUnit(target.team, human.zone, state.cycle, integ)
+  const kept = waves.filter((w) => !(isTrainingWave(w) && w.zone === human.zone))
+  return { state: { ...state, waves: [planted, ...kept] }, planted }
+}
+
+/** What the player is told about the unit waiting in their zone — state-true: built
+ *  from the unit that is actually there at the end of this tick's tutorial pass. */
+function unitLine(drill: UnitDrill, state: GameState, humanId: string): string | null {
+  const human = state.players[humanId]
+  if (!human) return null
+  if (human.alive === false || isHomeGround(human.zone)) {
+    return `Step out of your base first — \`move ${TUTORIAL_FIRST_MOVE_ZONE}\`; the training unit is kept for you on the lane.`
+  }
+  const target = drillTarget(drill, human.team)
+  const inZone = state.waves.filter((w) => w.zone === human.zone)
+  const index = inZone.findIndex((w) => fitsDrill(w, target))
+  if (index < 0) return null
+  const w = inZone[index]!
+  const max = w.maxInteg ?? waveUnitMaxHp(w.type, 0)
+  const command = `\`${target.verb} wave:${index}\``
+  switch (drill) {
+    case 'attack':
+      return `A wave unit is in your zone — swing at it: ${command}.`
+    case 'strip':
+      return `A unit in your zone is at ${w.integ}/${max} INTEG — inside the strip window (≤${Math.round(STRIP_HP_THRESHOLD * 100)}%). Swing now: ${command}.`
+    case 'burn':
+      return `One of YOUR units here is at ${w.integ}/${max} INTEG — inside the burn window (≤${Math.round(BURN_HP_THRESHOLD * 100)}%). Torch it: ${command}.`
+  }
+}
+
+/** Remove every training unit (the drills that needed them are over). */
+function clearTrainingUnits(state: GameState): GameState {
+  if (!(state.waves ?? []).some(isTrainingWave)) return state
+  return { ...state, waves: state.waves.filter((w) => !isTrainingWave(w)) }
 }
 
 /** Top a player's scrip up to `target`, if short. */
@@ -294,71 +398,15 @@ function pinTrainingFoe(
 function applyNudge(state: GameState, step: TutorialStep, humanId: string): GameState {
   const human = state.players[humanId]
   if (!human) return state
-  const enemyTeam: TeamId = human.team === 'chaff' ? 'audit' : 'chaff'
-
-  // World nudges that place or weaken wave units only make sense where waves
-  // belong. A player still parked on home ground (never completed the move
-  // drill) gets copy-only help — no enemy units spawn in a fountain.
-  const wavesNudgeable = !isHomeGround(human.zone)
-  if (!wavesNudgeable && (step.id === 'attack' || step.id === 'strip' || step.id === 'burn')) {
-    return state
-  }
 
   switch (step.id) {
-    case 'attack': {
-      // Ensure there is an enemy unit to swing at where the player stands.
-      const hasTarget = state.waves.some(
-        (w) => w.zone === human.zone && w.team === enemyTeam && w.integ > 0,
-      )
-      if (hasTarget) return state
-      return { ...state, waves: [...state.waves, practiceUnit(enemyTeam, human.zone, state.cycle)] }
-    }
-    case 'strip': {
-      // Ensure an enemy unit in the player's zone sits INSIDE the strip window.
-      const inZone = state.waves.filter(
-        (w) => w.zone === human.zone && w.team === enemyTeam && w.integ > 0,
-      )
-      const window = (w: WaveUnitState) =>
-        w.integ <= (w.maxInteg ?? waveUnitMaxHp(w.type, 0)) * STRIP_HP_THRESHOLD
-      if (inZone.some(window)) return state
-      const lowest = inZone.sort((a, b) => a.integ - b.integ)[0]
-      if (!lowest) {
-        const low = Math.max(1, Math.floor(waveUnitMaxHp('line', 0) * STRIP_HP_THRESHOLD * 0.8))
-        return {
-          ...state,
-          waves: [...state.waves, practiceUnit(enemyTeam, human.zone, state.cycle, low)],
-        }
-      }
-      const spawn = lowest.maxInteg ?? waveUnitMaxHp(lowest.type, 0)
-      const weakened = {
-        ...lowest,
-        integ: Math.max(1, Math.floor(spawn * STRIP_HP_THRESHOLD * 0.8)),
-      }
-      return { ...state, waves: state.waves.map((w) => (w.id === lowest.id ? weakened : w)) }
-    }
-    case 'burn': {
-      // Same shape as strip, on the player's OWN units and the burn window.
-      const inZone = state.waves.filter(
-        (w) => w.zone === human.zone && w.team === human.team && w.integ > 0,
-      )
-      const window = (w: WaveUnitState) =>
-        w.integ <= (w.maxInteg ?? waveUnitMaxHp(w.type, 0)) * BURN_HP_THRESHOLD
-      if (inZone.some(window)) return state
-      const lowest = inZone.sort((a, b) => a.integ - b.integ)[0]
-      if (!lowest) {
-        const low = Math.max(1, Math.floor(waveUnitMaxHp('line', 0) * BURN_HP_THRESHOLD * 0.8))
-        return {
-          ...state,
-          waves: [...state.waves, practiceUnit(human.team, human.zone, state.cycle, low)],
-        }
-      }
-      const spawn = lowest.maxInteg ?? waveUnitMaxHp(lowest.type, 0)
-      const weakened = {
-        ...lowest,
-        integ: Math.max(1, Math.floor(spawn * BURN_HP_THRESHOLD * 0.8)),
-      }
-      return { ...state, waves: state.waves.map((w) => (w.id === lowest.id ? weakened : w)) }
-    }
+    case 'attack':
+    case 'strip':
+    case 'burn':
+      // Kept every cycle by upkeepTrainingUnit (an inert training unit), not
+      // nudged once at a deadline: a planted normal unit did not survive the
+      // same tick's NPC pass.
+      return state
     case 'cast': {
       // Two silent blockers: an empty BW pool (refill it) and no enemy hero in
       // reach to breach (bring the nearest one to the player's zone — never onto
@@ -440,8 +488,24 @@ export function advanceTutorialAfterTick(
     current = pin.state
     pinnedNew = pin.pulled
   }
+  // The attack / strip / burn drills keep an inert training unit in the player's
+  // zone (see upkeepTrainingUnit) — every cycle once armed, so it is there on the
+  // screen when the player reads and types, however slowly.
+  let planted: WaveUnitState | null = null
+  if (isUnitDrill(stepDef.id) && elapsed >= (stepDef.earlyNudgeCycles ?? 0)) {
+    const up = upkeepTrainingUnit(current, stepDef.id, humanId)
+    current = up.state
+    planted = up.planted
+  }
+  // Coaching about a unit is built from the unit that is ACTUALLY there at the
+  // end of this pass — never a claim the zone cannot back up.
+  const withUnitLine = (text: string, st: GameState): string => {
+    if (!isUnitDrill(stepDef.id)) return text
+    const line = unitLine(stepDef.id, st, humanId)
+    return line ? `${text} ${line}` : text
+  }
   const withHandle = (text: string, st: GameState): string => {
-    if (stepDef.id !== 'cast') return text
+    if (stepDef.id !== 'cast') return withUnitLine(text, st)
     const human = st.players[humanId]
     // No target is ever held on home ground (pinTrainingFoe) — say where it is.
     if (human && isHomeGround(human.zone)) {
@@ -476,6 +540,12 @@ export function advanceTutorialAfterTick(
   }
 
   if (atDeadline) return { state: current, notice: helpWith(current) }
+
+  // A training unit was just put in front of the player: say exactly what and where.
+  if (planted && isUnitDrill(stepDef.id)) {
+    const line = unitLine(stepDef.id, current, humanId)
+    if (line) return { state: current, notice: `🎓 ${line}` }
+  }
 
   // Early nudge: a drill that needs the world set up (an enemy unit to swing at,
   // an enemy hero to breach) doesn't make the player wait out the whole
@@ -534,5 +604,8 @@ function castTouchedEnemyHero(
 
 /** Step the flow forward, stamping the tick so the next step gets a fresh deadline. */
 function advanceTo(state: GameState, nextStep: number): GameState {
-  return { ...state, tutorialStep: nextStep, tutorialStepSince: state.cycle }
+  const next = TUTORIAL_FLOW[nextStep]
+  // Training units belong to the unit drills only — sweep them on the way out.
+  const swept = next && isUnitDrill(next.id) ? state : clearTrainingUnits(state)
+  return { ...swept, tutorialStep: nextStep, tutorialStepSince: state.cycle }
 }

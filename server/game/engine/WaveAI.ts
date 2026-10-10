@@ -10,6 +10,7 @@ import { awardZoneXp } from './XpDistributor'
 import { resolveTerminalAttack } from './TerminalSystem'
 import { LANE_ROUTES_CORE } from '~~/shared/constants/lanes'
 import { ZONE_MAP } from '~~/shared/constants/zones'
+import { isTrainingWave } from '~~/shared/constants/tutorial'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 /** The enemy base zone for a wave team — the end of every lane route. */
@@ -47,9 +48,11 @@ function getNextZone(wave: WaveUnitState): string | null {
   return route[currentIndex + 1]!
 }
 
-/** Find enemy waves in the same zone. */
+/** Find enemy waves in the same zone (tutorial training units are inert: never a target). */
 function getEnemyWavesInZone(waves: WaveUnitState[], wave: WaveUnitState): WaveUnitState[] {
-  return waves.filter((c) => c.zone === wave.zone && c.team !== wave.team && c.integ > 0)
+  return waves.filter(
+    (c) => c.zone === wave.zone && c.team !== wave.team && c.integ > 0 && !isTrainingWave(c),
+  )
 }
 
 /** Find enemy heroes in the same zone. */
@@ -105,6 +108,9 @@ export function runWaveAI(state: GameState): WaveAction[] {
 
   for (const wave of state.waves) {
     if (wave.integ <= 0) continue
+    // Tutorial training units are inert (see TRAINING_WAVE_PREFIX): they stand
+    // where the tutorial planted them until the player strips/burns them.
+    if (isTrainingWave(wave)) continue
 
     // Damage escalates with the CURRENT tick, not the wave's spawn wave:
     // WaveUnitState carries no per-wave stats, and a whole board that gets
@@ -320,8 +326,13 @@ export function applyWaveActions(
  * is over the cap.
  */
 export function enforceWaveZoneCap(state: GameState): GameState {
+  // Tutorial training units are outside the lane (inert, one per drill zone):
+  // they neither count toward the cap nor get evicted by it — the planted unit
+  // sits FIRST in the array, so as "oldest" it used to be the first despawned,
+  // and the drill notice that named it lied by broadcast time.
   const counts = new Map<string, number>()
   for (const wave of state.waves) {
+    if (isTrainingWave(wave)) continue
     const key = `${wave.team}:${wave.zone}`
     counts.set(key, (counts.get(key) ?? 0) + 1)
   }
@@ -341,6 +352,10 @@ export function enforceWaveZoneCap(state: GameState): GameState {
   const keptCounts = new Map<string, number>()
   for (let i = state.waves.length - 1; i >= 0; i--) {
     const wave = state.waves[i]!
+    if (isTrainingWave(wave)) {
+      kept.push(wave)
+      continue
+    }
     const key = `${wave.team}:${wave.zone}`
     const keptSoFar = keptCounts.get(key) ?? 0
     if (keptSoFar < MAX_WAVE_UNITS_PER_ZONE_PER_TEAM) {

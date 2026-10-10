@@ -32,6 +32,7 @@ import {
 import { areAdjacent, findPath } from '~~/server/game/map/topology'
 import { isCommandAllowedInTutorial, tutorialLockMessage } from '~~/server/game/modes/tutorial'
 import { isBot } from '~~/server/game/ai/BotManager'
+import { isTrainingWave } from '~~/shared/constants/tutorial'
 import { isShopZoneFor } from '~~/shared/constants/zones'
 import {
   calculateKineticDamage,
@@ -44,6 +45,7 @@ import { placeWard, canAttackIce } from '~~/server/game/map/zones'
 import { HEROES } from '~~/shared/constants/heroes'
 import { stampEventZones, type GameEngineEvent } from '~~/server/game/protocol/events'
 import { applyBuff, isBreached, hasBuff, isHardControlBuffId } from '~~/server/game/heroes/_base'
+import { DEBUFF_ID_SETS, hasDebuff, disableBlockReason } from './disables'
 import { buyItem, sellItem, useItem, itemCooldownId } from '~~/server/game/items/shop'
 import { awardLastHit, awardIceKill, waveStripScrip } from './ScripDistributor'
 import { pickupBackup } from './TenantAI'
@@ -144,6 +146,50 @@ function applyPlayerUpdates(
  * indices mean different things on each side. Filtering preserves order, so
  * "Nth wave in this zone" is identical for client and server.
  */
+/** Total INTEG a hero's shield buffs can still soak. */
+function shieldPool(p: PlayerState): number {
+  return p.buffs.reduce((sum, b) => (b.id === 'shield' ? sum + Math.max(0, b.stacks) : sum), 0)
+}
+
+/**
+ * Why a damaging cast cost an enemy hero (pre → post) no INTEG, read off the
+ * state the cast left behind (dealDamage consumes phaseShift on a dodge and
+ * shield stacks on an absorb; immunity leaves no trace, so it is only claimed
+ * for the cast's own single target). Null when nothing says the hit landed on
+ * them at all (an AoE that never reached them).
+ */
+function castBlockReason(
+  pre: PlayerState,
+  post: PlayerState,
+  isCastTarget: boolean,
+  damageType: DamageType,
+): { reason: 'shield' | 'dodge' | 'immune'; amount?: number } | null {
+  const hadDodge = pre.buffs.some((b) => b.id === 'phaseShift')
+  if (hadDodge && !post.buffs.some((b) => b.id === 'phaseShift')) return { reason: 'dodge' }
+  const soaked = shieldPool(pre) - shieldPool(post)
+  if (soaked > 0) return { reason: 'shield', amount: soaked }
+  if (isCastTarget && isDamageImmune(pre, damageType)) return { reason: 'immune' }
+  return null
+}
+
+/**
+ * Tutorial training units (TRAINING_WAVE_PREFIX) belong to the human's drill:
+ * a bot's swing or burn aimed at one is refused. BotAI never picks one; this is
+ * the engine-side guarantee (a stale index, a converted slot), so no bot can
+ * strip the replanted unit for scrip or burn the player's drill target.
+ */
+function trainingUnitRefusal(
+  state: GameState,
+  action: PlayerAction,
+  target: TargetRef,
+): string | null {
+  if (target.kind !== 'wave' || !isBot(action.playerId)) return null
+  const zone = state.players[action.playerId]?.zone
+  if (zone === undefined) return null
+  const hit = waveInZoneByIndex(state.waves ?? [], zone, target.index)
+  return hit && isTrainingWave(hit.wave) ? 'Training unit — reserved for the drill' : null
+}
+
 function waveInZoneByIndex(
   waves: WaveUnitState[],
   zone: string,
@@ -200,9 +246,8 @@ export function validateAction(state: GameState, action: PlayerAction): string |
 
   // Hardshell (airgap) grants debuff immunity ("immune to ... debuffs"):
   // a Hardshell-active hero acts through the standard control debuffs — stun, silence,
-  // root, fear, taunt. Cyclone and Hex are hard disables that pierce it (checked
-  // above), matching the usual convention.
-  const debuffImmune = player.buffs.some((b) => b.id === 'airgap')
+  // root, fear, taunt (see disableBlockReason). Cyclone and Hex are hard
+  // disables that pierce it (checked above), matching the usual convention.
 
   const cmd = action.command
 
@@ -235,27 +280,15 @@ export function validateAction(state: GameState, action: PlayerAction): string |
       if (!reachable) {
         return 'No path to that zone'
       }
-      // Check for root/stun (taunt forces attacking — no fleeing). Hardshell bypasses.
-      if (!debuffImmune && (hasDebuff(player, 'root') || hasDebuff(player, 'stun'))) {
-        return 'Cannot move while rooted or stunned'
-      }
-      if (!debuffImmune && hasDebuff(player, 'taunt')) return 'Cannot move while taunted'
-      return null
+      // Root/stun/taunt (taunt forces attacking — no fleeing). Hardshell bypasses.
+      return disableBlockReason(player, 'move')
     }
     case 'attack': {
-      if (!debuffImmune && hasDebuff(player, 'stun')) return 'Cannot attack while stunned'
-      if (!debuffImmune && hasDebuff(player, 'feared')) return 'Cannot attack while feared'
-      // Ghost Scepter: phased out — immune to kinetic damage, but cannot attack.
-      if (player.buffs.some((b) => b.id === 'ghost_form')) {
-        return 'Cannot attack while in ghost form'
-      }
-      return null
+      return disableBlockReason(player, 'attack') ?? trainingUnitRefusal(state, action, cmd.target)
     }
     case 'cast': {
-      if (!debuffImmune && hasDebuff(player, 'stun')) return 'Cannot cast while stunned'
-      if (!debuffImmune && hasDebuff(player, 'silence')) return 'Cannot cast while silenced'
-      if (!debuffImmune && hasDebuff(player, 'feared')) return 'Cannot cast while feared'
-      if (!debuffImmune && hasDebuff(player, 'taunt')) return 'Cannot cast while taunted'
+      const castBlocked = disableBlockReason(player, 'cast')
+      if (castBlocked) return castBlocked
       if (!player.heroId) return 'No hero selected'
 
       const hero = HEROES[player.heroId]
@@ -348,15 +381,14 @@ export function validateAction(state: GameState, action: PlayerAction): string |
       if (cmd.target.kind !== 'wave') {
         return 'Can only burn waves'
       }
-      return null
+      return trainingUnitRefusal(state, action, cmd.target)
     case 'select_talent':
       return null
     case 'harden':
       return null
     case 'breach': {
-      if (!debuffImmune && hasDebuff(player, 'stun')) return 'Cannot breach while stunned'
-      if (!debuffImmune && hasDebuff(player, 'feared')) return 'Cannot breach while feared'
-      if (!debuffImmune && hasDebuff(player, 'taunt')) return 'Cannot breach while taunted'
+      const breachBlocked = disableBlockReason(player, 'breach')
+      if (breachBlocked) return breachBlocked
       if (hasDebuff(player, 'cyclone')) return 'Cannot act while cycloned'
       if (hasDebuff(player, 'hex')) return 'Cannot act while hexed'
 
@@ -473,8 +505,8 @@ function closedCastRejection(
  * target is the ONLY thing stopping the cast and the caster could legally
  * `breach` that target right now (the exact validation a typed breach gets),
  * the order is converted into that breach: it spends the cycle, the BW and the
- * breach cooldown exactly like a typed breach and resolves in the normal breach
- * phase; the ability's BW and cooldown are untouched. The breach_opened event
+ * breach cooldown exactly like a typed breach and resolves in the breach phase
+ * (before movement — resolveBreachPhase); the ability's BW and cooldown are untouched. The breach_opened event
  * carries `fromAbility` so the caster is told why.
  *
  * Called by GameLoop BEFORE validateAction, for every drained action — humans
@@ -500,30 +532,6 @@ export function convertClosedControlCast(state: GameState, action: PlayerAction)
     (player.heroId ? HEROES[player.heroId]?.abilities[cmd.ability]?.name : undefined) ??
     cmd.ability.toUpperCase()
   return { ...breach, convertedFrom: { ability: cmd.ability, abilityName } }
-}
-
-/**
- * Exact debuff-id sets per debuff class. Action gating must match buff ids
- * EXACTLY — the old `b.id.includes(type)` substring match would silently
- * disable actions if a future buff id contained a debuff substring (e.g. a
- * hypothetical `stun_immune` or `post_stun_buff`). Add new debuff ids to the
- * appropriate set here as they are authored.
- */
-const DEBUFF_ID_SETS = {
-  stun: new Set(['stun']),
-  root: new Set(['root']),
-  silence: new Set(['silence']),
-  feared: new Set(['feared']),
-  taunt: new Set(['taunt']),
-  cyclone: new Set(['cyclone']),
-  hex: new Set(['hex']),
-} as const
-
-type DebuffType = keyof typeof DEBUFF_ID_SETS
-
-function hasDebuff(player: PlayerState, type: DebuffType): boolean {
-  // `type` is keyof typeof DEBUFF_ID_SETS, so the lookup is always defined.
-  return player.buffs.some((b) => DEBUFF_ID_SETS[type].has(b.id))
 }
 
 /** Every action-gating debuff id, derived from the sets above so a new disable
@@ -935,6 +943,8 @@ function resolveHeroSwings(
     /** What the swing puts into the target's shield/INTEG pool. */
     total: number
     stun: boolean
+    /** The basic hit met immunity: what it would have dealt otherwise. */
+    immuneLost: number | null
   }
 
   const sorted = [...swings].sort(
@@ -1053,9 +1063,10 @@ function resolveHeroSwings(
         ? calculateCodeDamage(attackDamage, ice)
         : calculateKineticDamage(attackDamage, plate)
     damage = Math.max(0, damage - blockedDamage)
-    damage = isDamageImmune(target, attackType)
-      ? 0
-      : Math.round(damage * getIncomingDamageMultiplier(target, attackType))
+    damage = Math.round(damage * getIncomingDamageMultiplier(target, attackType))
+    const immune = isDamageImmune(target, attackType)
+    const immuneLost = immune ? damage : null
+    if (immune) damage = 0
 
     let magic = 0
     if (bonusMagicDamage > 0 && !isDamageImmune(target, 'code')) {
@@ -1069,7 +1080,7 @@ function resolveHeroSwings(
 
     const stun = attacker.items.includes('concussion_hammer') && rng() < 0.25
 
-    computed.push({ attackerId, targetId, attackType, damage, magic, total, stun })
+    computed.push({ attackerId, targetId, attackType, damage, magic, total, stun, immuneLost })
   }
 
   // ── Land the volley, one target at a time ──
@@ -1098,10 +1109,28 @@ function resolveHeroSwings(
       buffs = buffs.filter((b) => b.id !== 'phaseShift')
     }
     const landed = list.filter((_, i) => i !== dodgedIdx)
+    // Blocked hits say so (damage_blocked) — a dodged swing is otherwise
+    // silent, an immune one a bare "0" (see DamageBlockedEvent for what
+    // co-occurs with each).
+    const blocked = (c: Computed, reason: 'shield' | 'dodge' | 'immune', amount: number) =>
+      events.push({
+        _tag: 'damage_blocked',
+        cycle,
+        sourceId: c.attackerId,
+        targetId,
+        reason,
+        amount,
+        damageType: c.attackType,
+      })
+    if (dodgedIdx >= 0) blocked(list[dodgedIdx]!, 'dodge', list[dodgedIdx]!.total)
 
     const sum = landed.reduce((s, c) => s + c.total, 0)
     const absorbed = absorbShield(buffs, sum)
     buffs = [...absorbed.buffs]
+    for (const c of landed) {
+      if (c.immuneLost !== null && c.total === 0) blocked(c, 'immune', c.immuneLost)
+      else if (sum > 0 && absorbed.remaining === 0 && c.total > 0) blocked(c, 'shield', c.total)
+    }
     swingLoss.set(targetId, absorbed.remaining)
     const shares = splitProRata(
       absorbed.remaining,
@@ -2012,7 +2041,111 @@ function resolveItemActivesPhase(
 }
 
 /**
- * Post-shop phases: harden, backup/cache pickup, maxInteg/maxBw recalc, scrip/XP
+ * Breach phase (OWNER DECISION: breach resolves BEFORE movement). Runs right
+ * after item actives (phase 0) and before the instant casts and movement, so
+ * an opening is committed at the top of the cycle:
+ *
+ * - CO-LOCATION is judged at CYCLE START (`state.players`) — the zone the
+ *   order was validated against. A target that walks, blinks or is shoved out
+ *   this same cycle is still breached; nobody "leaves before it lands".
+ * - The caster must be standing when this phase opens (a phase-0 item kill
+ *   drops the order); a swing that drops them LATER this cycle does not undo it.
+ * - Target alive, not AIRGAPPED (Hardshell in phase 0 beats it), and the
+ *   caster's BW are checked at phase start, after item actives.
+ * - Everything that resolves later this cycle sees the opening (an ally's code
+ *   swing lands in full; AoE control lands). Single-target control at a CLOSED
+ *   target was already converted into its caster's own breach at validation, so
+ *   the breacher's follow-up cast is next cycle — one order per cycle.
+ * - Self-flush (`breach self`) is NOT here: it still resolves after the shop.
+ *
+ * Resolution is in sorted player-id order over a phase-start snapshot, so
+ * submission order and player-map key order never change the outcome.
+ */
+function resolveBreachPhase(
+  state: GameState,
+  validActions: PlayerAction[],
+  players: Record<string, PlayerState>,
+  events: GameEngineEvent[],
+  rejected: Array<{ playerId: string; reason: string }>,
+): Record<string, PlayerState> {
+  const committed = aliveIds(players)
+  const breachActions = validActions
+    .filter((a) => a.command.type === 'breach' && a.command.target.kind === 'hero')
+    .sort((a, b) => compareCodePoints(a.playerId, b.playerId))
+  for (const action of breachActions) {
+    const caster = players[action.playerId]
+    if (!caster || action.command.type !== 'breach') continue
+    if (!committed.has(action.playerId)) {
+      rejected.push({
+        playerId: action.playerId,
+        reason: 'You went down before your breach landed',
+      })
+      continue
+    }
+    const startCaster = state.players[action.playerId]
+    // The order was validated at cycle start; phase 0 (item actives) can still
+    // kill, airgap or drain before this phase opens. Say so instead of eating
+    // the cycle in silence.
+    const target = findTargetPlayer({ ...state, players }, action.command.target)
+    const startTarget = target ? state.players[target.id] : undefined
+    const failure = !target
+      ? 'Breach target is gone'
+      : !target.alive
+        ? `${target.name} went down before your breach landed`
+        : !startCaster || !startTarget || startTarget.zone !== startCaster.zone
+          ? 'Target not in your zone'
+          : hasBuff(target, 'airgap')
+            ? `${target.name} is AIRGAPPED — breach fails`
+            : caster.bw < BREACH_BW_COST
+              ? `Need ${BREACH_BW_COST} BW to breach`
+              : null
+    if (!target || target.team === caster.team) continue
+    if (failure) {
+      rejected.push({ playerId: action.playerId, reason: failure })
+      continue
+    }
+    if (caster.buffs.some((b) => b.id === 'item_cd_breach' && b.cyclesRemaining > 0)) continue
+
+    let nextCaster = {
+      ...caster,
+      bw: Math.max(0, caster.bw - BREACH_BW_COST),
+    }
+    nextCaster = applyBuff(nextCaster, {
+      id: 'item_cd_breach',
+      stacks: 1,
+      cyclesRemaining: BREACH_COOLDOWN_CYCLES,
+      source: caster.id,
+    })
+    const nextTarget = applyBuff(target, {
+      id: 'breached',
+      stacks: 1,
+      cyclesRemaining: BREACH_DURATION_CYCLES,
+      source: caster.id,
+    })
+    players = {
+      ...players,
+      [action.playerId]: nextCaster,
+      [target.id]: nextTarget,
+    }
+    events.push({
+      _tag: 'breach_opened',
+      cycle: state.cycle,
+      playerId: action.playerId,
+      targetId: target.id,
+      durationCycles: BREACH_DURATION_CYCLES,
+      ...(action.convertedFrom
+        ? {
+            fromAbility: action.convertedFrom.ability,
+            fromAbilityName: action.convertedFrom.abilityName,
+          }
+        : {}),
+    })
+  }
+  return players
+}
+
+/**
+ * Post-shop phases: breach self-flush, harden, backup/cache pickup, maxInteg/maxBw recalc, scrip/XP
  * awards (wave/neutral/ice), damage tracking, ward placement. These all
  * run after the shop phase and before the final state assembly.
  */
@@ -2042,100 +2175,40 @@ function resolvePostShopPhases(
 } {
   let teams = { ...state.teams }
 
-  // Breach commands — open (or self-flush) the access window.
-  // Same rule as the cast phases: a breach is committed only by a hero standing
-  // when the breach phase opens. One dropped earlier this cycle (a swing, a
-  // cast) breaches nobody — it used to open the window from the grave.
-  const breachCommitted = aliveIds(players)
-  const breachActions = validActions
-    .filter((a) => a.command.type === 'breach')
+  // Breach SELF-FLUSH — strips your own window late in the cycle (after the
+  // shop), so swings and casts resolved earlier this cycle still hit it open.
+  // Opening a breach on an enemy resolves at the top of the cycle instead
+  // (resolveBreachPhase, before movement). A flush is committed only by a hero
+  // standing when this step opens.
+  const flushCommitted = aliveIds(players)
+  const flushActions = validActions
+    .filter((a) => a.command.type === 'breach' && a.command.target.kind === 'self')
     .sort((a, b) => compareCodePoints(a.playerId, b.playerId))
-  for (const action of breachActions) {
+  for (const action of flushActions) {
     const caster = players[action.playerId]
-    if (!caster || action.command.type !== 'breach') continue
-    const cmd = action.command
-    if (!breachCommitted.has(action.playerId)) {
+    if (!caster) continue
+    if (!flushCommitted.has(action.playerId)) {
       rejected.push({
         playerId: action.playerId,
-        reason: 'You went down before your breach landed',
+        reason: 'You went down before your flush landed',
       })
       continue
     }
-
-    if (cmd.target.kind === 'self') {
-      if (!isBreached(caster) || caster.bw < BREACH_BW_COST) continue
-      let updated = {
+    if (!isBreached(caster) || caster.bw < BREACH_BW_COST) continue
+    players = {
+      ...players,
+      [action.playerId]: {
         ...caster,
         bw: Math.max(0, caster.bw - BREACH_BW_COST),
         buffs: caster.buffs.filter((b) => b.id !== 'breached'),
-      }
-      players = { ...players, [action.playerId]: updated }
-      events.push({
-        _tag: 'breach_opened',
-        cycle: state.cycle,
-        playerId: action.playerId,
-        targetId: action.playerId,
-        durationCycles: 0, // flush
-      })
-      continue
-    }
-
-    if (cmd.target.kind !== 'hero') continue
-    // The order was validated at cycle start; the world can move under it
-    // before this phase (the target walks or blinks out, dies, airgaps; an item
-    // active spends the BW). Say so instead of eating the cycle in silence.
-    const target = findTargetPlayer({ ...state, players }, cmd.target)
-    const failure = !target
-      ? 'Breach target is gone'
-      : !target.alive
-        ? `${target.name} went down before your breach landed`
-        : target.zone !== caster.zone
-          ? `${target.name} left your zone before your breach landed`
-          : hasBuff(target, 'airgap')
-            ? `${target.name} is AIRGAPPED — breach fails`
-            : caster.bw < BREACH_BW_COST
-              ? `Need ${BREACH_BW_COST} BW to breach`
-              : null
-    if (!target || target.team === caster.team) continue
-    if (failure) {
-      rejected.push({ playerId: action.playerId, reason: failure })
-      continue
-    }
-    if (caster.buffs.some((b) => b.id === 'item_cd_breach' && b.cyclesRemaining > 0)) continue
-
-    let nextCaster = {
-      ...caster,
-      bw: Math.max(0, caster.bw - BREACH_BW_COST),
-    }
-    nextCaster = applyBuff(nextCaster, {
-      id: 'item_cd_breach',
-      stacks: 1,
-      cyclesRemaining: BREACH_COOLDOWN_CYCLES,
-      source: caster.id,
-    })
-    let nextTarget = applyBuff(target, {
-      id: 'breached',
-      stacks: 1,
-      cyclesRemaining: BREACH_DURATION_CYCLES,
-      source: caster.id,
-    })
-    players = {
-      ...players,
-      [action.playerId]: nextCaster,
-      [target.id]: nextTarget,
+      },
     }
     events.push({
       _tag: 'breach_opened',
       cycle: state.cycle,
       playerId: action.playerId,
-      targetId: target.id,
-      durationCycles: BREACH_DURATION_CYCLES,
-      ...(action.convertedFrom
-        ? {
-            fromAbility: action.convertedFrom.ability,
-            fromAbilityName: action.convertedFrom.abilityName,
-          }
-        : {}),
+      targetId: action.playerId,
+      durationCycles: 0, // flush
     })
   }
 
@@ -2288,8 +2361,10 @@ function resolvePostShopPhases(
     // WAVE_XP above, so timing is rewarded — presence just stops being worth
     // zero. The mirror of this for wave-on-wave deaths lives in WaveAI, and
     // that is the path most waves actually die on.
+    // A tutorial training unit pays its stripper only (the drill's "+scrip"),
+    // never lane-mates — it is not lane farm.
     const anchor = claimants.map((id) => players[id]).find((p) => p !== undefined)
-    if (anchor) {
+    if (anchor && !isTrainingWave({ id: waveId })) {
       players = awardZoneXp(players, anchor.zone, anchor.team, WAVE_XP_SHARED, claimants)
     }
   }
@@ -2587,6 +2662,10 @@ export function resolveActions(
       players = result.players
       zones = result.zones
     }
+
+    // Phase 0.5: Breach — opens BEFORE movement (and before the instant casts),
+    // judged on cycle-start co-location. See resolveBreachPhase.
+    players = resolveBreachPhase(state, validActions, players, events, rejected)
 
     // Phase 1: Instant abilities (stuns, silences)
     {
@@ -3069,10 +3148,36 @@ function resolveHeroCast(
   )
   // Damage this cast deals to enemy heroes — feeds the spell-lifesteal exotic.
   let castDamageToEnemies = 0
+  // A damaging cast that cost an enemy hero NOTHING says why (damage_blocked):
+  // the diff below emits no damage event for 0, so a fully shield-absorbed,
+  // dodged or immune target used to leave the cast with no visible effect.
+  const castDealsDamage = !!abilityDef?.effects.some(
+    (e) => e.type === 'damage' || e.type === 'execute',
+  )
+  const castAbilityId = abilityDef?.id ?? cmd.ability
   for (const [pid, post] of Object.entries(newPlayers)) {
     const pre = players[pid]
     if (!pre) continue
     let delta = pre.integ - post.integ
+    if (delta === 0 && castDealsDamage && pid !== action.playerId && pre.team !== caster.team) {
+      const blocked = castBlockReason(pre, post, pid === targetId, damageType)
+      // A Shell already fizzled the whole cast on this target (spell_blocked).
+      const shelled = events
+        .slice(castEvtIdx)
+        .some((e) => e._tag === 'spell_blocked' && e.targetId === pid)
+      if (blocked && !shelled) {
+        events.push({
+          _tag: 'damage_blocked',
+          cycle: state.cycle,
+          sourceId: action.playerId,
+          targetId: pid,
+          reason: blocked.reason,
+          ...(blocked.amount !== undefined ? { amount: blocked.amount } : {}),
+          damageType,
+          abilityId: castAbilityId,
+        })
+      }
+    }
     if (delta > 0 && hasOverclock && post.team !== caster.team) {
       const doubledHp = Math.max(0, post.integ - delta)
       newPlayers = { ...newPlayers, [pid]: { ...post, integ: doubledHp, alive: doubledHp > 0 } }
@@ -3201,6 +3306,23 @@ function resolveHeroCast(
           const pre = echoPlayers[pid]
           if (!pre) continue
           const delta = pre.integ - post.integ
+          // The echo is a second hit: blocked the same way as the first.
+          const echoBlocked =
+            delta === 0 && castDealsDamage && pid !== action.playerId && pre.team !== caster.team
+              ? castBlockReason(pre, post, pid === targetId, damageType)
+              : null
+          if (echoBlocked) {
+            events.push({
+              _tag: 'damage_blocked',
+              cycle: state.cycle,
+              sourceId: action.playerId,
+              targetId: pid,
+              reason: echoBlocked.reason,
+              ...(echoBlocked.amount !== undefined ? { amount: echoBlocked.amount } : {}),
+              damageType,
+              abilityId: castAbilityId,
+            })
+          }
           if (delta > 0) {
             events.push({
               _tag: 'damage',

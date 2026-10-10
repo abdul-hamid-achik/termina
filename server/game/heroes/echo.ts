@@ -25,20 +25,20 @@ import {
 
 // ── Scaling Values ────────────────────────────────────────────────
 
-const Q_DAMAGE = [80, 120, 160, 200] as const
+const Q_DAMAGE = [70, 105, 140, 175] as const
 const Q_MANA = abilityBwTable('echo', 'q')
-const Q_COOLDOWN = [6, 5, 4, 3] as const
+const Q_COOLDOWN = [6, 5, 5, 4] as const
 const Q_BOUNCE_MULTIPLIER = 0.5
 
 const W_MANA = abilityBwTable('echo', 'w')
 const W_COOLDOWN = [12, 11, 10, 9] as const
 
-const E_STACK_VALUE = [10, 15, 20, 25] as const
+const E_STACK_VALUE = [8, 12, 16, 20] as const
 const E_MANA = abilityBwTable('echo', 'e')
 const E_COOLDOWN = [8, 7, 6, 5] as const
 const E_DAMAGE_MULTIPLIER = 2
 
-const R_DAMAGE = [60, 80, 100] as const
+const R_DAMAGE = [50, 70, 90] as const
 const R_MANA = abilityBwTable('echo', 'r')
 const R_COOLDOWN = [50, 45, 40] as const
 const R_HITS = 6

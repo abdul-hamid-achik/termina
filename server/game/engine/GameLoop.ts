@@ -62,7 +62,9 @@ import {
   markPlayerActiveSafe,
   detectAFKPlayers,
   shouldConvertAFK,
-  msSinceClientInput,
+  isAfkPrimaryCheck,
+  isConfirmedOffline,
+  isAfkCheckCycle,
   recordLeaverSafe,
 } from '~~/server/services/LeaverSystem'
 import { escalateRejection } from './rejectionEscalation'
@@ -280,6 +282,18 @@ function drainActions(gameId: string): PlayerAction[] {
 
 // ── Tick processing ────────────────────────────────────────────
 
+/** How a cycle is being run. */
+export interface ProcessCycleOptions {
+  /**
+   * Archive playback (reconstructReplay): the persisted action log is the ONLY
+   * input. Bot AI is not consulted (its decisions are already in the log, so
+   * re-running it would submit a second order on top of the logged one) and
+   * the in-memory bot registry is never touched — an AFK takeover still flips
+   * `aiControlled` and emits its event exactly as it did live.
+   */
+  readonly replay?: boolean
+}
+
 /**
  * Process a single game tick.
  * This is the core of the game loop extracted as a pure function for testability.
@@ -287,6 +301,7 @@ function drainActions(gameId: string): PlayerAction[] {
 export function processCycle(
   gameId: string,
   state: GameState,
+  options: ProcessCycleOptions = {},
 ): Effect.Effect<{
   state: GameState
   events: GameEngineEvent[]
@@ -336,8 +351,9 @@ export function processCycle(
       preTickZones.set(pid, p.zone)
     }
 
-    // 0. Run bot AI — inject bot actions before draining
-    const botPlayerIds = getBotPlayerIds(gameId)
+    // 0. Run bot AI — inject bot actions before draining. Not on replay: the
+    // bots' orders are already in the action log being re-fed.
+    const botPlayerIds = options.replay ? [] : getBotPlayerIds(gameId)
     for (const botId of botPlayerIds) {
       const bot = currentState.players[botId]
       if (!bot) continue
@@ -464,51 +480,6 @@ export function processCycle(
       ...resolved.rejected.map((r) => ({ ...r, reason: escalate(r.playerId, r.reason) })),
     )
 
-    // 3.4. Advance the tutorial when this tick's ENGINE EVENTS satisfy the
-    // current drill's objective (a wave_strip, damage on ICE, a ward placed…)
-    // — never merely because the taught command was typed (no-op in normal
-    // games). Exhausted deadlines escalate help/nudges inside the module.
-    {
-      const advanced = advanceTutorialAfterTick(
-        currentState,
-        validActions,
-        resolved.rejected,
-        resolved.events,
-      )
-      const graduated =
-        currentState.mode === 'tutorial' &&
-        (currentState.tutorialStep ?? 0) < TUTORIAL_STEP_COUNT &&
-        (advanced.state.tutorialStep ?? 0) >= TUTORIAL_STEP_COUNT
-      currentState = advanced.state
-      const humanId = Object.keys(currentState.players).find((id) => !isBot(id))
-      if (advanced.notice && humanId) {
-        notices.push({ playerId: humanId, message: advanced.notice })
-      }
-      // Graduating used to drop the player into the app's worst state: the
-      // scripted hints stop, the banner says "you're in free play", and they are
-      // left in an endless 2v2 with no menu and — because SURRENDER_MIN_CYCLE is
-      // 225 (15 min) and the tutorial ends around tick 60 — no way to quit for
-      // another ~11 minutes. Closing the tab was the only real option. End the
-      // game on graduation instead: the win block below preserves an
-      // already-set winner, so onGameOver fires exactly as a Terminal kill
-      // would and the player lands on the post-game screen.
-      const team = humanId ? currentState.players[humanId]?.team : undefined
-      if (graduated && team) {
-        currentState = { ...currentState, phase: 'ended', winner: team }
-        if (humanId) {
-          notices.push({
-            playerId: humanId,
-            // An honest graduation: mastery = every drill genuinely performed.
-            // With skips the game still ends (never trap the player), but the
-            // funnel keeps offering practice — say so.
-            message: tutorialMasteryAchieved(currentState)
-              ? "🎓 That's the basics — practice complete. Here's how it went."
-              : '🎓 Practice over — some drills timed out and were skipped. Run practice again to master them.',
-          })
-        }
-      }
-    }
-
     // 3.6. Apply inCombat buffs based on damage events
     currentState = applyInCombatBuffs(currentState, resolved.events)
 
@@ -550,6 +521,55 @@ export function processCycle(
 
     // 6–7. Spawn waves / neutrals / caches; expire caches + wards
     currentState = runSpawning(currentState, rng)
+
+    // 7.5. Advance the tutorial when this tick's ENGINE EVENTS (the hero
+    // phase's — resolved.events) satisfy the current drill's objective (a
+    // wave_strip, damage on ICE, a ward placed…) — never merely because the
+    // taught command was typed (no-op in normal games). Exhausted deadlines
+    // escalate help/nudges inside the module. Runs AFTER the NPC pass and
+    // spawning (incl. enforceWaveZoneCap) — the last phases that add or remove
+    // wave units — so a training unit it plants, and every unit its notice
+    // names (`wave:N`, INTEG), is exactly what this cycle's broadcast shows.
+    {
+      const advanced = advanceTutorialAfterTick(
+        currentState,
+        validActions,
+        resolved.rejected,
+        resolved.events,
+      )
+      const graduated =
+        currentState.mode === 'tutorial' &&
+        (currentState.tutorialStep ?? 0) < TUTORIAL_STEP_COUNT &&
+        (advanced.state.tutorialStep ?? 0) >= TUTORIAL_STEP_COUNT
+      currentState = advanced.state
+      const humanId = Object.keys(currentState.players).find((id) => !isBot(id))
+      if (advanced.notice && humanId) {
+        notices.push({ playerId: humanId, message: advanced.notice })
+      }
+      // Graduating used to drop the player into the app's worst state: the
+      // scripted hints stop, the banner says "you're in free play", and they are
+      // left in an endless 2v2 with no menu and — because SURRENDER_MIN_CYCLE is
+      // 225 (15 min) and the tutorial ends around tick 60 — no way to quit for
+      // another ~11 minutes. Closing the tab was the only real option. End the
+      // game on graduation instead: the win block below preserves an
+      // already-set winner, so onGameOver fires exactly as a Terminal kill
+      // would and the player lands on the post-game screen.
+      const team = humanId ? currentState.players[humanId]?.team : undefined
+      if (graduated && team) {
+        currentState = { ...currentState, phase: 'ended', winner: team }
+        if (humanId) {
+          notices.push({
+            playerId: humanId,
+            // An honest graduation: mastery = every drill genuinely performed.
+            // With skips the game still ends (never trap the player), but the
+            // funnel keeps offering practice — say so.
+            message: tutorialMasteryAchieved(currentState)
+              ? "🎓 That's the basics — practice complete. Here's how it went."
+              : '🎓 Practice over — some drills timed out and were skipped. Run practice again to master them.',
+          })
+        }
+      }
+    }
 
     // 8. Distribute passive scrip
     currentState = distributePassiveScrip(currentState)
@@ -676,32 +696,35 @@ export function processCycle(
     currentState = dayNight.state
     allEvents.push(...dayNight.events)
 
-    // 13.5. AFK takeover — every 60 ticks, replace any human who has stopped
-    // acting (past the AFK threshold) with a bot so their team isn't left a
-    // player down. convertToBot adds them to the bot roster, so the driver at
-    // the top of this pipeline issues their actions from next cycle; we flag the
-    // slot `aiControlled` for the UI and emit an afk_takeover event. No-reclaim:
-    // POST /api/game/action refuses a converted human's orders (except
-    // `surrender`) via the persisted `aiControlled` flag, and detectAFKPlayers
-    // skips aiControlled slots so this fires exactly once.
-    if (currentState.cycle % 60 === 0) {
+    // 13.5. AFK takeover — on the AFK check cycles, replace any human who has
+    // stopped acting (past the AFK threshold) with a bot so their team isn't
+    // left a player down. convertToBot adds them to the bot roster, so the
+    // driver at the top of this pipeline issues their actions from next cycle;
+    // we flag the slot `aiControlled` for the UI and emit an afk_takeover
+    // event. No-reclaim: POST /api/game/action refuses a converted human's
+    // orders (except `surrender`) via the persisted `aiControlled` flag, and
+    // detectAFKPlayers skips aiControlled slots so this fires exactly once.
+    if (isAfkCheckCycle(currentState.cycle)) {
+      const primary = isAfkPrimaryCheck(currentState.cycle)
       for (const afk of detectAFKPlayers(currentState)) {
         const player = currentState.players[afk.playerId]
         if (!player) continue
         // Presence gate: "no game action for 2 min" alone false-positives on a
         // player who is at the screen but between actions (reading the shop,
-        // watching a fight). A connected player is only converted after the
-        // longer silence window, and only when a human teammate benefits.
-        // isConnected is hardcoded false — there is no live-peer signal on the
-        // Workflow/Ably path (the DO-era WS PeerRegistry this used to read is
-        // gone), so every AFK player takes the "disconnected" branch of
-        // shouldConvertAFK today. Wiring an Ably-presence signal back in here
-        // is the tracked follow-up (see LeaverSystem.ts's module doc).
-        const convert = shouldConvertAFK(currentState, afk.playerId, {
-          isConnected: false,
-          msSinceInput: msSinceClientInput(gameId, afk.playerId),
-        })
-        if (!convert || !convertToBot(gameId, afk.playerId)) continue
+        // watching a fight). The PRIMARY check applies the connected rule (the
+        // longer silence window, only when a human teammate benefits); a
+        // DISCONNECTED player is converted at the CONFIRM check, and only when
+        // Ably missed them at both samples — one sample can be a page reload.
+        // Connection is DATA, not a network call: the tick stamped the samples
+        // into state.presenceOffline before processCycle ran (no sample ⇒
+        // connected). See LeaverSystem.ts.
+        const convert = primary
+          ? shouldConvertAFK(currentState, afk.playerId, true)
+          : isConfirmedOffline(currentState, afk.playerId)
+        if (!convert) continue
+        // Replay never mutates the bot registry (no bot AI runs there); live,
+        // a slot already in the registry is not converted twice.
+        if (!options.replay && !convertToBot(gameId, afk.playerId)) continue
         currentState = {
           ...currentState,
           players: {

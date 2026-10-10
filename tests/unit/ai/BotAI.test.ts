@@ -2005,6 +2005,91 @@ describe('BotAI - denying (medium+)', () => {
   })
 })
 
+describe('BotAI - tutorial training units belong to the human drill', () => {
+  // A training unit (TRAINING_WAVE_PREFIX) is planted FIRST in the zone so it
+  // is the player's `wave:0`. Bots must neither strip nor burn it — and must
+  // still index the real unit behind it by the resolver's zone-local index.
+  const Z = 'coldstore-t1-chaff'
+  const unit = (id: string, team: 'chaff' | 'audit', integ: number): WaveUnitState => ({
+    id,
+    team,
+    zone: Z,
+    integ,
+    maxInteg: 200,
+    type: 'line',
+  })
+
+  it('never strips a training unit — not even a strippable one alone in the zone', () => {
+    const bot = makePlayer({ zone: Z, integ: 400, maxInteg: 500, bw: 0 })
+    const state = makeGameState({
+      players: { [bot.id]: bot },
+      waves: [unit('wave-tut-audit-9', 'audit', 20)],
+    })
+    const action = decideBotAction(state, bot, 'coldstore', atDifficulty('unfair', bot.id))
+    expect(action).not.toEqual({ type: 'attack', target: { kind: 'wave', index: 0 } })
+  })
+
+  it('swings at the REAL unit behind a training unit, by its zone-local index', () => {
+    const bot = makePlayer({ zone: Z, integ: 400, maxInteg: 500, bw: 0 })
+    const state = makeGameState({
+      players: { [bot.id]: bot },
+      // The training unit is the more attractive (strippable) target.
+      waves: [unit('wave-tut-audit-9', 'audit', 20), unit('wave-7', 'audit', 150)],
+    })
+    expect(decideBotAction(state, bot, 'coldstore', atDifficulty('unfair', bot.id))).toEqual({
+      type: 'attack',
+      target: { kind: 'wave', index: 1 },
+    })
+  })
+
+  it('never burns a training unit; burns the real low unit behind it by index', () => {
+    const bot = makePlayer({
+      zone: Z,
+      integ: 400,
+      maxInteg: 500,
+      bw: 0,
+      cooldowns: { q: 5, w: 5, e: 5, r: 5 },
+    })
+    const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: Z, integ: 300 })
+    const only = makeGameState({
+      players: { [bot.id]: bot, enemy1: enemy },
+      waves: [unit('wave-tut-chaff-9', 'chaff', 20)],
+    })
+    expect(decideBotAction(only, bot, 'coldstore', atDifficulty('medium', bot.id))?.type).not.toBe(
+      'burn',
+    )
+    const both = makeGameState({
+      players: { [bot.id]: bot, enemy1: enemy },
+      waves: [unit('wave-tut-chaff-9', 'chaff', 20), unit('wave-8', 'chaff', 40)],
+    })
+    expect(decideBotAction(both, bot, 'coldstore', atDifficulty('medium', bot.id))).toEqual({
+      type: 'burn',
+      target: { kind: 'wave', index: 1 },
+    })
+  })
+
+  it('a training unit is not lane support for hitting enemy ICE', () => {
+    // Allied units in the zone license an ICE attack; a planted drill unit is not
+    // a wave and must not drag a bot under enemy ICE.
+    const bot = makePlayer({ zone: 'coldstore-t1-audit', integ: 500, maxInteg: 500, bw: 0 })
+    const withTraining = makeGameState({
+      players: { [bot.id]: bot },
+      waves: [{ ...unit('wave-tut-chaff-9', 'chaff', 200), zone: 'coldstore-t1-audit' }],
+    })
+    const withReal = makeGameState({
+      players: { [bot.id]: bot },
+      waves: [{ ...unit('wave-8', 'chaff', 200), zone: 'coldstore-t1-audit' }],
+    })
+    const iceHit = { type: 'attack', target: { kind: 'ice', zone: 'coldstore-t1-audit' } }
+    expect(decideBotAction(withReal, bot, 'coldstore', atDifficulty('easy', bot.id))).toEqual(
+      iceHit,
+    )
+    expect(
+      decideBotAction(withTraining, bot, 'coldstore', atDifficulty('easy', bot.id)),
+    ).not.toEqual(iceHit)
+  })
+})
+
 describe('BotAI - ice defence rotation (outnumbered, not undefended)', () => {
   const THREATENED = 'seawall-t1-chaff'
 

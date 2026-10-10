@@ -1,12 +1,16 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
 import { processCycle, submitAction } from '~~/server/game/engine/GameLoop'
 import {
   detectAFKPlayers,
   shouldConvertAFK,
-  markClientInput,
-  msSinceClientInput,
-  clearClientInput,
+  isAfkCheckCycle,
+  isAfkPrimaryCheck,
+  isConfirmedOffline,
+  presenceCandidates,
+  withPresenceSample,
+  AFK_CHECK_EVERY_CYCLES,
+  PRESENCE_CONFIRM_CYCLES,
 } from '~~/server/services/LeaverSystem'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
@@ -158,14 +162,15 @@ describe('shouldConvertAFK (presence gate)', () => {
     })
   }
 
-  it('converts a disconnected player (the original rule)', () => {
+  it('converts a disconnected player (the short rule)', () => {
     const state = twoHumanState(60)
-    expect(shouldConvertAFK(state, 'p1', { isConnected: false, msSinceInput: null })).toBe(true)
+    expect(shouldConvertAFK(state, 'p1', false)).toBe(true)
   })
 
-  it('never converts a connected player with recent client input', () => {
-    const state = twoHumanState(600, { lastActionCycle: 0 })
-    expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: 5_000 })).toBe(false)
+  it('converts a disconnected player even with no human teammate', () => {
+    // Gone is gone: a bot plays the slot better than nobody, solo or not.
+    const state = makeGameState({ cycle: 60 })
+    expect(shouldConvertAFK(state, 'p1', false)).toBe(true)
   })
 
   it('never converts a connected player whose team has no other human', () => {
@@ -178,7 +183,7 @@ describe('shouldConvertAFK (presence gate)', () => {
         p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor', lastActionCycle: 600 }),
       },
     })
-    expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: null })).toBe(false)
+    expect(shouldConvertAFK(state, 'p1', true)).toBe(false)
   })
 
   it('a teammate already replaced by a bot does not count as a human teammate', () => {
@@ -190,44 +195,97 @@ describe('shouldConvertAFK (presence gate)', () => {
         p2: makePlayer({ id: 'p2', team: 'audit', zone: 'landing-anchor', lastActionCycle: 600 }),
       },
     })
-    expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: null })).toBe(false)
+    expect(shouldConvertAFK(state, 'p1', true)).toBe(false)
   })
 
   it('does not convert a connected player under the longer connected threshold', () => {
-    // 40 ticks without an action clears the base threshold (30) but not the
+    // 59 cycles without an order clears the base threshold (30) but not the
     // connected one (60) — present players get the longer window.
-    const state = twoHumanState(40, { lastActionCycle: 0 })
-    expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: null })).toBe(false)
+    expect(shouldConvertAFK(twoHumanState(59, { lastActionCycle: 0 }), 'p1', true)).toBe(false)
+    expect(shouldConvertAFK(twoHumanState(60, { lastActionCycle: 0 }), 'p1', true)).toBe(true)
   })
 
-  it('converts a connected but fully silent player when a human teammate benefits', () => {
-    const state = twoHumanState(120, { lastActionCycle: 0 })
-    expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: null })).toBe(true)
-    // …but any input inside the window keeps them safe.
-    expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: 60_000 })).toBe(false)
+  it('a standing order issued inside the window keeps a connected walker safe', () => {
+    // Issuing the auto-walk/auto-attack stamps lastActionCycle (GameLoop 1.2);
+    // the synthesized continuations after it do not. So an order issued 40
+    // cycles ago, still walking, is inside the 60-cycle connected window.
+    const state = twoHumanState(120, {
+      lastActionCycle: 80,
+      moveTarget: 'landing-anchor',
+    })
+    expect(shouldConvertAFK(state, 'p1', true)).toBe(false)
   })
 })
 
-describe('client input ledger', () => {
-  afterEach(() => clearClientInput('ledger-game'))
-
-  it('stamps and reads deliberate input per game+player', () => {
-    expect(msSinceClientInput('ledger-game', 'p1')).toBeNull()
-    markClientInput('ledger-game', 'p1')
-    const ms = msSinceClientInput('ledger-game', 'p1')
-    expect(ms).not.toBeNull()
-    expect(ms!).toBeLessThan(1_000)
-    // Other players/games unaffected.
-    expect(msSinceClientInput('ledger-game', 'p2')).toBeNull()
-    expect(msSinceClientInput('other-game', 'p1')).toBeNull()
+describe('presence sampling (state-borne, deterministic)', () => {
+  it('checks only on the AFK cadence: the primary check and its confirm sample', () => {
+    expect(AFK_CHECK_EVERY_CYCLES).toBe(60)
+    expect(PRESENCE_CONFIRM_CYCLES).toBeGreaterThan(1)
+    expect(PRESENCE_CONFIRM_CYCLES).toBeLessThan(AFK_CHECK_EVERY_CYCLES)
+    const confirm = 60 + PRESENCE_CONFIRM_CYCLES
+    for (const c of [60, 120, confirm, 120 + PRESENCE_CONFIRM_CYCLES]) {
+      expect(isAfkCheckCycle(c)).toBe(true)
+    }
+    for (const c of [0, 59, 61, confirm - 1, confirm + 1, PRESENCE_CONFIRM_CYCLES]) {
+      expect(isAfkCheckCycle(c)).toBe(false)
+    }
+    expect(isAfkPrimaryCheck(60)).toBe(true)
+    expect(isAfkPrimaryCheck(confirm)).toBe(false)
   })
 
-  it('clearClientInput drops only the finished game', () => {
-    markClientInput('ledger-game', 'p1')
-    markClientInput('ledger-game-2', 'p1')
-    clearClientInput('ledger-game')
-    expect(msSinceClientInput('ledger-game', 'p1')).toBeNull()
-    expect(msSinceClientInput('ledger-game-2', 'p1')).not.toBeNull()
-    clearClientInput('ledger-game-2')
+  it('is confirmed offline only when BOTH samples of the check list the player', () => {
+    const confirm = 120 + PRESENCE_CONFIRM_CYCLES
+    const base = makeGameState({ cycle: confirm })
+    // No sample at all (no Ably key, failed lookup, old snapshot): connected.
+    expect(isConfirmedOffline(base, 'p1')).toBe(false)
+    const both = withPresenceSample(withPresenceSample(base, 120, ['p1']), confirm, ['p1'])
+    expect(isConfirmedOffline(both, 'p1')).toBe(true)
+    expect(isConfirmedOffline(both, 'p2')).toBe(false)
+    // One sample is a reload, not a leaver — either one alone is not enough.
+    expect(isConfirmedOffline(withPresenceSample(base, 120, ['p1']), 'p1')).toBe(false)
+    expect(isConfirmedOffline(withPresenceSample(base, confirm, ['p1']), 'p1')).toBe(false)
+    // Only ON the confirm cycle — never at the primary or any other cycle.
+    expect(isConfirmedOffline({ ...both, cycle: 120 }, 'p1')).toBe(false)
+    expect(isConfirmedOffline({ ...both, cycle: confirm + 1 }, 'p1')).toBe(false)
+  })
+
+  it('records nothing for an all-present sample (the log stays tiny)', () => {
+    const base = makeGameState({ cycle: 59 })
+    expect(withPresenceSample(base, 60, [])).toBe(base)
+    const once = withPresenceSample(base, 60, ['p1'])
+    const twice = withPresenceSample(once, 120, ['p2'])
+    expect(twice.presenceOffline).toEqual({ 60: ['p1'], 120: ['p2'] })
+  })
+
+  it('samples only humans who could be past the AFK threshold at the check cycle', () => {
+    const state = makeGameState({
+      cycle: 59,
+      players: {
+        idle: makePlayer({ id: 'idle', lastActionCycle: 10 }),
+        busy: makePlayer({ id: 'busy', lastActionCycle: 50 }),
+        bot_x: makePlayer({ id: 'bot_x' }),
+        taken: makePlayer({ id: 'taken', aiControlled: true }),
+        dead: makePlayer({ id: 'dead', alive: false, respawnCycle: 70 }),
+      },
+    })
+    // Dead players are sampled too: they may respawn within the cycle.
+    expect(presenceCandidates(state, 60).sort()).toEqual(['dead', 'idle'])
+  })
+
+  it('the confirm sample re-asks ONLY about players the primary found gone', () => {
+    const confirm = 60 + PRESENCE_CONFIRM_CYCLES
+    const players = {
+      idle: makePlayer({ id: 'idle', lastActionCycle: 10 }),
+      gone: makePlayer({ id: 'gone', lastActionCycle: 10 }),
+      back: makePlayer({ id: 'back', lastActionCycle: confirm - 2 }),
+    }
+    // Nobody missing at the primary ⇒ no candidates ⇒ the tick makes no call.
+    expect(presenceCandidates(makeGameState({ cycle: confirm - 1, players }), confirm)).toEqual([])
+    const sampled = withPresenceSample(makeGameState({ cycle: confirm - 1, players }), 60, [
+      'gone',
+      'back',
+    ])
+    // 'back' gave an order since: no longer past the threshold, not re-asked.
+    expect(presenceCandidates(sampled, confirm)).toEqual(['gone'])
   })
 })

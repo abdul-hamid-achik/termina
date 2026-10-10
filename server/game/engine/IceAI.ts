@@ -1,5 +1,6 @@
 import type { GameState, IceState } from '~~/shared/types/game'
 import { ICE_ATTACK } from '~~/shared/constants/balance'
+import { isTrainingWave } from '~~/shared/constants/tutorial'
 import { resolveKineticHit } from './CombatResolver'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
@@ -68,7 +69,10 @@ function selectIceTarget(
   )
 
   // Get enemy waves in the ice's zone
-  const enemyWaves = state.waves.filter((c) => c.zone === zone && c.team !== iceTeam && c.integ > 0)
+  // (Tutorial training units are inert — see TRAINING_WAVE_PREFIX — never a target.)
+  const enemyWaves = state.waves.filter(
+    (c) => c.zone === zone && c.team !== iceTeam && c.integ > 0 && !isTrainingWave(c),
+  )
 
   // Priority 1: Enemy hero that drew aggro this cycle — attacked an allied
   // hero in the ice zone, or attacked the ice itself.

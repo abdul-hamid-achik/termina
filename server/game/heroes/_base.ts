@@ -13,6 +13,7 @@ import { getTalentTree } from '~~/shared/constants/talents'
 import { getAbilityLevel } from '~~/shared/constants/balance'
 import { abilityBwTable, abilityTargetError } from '~~/shared/utils/ability'
 import { ZONE_MAP } from '~~/shared/constants/zones'
+import { isTrainingWave } from '~~/shared/constants/tutorial'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 // ── Typed Errors ──────────────────────────────────────────────────
@@ -505,9 +506,14 @@ export function damageEnemyNpcsInZone(
 
   const zoneIds = new Set(zones)
   let hitAny = false
+  // Tutorial training units belong to the human's drill: a bot's AoE passes
+  // through them (else it strips the drill unit and banks its payload). Same
+  // `bot_` rule as BotManager.isBot — importing it here would be a cycle.
+  const sparesTraining = caster.id.startsWith('bot_')
 
   const waves = (state.waves ?? []).map((c) => {
     if (c.team === caster.team || c.integ <= 0 || !zoneIds.has(c.zone)) return c
+    if (sparesTraining && isTrainingWave(c)) return c
     hitAny = true
     return { ...c, integ: Math.max(0, c.integ - damage) }
   })

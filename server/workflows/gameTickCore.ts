@@ -31,7 +31,12 @@ import { playerNetWorth } from '~~/server/game/engine/ScripDistributor'
 import { calculateMmrChange, teamAverageMmr } from '~~/server/game/matchmaking/elo'
 import { shouldApplyDerivedMatchStats } from '~~/server/game/engine/matchPersistence'
 import { isGuestId } from '~~/server/utils/guest'
-import { ablyPublishBatch, type AblyBatchSpec } from '~~/server/utils/ablyRest'
+import { ablyPublishBatch, ablyPresence, type AblyBatchSpec } from '~~/server/utils/ablyRest'
+import {
+  isAfkCheckCycle,
+  presenceCandidates,
+  withPresenceSample,
+} from '~~/server/services/LeaverSystem'
 import { engineLog } from '~~/server/utils/log'
 import { gameLoggerLive } from '~~/server/utils/logger'
 import type { GameMode, GameState } from '~~/shared/types/game'
@@ -83,8 +88,10 @@ import type { PlayerEndStats } from '~~/shared/types/protocol'
  *    its own — but the run epoch fences it: each continuation claims the game
  *    on start, the later claim wins, and the earlier run exits as stale on its
  *    next tick.
- *  - AFK detection still degrades to the disconnected branch until an
- *    Ably-presence signal stamps lastActionCycle from a live connection.
+ *
+ * AFK presence: on an AFK-check cycle only, the tick asks Ably REST (one batch
+ * GET) which idle humans are still present and stamps the answer into the
+ * state before processCycle — see stampPresence below and LeaverSystem.ts.
  */
 
 // ── Durable stores ───────────────────────────────────────────────────
@@ -289,6 +296,52 @@ export interface TickDeps {
   /** Base delay (ms) between inline retries of the FINAL tick's publish.
    *  Tests set 0. */
   publishRetryDelayMs?: number
+  /** Ably presence lookup (channel → present clientIds; null = unknown), used
+   *  only on AFK-check cycles. Omitted ⇒ no lookup ⇒ everyone counts as
+   *  connected. Production: ablyRest.ablyPresence. */
+  presence?: (channels: string[]) => Promise<Map<string, Set<string>> | null>
+}
+
+/** The per-player channel a client enters presence on (useGameChannel). */
+function playerChannel(gameId: string, playerId: string): string {
+  return `game:${gameId}:p:${playerId}`
+}
+
+/**
+ * Stamp the AFK presence sample into `state` BEFORE processCycle runs, so the
+ * engine reads connection as data (deterministic, no network inside the
+ * engine). Only when the cycle about to run is an AFK check, and only for
+ * humans who could be flagged — so a game whose humans keep issuing orders
+ * never calls Ably at all. A player is recorded offline ONLY when Ably answered
+ * for their channel and they are not in it; no key, a failed/slow lookup, or a
+ * per-channel error all leave the state untouched (⇒ connected). Never throws.
+ */
+export async function stampPresence(
+  gameId: string,
+  state: GameState,
+  lookup: TickDeps['presence'],
+): Promise<GameState> {
+  const checkCycle = state.cycle + 1 // processCycle increments before the AFK block
+  if (!lookup || !isAfkCheckCycle(checkCycle)) return state
+  const candidates = presenceCandidates(state, checkCycle)
+  if (candidates.length === 0) return state
+  let present: Map<string, Set<string>> | null
+  try {
+    present = await lookup(candidates.map((id) => playerChannel(gameId, id)))
+  } catch (err) {
+    engineLog.warn('[gameTick] presence lookup failed — treating everyone as connected', {
+      gameId,
+      err: String(err),
+    })
+    return state
+  }
+  if (!present) return state
+  const answered = present
+  const offline = candidates.filter((id) => {
+    const members = answered.get(playerChannel(gameId, id))
+    return members !== undefined && !members.has(id)
+  })
+  return withPresenceSample(state, checkCycle, offline)
 }
 
 /** What runOneTick needs back from one processCycle. */
@@ -374,6 +427,7 @@ export function productionTickDeps(): TickDeps {
     runCycle: (gameId, state) =>
       Effect.runPromise(Effect.provide(processCycle(gameId, state), gameLoggerLive)),
     publish: ablyPublishBatch,
+    presence: (channels) => ablyPresence(channels),
     rehydrate: rehydrateRegistries,
     markTutorialComplete: (ids) => markTutorialCompleted(ids, productionDbRunner),
   }
@@ -439,7 +493,8 @@ export async function runOneTick(
   }
 
   deps.rehydrate(gameId, row.roster, state)
-  const outcome = await deps.runCycle(gameId, state)
+  const input = await stampPresence(gameId, state, deps.presence)
+  const outcome = await deps.runCycle(gameId, input)
   const next = outcome.state
 
   const runEpoch = epoch ?? (row.state.runEpoch as string | undefined)
@@ -502,7 +557,7 @@ export async function runOneTick(
 
   const humans = row.roster.players.filter((p) => !isBot(p.playerId))
   const specs: AblyBatchSpec[] = humans.map((p) => ({
-    channel: `game:${gameId}:p:${p.playerId}`,
+    channel: playerChannel(gameId, p.playerId),
     data: { cycle: next.cycle, state: filterStateForPlayer(next, p.playerId, gameId) },
   }))
   // Why an order failed / what the tutorial wants next — only ever built past
@@ -744,6 +799,7 @@ export function snapshotMetaFromRoster(
   roster: LiveGameRoster,
   mapId: string | null | undefined,
   mode: string,
+  presenceOffline?: GameState['presenceOffline'],
 ): SnapshotMeta {
   return {
     players: roster.players.map((p) => ({
@@ -754,6 +810,7 @@ export function snapshotMetaFromRoster(
     })),
     ...(mapId ? { mapId } : {}),
     ...(mode === 'tutorial' || mode === 'normal' ? { mode: mode as GameMode } : {}),
+    ...(presenceOffline && Object.keys(presenceOffline).length > 0 ? { presenceOffline } : {}),
   }
 }
 
@@ -823,7 +880,7 @@ export async function finalizeGame(
     const artifact = buildReplayArtifact(
       gameId,
       state,
-      snapshotMetaFromRoster(row.roster, row.mapId, row.mode),
+      snapshotMetaFromRoster(row.roster, row.mapId, row.mode, state.presenceOffline),
       state.actionLog ?? [],
     )
     const archived = await deps.run((d) => d.saveMatchReplay(artifact))

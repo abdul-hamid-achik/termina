@@ -73,8 +73,8 @@ export function useGameChannel() {
   ) {
     try {
       // POST /api/auth/ably-token mints a locally-signed Ably TokenRequest
-      // (clientId = playerId; subscribe capability on game:*:p:<playerId>
-      // and game:*:team:*), derived from the caller's session — no params.
+      // (clientId = playerId; subscribe+presence on game:*:p:<playerId>,
+      // subscribe on game:*:team:*), derived from the caller's session.
       const res = await fetch('/api/auth/ably-token', { method: 'POST' })
       if (!res.ok) {
         callback(`ably-token request failed: ${res.status}`, null)
@@ -144,6 +144,19 @@ export function useGameChannel() {
     channel.subscribe((message) => {
       _handleInbound(message)
     })
+    // PRESENCE — the AFK takeover's connection signal. While this page holds
+    // the game open, the player is a presence member of their own channel; the
+    // server's tick reads that over REST on its AFK checks (every 60 cycles)
+    // to tell "here but idle" (4-minute, teammate-gated rule) from "gone"
+    // (2-minute rule). Ably re-enters on resume by itself and drops the member
+    // ~15s after an unclean disconnect, so there is no manual re-enter here.
+    // Non-fatal: without presence the player just reads as "gone" to the AFK
+    // check — never worth breaking the subscription over.
+    if (currentGameId !== 'lobby') {
+      channel.presence.enter().catch((err: unknown) => {
+        socketLog.warn('Ably presence enter failed', { err })
+      })
+    }
   }
 
   function _handleInbound(message: Ably.InboundMessage) {
@@ -327,6 +340,9 @@ export function useGameChannel() {
   function _teardown() {
     _stopPing()
     if (channel) {
+      // Leave before close so the AFK check sees "gone" now, not ~15s later.
+      // Best-effort: close() ends the membership anyway.
+      channel.presence.leave().catch(() => {})
       channel.unsubscribe()
       channel = null
     }

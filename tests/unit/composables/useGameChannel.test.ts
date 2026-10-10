@@ -13,6 +13,17 @@ class MockChannel {
   name: string
   listener: ((message: { name: string; data: unknown }) => void) | null = null
   unsubscribe = vi.fn()
+  // Ably presence on the player's own channel — how the AFK takeover tells
+  // "connected but idle" from "gone".
+  /** Set to make the next channel's presence.enter reject. */
+  static enterError: Error | null = null
+  presence = {
+    enter: vi.fn(
+      (): Promise<void> =>
+        MockChannel.enterError ? Promise.reject(MockChannel.enterError) : Promise.resolve(),
+    ),
+    leave: vi.fn((): Promise<void> => Promise.resolve()),
+  }
 
   constructor(name: string) {
     this.name = name
@@ -138,6 +149,36 @@ describe('useGameChannel', () => {
 
       expect(gameStore.gameId).toBe('game-1')
       expect(gameStore.playerId).toBe('player-1')
+    })
+
+    it('enters Ably presence on its own channel (the AFK takeover reads it)', () => {
+      const { connect } = useGameChannel()
+      connect('game-1', 'player-1')
+
+      const channel = MockRealtime.last!.channel!
+      expect(channel.name).toBe('game:game-1:p:player-1')
+      expect(channel.presence.enter).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not enter presence for the lobby placeholder', () => {
+      const { connect } = useGameChannel()
+      connect('lobby', 'player-1')
+      expect(MockRealtime.last!.channel!.presence.enter).not.toHaveBeenCalled()
+    })
+
+    it('a failed presence enter is non-fatal (no unhandled rejection, still connects)', async () => {
+      MockChannel.enterError = new Error('no presence capability')
+      try {
+        const { connect, connected } = useGameChannel()
+        connect('game-1', 'player-1')
+        // Let the rejected enter settle — an unhandled rejection fails the run.
+        await vi.runAllTimersAsync()
+        MockRealtime.last!.connection._setState('connected')
+        expect(MockRealtime.last!.channel!.presence.enter).toHaveBeenCalled()
+        expect(connected.value).toBe(true)
+      } finally {
+        MockChannel.enterError = null
+      }
     })
 
     it('flips connected on when the Ably connection reports connected', () => {
@@ -433,6 +474,20 @@ describe('useGameChannel', () => {
 
       expect(connected.value).toBe(false)
       expect(client.close).toHaveBeenCalled()
+    })
+
+    it('leaves presence before closing, so the slot reads "gone" at once', () => {
+      const { connect, disconnect } = useGameChannel()
+      connect('game-1', 'player-1')
+      const client = MockRealtime.last!
+      const channel = client.channel!
+
+      disconnect()
+
+      expect(channel.presence.leave).toHaveBeenCalledTimes(1)
+      expect(channel.presence.leave.mock.invocationCallOrder[0]!).toBeLessThan(
+        client.close.mock.invocationCallOrder[0]!,
+      )
     })
   })
 })

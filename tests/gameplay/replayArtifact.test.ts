@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { Effect } from 'effect'
 import { createInMemoryStateManager } from '~~/server/game/engine/StateManager'
 import { processCycle, submitReplayAction } from '~~/server/game/engine/GameLoop'
@@ -10,7 +10,10 @@ import {
   REPLAY_RULESET_VERSION,
 } from '~~/server/game/engine/replayArtifact'
 import type { LoggedAction, SnapshotMeta } from '~~/server/game/engine/replayArtifact'
-import type { GameState } from '~~/shared/types/game'
+import type { GameState, TeamId } from '~~/shared/types/game'
+import type { LiveGameRoster } from '~~/server/db/schema'
+import { registerBots, cleanupGame } from '~~/server/game/ai/BotManager'
+import { snapshotMetaFromRoster } from '~~/server/workflows/gameTickCore'
 
 /**
  * The durable-replay contract: a finished game is fully reproducible from
@@ -180,5 +183,167 @@ describe('the durable replay artifact', () => {
       players: Object.fromEntries(Object.entries(live.players).reverse()),
     }
     expect(finalSummaryHash(reordered)).toBe(finalSummaryHash(live))
+  })
+})
+
+describe('replay reproduces AFK takeovers driven by Ably presence', () => {
+  // processCycle reads presence from state.presenceOffline (stamped by the
+  // Workflow tick before an AFK-check cycle). A replay must carry that sample or
+  // a live "disconnected → bot takeover" silently never happens in the re-run.
+  const meta: SnapshotMeta = {
+    players: [
+      { playerId: 'human_afk', team: 'chaff', heroId: 'echo', mmr: 1000 },
+      { playerId: 'bot_far', team: 'audit', heroId: 'kernel', mmr: 1000 },
+    ],
+    mode: 'normal',
+  }
+
+  it('recorded offline samples (check + confirm) convert the idle human in the re-run too', async () => {
+    const withPresence = await reconstructReplay(
+      { ...meta, presenceOffline: { 60: ['human_afk'], 65: ['human_afk'] } },
+      [],
+      12345,
+      66,
+    )
+    expect(withPresence.finalState.players['human_afk']?.aiControlled).toBe(true)
+
+    // One sample is not enough (it could have been a page reload).
+    const oneSample = await reconstructReplay(
+      { ...meta, presenceOffline: { 60: ['human_afk'] } },
+      [],
+      12345,
+      66,
+    )
+    expect(oneSample.finalState.players['human_afk']?.aiControlled).not.toBe(true)
+
+    const withoutPresence = await reconstructReplay(meta, [], 12345, 66)
+    expect(withoutPresence.finalState.players['human_afk']?.aiControlled).not.toBe(true)
+  })
+})
+
+describe('replay of a LIVE game with an AFK takeover', () => {
+  // The live game runs bot AI; the replay must not. A converted human sits in
+  // the live bot registry, and convertToBot used to put them into the REPLAY's
+  // registry too — so the re-run ran decideBotAction for them on top of their
+  // logged orders ("Action overwritten in same tick") and silently diverged.
+  const HEROES = [
+    'echo',
+    'daemon',
+    'malloc',
+    'cron',
+    'mutex',
+    'socket',
+    'proxy',
+    'regex',
+    'kernel',
+    'lambda',
+  ]
+  const IDS = [
+    'h1',
+    'h2',
+    'bot_c2',
+    'bot_c3',
+    'bot_c4',
+    'bot_a0',
+    'bot_a1',
+    'bot_a2',
+    'bot_a3',
+    'bot_a4',
+  ]
+  const roster: LiveGameRoster = {
+    players: IDS.map((id, i) => ({
+      playerId: id,
+      team: (i < 5 ? 'chaff' : 'audit') as TeamId,
+      heroId: HEROES[i]!,
+      mmr: 1000,
+    })),
+  }
+  const used: string[] = []
+  afterEach(() => {
+    for (const id of used.splice(0)) cleanupGame(id)
+  })
+
+  /** 2 humans + 8 registered bots; h2 keeps giving orders, h1 gives one on
+   *  cycle 20 (with presence samples: 40 silent cycles at the cycle-60 check —
+   *  past the disconnected threshold, short of the connected one) or none. */
+  async function playLiveWithBots(
+    gameId: string,
+    cycles: number,
+    presenceOffline?: Record<number, string[]>,
+  ): Promise<GameState> {
+    used.push(gameId)
+    resetWaveIdCounter()
+    const sm = createInMemoryStateManager()
+    const setup = roster.players.map((p) => ({
+      id: p.playerId,
+      name: p.playerId,
+      team: p.team,
+      heroId: p.heroId,
+    }))
+    await Effect.runPromise(sm.createGame(gameId, setup))
+    await Effect.runPromise(
+      sm.updateState(gameId, (s) => ({
+        ...s,
+        phase: 'playing' as const,
+        rngSeed: SEED,
+        ...(presenceOffline ? { presenceOffline } : {}),
+      })),
+    )
+    registerBots(
+      gameId,
+      roster.players
+        .filter((p) => p.playerId.startsWith('bot_'))
+        .map((p) => ({ playerId: p.playerId, team: p.team, heroId: p.heroId })),
+    )
+    let current = await Effect.runPromise(sm.getState(gameId))
+    for (let c = 0; c < cycles; c++) {
+      if (presenceOffline && c === 19) {
+        submitReplayAction(gameId, 'h1', { type: 'move', zone: 'rookery-anchor' })
+      }
+      submitReplayAction(gameId, 'h2', {
+        type: 'move',
+        zone: c % 2 ? 'rookery-terminal' : 'rookery-anchor',
+      })
+      current = (await Effect.runPromise(processCycle(gameId, current))).state
+    }
+    return current
+  }
+
+  async function replayOf(live: GameState) {
+    resetWaveIdCounter()
+    const meta = snapshotMetaFromRoster(roster, live.mapId, 'normal', live.presenceOffline)
+    return reconstructReplay(meta, live.actionLog ?? [], live.rngSeed, live.cycle)
+  }
+
+  it('DISCONNECTED (two offline samples): the re-run lands on the same hash', async () => {
+    const atCheck = await playLiveWithBots('replay_afk_offline_60', 64, { 60: ['h1'], 65: ['h1'] })
+    // Not by the connected rule at the primary check — by the confirm sample.
+    expect(atCheck.players['h1']?.aiControlled ?? false).toBe(false)
+    const live = await playLiveWithBots('replay_afk_offline', 90, { 60: ['h1'], 65: ['h1'] })
+    expect(live.players['h1']?.aiControlled).toBe(true)
+    expect(live.players['h2']?.aiControlled ?? false).toBe(false)
+
+    const { finalState } = await replayOf(live)
+    expect(finalState.players['h1']?.aiControlled).toBe(true)
+    expect(finalState.players['h1']?.lastActionCycle).toBe(live.players['h1']?.lastActionCycle)
+    expect(finalSummaryHash(finalState)).toBe(finalSummaryHash(live))
+  })
+
+  it('CONNECTED (the 60-cycle teammate rule): the re-run lands on the same hash', async () => {
+    const live = await playLiveWithBots('replay_afk_connected', 90)
+    expect(live.players['h1']?.aiControlled).toBe(true)
+
+    const { finalState } = await replayOf(live)
+    expect(finalState.players['h1']?.aiControlled).toBe(true)
+    expect(finalSummaryHash(finalState)).toBe(finalSummaryHash(live))
+  })
+
+  it('the re-run emits the same takeover event on the same (confirm) cycle', async () => {
+    // Stop ON the confirm cycle: state.events holds only the last cycle's events.
+    const live = await playLiveWithBots('replay_afk_event', 65, { 60: ['h1'], 65: ['h1'] })
+    const liveTakeovers = live.events.filter((e) => e.type === 'afk_takeover')
+    expect(liveTakeovers).toHaveLength(1)
+    const { finalState } = await replayOf(live)
+    expect(finalState.events.filter((e) => e.type === 'afk_takeover')).toEqual(liveTakeovers)
   })
 })

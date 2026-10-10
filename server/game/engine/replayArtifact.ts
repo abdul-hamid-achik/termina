@@ -33,6 +33,11 @@ export interface SnapshotMeta {
   players: { playerId: string; team: TeamId; heroId: string; mmr: number }[]
   mapId?: string
   mode?: GameMode
+  /** Ably-presence samples the tick stamped before AFK-check cycles
+   *  (GameState.presenceOffline, cycle → offline human ids). Not derivable
+   *  from the action log, so it rides the replay or a live "disconnected →
+   *  bot takeover" never happens in the re-run. */
+  presenceOffline?: Record<number, string[]>
 }
 
 /** Alias of the GameState action-log entry — one shape for live + archive. */
@@ -46,8 +51,12 @@ export type LoggedAction = ActionLogEntry
  *
  * 2 (2026-10-10): simultaneous hero swings/casts, auto-breach, cycle-start
  *   death settlement, simultaneous wave-vs-wave, code-point sort order.
+ * 3 (2026-10-10): breach resolves before movement; presence-driven AFK
+ *   takeover (meta.presenceOffline — "offline" needs two samples, the primary
+ *   check and its confirm); bots respect their own disables and never touch
+ *   tutorial training units; damage_blocked events.
  */
-export const REPLAY_RULESET_VERSION = 2
+export const REPLAY_RULESET_VERSION = 3
 
 /** Per-player scrubber summary — the projection the replay UI renders. */
 export interface FramePlayer {
@@ -212,6 +221,9 @@ export async function reconstructReplay(
       // The determinism stitch: without the original seed the re-run rolls a
       // different resolution stream and the replay silently lies.
       ...(rngSeed != null ? { rngSeed } : {}),
+      // Keyed by cycle, so stitching the whole recorded map up front is
+      // equivalent to the tick stamping each sample just before its cycle.
+      ...(meta.presenceOffline ? { presenceOffline: meta.presenceOffline } : {}),
     })),
   )
 
@@ -231,7 +243,7 @@ export async function reconstructReplay(
     for (const a of actionsByTick.get(t) ?? []) {
       submitReplayAction(replayId, a.playerId, a.command, a.synthesized)
     }
-    const result = await Effect.runPromise(processCycle(replayId, current))
+    const result = await Effect.runPromise(processCycle(replayId, current, { replay: true }))
     current = result.state
     await Effect.runPromise(sm.updateState(replayId, () => current))
     frames.push(summarizeFrame(current))

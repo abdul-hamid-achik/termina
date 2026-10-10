@@ -81,6 +81,38 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
 
 describe('ActionResolver', () => {
   describe('validateAction', () => {
+    it('refuses a BOT swing or burn at a tutorial training unit, by zone-local index', () => {
+      const Z = 'coldstore-t1-chaff'
+      const unit = (id: string, team: 'chaff' | 'audit') => ({
+        id,
+        team,
+        zone: Z,
+        integ: 20,
+        maxInteg: 200,
+        type: 'line' as const,
+      })
+      const state = makeGameState({
+        players: {
+          bot_ally: makePlayer({ id: 'bot_ally', zone: Z }),
+          human: makePlayer({ id: 'human', zone: Z }),
+        },
+        waves: [
+          unit('wave-elsewhere', 'audit'),
+          unit('wave-tut-audit-1', 'audit'),
+          unit('wave-tut-chaff-1', 'chaff'),
+          unit('wave-5', 'audit'),
+        ].map((w, i) => (i === 0 ? { ...w, zone: 'seawall-cross' } : w)),
+      })
+      const at = (playerId: string, type: 'attack' | 'burn', index: number) =>
+        validateAction(state, { playerId, command: { type, target: { kind: 'wave', index } } })
+      expect(at('bot_ally', 'attack', 0)).toMatch(/training unit/i)
+      expect(at('bot_ally', 'burn', 1)).toMatch(/training unit/i)
+      expect(at('bot_ally', 'attack', 2)).toBeNull()
+      // The drill is the human's: they may hit it.
+      expect(at('human', 'attack', 0)).toBeNull()
+      expect(at('human', 'burn', 1)).toBeNull()
+    })
+
     it('should allow moving to adjacent zone', () => {
       const state = makeGameState({
         players: { p1: makePlayer({ zone: 'coldstore-t1-chaff' }) },

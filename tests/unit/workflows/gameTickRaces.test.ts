@@ -396,6 +396,29 @@ describe('finalizeGame', () => {
       },
     )
 
+  it('archives the Ably-presence samples with the replay so AFK takeovers replay faithfully', async () => {
+    const { api, run } = fakeDb()
+    const row = makeRow(
+      { mode: 'normal', roster: ROSTER },
+      {
+        phase: 'ended',
+        winner: 'chaff',
+        presenceOffline: { 60: ['p1'] },
+        terminals: {
+          chaff: { team: 'chaff', integ: 100, maxInteg: 6000, alive: true, vulnerable: true },
+          audit: { team: 'audit', integ: 0, maxInteg: 6000, alive: false, vulnerable: true },
+        },
+      },
+    )
+    const { deps } = finalizeDeps(row, run)
+    await finalizeGame('g1', deps)
+    expect(api.saveMatchReplay).toHaveBeenCalledTimes(1)
+    const artifact = (
+      api.saveMatchReplay.mock.calls[0] as unknown as [{ meta: { presenceOffline?: unknown } }]
+    )[0]
+    expect(artifact.meta.presenceOffline).toEqual({ 60: ['p1'] })
+  })
+
   it('marks the human tutorial-complete on graduation, but banks NO match, wins or stats', async () => {
     const { api, run } = fakeDb()
     const { deps, del } = finalizeDeps(tutorialEnd(), run)

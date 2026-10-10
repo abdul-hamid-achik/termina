@@ -14,14 +14,14 @@ export const HEROES: Record<string, HeroDef> = {
     baseStats: {
       integ: 550,
       bw: 280,
-      attack: 58,
-      plate: 3,
+      attack: 54,
+      plate: 2,
       ice: 15,
     },
     growthPerLevel: {
-      integ: 55,
+      integ: 48,
       bw: 25,
-      attack: 7,
+      attack: 5,
       plate: 1,
       ice: 1,
     },
@@ -47,8 +47,8 @@ export const HEROES: Record<string, HeroDef> = {
         targetType: 'hero',
         damageType: 'kinetic',
         effects: [
-          { type: 'damage', value: 80, damageType: 'kinetic' },
-          { type: 'damage', value: 40, damageType: 'kinetic', description: 'Bounce damage (50%)' },
+          { type: 'damage', value: 70, damageType: 'kinetic' },
+          { type: 'damage', value: 35, damageType: 'kinetic', description: 'Bounce damage (50%)' },
         ],
       },
       // W: Phase Shift — dodge next attack
@@ -66,16 +66,16 @@ export const HEROES: Record<string, HeroDef> = {
         id: 'echo-e',
         name: 'Feedback Loop',
         description:
-          'Passive: each basic attack stores 10 feedback (15 / 20 / 25 at higher ranks). Active: consume all stored feedback to deal 2x that as kinetic burst damage.',
+          'Passive: each basic attack stores 8 feedback (12 / 16 / 20 at higher ranks). Active: consume all stored feedback to deal 2x that as kinetic burst damage.',
         bwCost: 0,
         cooldownCycles: 8,
         targetType: 'hero',
         damageType: 'kinetic',
         effects: [
-          { type: 'buff', value: 10, description: 'Feedback stored per attack (rank 1)' },
+          { type: 'buff', value: 8, description: 'Feedback stored per attack (rank 1)' },
           {
             type: 'damage',
-            value: 20,
+            value: 16,
             damageType: 'kinetic',
             description: 'Per stored feedback (2x)',
           },
@@ -92,7 +92,7 @@ export const HEROES: Record<string, HeroDef> = {
         targetType: 'hero',
         damageType: 'kinetic',
         effects: [
-          { type: 'damage', value: 60, damageType: 'kinetic', description: 'Per hit (x6)' },
+          { type: 'damage', value: 50, damageType: 'kinetic', description: 'Per hit (x6)' },
         ],
       },
     },

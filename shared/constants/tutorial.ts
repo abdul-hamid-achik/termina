@@ -63,12 +63,27 @@ export interface TutorialStep {
 }
 
 /**
+ * Id prefix of the units the tutorial itself plants for the attack / strip /
+ * burn drills. They are INERT to the NPC pass (WaveAI never moves or fights
+ * them, nobody — wave, ICE — targets them): a planted unit is placed at the
+ * tutorial hook, which runs BEFORE the same tick's WaveAI/IceAI, so a normal
+ * unit was shot dead by the player's own T2 ICE (or walked off down the lane)
+ * before the player ever saw it. Only the player's swing / burn removes one.
+ */
+export const TRAINING_WAVE_PREFIX = 'wave-tut-'
+
+/** Whether a wave unit is a tutorial training unit (see TRAINING_WAVE_PREFIX). */
+export function isTrainingWave(wave: { id: string }): boolean {
+  return wave.id.startsWith(TRAINING_WAVE_PREFIX)
+}
+
+/**
  * Where the first move sends the player: their OWN T2 ice, behind T1. One
  * constant so the hint and the "you are on your way" notice can never name
  * different zones (they once did: T2 in the hint, T1 — the suicide tile — in
  * the notice).
  */
-const TUTORIAL_FIRST_MOVE_ZONE = 'coldstore-t2-chaff'
+export const TUTORIAL_FIRST_MOVE_ZONE = 'coldstore-t2-chaff'
 
 /** The notice pushed while the opening walk is still on home ground. */
 export const TUTORIAL_ENROUTE_NOTICE = `🎓 On your way — the order stands. You keep walking toward \`${TUTORIAL_FIRST_MOVE_ZONE}\`, one zone per cycle; no need to retype it.`
@@ -107,30 +122,38 @@ export const TUTORIAL_FLOW: readonly TutorialStep[] = [
     id: 'attack',
     unlocks: ['attack'],
     hint: '🎓 Meet the traffic — `attack wave:0` swings at the first enemy unit in your zone.',
-    help: '🎓 A wave just reached you — swing at it: `attack wave:0`.',
+    help: '🎓 Swing at the first enemy unit in your zone: `attack wave:0` (`wave:N` counts every unit standing in your zone).',
     done: '🎓 Contact. Damage is a means — the payload is what counts. Next: the strip.',
     skipNote: 'Attacking: `attack wave:N` hits a wave unit; bare `attack` picks the nearest enemy.',
     // The first wave does not reach T2 on its own for a while (the lines meet at
-    // T1, which is not where a level-1 hero should stand): bring a practice unit
-    // instead of letting the player idle.
+    // the crossing, which is not where a level-1 hero should stand): from this
+    // cycle on a training unit is kept in the player's zone (modes/tutorial.ts).
     earlyNudgeCycles: 4,
   },
   {
     id: 'strip',
     unlocks: [],
     hint: '🎓 THE STRIP: a unit at or under 35% INTEG goes down to ANY swing. Watch the bars, time it, `attack wave:N` — the payload is yours.',
-    help: '🎓 Timing, not damage: wait until a unit’s INTEG is low (≤35%), THEN swing. One of them is in the window right now.',
+    help: '🎓 Timing, not damage: swing only once a unit’s INTEG is at or under 35% — `attack wave:N` then takes the payload.',
     done: '🎓 Strip taken (+scrip). That timing is the entire economy — a wave that dies to a wave pays nobody.',
     skipNote:
       'The strip: swing (`attack wave:N`) at a unit at ≤35% INTEG to take its payload, whatever your attack is worth.',
+    // Waves do not linger where a level-1 hero stands (they meet and die at the
+    // crossing, and ICE finishes leakers): a unit in the window is kept in the
+    // player's zone from this cycle on, as `wave:0`.
+    earlyNudgeCycles: 2,
+    tryCommand: 'attack wave:0',
   },
   {
     id: 'burn',
     unlocks: ['burn'],
     hint: '🎓 THE BURN: your OWN unit under 50% can be torched — `burn wave:N`. You get a cut; the enemy gets nothing.',
-    help: '🎓 Burn works on YOUR units only, inside their window. One of yours is low right now — `burn wave:N`.',
+    help: '🎓 Burn works on YOUR units only, once they are at or under 50% INTEG: `burn wave:N`.',
     done: '🎓 Burned. Reduced pay for you, zero for them — denial wins lanes.',
     skipNote: 'The burn: `burn wave:N` torches your own low unit so the enemy cannot strip it.',
+    // Same as the strip: one of YOUR units, inside the window, is kept in the zone.
+    earlyNudgeCycles: 2,
+    tryCommand: 'burn wave:0',
   },
   {
     id: 'cast',

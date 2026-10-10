@@ -13,11 +13,17 @@ import {
 } from '~~/server/game/modes/tutorial'
 import { isBot } from '~~/server/game/ai/BotManager'
 import { ITEMS } from '~~/shared/constants/items'
-import { STARTING_SCRIP } from '~~/shared/constants/balance'
+import {
+  STARTING_SCRIP,
+  STRIP_HP_THRESHOLD,
+  BURN_HP_THRESHOLD,
+  LINE_UNIT_HP,
+} from '~~/shared/constants/balance'
 import {
   TUTORIAL_STEP_DEADLINE_CYCLES,
   TUTORIAL_SKIP_AFTER_DEADLINES,
   tutorialTryCommand,
+  isTrainingWave,
 } from '~~/shared/constants/tutorial'
 import { ONE_LANE_ZONES } from '~~/shared/constants/maps'
 import { ZONE_MAP } from '~~/shared/constants/zones'
@@ -467,17 +473,20 @@ describe('tutorial flow', () => {
       }
     })
 
-    it('attack: with no enemy unit in the lane, a practice unit arrives early and the help is pushed', () => {
+    it('attack: with no enemy unit in the lane, a training unit arrives early, first in the zone, and the coaching names it', () => {
       const at = stepIndex('attack')
       const early = TUTORIAL_FLOW[at]!.earlyNudgeCycles!
       const state = {
         ...tutorialState(at, 'coldstore-t2-chaff', early),
+        players: { p1: { id: 'p1', team: 'chaff', zone: 'coldstore-t2-chaff', alive: true } },
         waves: [],
       } as unknown as GameState
       const next = advanceTutorialAfterTick(state, [], [])
       expect(next.state.tutorialStep).toBe(at) // nudge, not a skip or a fake clear
-      expect(next.state.waves.some((w) => w.zone === 'coldstore-t2-chaff')).toBe(true)
-      expect(next.notice).toBe(TUTORIAL_FLOW[at]!.help)
+      const inZone = next.state.waves.filter((w) => w.zone === 'coldstore-t2-chaff')
+      expect(inZone[0]?.team).toBe('audit')
+      expect(isTrainingWave(inZone[0]!)).toBe(true)
+      expect(next.notice).toContain('`attack wave:0`')
     })
 
     it('attack: an enemy unit already in the zone means no practice unit and no noise', () => {
@@ -493,6 +502,167 @@ describe('tutorial flow', () => {
       const next = advanceTutorialAfterTick(state, [], [])
       expect(next.state.waves).toHaveLength(1)
       expect(next.notice).toBeNull()
+    })
+
+    describe('the attack / strip / burn drills keep a training unit in your zone', () => {
+      const ZONE = 'coldstore-t2-chaff'
+      const FULL = LINE_UNIT_HP
+      const stateAt = (
+        id: 'attack' | 'strip' | 'burn',
+        elapsed: number,
+        waves: unknown[] = [],
+        zone = ZONE,
+      ) => {
+        const at = stepIndex(id)
+        return {
+          mode: 'tutorial',
+          tutorialStep: at,
+          tutorialStepSince: 10,
+          cycle: 10 + elapsed,
+          waves,
+          players: { p1: { id: 'p1', team: 'chaff', zone, alive: true } },
+        } as unknown as GameState
+      }
+      const unit = (id: string, team: 'chaff' | 'audit', integ: number, zone = ZONE) => ({
+        id,
+        team,
+        zone,
+        integ,
+        maxInteg: FULL,
+        type: 'line' as const,
+      })
+      const first = (s: GameState) => s.waves.filter((w) => w.zone === ZONE)[0]
+
+      it('strip: an enemy unit INSIDE the window is planted first in an empty zone, and named with its real INTEG', () => {
+        const early = TUTORIAL_FLOW[stepIndex('strip')]!.earlyNudgeCycles!
+        const next = advanceTutorialAfterTick(stateAt('strip', early), [], [])
+        const w = first(next.state)!
+        expect(w.team).toBe('audit')
+        expect(isTrainingWave(w)).toBe(true)
+        expect(w.integ).toBeGreaterThan(0)
+        expect(w.integ).toBeLessThanOrEqual(FULL * STRIP_HP_THRESHOLD)
+        expect(next.notice).toContain('`attack wave:0`')
+        expect(next.notice).toContain(`${w.integ}/${FULL}`)
+      })
+
+      it('strip: waits for the arming cycle (a natural unit gets a chance first)', () => {
+        const early = TUTORIAL_FLOW[stepIndex('strip')]!.earlyNudgeCycles!
+        const next = advanceTutorialAfterTick(stateAt('strip', early - 1), [], [])
+        expect(next.state.waves).toHaveLength(0)
+        expect(next.notice).toBeNull()
+      })
+
+      it('strip: a natural in-window unit that is already first is left alone — no noise', () => {
+        const early = TUTORIAL_FLOW[stepIndex('strip')]!.earlyNudgeCycles!
+        const natural = unit('wave-9', 'audit', 100)
+        const state = stateAt('strip', early, [natural])
+        const next = advanceTutorialAfterTick(state, [], [])
+        expect(next.state.waves).toEqual([natural])
+        expect(next.notice).toBeNull()
+      })
+
+      it('strip: a healthy unit first in the zone does not count — a window unit is put in front of it as wave:0', () => {
+        const early = TUTORIAL_FLOW[stepIndex('strip')]!.earlyNudgeCycles!
+        const fat = unit('wave-fat', 'audit', FULL)
+        const next = advanceTutorialAfterTick(stateAt('strip', early, [fat]), [], [])
+        expect(isTrainingWave(first(next.state)!)).toBe(true)
+        expect(next.state.waves.map((w) => w.id)).toContain('wave-fat')
+        expect(next.notice).toContain('`attack wave:0`')
+      })
+
+      it('strip: an in-window unit BEHIND a healthy one is not enough — the index the coaching names must be wave:0', () => {
+        const early = TUTORIAL_FLOW[stepIndex('strip')]!.earlyNudgeCycles!
+        const waves = [unit('wave-fat', 'audit', FULL), unit('wave-low', 'audit', 100)]
+        const next = advanceTutorialAfterTick(stateAt('strip', early, waves), [], [])
+        const inZone = next.state.waves.filter((w) => w.zone === ZONE)
+        expect(isTrainingWave(inZone[0]!)).toBe(true)
+        expect(next.notice).toContain('`attack wave:0`')
+      })
+
+      it('strip: a planted unit that is gone (stolen by a bot) is planted again and re-announced', () => {
+        const early = TUTORIAL_FLOW[stepIndex('strip')]!.earlyNudgeCycles!
+        let state = advanceTutorialAfterTick(stateAt('strip', early), [], []).state
+        // Held: nothing to do, nothing to say.
+        const held = advanceTutorialAfterTick({ ...state, cycle: state.cycle + 1 }, [], [])
+        expect(held.state.waves).toEqual(state.waves)
+        expect(held.notice).toBeNull()
+        // Gone: replanted.
+        state = { ...state, cycle: state.cycle + 2, waves: [] }
+        const again = advanceTutorialAfterTick(state, [], [])
+        expect(isTrainingWave(first(again.state)!)).toBe(true)
+        expect(again.notice).toContain('`attack wave:0`')
+      })
+
+      it('burn: one of YOUR units inside the burn window is planted first, with its real INTEG', () => {
+        const early = TUTORIAL_FLOW[stepIndex('burn')]!.earlyNudgeCycles!
+        const full = unit('wave-own-fat', 'chaff', FULL)
+        const next = advanceTutorialAfterTick(stateAt('burn', early, [full]), [], [])
+        const w = first(next.state)!
+        expect(w.team).toBe('chaff')
+        expect(isTrainingWave(w)).toBe(true)
+        expect(w.integ).toBeLessThanOrEqual(FULL * BURN_HP_THRESHOLD)
+        expect(next.notice).toContain('`burn wave:0`')
+        expect(next.notice).toContain(`${w.integ}/${FULL}`)
+      })
+
+      it('on home ground nothing is planted, and the help sends the player to the lane instead of claiming a unit', () => {
+        const at = stepIndex('burn')
+        const home = stateAt('burn', TUTORIAL_STEP_DEADLINE_CYCLES, [], 'rookery-terminal')
+        const next = advanceTutorialAfterTick(home, [], [])
+        expect(next.state.waves).toHaveLength(0)
+        expect(next.state.tutorialStep).toBe(at)
+        expect(next.notice).toContain('move coldstore-t2-chaff')
+        expect(next.notice).not.toMatch(/low right now/i)
+        expect(next.notice).not.toMatch(/wave:\d/)
+      })
+
+      it('deadline help names the unit that is actually there (and no `right now` claim without one)', () => {
+        const next = advanceTutorialAfterTick(
+          stateAt('burn', TUTORIAL_STEP_DEADLINE_CYCLES),
+          [],
+          [],
+        )
+        expect(next.notice).toContain(TUTORIAL_FLOW[stepIndex('burn')]!.help)
+        expect(next.notice).toContain('`burn wave:0`')
+        // The static copy makes no claim about the world.
+        for (const id of ['attack', 'strip', 'burn'] as const) {
+          expect(TUTORIAL_FLOW[stepIndex(id)]!.help).not.toMatch(/right now/i)
+        }
+        for (const id of ['strip', 'burn'] as const) {
+          expect(TUTORIAL_FLOW[stepIndex(id)]!.help).not.toMatch(/wave:\d/)
+        }
+      })
+
+      it('the training unit is swept when the drills are over, and kept between drills', () => {
+        const early = TUTORIAL_FLOW[stepIndex('strip')]!.earlyNudgeCycles!
+        const planted = advanceTutorialAfterTick(stateAt('strip', early), [], []).state
+        // strip -> burn (still a unit drill): not swept by the transition itself.
+        const stripped = advanceTutorialAfterTick(
+          planted,
+          [],
+          [],
+          [{ _tag: 'wave_strip', cycle: planted.cycle, playerId: 'p1' } as never],
+        )
+        expect(stripped.state.tutorialStep).toBe(stepIndex('burn'))
+        // burn -> cast: every training unit goes with it.
+        const burning = {
+          ...stripped.state,
+          waves: [...stripped.state.waves, unit('wave-tut-chaff-1', 'chaff', 100)],
+        } as GameState
+        const done = advanceTutorialAfterTick(
+          burning,
+          [],
+          [],
+          [{ _tag: 'wave_burn', cycle: burning.cycle, playerId: 'p1' } as never],
+        )
+        expect(done.state.tutorialStep).toBe(stepIndex('cast'))
+        expect(done.state.waves.some(isTrainingWave)).toBe(false)
+      })
+
+      it('the feed "try" button offers the unit the coaching just planted', () => {
+        expect(tutorialTryCommand(stepIndex('strip'))).toBe('attack wave:0')
+        expect(tutorialTryCommand(stepIndex('burn'))).toBe('burn wave:0')
+      })
     })
 
     describe('the cast drill pins a training target in your zone', () => {

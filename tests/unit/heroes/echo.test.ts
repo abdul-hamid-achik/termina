@@ -174,7 +174,7 @@ describe('Echo Hero', () => {
       )
 
       expect(result1.state.players['p1']!.cooldowns.q).toBe(6)
-      expect(result2.state.players['p1']!.cooldowns.q).toBe(3)
+      expect(result2.state.players['p1']!.cooldowns.q).toBe(4)
     })
 
     it('fails with InsufficientBwError when no BW', () => {
@@ -545,7 +545,7 @@ describe('Echo Hero', () => {
         'p1',
         attackEvent('p1', 'e1'),
       )
-      expect(feedback(out)).toBe(25)
+      expect(feedback(out)).toBe(20)
     })
 
     it('builds no Feedback Loop stacks when E is unlearned (level 0)', () => {

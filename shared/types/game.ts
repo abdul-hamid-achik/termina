@@ -201,6 +201,13 @@ export interface GameState {
    * — not on VisibleStateBase, so it never reaches a client view.
    */
   actionLog?: ActionLogEntry[]
+  /**
+   * AFK presence samples: cycle → humans Ably confirmed NOT present at that
+   * cycle's AFK check. Written by the tick (gameTickCore) BEFORE processCycle,
+   * read by the AFK block — data in the state, so the engine never touches the
+   * network. Absent entry ⇒ everyone counts as connected. Server-only.
+   */
+  presenceOffline?: Record<number, string[]>
 }
 
 /** A game's mode. 'normal' is a standard match; 'tutorial' is the guided

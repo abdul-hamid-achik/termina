@@ -16,6 +16,46 @@ export interface DamageEvent {
   readonly zone?: string
 }
 
+/**
+ * A hero's damaging hit that landed NOTHING on its target: fully absorbed by a
+ * shield, dodged (Echo's phaseShift), or met immunity (AIRGAP / Proxy R /
+ * ethereal for kinetic). Without it a cast that did 0 printed no line at all —
+ * the player saw BW and a cooldown spent and no reason why.
+ *
+ * Emitted for hero ability casts and hero basic attacks. Never a `damage`
+ * event: damage feeds assists, kill credit, in-combat state and the tutorial's
+ * objectives, and a blocked hit must not.
+ *
+ * What co-occurs (the client should merge, not double-print):
+ *  - cast (abilityId set): nothing else for that target — the cast's damage is
+ *    read off the INTEG diff, which was 0.
+ *  - basic attack, reason 'dodge': nothing else for that swing.
+ *  - basic attack, reason 'immune': a `damage` event with amount 0 for the
+ *    same source→target (kept for kill-credit/aggro bookkeeping).
+ *  - basic attack, reason 'shield': a `damage` event with the PRE-shield
+ *    amount (the basic-attack contract); this event says none of it got
+ *    through. Only when the whole volley on that target was absorbed.
+ */
+export interface DamageBlockedEvent {
+  readonly _tag: 'damage_blocked'
+  readonly cycle: number
+  readonly sourceId: string
+  readonly targetId: string
+  readonly reason: 'shield' | 'dodge' | 'immune'
+  /** INTEG the hit would have cost, when the engine measured it: the shield
+   *  INTEG consumed ('shield'), the swing's mitigated damage (basic-attack
+   *  'dodge' / 'immune'). Omitted for a dodged / immune cast — the resolver
+   *  never computed a number for a hit that did not land. */
+  readonly amount?: number
+  readonly damageType: DamageType
+  /** The cast's ability id (as on ability_used, e.g. 'echo-q'); absent for a
+   *  basic attack. */
+  readonly abilityId?: string
+  /** Where the hit was blocked — stamped by `stampEventZones`, never by hand.
+   *  The per-player fog filter's location test (see LOCATED_EVENT_TAGS). */
+  readonly zone?: string
+}
+
 export interface HealEvent {
   readonly _tag: 'heal'
   readonly cycle: number
@@ -405,6 +445,7 @@ export type GameEngineEvent =
   | CachePickedEvent
   | TrapTriggeredEvent
   | SpellBlockedEvent
+  | DamageBlockedEvent
   | TenantKilledEvent
   | NeutralKilledEvent
   | TenantDamageEvent
@@ -458,6 +499,7 @@ export const LOCATED_EVENT_TAGS: ReadonlySet<string> = new Set([
   'death',
   'status_applied',
   'spell_blocked',
+  'damage_blocked',
   'tenant_damage',
   'ability_used',
 ])
@@ -506,6 +548,8 @@ function locatingIds(e: GameEngineEvent): [unknown, unknown] | null {
       return [e.targetId, e.sourceId]
     case 'spell_blocked':
       return [e.targetId, e.casterId]
+    case 'damage_blocked':
+      return [e.targetId, e.sourceId]
     case 'kill':
       return [e.victimId, e.killerId]
     case 'death':

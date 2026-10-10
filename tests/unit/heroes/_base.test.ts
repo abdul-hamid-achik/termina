@@ -926,6 +926,19 @@ describe('_base hero utilities', () => {
       expect(result.waves[0]!.integ).toBe(250)
     })
 
+    it('a BOT caster passes through tutorial training units; the human hits them', () => {
+      // Training units belong to the human's drill — a bot AoE that strips one
+      // banks its payload (collectNpcCastDamage pays the strip).
+      const waves = [wave({ id: 'wave-tut-audit-3' }), wave({ id: 'wave-9' })]
+      const bot = makePlayer({ id: 'bot_ally_g', zone: 'coldstore-t1-chaff', team: 'chaff' })
+      const byBot = damageEnemyNpcsInZone(makeGameState({ waves }), bot, 150, 'code')
+      expect(byBot.waves.map((w) => w.integ)).toEqual([400, 250])
+
+      const human = makePlayer({ id: 'human_1', zone: 'coldstore-t1-chaff', team: 'chaff' })
+      const byHuman = damageEnemyNpcsInZone(makeGameState({ waves }), human, 150, 'code')
+      expect(byHuman.waves.map((w) => w.integ)).toEqual([250, 250])
+    })
+
     it('spares allied waves and waves in every other zone', () => {
       const caster = makePlayer({ zone: 'coldstore-t1-chaff', team: 'chaff' })
       const state = makeGameState({

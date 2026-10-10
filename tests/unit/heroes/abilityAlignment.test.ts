@@ -342,6 +342,17 @@ describe('rank-scaled numbers shown in descriptions match the resolvers', () => 
     })
   })
 
+  it('Echo Feedback Loop data: the burst effect is 2x the rank-1 stored feedback', () => {
+    // Bots read effects[].value for burst estimates — it must follow the
+    // per-attack value (and the "2x" the description advertises), not a stale
+    // number from before a rebalance.
+    const def = HEROES['echo']!.abilities.e
+    const stored = Number(def.description.match(/stores (\d+) feedback/)![1])
+    const mult = Number(def.description.match(/deal (\d+)x that/)![1])
+    expect(def.effects.find((e) => e.type === 'buff')!.value).toBe(stored)
+    expect(def.effects.find((e) => e.type === 'damage')!.value).toBe(stored * mult)
+  })
+
   it('Socket Broadcast slow per rank (the registry shows rank 1, not rank 2)', () => {
     const def = HEROES['socket']!.abilities.r
     const ranks = [...def.description.matchAll(/(\d+)%/g)].map((m) => Number(m[1])).slice(0, 3)

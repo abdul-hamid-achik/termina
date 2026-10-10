@@ -1,71 +1,120 @@
 /**
- * AFK detection — the pure, in-memory half of the old Leaver Penalty System.
+ * AFK detection — the pure half of the old Leaver Penalty System, driving the
+ * AFK→bot takeover in server/game/engine/GameLoop.ts's processCycle.
  *
- * The Redis-backed ENFORCE half (leaver score, low-priority queue, leaver
- * history — getPlayerPenalty/isLowPriority/decayLeaverScores/
- * completeLowPriorityGame/getPlayerLeaverHistory/markPlayerActive/
- * recordLeaver) was already dead before this cutover (see
- * termina-leaver-system-halfwired note: it recorded abandons but nothing
- * ever enforced a penalty) and is deleted along with RedisService.ts.
+ * The Redis-backed ENFORCE half (leaver score, low-priority queue, history)
+ * was already dead before the all-Vercel cutover and is gone with
+ * RedisService.ts.
  *
- * What's left is what server/game/engine/GameLoop.ts's processCycle actually
- * calls every cycle to drive the AFK→bot takeover feature:
- *  - detectAFKPlayers / shouldConvertAFK: pure GameState → decision.
- *  - markClientInput / msSinceClientInput / clearClientInput: an in-memory
- *    "deliberate input" ledger. It used to be stamped by ws.ts on every
- *    action/chat/ping message; there is no WS connection on the Workflow
- *    path to stamp it from, so it now sits permanently empty — every
- *    presence check degrades to `msSinceInput: null` (see GameLoop.ts's
- *    caller, which also has no live-peer signal to feed `isConnected`
- *    either). The AFK→bot conversion itself still works — it just always
- *    takes the "not connected" branch of shouldConvertAFK now. Wiring an
- *    Ably-presence signal back into this ledger is a follow-up (tracked in
- *    server/workflows/gameTickCore.ts's TODOs), not a regression introduced
- *    here: the ledger's shape is kept so that follow-up only needs a new
- *    caller, not a new mechanism.
+ * PRESENCE (the connection signal). On the Workflow/Ably path there is no
+ * long-lived socket to ask "is this player still here?". Instead each client
+ * enters Ably presence on its own channel (`game:{gameId}:p:{playerId}`, see
+ * app/composables/useGameChannel.ts), and on an AFK check cycle ONLY the tick
+ * (server/workflows/gameTickCore.ts) asks Ably REST who is present — one batch
+ * GET, and only for humans who could be past the AFK threshold. The answer is
+ * written into the state BEFORE processCycle runs (`presenceOffline`, keyed by
+ * the cycle it was sampled for), so the engine itself stays pure: it reads
+ * data, never the network.
+ *
+ * Unknown is NOT offline: no ABLY_API_KEY (tests/local dev), a failed or slow
+ * lookup, a per-channel error, or a sample stamped for another cycle all read
+ * as "connected" — only the long, teammate-gated rule can fire then.
+ *
+ * TWO SAMPLES before an "offline" takeover. Ably presence leave is immediate
+ * on a clean close, so a page reload that happened to straddle the check would
+ * otherwise hand a connected player to a bot for good (no reclaim). The check
+ * is therefore two cycles: the PRIMARY check (every AFK_CHECK_EVERY_CYCLES)
+ * samples every idle human, and a CONFIRM check PRESENCE_CONFIRM_CYCLES later
+ * re-samples ONLY those the primary found gone. "Offline" converts only when
+ * both samples say so. A reload (page load + token mint + presence enter, a
+ * few seconds) cannot span both. Cost: one batch Ably GET per check; the
+ * confirm GET happens only when someone was actually missing at the primary.
  */
 
 import type { GameState } from '~~/shared/types/game'
 import { isBot } from '~~/server/game/ai/BotManager'
-import { CYCLE_DURATION_MS } from '~~/shared/constants/balance'
 import { engineLog } from '~~/server/utils/log'
 
-const AFK_THRESHOLD_TICKS = 30 // 2 minutes at 4s/cycle
-// A CONNECTED player gets double the window before takeover — "no game action
-// for 2 minutes" is normal for someone reading the shop or watching a fight.
-const CONNECTED_AFK_THRESHOLD_TICKS = AFK_THRESHOLD_TICKS * 2
+/** Silence (no deliberate order) before a DISCONNECTED player is converted. 2 min. */
+const AFK_THRESHOLD_CYCLES = 30
+/** A CONNECTED player gets double the window — "no order for 2 minutes" is
+ *  normal for someone reading the shop or watching a fight. 4 min. */
+const CONNECTED_AFK_THRESHOLD_CYCLES = AFK_THRESHOLD_CYCLES * 2
+/** The PRIMARY AFK check (the connected rule + the first presence sample)
+ *  runs on these cycles — shared by GameLoop and the tick so the two can
+ *  never drift. */
+export const AFK_CHECK_EVERY_CYCLES = 60
+/** The CONFIRM sample runs this many cycles after a primary check (~20 s at
+ *  4 s/cycle): long enough that no page reload spans both samples, short
+ *  enough that a real disconnect is handed over barely later than before. */
+export const PRESENCE_CONFIRM_CYCLES = 5
 
-// ── Client presence ledger (in-memory) ─────────────────────────
-// Wall-clock timestamp of the last DELIBERATE client input per game+player
-// (an action, a chat message, a map ping — NOT the automatic heartbeat).
-// Lets the AFK takeover distinguish "present but between actions" from
-// "gone": someone still touching the game is presence, even when their last
-// drained game action is minutes old.
-const clientInputAt = new Map<string, number>()
-const inputKey = (gameId: string, playerId: string) => `${gameId}:${playerId}`
-
-/** Record a deliberate client input. */
-export function markClientInput(gameId: string, playerId: string): void {
-  clientInputAt.set(inputKey(gameId, playerId), Date.now())
+/** Is (post-increment) `cycle` a PRIMARY check? */
+export function isAfkPrimaryCheck(cycle: number): boolean {
+  return cycle > 0 && cycle % AFK_CHECK_EVERY_CYCLES === 0
 }
 
-/** ms since the player's last deliberate input this game, or null if none yet. */
-export function msSinceClientInput(gameId: string, playerId: string): number | null {
-  const at = clientInputAt.get(inputKey(gameId, playerId))
-  return at == null ? null : Date.now() - at
+/** The primary check a CONFIRM cycle belongs to, or null when `cycle` is not
+ *  a confirm cycle. */
+function confirmedPrimaryCycle(cycle: number): number | null {
+  const primary = cycle - PRESENCE_CONFIRM_CYCLES
+  return isAfkPrimaryCheck(primary) ? primary : null
 }
 
-/** Drop a finished game's presence entries (call alongside BotManager.cleanupGame). */
-export function clearClientInput(gameId: string): void {
-  const prefix = `${gameId}:`
-  for (const key of clientInputAt.keys()) {
-    if (key.startsWith(prefix)) clientInputAt.delete(key)
-  }
+/** Does processCycle run an AFK check on (post-increment) `cycle` — the
+ *  primary or its confirm? The tick samples presence on exactly these. */
+export function isAfkCheckCycle(cycle: number): boolean {
+  return isAfkPrimaryCheck(cycle) || confirmedPrimaryCycle(cycle) !== null
 }
 
 /**
- * Check for AFK players in the game.
- * Called every cycle to track player activity.
+ * Humans worth a presence lookup for the AFK check on `atCycle`: not a bot,
+ * not already taken over, and silent for at least the short threshold by then.
+ * Dead players are included (they may respawn within the cycle). A superset of
+ * what detectAFKPlayers will flag, so nobody it flags goes unsampled.
+ *
+ * On a CONFIRM cycle only the humans the primary sample recorded offline are
+ * asked about again — usually nobody, so usually no Ably call at all.
+ */
+export function presenceCandidates(state: GameState, atCycle: number): string[] {
+  const primary = confirmedPrimaryCycle(atCycle)
+  const missing = primary === null ? null : new Set(state.presenceOffline?.[primary] ?? [])
+  return Object.values(state.players)
+    .filter(
+      (p) =>
+        !isBot(p.id) &&
+        !p.aiControlled &&
+        (missing === null || missing.has(p.id)) &&
+        atCycle - (p.lastActionCycle ?? 0) >= AFK_THRESHOLD_CYCLES,
+    )
+    .map((p) => p.id)
+}
+
+/** Record which sampled humans Ably confirmed NOT present for `cycle`'s AFK
+ *  check. An empty list records nothing (absent ⇒ connected), so the log grows
+ *  only when someone is actually gone. */
+export function withPresenceSample(state: GameState, cycle: number, offline: string[]): GameState {
+  if (offline.length === 0) return state
+  return {
+    ...state,
+    presenceOffline: { ...state.presenceOffline, [cycle]: [...offline].sort() },
+  }
+}
+
+/** Has `playerId` been confirmed gone — absent from Ably presence at the
+ *  primary check AND at this (confirm) cycle? False on any other cycle. */
+export function isConfirmedOffline(state: GameState, playerId: string): boolean {
+  const primary = confirmedPrimaryCycle(state.cycle)
+  if (primary === null) return false
+  const sampled = (cycle: number) => (state.presenceOffline?.[cycle] ?? []).includes(playerId)
+  return sampled(primary) && sampled(state.cycle)
+}
+
+/**
+ * Humans past the short AFK threshold (no deliberate order for
+ * AFK_THRESHOLD_CYCLES). Synthesized standing-order continuations never stamp
+ * lastActionCycle, but ISSUING the standing order does — so a walk or an
+ * auto-attack ordered inside the window counts as activity.
  */
 export function detectAFKPlayers(state: GameState): Array<{ playerId: string; ticksAFK: number }> {
   const afkPlayers: Array<{ playerId: string; ticksAFK: number }> = []
@@ -82,7 +131,7 @@ export function detectAFKPlayers(state: GameState): Array<{ playerId: string; ti
     const lastActionCycle = player.lastActionCycle ?? 0
 
     const ticksSinceAction = state.cycle - lastActionCycle
-    if (ticksSinceAction >= AFK_THRESHOLD_TICKS) {
+    if (ticksSinceAction >= AFK_THRESHOLD_CYCLES) {
       afkPlayers.push({ playerId, ticksAFK: ticksSinceAction })
     }
   }
@@ -91,25 +140,21 @@ export function detectAFKPlayers(state: GameState): Array<{ playerId: string; ti
 }
 
 /**
- * Should a player past the action-AFK threshold actually be replaced by a bot?
+ * Should a player past the short AFK threshold actually be replaced by a bot?
  *
- * `detectAFKPlayers` only knows "no game action for N ticks", which false-
- * positives on a player who is present but idle — reading the shop, watching a
- * fight, typing chat. This gate adds presence:
- *
- *  - Disconnected (no live presence signal): convert — the original rule.
- *  - Connected: convert only when ALL of
+ *  - Disconnected (Ably missed them at BOTH samples of the check — GameLoop
+ *    gates this with isConfirmedOffline): convert.
+ *  - Connected (or unknown): convert only when BOTH
  *      · another human on the team would benefit (converting the only human
- *        in a bots match serves nobody and ruins their practice game),
- *      · no game action for the LONGER connected threshold, and
- *      · no deliberate client input (action/chat/ping) in that same window.
+ *        in a bots match serves nobody and ruins their practice game), and
+ *      · no deliberate order for the LONGER connected threshold.
  */
 export function shouldConvertAFK(
   state: GameState,
   playerId: string,
-  presence: { isConnected: boolean; msSinceInput: number | null },
+  isConnected: boolean,
 ): boolean {
-  if (!presence.isConnected) return true
+  if (!isConnected) return true
 
   const player = state.players[playerId]
   if (!player) return false
@@ -119,13 +164,7 @@ export function shouldConvertAFK(
   )
   if (!hasHumanTeammate) return false
 
-  const ticksSinceAction = state.cycle - (player.lastActionCycle ?? 0)
-  if (ticksSinceAction < CONNECTED_AFK_THRESHOLD_TICKS) return false
-
-  return (
-    presence.msSinceInput == null ||
-    presence.msSinceInput >= CONNECTED_AFK_THRESHOLD_TICKS * CYCLE_DURATION_MS
-  )
+  return state.cycle - (player.lastActionCycle ?? 0) >= CONNECTED_AFK_THRESHOLD_CYCLES
 }
 
 /**
@@ -142,10 +181,9 @@ export function recordLeaverSafe(
 }
 
 /**
- * Integration: track player actions to detect AFK. Kept as a no-op stub —
- * lastActionCycle (stamped directly on GameState by GameLoop) is what
- * detectAFKPlayers actually reads; this hook exists for a future presence
- * signal to plug into without touching GameLoop's call site.
+ * Integration hook GameLoop calls per drained action. A no-op: activity is
+ * lastActionCycle (stamped on GameState by GameLoop) and connection arrives as
+ * state data (presenceOffline, stamped by the tick) — nothing to record here.
  */
 export function markPlayerActiveSafe(_gameId: string, _playerId: string): void {
   // No-op — see module doc.

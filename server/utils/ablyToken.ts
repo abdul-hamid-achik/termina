@@ -7,7 +7,7 @@
  * Deliberately has ZERO dependency on server/utils/ablyRest.ts (built in
  * parallel by another agent for the Workflow tick's server→client publish
  * path) — that module PUBLISHES on behalf of the server; this one mints a
- * SUBSCRIBE-only credential for a browser client's authCallback. Different
+ * subscribe(+own-channel presence) credential for a browser client's authCallback. Different
  * halves of the same Ably account, no shared code needed.
  */
 
@@ -17,15 +17,20 @@ import { createHmac, randomBytes } from 'node:crypto'
 export const ABLY_TOKEN_TTL_MS = 60 * 60 * 1000
 
 /**
- * Subscribe-only capability for one player: their own per-player channel
- * (private state — camera/inventory/etc, whatever gameTick's publish side
- * names it) across any game, plus every game's team-broadcast wildcard.
- * Never grants publish — clients only ever receive cycle state over Ably,
- * actions still go through POST /api/game/action.
+ * Capability for one player: subscribe + PRESENCE on their own per-player
+ * channel (private state — camera/inventory/etc, whatever gameTick's publish
+ * side names it) across any game, plus subscribe-only on every game's
+ * team-broadcast wildcard. Presence is how the AFK takeover tells "connected
+ * but idle" from "gone" (the client enters presence on its own channel, the
+ * tick reads it over REST — see server/services/LeaverSystem.ts); it is
+ * granted on the player's OWN channel only, and Ably binds a presence member
+ * to the token's clientId, so nobody can be "present" on another player's
+ * behalf. Never grants publish — clients only ever receive cycle state over
+ * Ably, actions still go through POST /api/game/action.
  */
 export function buildAblyCapability(playerId: string): Record<string, string[]> {
   return {
-    [`game:*:p:${playerId}`]: ['subscribe'],
+    [`game:*:p:${playerId}`]: ['subscribe', 'presence'],
     'game:*:team:*': ['subscribe'],
   }
 }
