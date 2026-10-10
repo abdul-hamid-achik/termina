@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { seedGame, HUMAN } from './harness'
-import { getBotPlayerIds, isGameBot } from '~~/server/game/ai/BotManager'
+import { getBotPlayerIds, isGameBot, cleanupGame, getBotLane } from '~~/server/game/ai/BotManager'
+import { rehydrateRegistries } from '~~/server/workflows/gameTickCore'
+import type { LiveGameRoster } from '~~/server/db/schema'
+import type { Run } from './harness'
 
 /**
  * Engine-truth coverage for the AFK → bot takeover, driven through the real
@@ -52,5 +55,55 @@ describe('AFK takeover', () => {
     // The bot driver submits actions for the slot, advancing lastActionCycle past
     // the conversion tick — proof a bot, not the (idle) human, is now playing.
     expect((await run.player(HUMAN)).lastActionCycle ?? 0).toBeGreaterThan(atConversion)
+  })
+
+  // PRODUCTION runs each cycle through gameTickCore.runOneTick, which calls
+  // rehydrateRegistries on a possibly fresh instance BEFORE processCycle. The
+  // tests above never do — so they passed while, in prod, the converted human
+  // fell out of the bot set on the very next tick and idled forever.
+  describe('across per-cycle registry rehydration (the production path)', () => {
+    const roster: LiveGameRoster = {
+      players: [
+        { playerId: HUMAN, team: 'chaff', heroId: 'echo', mmr: 1000 },
+        { playerId: 'enemy', team: 'audit', heroId: 'daemon', mmr: 1000 },
+      ],
+    }
+
+    /** One production cycle: rehydrate from the persisted state, then tick. */
+    async function prodTick(run: Run, n: number) {
+      for (let i = 0; i < n; i++) {
+        rehydrateRegistries(run.gameId, roster, await run.state())
+        await run.tick(1)
+      }
+    }
+
+    it('keeps the converted human bot-driven after the registry is rebuilt', async () => {
+      const run = await seedGame('laning')
+      await prodTick(run, 60) // conversion happens on cycle 60
+      expect((await run.player(HUMAN)).aiControlled).toBe(true)
+
+      // A cold instance picks the game up: all in-memory bot state is gone.
+      cleanupGame(run.gameId)
+      expect(isGameBot(run.gameId, HUMAN)).toBe(false)
+
+      const atConversion = (await run.player(HUMAN)).lastActionCycle ?? 0
+      await prodTick(run, 10)
+
+      expect(isGameBot(run.gameId, HUMAN)).toBe(true)
+      expect(getBotPlayerIds(run.gameId)).toContain(HUMAN)
+      // The bot driver kept issuing the slot's actions on later cycles.
+      expect((await run.player(HUMAN)).lastActionCycle ?? 0).toBeGreaterThan(atConversion)
+      // ...and the converted slot keeps a real lane, not a blind default.
+      expect(['seawall', 'coldstore', 'shallows']).toContain(getBotLane(run.gameId, HUMAN))
+    })
+
+    it('does not re-announce the takeover after a rebuild', async () => {
+      const run = await seedGame('laning')
+      await prodTick(run, 120)
+      const takeovers = run.allEvents.filter(
+        (e) => e._tag === 'afk_takeover' && e.playerId === HUMAN,
+      )
+      expect(takeovers).toHaveLength(1)
+    })
   })
 })

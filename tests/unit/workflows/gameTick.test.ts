@@ -157,10 +157,14 @@ describe('gameTick — runOneTick CAS idempotency guard', () => {
     const get = vi.fn().mockResolvedValueOnce(loadedRow).mockResolvedValueOnce(winnerRow)
     const casUpdate = vi.fn().mockResolvedValue(null) // 0 rows affected — stale WHERE cycle = 5
     const deleteFn = vi.fn()
-    const liveGamesRepo: LiveGamesRepo = { get, casUpdate, delete: deleteFn }
+    const liveGamesRepo: LiveGamesRepo = { get, casUpdate, claimRun: vi.fn(), delete: deleteFn }
 
     const drain = vi.fn().mockResolvedValue([])
-    const pendingActionsRepo: PendingActionsRepo = { drain, deleteAll: vi.fn() }
+    const pendingActionsRepo: PendingActionsRepo = {
+      read: drain,
+      deleteByIds: vi.fn().mockResolvedValue(undefined),
+      deleteAll: vi.fn(),
+    }
 
     const runCycle = vi.fn().mockResolvedValue({ state: makeGameState({ cycle: 6 }) })
     const publish = vi.fn().mockResolvedValue(undefined)
@@ -171,7 +175,7 @@ describe('gameTick — runOneTick CAS idempotency guard', () => {
     const result = await runOneTick('g1', deps)
 
     expect(casUpdate).toHaveBeenCalledTimes(1)
-    expect(casUpdate).toHaveBeenCalledWith('g1', 5, expect.anything(), 6)
+    expect(casUpdate).toHaveBeenCalledWith('g1', 5, expect.anything(), 6, undefined)
     // THE guard: no publish happened for this losing execution.
     expect(publish).not.toHaveBeenCalled()
     expect(result.skipped).toBe(true)
@@ -186,9 +190,10 @@ describe('gameTick — runOneTick CAS idempotency guard', () => {
 
     const get = vi.fn().mockResolvedValue(loadedRow)
     const casUpdate = vi.fn().mockResolvedValue(makeRow({ cycle: 6 }))
-    const liveGamesRepo: LiveGamesRepo = { get, casUpdate, delete: vi.fn() }
+    const liveGamesRepo: LiveGamesRepo = { get, casUpdate, claimRun: vi.fn(), delete: vi.fn() }
     const pendingActionsRepo: PendingActionsRepo = {
-      drain: vi.fn().mockResolvedValue([]),
+      read: vi.fn().mockResolvedValue([]),
+      deleteByIds: vi.fn().mockResolvedValue(undefined),
       deleteAll: vi.fn(),
     }
     const runCycle = vi.fn().mockResolvedValue({ state: nextState })
@@ -201,7 +206,7 @@ describe('gameTick — runOneTick CAS idempotency guard', () => {
 
     expect(result.skipped).toBe(false)
     expect(result.cycle).toBe(6)
-    expect(rehydrate).toHaveBeenCalledWith('g1', loadedRow.roster)
+    expect(rehydrate).toHaveBeenCalledWith('g1', loadedRow.roster, expect.anything())
     expect(publish).toHaveBeenCalledTimes(1)
     const specs = publish.mock.calls[0]![0] as Array<{ channel: string }>
     // bot_a1 is filtered out — bots never get an Ably channel.
@@ -240,10 +245,12 @@ describe('gameTick — runOneTick CAS idempotency guard', () => {
     const liveGamesRepo: LiveGamesRepo = {
       get: vi.fn().mockResolvedValue(loadedRow),
       casUpdate: vi.fn().mockResolvedValue(makeRow({ cycle: 6 })),
+      claimRun: vi.fn(),
       delete: vi.fn(),
     }
     const pendingActionsRepo: PendingActionsRepo = {
-      drain: vi.fn().mockResolvedValue([]),
+      read: vi.fn().mockResolvedValue([]),
+      deleteByIds: vi.fn().mockResolvedValue(undefined),
       deleteAll: vi.fn(),
     }
     const publish = vi.fn().mockResolvedValue(undefined)
@@ -298,8 +305,8 @@ describe('gameTick — runOneTick CAS idempotency guard', () => {
     const runCycle = vi.fn()
     const publish = vi.fn()
     const deps: TickDeps = {
-      liveGamesRepo: { get, casUpdate, delete: vi.fn() },
-      pendingActionsRepo: { drain: vi.fn(), deleteAll: vi.fn() },
+      liveGamesRepo: { get, casUpdate, claimRun: vi.fn(), delete: vi.fn() },
+      pendingActionsRepo: { read: vi.fn(), deleteByIds: vi.fn(), deleteAll: vi.fn() },
       runCycle,
       publish,
       rehydrate: vi.fn(),
@@ -317,7 +324,7 @@ describe('gameTick — runOneTick CAS idempotency guard', () => {
     const get = vi.fn().mockResolvedValue(null)
     const deps: TickDeps = {
       liveGamesRepo: { get, casUpdate: vi.fn(), delete: vi.fn() },
-      pendingActionsRepo: { drain: vi.fn(), deleteAll: vi.fn() },
+      pendingActionsRepo: { read: vi.fn(), deleteByIds: vi.fn(), deleteAll: vi.fn() },
       runCycle: vi.fn(),
       publish: vi.fn(),
       rehydrate: vi.fn(),

@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { useDb } from '~~/server/db'
-import { liveGames, pendingActions } from '~~/server/db/schema'
+import { liveGames } from '~~/server/db/schema'
 import { checkRateLimit } from '~~/server/utils/RateLimiter'
 import type { ActionAckMessage } from '~~/shared/types/protocol'
 import { parseWireCommand } from '~~/shared/utils/parseCommand'
@@ -61,6 +61,21 @@ export default defineEventHandler(async (event): Promise<ActionAckMessage> => {
     throw createError({ statusCode: 403, message: 'Not assigned to this game' })
   }
 
+  // An AFK-converted human's slot is bot-controlled for the rest of the match
+  // (no-reclaim): the tick's bot driver submits into the same slot AFTER this
+  // queue drains, so an order accepted here would be acked and then silently
+  // overridden. Refuse it up front — except `surrender`, which the client
+  // still allows converted players to vote on.
+  const slot = (row.state.players as Record<string, { aiControlled?: boolean }> | undefined)?.[
+    playerId
+  ]
+  if (command.type !== 'surrender' && slot?.aiControlled) {
+    throw createError({
+      statusCode: 409,
+      message: 'Your slot was taken over by AI after inactivity; only surrender votes are accepted',
+    })
+  }
+
   const seqEcho = body.clientSeq !== undefined ? { clientSeq: body.clientSeq } : {}
 
   // Mirrors ws.ts's forCycle semantics: an order stamped for a cycle that
@@ -68,27 +83,60 @@ export default defineEventHandler(async (event): Promise<ActionAckMessage> => {
   // refused EXPLICITLY rather than silently rolled into a batch the client
   // didn't aim it at. Unstamped orders (bots, dev tools, older clients)
   // queue for the currently-open cycle unconditionally.
-  if (body.forCycle !== undefined && body.forCycle !== row.cycle) {
-    return {
-      type: 'action_ack',
-      accepted: false,
-      cycle: row.cycle,
-      reason: body.forCycle < row.cycle ? 'late' : 'future',
-      ...seqEcho,
-    }
-  }
-
-  await db.insert(pendingActions).values({
-    gameId: body.gameId,
-    playerId,
-    command,
-    forCycle: body.forCycle ?? null,
+  //
+  // This is the SAME rule gameTickCore.applyDrainedActions applies when it
+  // drains (late = forCycle < the cycle the tick loaded), but a check done on
+  // the row read above and an insert done after it can straddle a tick commit
+  // — the order would be acked "accepted" and then dropped as late. So the
+  // decision is re-made ATOMICALLY with the insert: one statement that only
+  // inserts while the game is still live and still at `forCycle`. (A residual
+  // window remains between a tick READING the queue and COMMITTING its cycle,
+  // ~one processCycle; an order landing in it is logged and dropped as late by
+  // the next tick — closing that needs the tick to hold a lock across the
+  // whole cycle.)
+  const ack = (accepted: boolean, cycle: number, reason?: 'late' | 'future'): ActionAckMessage => ({
+    type: 'action_ack',
+    accepted,
+    cycle,
+    ...(reason ? { reason } : {}),
+    ...seqEcho,
   })
 
-  return {
-    type: 'action_ack',
-    accepted: true,
-    cycle: row.cycle,
-    ...seqEcho,
+  // A finished game takes no more orders (the final state is in flight and the
+  // row is about to be finalized+deleted). 'late' is the closest wire reason:
+  // the batch this order was aimed at has committed.
+  if (row.state.phase === 'ended') {
+    return ack(false, row.cycle, 'late')
   }
+
+  if (body.forCycle !== undefined && body.forCycle !== row.cycle) {
+    return ack(false, row.cycle, body.forCycle < row.cycle ? 'late' : 'future')
+  }
+
+  const stamped = body.forCycle ?? null
+  const inserted = await db.execute(sql`
+    insert into pending_actions (game_id, player_id, command, for_cycle)
+    select ${body.gameId}, ${playerId}, ${JSON.stringify(command)}::jsonb, ${stamped}::integer
+    where exists (
+      select 1 from live_games
+      where game_id = ${body.gameId}
+        and coalesce(state->>'phase', '') <> 'ended'
+        and (${stamped}::integer is null or cycle = ${stamped}::integer)
+    )
+    returning id
+  `)
+  if (inserted.length === 0) {
+    // Lost a race with a tick commit (or the game ended / was finalized).
+    // Re-read to say honestly why.
+    const [now] = await db
+      .select({ cycle: liveGames.cycle, state: liveGames.state })
+      .from(liveGames)
+      .where(eq(liveGames.gameId, body.gameId))
+      .limit(1)
+    if (!now) throw createError({ statusCode: 404, message: 'Game not found' })
+    if (now.state.phase === 'ended') return ack(false, now.cycle, 'late')
+    return ack(false, now.cycle, stamped !== null && stamped < now.cycle ? 'late' : 'future')
+  }
+
+  return ack(true, row.cycle)
 })

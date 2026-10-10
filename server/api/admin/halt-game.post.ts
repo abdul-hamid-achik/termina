@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import { requireAdmin } from '~~/server/utils/admin'
 import { useDb } from '~~/server/db'
 import { liveGames } from '~~/server/db/schema'
-import { finalizeGame } from '~~/server/workflows/gameTickCore'
+import { finalizeGame, forceDeleteGame } from '~~/server/workflows/gameTickCore'
 import { ablyPublishBatch, type AblyBatchSpec } from '~~/server/utils/ablyRest'
 import { isBot } from '~~/server/game/ai/BotManager'
 import { matchLog } from '~~/server/utils/log'
@@ -12,8 +12,9 @@ import { matchLog } from '~~/server/utils/log'
  * game (`{all: true}`).
  *
  * Mechanics: flip the row's jsonb state to phase 'ended' under the same
- * cycle-CAS the tick workflow uses (a mid-tick write can't be clobbered —
- * on a lost race we reload and retry once), tell the human players
+ * cycle-CAS the tick workflow uses, bumping the cycle so an in-flight tick that
+ * loaded the row earlier loses its own CAS instead of undoing the halt (on a
+ * lost race here we reload and retry), tell the human players
  * (announcement + a NOT_ASSIGNED error, which the client already treats as
  * "this match is gone, back to the lobby"), then run the standard
  * finalizeGame — match history persists for non-practice games (winner
@@ -36,27 +37,45 @@ export default defineEventHandler(async (event) => {
     : [gameId!]
 
   const halted: string[] = []
+  // Halted and freed, but the match could not be recorded (finalize failed).
+  const unrecorded: string[] = []
   for (const id of targets) {
     const ok = await haltOne(db, id)
-    if (ok) halted.push(id)
+    if (ok === 'recorded') halted.push(id)
+    else if (ok === 'unrecorded') {
+      halted.push(id)
+      unrecorded.push(id)
+    }
   }
 
-  matchLog.info('Admin halted live game(s)', { adminId, halted, requested: targets })
-  return { halted }
+  matchLog.info('Admin halted live game(s)', { adminId, halted, unrecorded, requested: targets })
+  return { halted, unrecorded }
 })
 
-async function haltOne(db: ReturnType<typeof useDb>, gameId: string): Promise<boolean> {
+async function haltOne(
+  db: ReturnType<typeof useDb>,
+  gameId: string,
+): Promise<'recorded' | 'unrecorded' | 'missed'> {
   // Two attempts: the second absorbs losing one cycle-CAS race to an
   // in-flight tick (the workflow advances at most once per 4s window).
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     const [row] = await db.select().from(liveGames).where(eq(liveGames.gameId, gameId)).limit(1)
-    if (!row) return false
+    if (!row) return 'missed'
 
     const alreadyEnded = (row.state as { phase?: string }).phase === 'ended'
     if (!alreadyEnded) {
+      // Bump the cycle (column AND state copy) along with the phase: a tick
+      // that loaded this row before the halt must LOSE its cycle-CAS, or it
+      // would write 'playing' straight back over the halt. The run's next
+      // tick then sees phase 'ended' and finalizes.
+      const haltedCycle = row.cycle + 1
       const updated = await db
         .update(liveGames)
-        .set({ state: { ...row.state, phase: 'ended' }, updatedAt: new Date() })
+        .set({
+          state: { ...row.state, phase: 'ended', cycle: haltedCycle },
+          cycle: haltedCycle,
+          updatedAt: new Date(),
+        })
         .where(and(eq(liveGames.gameId, gameId), eq(liveGames.cycle, row.cycle)))
         .returning({ gameId: liveGames.gameId })
       if (updated.length === 0) continue // lost the race — reload and retry
@@ -88,8 +107,21 @@ async function haltOne(db: ReturnType<typeof useDb>, gameId: string): Promise<bo
       matchLog.warn('Admin halt: Ably notify failed', { gameId, error: String(err) })
     }
 
-    await finalizeGame(gameId)
-    return true
+    // Halting must ALWAYS free the players. finalizeGame throws when the match
+    // can't be recorded (Neon blip, FK, oversized replay); falling back to a
+    // bare delete loses that one match's history but beats a row stuck at
+    // phase 'ended'.
+    try {
+      await finalizeGame(gameId)
+      return 'recorded'
+    } catch (err) {
+      matchLog.error('Admin halt: finalize failed — deleting the game without recording it', {
+        gameId,
+        error: String(err),
+      })
+      await forceDeleteGame(gameId)
+      return 'unrecorded'
+    }
   }
-  return false
+  return 'missed'
 }

@@ -1,6 +1,7 @@
 import type { TeamId } from '~~/shared/types/game'
 import { HEROES } from '~~/shared/constants/heroes'
 import type { HeroRole } from '~~/shared/types/hero'
+import { ZONE_MAP } from '~~/shared/constants/zones'
 // Value import (function, used only at runtime in cleanupGame) — BotAI imports
 // getBotDifficultyConfig back from here, but the cycle is benign: neither side
 // invokes the other during module evaluation.
@@ -237,6 +238,52 @@ export interface RegisterBotsOptions {
    * when `forceLane` is set (forceLane wins outright).
    */
   availableLanes?: string[]
+  /**
+   * Humans an AFK takeover already converted (PlayerState.aiControlled). Bot
+   * membership is derived from the `bot_` id prefix, so a rebuilt registry
+   * (every Workflow tick runs on a possibly fresh instance) would silently drop
+   * them again; callers pass the converted slots here so they stay bot-driven.
+   * `zone` seeds the lane (the lane they were playing, else the nearest one).
+   */
+  aiControlled?: { playerId: string; team: TeamId; heroId: string | null; zone?: string }[]
+}
+
+const ALL_LANES = ['seawall', 'coldstore', 'shallows']
+
+/** The lane a converted slot should keep playing: the lane of the zone it is
+ *  standing in, else the lane of the nearest lane zone (BFS over adjacency),
+ *  else its hero role's preferred lane. Always one of `lanePool`. */
+export function laneForZone(
+  zoneId: string | undefined,
+  role: HeroRole,
+  lanePool: string[] = ALL_LANES,
+): string {
+  const fallback = () =>
+    LANE_PRIORITY_BY_ROLE[role].find((l) => lanePool.includes(l)) ?? lanePool[0] ?? 'coldstore'
+  if (!zoneId || !ZONE_MAP[zoneId]) return fallback()
+  const seen = new Set<string>([zoneId])
+  let frontier = [zoneId]
+  // Bases/anchors touch all three lanes at once, so a depth-1 hit there is a
+  // tie, not a signal — skip straight to the role preference for them.
+  const startType = ZONE_MAP[zoneId]!.type
+  if (startType === 'base' || startType === 'anchor') return fallback()
+  while (frontier.length > 0) {
+    const hits: string[] = []
+    const next: string[] = []
+    for (const id of frontier) {
+      const lane = ZONE_MAP[id]?.lane
+      if (lane && lanePool.includes(lane)) hits.push(lane)
+      for (const adj of ZONE_MAP[id]?.adjacentTo ?? []) {
+        if (!seen.has(adj)) {
+          seen.add(adj)
+          next.push(adj)
+        }
+      }
+    }
+    if (hits.length > 0) return hits.includes(fallback()) ? fallback() : hits[0]!
+    frontier = next
+  }
+  return fallback()
 }
 
 export function registerBots(
@@ -274,6 +321,17 @@ export function registerBots(
   } else {
     assignLanesByRole(chaffBots, laneMap, 'chaff', opts.availableLanes)
     assignLanesByRole(auditBots, laneMap, 'audit', opts.availableLanes)
+  }
+
+  for (const c of opts.aiControlled ?? []) {
+    if (botIds.has(c.playerId)) continue
+    botIds.add(c.playerId)
+    difficultyMap.set(c.playerId, difficulty)
+    const pool = opts.availableLanes ?? ALL_LANES
+    laneMap.set(
+      c.playerId,
+      opts.forceLane ?? laneForZone(c.zone, getHeroRole(c.playerId, c.heroId), pool),
+    )
   }
 
   gameBots.set(gameId, botIds)

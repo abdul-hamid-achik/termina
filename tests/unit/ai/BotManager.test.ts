@@ -11,6 +11,7 @@ import {
   cleanupGame,
   difficultyForMmr,
   parseBotDifficulty,
+  laneForZone,
   BOT_DIFFICULTY_CONFIGS,
 } from '~~/server/game/ai/BotManager'
 import type { BotDifficulty } from '~~/server/game/ai/BotManager'
@@ -357,6 +358,72 @@ describe('BotManager', () => {
       for (const id of ids) {
         expect(id.startsWith('bot_')).toBe(true)
       }
+    })
+  })
+
+  describe('registerBots — AFK-converted (aiControlled) slots', () => {
+    const roster = [
+      { playerId: 'human1', team: 'chaff' as const, heroId: 'echo' },
+      { playerId: 'bot_x', team: 'audit' as const, heroId: 'daemon' },
+    ]
+
+    it('keeps a converted human in the bot set across a registry rebuild', () => {
+      const gameId = 'reg-aictl-1'
+      // Without aiControlled the rebuild only knows `bot_` ids (the old bug).
+      registerBots(gameId, roster, 'medium')
+      expect(isGameBot(gameId, 'human1')).toBe(false)
+
+      registerBots(gameId, roster, {
+        difficulty: 'hard',
+        aiControlled: [
+          { playerId: 'human1', team: 'chaff', heroId: 'echo', zone: 'shallows-t1-chaff' },
+        ],
+      })
+
+      expect(isGameBot(gameId, 'human1')).toBe(true)
+      expect(getBotPlayerIds(gameId).sort()).toEqual(['bot_x', 'human1'])
+      expect(getBotDifficulty(gameId, 'human1')).toBe('hard')
+      cleanupGame(gameId)
+    })
+
+    it('gives the converted slot the lane it is standing in, not the hardcoded coldstore', () => {
+      const gameId = 'reg-aictl-2'
+      registerBots(gameId, roster, {
+        aiControlled: [
+          { playerId: 'human1', team: 'chaff', heroId: 'echo', zone: 'shallows-t1-chaff' },
+        ],
+      })
+      expect(getBotLane(gameId, 'human1')).toBe('shallows')
+      cleanupGame(gameId)
+    })
+
+    it('honours forceLane for converted slots (one-lane tutorial map)', () => {
+      const gameId = 'reg-aictl-3'
+      registerBots(gameId, roster, {
+        forceLane: 'coldstore',
+        aiControlled: [
+          { playerId: 'human1', team: 'chaff', heroId: 'echo', zone: 'shallows-t1-chaff' },
+        ],
+      })
+      expect(getBotLane(gameId, 'human1')).toBe('coldstore')
+      cleanupGame(gameId)
+    })
+  })
+
+  describe('laneForZone', () => {
+    it('uses the zone own lane, the nearest lane for lane-less zones, and a role lane in base', () => {
+      expect(laneForZone('seawall-t2-chaff', 'carry')).toBe('seawall')
+      expect(laneForZone('shallows-cross', 'carry')).toBe('shallows')
+      // base touches every lane: role preference decides (carry -> shallows)
+      expect(laneForZone('rookery-terminal', 'carry')).toBe('shallows')
+      expect(laneForZone(undefined, 'tank')).toBe('seawall')
+      expect(laneForZone('nowhere', 'support')).toBe('coldstore')
+    })
+
+    it('never returns a lane outside the available pool', () => {
+      expect(laneForZone('shallows-t1-chaff', 'carry', ['seawall', 'coldstore'])).not.toBe(
+        'shallows',
+      )
     })
   })
 })
