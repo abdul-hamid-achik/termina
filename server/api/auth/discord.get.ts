@@ -61,7 +61,14 @@ export default defineOAuthDiscordEventHandler({
       // Already linked — ignore duplicate
     }
 
-    await setUserSession(event, {
+    // Swap the guest session for the real identity. NOT setUserSession: that deep-merges
+    // (defu), so a guest's `user.guest: true` survived and the nav kept showing [GUEST].
+    // replaceUserSession is only clear() + update(), and h3's clear() does not drop the
+    // request cookie that update() re-reads: the result is a TOP-LEVEL shallow merge
+    // (`user` is replaced wholesale, any other key would survive). So every top-level
+    // key a session can carry (`user`, `secure`) is set explicitly here.
+    await replaceUserSession(event, {
+      secure: undefined,
       user: {
         id: player.id,
         username: player.username,

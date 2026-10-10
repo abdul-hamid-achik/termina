@@ -33,21 +33,40 @@ export const useAuthStore = defineStore('auth', () => {
   // Keep backward compat
   const login = loginOAuth
 
+  /**
+   * A guest who signs in or registers becomes a DIFFERENT player id (the guest
+   * exists only in its session cookie — no DB row). Whatever game/lobby state
+   * the tab holds is keyed by the guest id and would read as someone else's, so
+   * drop it exactly as logout does. No-op for a non-guest (a real user logging
+   * in over a real session keeps their behaviour).
+   */
+  function dropGuestState(wasGuest: boolean) {
+    if (!wasGuest) return
+    const game = useGameStore()
+    game.reset()
+    game.playerId = null
+    useLobbyStore().reset()
+  }
+
   async function loginWithCredentials(username: string, password: string) {
+    const wasGuest = user.value?.guest === true
     const res = await $fetch('/api/auth/login', {
       method: 'POST',
       body: { username, password },
     })
     await fetchSession()
+    dropGuestState(wasGuest)
     return res
   }
 
   async function register(username: string, password: string, email?: string) {
+    const wasGuest = user.value?.guest === true
     const res = await $fetch('/api/auth/register', {
       method: 'POST',
       body: { username, password, email: email || undefined },
     })
     await fetchSession()
+    dropGuestState(wasGuest)
     return res
   }
 

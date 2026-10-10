@@ -101,6 +101,88 @@ describe('Auth Store', () => {
     })
   })
 
+  describe('a guest who signs in or registers', () => {
+    const guest = { id: 'guest_a1b2c3d4e5f6', username: 'GUEST-A1B2', guest: true }
+    const real = { id: 'local_9f2c1e', username: 'newplayer' }
+
+    /** The session as the SERVER now reports it after the POST (cookie replaced). */
+    function serverReplacesSession() {
+      mockFetchSession.mockImplementation(async () => {
+        mockUser.value = real
+        mockLoggedIn.value = true
+      })
+    }
+
+    it('register: the nav-facing user is the registered one right after the POST, not the cached guest', async () => {
+      mockUser.value = guest
+      mockLoggedIn.value = true
+      mockFetch.mockResolvedValue({ user: real })
+      serverReplacesSession()
+      const store = useAuthStore()
+
+      await store.register('newplayer', 'longenough1')
+
+      expect(mockFetchSession).toHaveBeenCalledTimes(1)
+      expect(store.user).toEqual(real)
+      expect((store.user as { guest?: boolean }).guest).toBeUndefined()
+    })
+
+    it('register: the guest id the game store was keyed by is dropped (it is a different player now)', async () => {
+      mockUser.value = guest
+      mockFetch.mockResolvedValue({ user: real })
+      serverReplacesSession()
+      const game = useGameStore()
+      game.gameId = 'prac_1'
+      game.playerId = guest.id
+
+      await useAuthStore().register('newplayer', 'longenough1')
+
+      expect(game.gameId).toBeNull()
+      expect(game.playerId).toBeNull()
+    })
+
+    it('login: same — the guest state does not leak into the signed-in player', async () => {
+      mockUser.value = guest
+      mockFetch.mockResolvedValue({ user: real })
+      serverReplacesSession()
+      const game = useGameStore()
+      game.gameId = 'prac_1'
+      game.playerId = guest.id
+
+      await useAuthStore().loginWithCredentials('newplayer', 'longenough1')
+
+      expect(game.gameId).toBeNull()
+      expect(game.playerId).toBeNull()
+    })
+
+    it('a REAL user logging in keeps their game state (only a guest switch resets it)', async () => {
+      mockUser.value = real
+      mockFetch.mockResolvedValue({ user: real })
+      mockFetchSession.mockResolvedValue(undefined)
+      const game = useGameStore()
+      game.gameId = 'g1'
+      game.playerId = real.id
+
+      await useAuthStore().loginWithCredentials('newplayer', 'longenough1')
+
+      expect(game.gameId).toBe('g1')
+      expect(game.playerId).toBe(real.id)
+    })
+
+    it('a failed register leaves the guest (and their game) untouched', async () => {
+      mockUser.value = guest
+      mockFetch.mockRejectedValue({ statusCode: 409, message: 'Username already taken' })
+      const game = useGameStore()
+      game.gameId = 'prac_1'
+      game.playerId = guest.id
+
+      await expect(useAuthStore().register('taken', 'longenough1')).rejects.toBeDefined()
+
+      expect(mockFetchSession).not.toHaveBeenCalled()
+      expect(game.gameId).toBe('prac_1')
+    })
+  })
+
   describe('logout', () => {
     it('clears session and navigates to home', async () => {
       mockClearSession.mockResolvedValue(undefined)
