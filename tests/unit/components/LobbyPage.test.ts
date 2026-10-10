@@ -268,4 +268,129 @@ describe('lobby page', () => {
       wrapper.unmount()
     })
   })
+
+  describe('queue state recovery', () => {
+    const fetchError = (statusCode: number, message: string) =>
+      Object.assign(new Error(message), { statusCode, data: { message } })
+
+    /** $fetch double with a scripted status-neon sequence (last entry repeats). */
+    function stubFetch(opts: {
+      join: () => Promise<unknown>
+      status: Array<{ status: string; gameId?: string; queueSize?: number }>
+    }) {
+      let i = 0
+      vi.stubGlobal(
+        '$fetch',
+        vi.fn((url: string, o: { method?: string; body?: unknown } = {}) => {
+          apiCalls.push([url, o])
+          if (url === '/api/queue/join-neon') return opts.join()
+          if (url === '/api/queue/status-neon') {
+            return Promise.resolve(opts.status[Math.min(i++, opts.status.length - 1)])
+          }
+          if (url === '/api/queue/leave-neon') return Promise.resolve({ success: true })
+          return Promise.reject(new Error('no session'))
+        }),
+      )
+    }
+
+    it('a 503 from join ("still in the queue") adopts the server queue state and resumes polling', async () => {
+      stubFetch({
+        join: () =>
+          Promise.reject(fetchError(503, 'Match found but the game could not be started')),
+        // 1st call = the mount-time recovery (nothing yet); 2nd = after the 503.
+        status: [{ status: 'idle' }, { status: 'searching', queueSize: 3 }],
+      })
+      const wrapper = mountLobby()
+      await flushPromises()
+
+      await wrapper.get('[data-testid="find-match"]').trigger('click')
+      await flushPromises()
+
+      expect(useLobbyStore().queueStatus).toBe('searching')
+      expect(useLobbyStore().lastError).toBeNull()
+      wrapper.unmount()
+    })
+
+    it('a 409 from join with a live game jumps into that game', async () => {
+      stubFetch({
+        join: () => Promise.reject(fetchError(409, 'Already in an active game')),
+        status: [{ status: 'idle' }, { status: 'found', gameId: 'g_live' }],
+      })
+      const wrapper = mountLobby()
+      await flushPromises()
+
+      await wrapper.get('[data-testid="find-match"]').trigger('click')
+      await flushPromises()
+
+      expect(routerPush).toHaveBeenCalledWith('/play')
+      wrapper.unmount()
+    })
+
+    it('a join error that the server cannot reconcile (idle) is still shown', async () => {
+      stubFetch({
+        join: () => Promise.reject(fetchError(409, 'Already in queue')),
+        status: [{ status: 'idle' }],
+      })
+      const wrapper = mountLobby()
+      await flushPromises()
+
+      await wrapper.get('[data-testid="find-match"]').trigger('click')
+      await flushPromises()
+
+      expect(useLobbyStore().queueStatus).toBe('idle')
+      expect(wrapper.get('[data-testid="queue-error"]').text()).toContain('Already in queue')
+      wrapper.unmount()
+    })
+
+    it('does not spin on "searching" forever: a run of idle polls drops back to idle with a message', async () => {
+      vi.useFakeTimers()
+      try {
+        stubFetch({
+          join: () => Promise.resolve({ success: true, queueSize: 1 }),
+          status: [{ status: 'idle' }],
+        })
+        const wrapper = mountLobby()
+        await flushPromises()
+        await wrapper.get('[data-testid="find-match"]').trigger('click')
+        await flushPromises()
+        expect(useLobbyStore().queueStatus).toBe('searching')
+
+        await vi.advanceTimersByTimeAsync(2_000 * 6)
+        await flushPromises()
+
+        expect(useLobbyStore().queueStatus).toBe('idle')
+        expect(wrapper.get('[data-testid="queue-error"]').text()).toContain('dropped out')
+        wrapper.unmount()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('tolerates a transient idle (match formed, game row not written yet) and then follows to the game', async () => {
+      vi.useFakeTimers()
+      try {
+        stubFetch({
+          join: () => Promise.resolve({ success: true, queueSize: 1 }),
+          // [0] mount recovery, [1..2] idle polls, [3] found.
+          status: [
+            { status: 'idle' },
+            { status: 'idle' },
+            { status: 'idle' },
+            { status: 'found', gameId: 'g_late' },
+          ],
+        })
+        const wrapper = mountLobby()
+        await flushPromises()
+        await wrapper.get('[data-testid="find-match"]').trigger('click')
+        await flushPromises()
+        await vi.advanceTimersByTimeAsync(2_000 * 4)
+        await flushPromises()
+
+        expect(routerPush).toHaveBeenCalledWith('/play')
+        wrapper.unmount()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+  })
 })

@@ -1,5 +1,6 @@
 import { Effect } from 'effect'
 import { getGameRuntime } from '~~/server/plugins/game-server'
+import { secretsMatch } from '~~/server/utils/authTokens'
 
 /**
  * Production season rotation, gated by a shared admin secret.
@@ -19,7 +20,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const providedKey = getHeader(event, 'x-admin-key')
-  if (!providedKey || providedKey !== configuredKey) {
+  if (!secretsMatch(providedKey, configuredKey)) {
     throw createError({ statusCode: 401, message: 'Invalid admin key' })
   }
 

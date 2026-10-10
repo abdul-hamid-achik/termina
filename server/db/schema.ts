@@ -418,3 +418,36 @@ export const authTokens = pgTable('auth_tokens', {
 
 export type AuthToken = typeof authTokens.$inferSelect
 export type NewAuthToken = typeof authTokens.$inferInsert
+
+// ════════════════════════════════════════════════════════════════════
+// Parties (Neon replacement for party.ts's module-level Maps) — a party
+// created on one Vercel instance must be visible to every other. See
+// server/game/matchmaking/party.ts. `party_members.player_id` is the PRIMARY
+// KEY, so "one party per player" is enforced by the database; deleting a
+// party cascades to its members. Additive → `drizzle-kit push` safe.
+// `username` + `mmr` are snapshots taken when the player joined (the lobby
+// shows names, start-coop seeds the roster MMR), same as queue_entries.
+// ════════════════════════════════════════════════════════════════════
+
+export const parties = pgTable('parties', {
+  code: text('code').primaryKey(),
+  leaderId: text('leader_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const partyMembers = pgTable(
+  'party_members',
+  {
+    playerId: text('player_id').primaryKey(),
+    code: text('code')
+      .notNull()
+      .references(() => parties.code, { onDelete: 'cascade' }),
+    username: text('username').notNull(),
+    mmr: integer('mmr').notNull(),
+    joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('party_members_code_idx').on(table.code)],
+)
+
+export type PartyRow = typeof parties.$inferSelect
+export type PartyMemberRow = typeof partyMembers.$inferSelect

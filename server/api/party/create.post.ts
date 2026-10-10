@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const player = await Effect.runPromise(runtime.dbService.getPlayer(playerId))
-  const party = createParty({ playerId, username, mmr: player?.mmr ?? 1000 })
+  const party = await createParty({ playerId, username, mmr: player?.mmr ?? 1000 })
 
   return { party }
 })

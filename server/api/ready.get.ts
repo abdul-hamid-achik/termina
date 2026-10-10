@@ -64,6 +64,8 @@ export const REQUIRED_COLUMNS: ReadonlyArray<{ readonly table: string; readonly 
     { table: 'pending_actions', column: 'for_cycle' },
     { table: 'queue_entries', column: 'joined_at' },
     { table: 'auth_tokens', column: 'expires_at' },
+    { table: 'parties', column: 'leader_id' },
+    { table: 'party_members', column: 'player_id' },
   ]
 
 interface SchemaContractResult {

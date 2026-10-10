@@ -4,6 +4,7 @@ import { queueEntries } from '~~/server/db/schema'
 import { checkQueueStatusNeon } from '~~/server/game/matchmaking/queueNeon'
 import { startFormedMatch } from '~~/server/game/matchmaking/matchStart'
 import { findLiveGameForPlayer } from '~~/server/game/liveGame'
+import { matchLog } from '~~/server/utils/log'
 
 // Mirrors queueNeon.ts's private BOT_FILL_WAIT_MS (10s) — kept as a literal
 // copy, not imported, since it's module-private there (same "mirror, don't
@@ -28,22 +29,13 @@ export type StatusNeonResponse =
  *     match formed), so checking the queue table first would incorrectly
  *     report 'idle'.
  *  2. checkQueueStatusNeon — reports 'searching' (with an opportunistic
- *     bot-backfill retry baked in) or 'matched'. On 'matched', THIS call
- *     starts the live game (mirrors join-neon.post.ts) — the natural place
- *     for it, since checkQueueStatusNeon is what tripped the match into
- *     existing just now.
- *
- * KNOWN GAP (inherited from queueNeon.ts, not introduced here): the
- * MMR-range-widening branch of tryFormMatchNeon picks a sliding window over
- * the queue and can, when the queue holds MORE than one match's worth of
- * players, form a match that excludes the very player whose poll triggered
- * it. That player's own call then reports 'searching' with no idea a match
- * formed elsewhere — but every player who WAS matched still gets picked up
- * correctly by their own next poll's live_games check above (step 1), so
- * nobody is left holding a phantom match. Only the excluded caller polls
- * once "for nothing". A real fix belongs in queueNeon.ts's window search
- * (always include the specific playerId's row in whichever window is
- * chosen), out of scope for this wiring pass.
+ *     bot-backfill retry baked in), 'matched' (the poller is in the match
+ *     that just formed) or 'formed_other' (a match formed during this poll
+ *     but the poller is not in it — e.g. a straggler fill or MMR window that
+ *     excludes them). EVERY formed match is started here: its queue rows are
+ *     already deleted, so skipping the start would strand its players with no
+ *     game and no queue row. The poller gets `found` only for its own match;
+ *     otherwise it keeps `searching`.
  */
 export default defineEventHandler(async (event): Promise<StatusNeonResponse> => {
   const session = await getUserSession(event)
@@ -55,21 +47,42 @@ export default defineEventHandler(async (event): Promise<StatusNeonResponse> => 
 
   const status = await checkQueueStatusNeon(playerId)
 
-  if (status.status === 'matched') {
-    const started = await startFormedMatch(status.match)
-    return { status: 'found', gameId: started.gameId }
+  if (status.status === 'matched' || status.status === 'formed_other') {
+    // On a failed start, startFormedMatch has already put the matched players
+    // back in the queue.
+    let started: Awaited<ReturnType<typeof startFormedMatch>>
+    try {
+      started = await startFormedMatch(status.match)
+    } catch (err) {
+      matchLog.error('Live game start failed (from status poll) — players requeued', {
+        error: err instanceof Error ? err.message : String(err),
+      })
+      // Surface a 503 to a poller whose OWN match failed; a poller outside the
+      // match is still legitimately searching.
+      if (status.status === 'matched') {
+        throw createError({
+          statusCode: 503,
+          message: 'Match found but the game could not be started — you are still in the queue',
+        })
+      }
+      return searchingResponse(playerId, status.queueSize)
+    }
+    if (status.status === 'matched') return { status: 'found', gameId: started.gameId }
+    return searchingResponse(playerId, status.queueSize)
   }
 
-  if (status.status === 'searching') {
-    const db = useDb()
-    const [row] = await db
-      .select({ joinedAt: queueEntries.joinedAt })
-      .from(queueEntries)
-      .where(eq(queueEntries.playerId, playerId))
-      .limit(1)
-    const botFillDue = row ? Date.now() - row.joinedAt.getTime() >= BOT_FILL_WAIT_MS : false
-    return { status: 'searching', queueSize: status.queueSize, botFillDue }
-  }
+  if (status.status === 'searching') return searchingResponse(playerId, status.queueSize)
 
   return { status: 'idle' }
 })
+
+async function searchingResponse(playerId: string, queueSize: number): Promise<StatusNeonResponse> {
+  const db = useDb()
+  const [row] = await db
+    .select({ joinedAt: queueEntries.joinedAt })
+    .from(queueEntries)
+    .where(eq(queueEntries.playerId, playerId))
+    .limit(1)
+  const botFillDue = row ? Date.now() - row.joinedAt.getTime() >= BOT_FILL_WAIT_MS : false
+  return { status: 'searching', queueSize, botFillDue }
+}

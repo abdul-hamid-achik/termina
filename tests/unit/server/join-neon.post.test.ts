@@ -35,9 +35,13 @@ vi.mock('~~/server/db', () => ({ useDb: () => dbMock }))
 
 const joinQueueMock = vi.fn()
 const isPlayerInQueueMock = vi.fn(async () => false)
+const queueSizeMock = vi.fn(async () => 4)
 vi.mock('~~/server/game/matchmaking/queueNeon', () => ({
   joinQueue: (...args: unknown[]) => joinQueueMock(...args),
   isPlayerInQueue: (...args: unknown[]) => isPlayerInQueueMock(...args),
+  queueSize: (...args: unknown[]) => queueSizeMock(...args),
+  rosterIncludes: (m: { roster: { playerId: string }[] }, id: string) =>
+    m.roster.some((p) => p.playerId === id),
 }))
 
 const startFormedMatchMock = vi.fn(async () => ({ gameId: 'q_1' }))
@@ -147,5 +151,39 @@ describe('POST /api/queue/join-neon', () => {
 
     expect(startFormedMatchMock).toHaveBeenCalledWith(match)
     expect(result).toEqual({ success: true, queueSize: 0, gameId: 'q_1' })
+  })
+
+  // Defect: a join that forms a match the joiner is NOT in (straggler fill / MMR
+  // window) used to return someone else's gameId, and the match was never
+  // started on the other path.
+  it('starts a formed match the joiner is NOT in, but returns no gameId (joiner still searching)', async () => {
+    const match = {
+      mode: '1v1',
+      players: [],
+      bots: [],
+      roster: [
+        { playerId: 'other1', username: 'x', mmr: 1000, mode: '1v1' },
+        { playerId: 'bot_1', username: 'b', mmr: 1000, mode: '1v1' },
+      ],
+    }
+    joinQueueMock.mockResolvedValue({ matched: true, match })
+
+    const result = await handler(makeEvent())
+
+    expect(startFormedMatchMock).toHaveBeenCalledWith(match)
+    expect(result).toEqual({ success: true, queueSize: 4 })
+    expect(result).not.toHaveProperty('gameId')
+  })
+
+  it("does not 503 the joiner when someone else's formed match fails to start", async () => {
+    const match = {
+      mode: '1v1',
+      players: [],
+      bots: [],
+      roster: [{ playerId: 'other1', username: 'x', mmr: 1000, mode: '1v1' }],
+    }
+    joinQueueMock.mockResolvedValue({ matched: true, match })
+    startFormedMatchMock.mockRejectedValue(new Error('boom'))
+    await expect(handler(makeEvent())).resolves.toEqual({ success: true, queueSize: 4 })
   })
 })

@@ -10,13 +10,22 @@ interface TokenRow {
 
 let store: Map<string, TokenRow>
 
-// authTokens.ts only ever calls `eq(authTokens.token, token)`, so `eq` just
-// needs to hand the token value back to the fake `where` below — no real SQL
-// AST needed. `relations` (used by server/db/schema.ts's table definitions)
-// must stay real, so this partially mocks rather than replacing the module.
+// authTokens.ts only ever calls `and(eq(authTokens.token, t), eq(authTokens.purpose, p))`,
+// so `eq`/`and` just need to hand the column name + value back to the fake
+// `where` below — no real SQL AST needed. `relations` (used by
+// server/db/schema.ts's table definitions) must stay real, so this partially
+// mocks rather than replacing the module.
+interface FakeCond {
+  column: string
+  value: string
+}
 vi.mock('drizzle-orm', async (importOriginal) => {
   const actual = await importOriginal<typeof DrizzleOrm>()
-  return { ...actual, eq: (_column: unknown, value: string) => ({ value }) }
+  return {
+    ...actual,
+    eq: (column: { name: string }, value: string) => ({ column: column.name, value }),
+    and: (...conds: FakeCond[]) => conds,
+  }
 })
 
 vi.mock('~~/server/db', () => ({
@@ -27,11 +36,17 @@ vi.mock('~~/server/db', () => ({
       },
     }),
     delete: () => ({
-      where: (cond: { value: string }) => ({
+      where: (cond: FakeCond | FakeCond[]) => ({
         returning: async () => {
-          const row = store.get(cond.value)
+          const conds = Array.isArray(cond) ? cond : [cond]
+          const byToken = conds.find((c) => c.column === 'token')!.value
+          const row = store.get(byToken)
           if (!row) return []
-          store.delete(cond.value)
+          // Honour every predicate the query sends (token AND purpose) —
+          // a row that does not satisfy them is NOT deleted.
+          const purpose = conds.find((c) => c.column === 'purpose')
+          if (purpose && row.purpose !== purpose.value) return []
+          store.delete(byToken)
           return [row]
         },
       }),
@@ -73,11 +88,17 @@ describe('authTokens', () => {
   it('namespaces reset vs verify tokens (not interchangeable)', async () => {
     const reset = await createResetToken('player_3')
     const verify = await createVerifyToken('player_3')
-    // A reset token can't be redeemed as a verify token, and vice-versa. Both
-    // are consumed (deleted) by the mismatched attempt — single-use applies
-    // regardless of purpose match.
+    // A reset token can't be redeemed as a verify token, and vice-versa.
     expect(await consumeVerifyToken(reset)).toBeNull()
     expect(await consumeResetToken(verify)).toBeNull()
+  })
+
+  it('a wrong-purpose attempt does NOT burn the token (a verify link pasted into reset stays redeemable)', async () => {
+    const verify = await createVerifyToken('player_5')
+    expect(await consumeResetToken(verify)).toBeNull()
+    expect(await consumeVerifyToken(verify)).toBe('player_5')
+    // ...and it is still single-use once redeemed under the right purpose.
+    expect(await consumeVerifyToken(verify)).toBeNull()
   })
 
   it('rejects an expired token', async () => {

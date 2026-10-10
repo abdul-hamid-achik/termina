@@ -47,6 +47,10 @@ export interface MatchRosterEntry {
   username: string
   mmr: number
   mode: QueueMode
+  /** When this (real) player entered the queue. Absent on synthetic bots.
+   *  Carried so a failed game start can put the player back in line WITHOUT
+   *  resetting their wait (MMR widening / bot-fill both key off it). */
+  joinedAt?: Date
 }
 
 export interface FormedMatch {
@@ -59,6 +63,13 @@ export interface FormedMatch {
   roster: MatchRosterEntry[]
 }
 
+/**
+ * `matched: true` means a match formed during this join — it is NOT
+ * necessarily the joiner's match (a straggler fill or MMR window can form a
+ * match that excludes them). The caller MUST start the match regardless (its
+ * rows are already deleted) and use `rosterIncludes` to decide whether the
+ * joiner gets a gameId.
+ */
 export type JoinQueueResult =
   | { matched: true; match: FormedMatch }
   | { matched: false; queueSize: number }
@@ -66,7 +77,16 @@ export type JoinQueueResult =
 export type QueueStatus =
   | { status: 'idle' }
   | { status: 'searching'; queueSize: number }
+  /** The polling player is in the match that just formed. */
   | { status: 'matched'; match: FormedMatch }
+  /** A match formed during this poll but the polling player is NOT in it (they
+   *  are still queued). The caller must still start it — its rows are gone. */
+  | { status: 'formed_other'; match: FormedMatch; queueSize: number }
+
+/** Whether `playerId` is a (real or bot) member of the formed match's roster. */
+export function rosterIncludes(match: FormedMatch, playerId: string): boolean {
+  return match.roster.some((p) => p.playerId === playerId)
+}
 
 export const GUEST_QUEUE_REJECTION_MESSAGE =
   'Sign in to queue for a match — guest sessions can only play practice vs bots'
@@ -89,6 +109,10 @@ const MMR_RANGES: { afterSeconds: number; range: number }[] = [
   { afterSeconds: 120, range: 500 },
 ]
 
+/** Wait (seconds) after which the MMR range stops widening, and that range. */
+const MAX_MMR_RANGE_AFTER_SECONDS = MMR_RANGES[MMR_RANGES.length - 1]!.afterSeconds
+const MAX_MMR_RANGE = MMR_RANGES[MMR_RANGES.length - 1]!.range
+
 function getMmrRange(waitTimeSeconds: number): number {
   let range = MMR_RANGES[0]!.range
   for (const entry of MMR_RANGES) {
@@ -105,7 +129,20 @@ function toRosterEntry(mode: QueueMode) {
     username: row.username,
     mmr: row.mmr,
     mode,
+    joinedAt: row.joinedAt,
   })
+}
+
+/**
+ * A request-level conflict (HTTP 409) raised from the queue layer. Carries
+ * `statusCode` so Nitro/h3 answers 409 even if a caller lets it propagate.
+ */
+export class QueueConflictError extends Error {
+  readonly statusCode = 409
+  constructor(message: string) {
+    super(message)
+    this.name = 'QueueConflictError'
+  }
 }
 
 /** Postgres unique_violation (23505) on the player_id PK — already queued. */
@@ -139,7 +176,9 @@ export async function joinQueue(input: QueueJoinInput): Promise<JoinQueueResult>
     })
   } catch (err) {
     if (isUniqueViolation(err)) {
-      throw new Error('already in queue')
+      // Lost the check-then-insert race (two concurrent joins by one player,
+      // or a join racing another tab) — a client conflict, not a server fault.
+      throw new QueueConflictError('already in queue')
     }
     throw err
   }
@@ -231,29 +270,7 @@ export async function tryFormMatchNeon(mode: QueueMode): Promise<FormedMatch | n
       const longestWaitMs = now - Math.min(...rows.map((r) => r.joinedAt.getTime()))
       if (longestWaitMs < BOT_FILL_WAIT_MS) return null
 
-      const botsNeeded = matchSize - rows.length
-      const avgMmr = Math.round(rows.reduce((sum, r) => sum + r.mmr, 0) / rows.length)
-      const botEntries = createBotPlayers(
-        botsNeeded,
-        rows.map((r) => r.playerId),
-        avgMmr,
-      )
-
-      await tx.delete(queueEntries).where(eq(queueEntries.mode, mode))
-
-      const players = rows.map(toRosterEntry(mode))
-      const bots: MatchRosterEntry[] = botEntries.map((b) => ({
-        playerId: b.playerId,
-        username: b.username,
-        mmr: b.mmr,
-        mode,
-      }))
-      matchLog.info('Match formed with bots (neon)', {
-        realPlayers: players.length,
-        bots: bots.length,
-        mode,
-      })
-      return { mode, players, bots, roster: [...players, ...bots] }
+      return formWithBots(tx, mode, rows, matchSize)
     }
 
     // ── Full roster, MMR-range widening ────────────────────────────
@@ -275,7 +292,114 @@ export async function tryFormMatchNeon(mode: QueueMode): Promise<FormedMatch | n
       return { mode, players, bots: [], roster: players }
     }
 
-    return null
+    // ── Straggler backfill ─────────────────────────────────────────
+    // >= matchSize players are queued but no MMR window admits a human-only
+    // match (the spread is wider than even the widest allowed range). The
+    // under-size branch above never runs here, so without this the
+    // longest-waiter would sit in 'searching' forever. Once the longest wait
+    // crosses the bot-fill threshold, take that player plus whoever is within
+    // THEIR current MMR range (closest first) and bot-fill the remainder.
+    let anchor = rows[0]!
+    for (const r of rows) if (r.joinedAt.getTime() < anchor.joinedAt.getTime()) anchor = r
+    const anchorWaitMs = now - anchor.joinedAt.getTime()
+    if (anchorWaitMs < BOT_FILL_WAIT_MS) return null
+
+    // Do NOT jump ahead of MMR widening: if some window of matchSize players
+    // spans no more than the WIDEST range admits, a humans-only match will
+    // form by itself as the waits grow — keep waiting until the anchor has
+    // reached the last widening step. Only when no such window can ever form
+    // (spread beyond max range x 2 everywhere) bot-fill after the plain 10s.
+    const humansOnlyPossible = rows.some(
+      (_, i) =>
+        i + matchSize <= rows.length &&
+        rows[i + matchSize - 1]!.mmr - rows[i]!.mmr <= MAX_MMR_RANGE * 2,
+    )
+    if (humansOnlyPossible && anchorWaitMs / 1000 < MAX_MMR_RANGE_AFTER_SECONDS) return null
+
+    const reach = getMmrRange(anchorWaitMs / 1000) * 2
+    const mates = rows
+      .filter((r) => r.playerId !== anchor.playerId && Math.abs(r.mmr - anchor.mmr) <= reach)
+      .sort(
+        (a, b) =>
+          Math.abs(a.mmr - anchor.mmr) - Math.abs(b.mmr - anchor.mmr) ||
+          a.joinedAt.getTime() - b.joinedAt.getTime(),
+      )
+      .slice(0, matchSize - 1)
+    const group = [anchor, ...mates].sort((a, b) => a.mmr - b.mmr)
+    return formWithBots(tx, mode, group, matchSize)
+  })
+}
+
+/** The slice of a Drizzle db/transaction `formWithBots` needs. */
+type QueueTx = Pick<ReturnType<typeof useDb>, 'delete'>
+
+/**
+ * Form a match from exactly `group` (real players) plus bots up to
+ * `matchSize`, deleting ONLY those players' rows. (Deleting by mode would
+ * also drop a row that a lock-free joinQueue inserted after our SELECT.)
+ */
+async function formWithBots(
+  tx: QueueTx,
+  mode: QueueMode,
+  group: QueueEntryRow[],
+  matchSize: number,
+): Promise<FormedMatch> {
+  const botsNeeded = matchSize - group.length
+  const avgMmr = Math.round(group.reduce((sum, r) => sum + r.mmr, 0) / group.length)
+  const botEntries = createBotPlayers(
+    botsNeeded,
+    group.map((r) => r.playerId),
+    avgMmr,
+  )
+
+  await tx.delete(queueEntries).where(
+    inArray(
+      queueEntries.playerId,
+      group.map((r) => r.playerId),
+    ),
+  )
+
+  const players = group.map(toRosterEntry(mode))
+  const bots: MatchRosterEntry[] = botEntries.map((b) => ({
+    playerId: b.playerId,
+    username: b.username,
+    mmr: b.mmr,
+    mode,
+  }))
+  matchLog.info('Match formed with bots (neon)', {
+    realPlayers: players.length,
+    bots: bots.length,
+    mode,
+  })
+  return { mode, players, bots, roster: [...players, ...bots] }
+}
+
+/**
+ * Put a formed match's REAL players back in the queue — the recovery path
+ * when starting the game for that match throws. tryFormMatchNeon deletes the
+ * rows in its own transaction before the game exists, so without this a
+ * failed start silently drops every matched player. Preserves each player's
+ * original `joinedAt`, skips bots, and leaves any player who has already
+ * re-queued untouched (ON CONFLICT DO NOTHING).
+ */
+export async function requeueMatchPlayers(match: FormedMatch): Promise<void> {
+  if (match.players.length === 0) return
+  const db = useDb()
+  await db
+    .insert(queueEntries)
+    .values(
+      match.players.map((p) => ({
+        playerId: p.playerId,
+        username: p.username,
+        mmr: p.mmr,
+        mode: match.mode,
+        joinedAt: p.joinedAt ?? new Date(),
+      })),
+    )
+    .onConflictDoNothing()
+  matchLog.warn('Requeued players after a failed match start', {
+    mode: match.mode,
+    players: match.players.map((p) => p.playerId),
   })
 }
 
@@ -297,8 +421,12 @@ export async function checkQueueStatusNeon(playerId: string): Promise<QueueStatu
 
   const mode = row.mode as QueueMode
   const match = await tryFormMatchNeon(mode)
-  if (match && match.roster.some((p) => p.playerId === playerId)) {
-    return { status: 'matched', match }
+  if (match) {
+    // A formed match must ALWAYS be handed back: its rows are already deleted,
+    // so dropping it here would leave every matched player with no game and no
+    // queue row. The caller starts it either way.
+    if (rosterIncludes(match, playerId)) return { status: 'matched', match }
+    return { status: 'formed_other', match, queueSize: await queueSize(mode) }
   }
 
   return { status: 'searching', queueSize: await queueSize(mode) }

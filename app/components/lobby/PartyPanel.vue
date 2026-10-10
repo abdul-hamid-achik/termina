@@ -22,12 +22,50 @@ const error = ref<string | null>(null)
 
 const isLeader = computed(() => !!props.myPlayerId && party.value?.leaderId === props.myPlayerId)
 
+const emit = defineEmits<{ started: [gameId: string] }>()
+
 async function refresh() {
   try {
     const res = await $fetch<{ party: Party | null }>('/api/party/status')
+    const hadParty = party.value !== null
     party.value = res.party
+    // The party vanished under us without us leaving or starting it: the
+    // leader started the co-op game (start-coop deletes the party, then starts
+    // the game). Only the leader's request gets the gameId, so a member must
+    // go find their own game.
+    if (hadParty && !res.party && !busy.value) void watchForGame()
   } catch {
     party.value = null
+  }
+}
+
+/** The game is created a moment AFTER the party row is claimed, so the first
+ *  look can legitimately find nothing — look a few times before giving up. */
+const GAME_WATCH_ATTEMPTS = 6
+const GAME_WATCH_INTERVAL_MS = 2000
+let watching = false
+let unmounted = false
+
+async function watchForGame() {
+  if (watching) return
+  watching = true
+  try {
+    for (let i = 0; i < GAME_WATCH_ATTEMPTS && !unmounted; i++) {
+      try {
+        const res = await $fetch<{ status: string; gameId?: string }>('/api/queue/status-neon')
+        if (res.status === 'found' && res.gameId) {
+          emit('started', res.gameId)
+          return
+        }
+        // Queued for a quick-match instead — nothing party-related to find.
+        if (res.status === 'searching') return
+      } catch {
+        // transient — try again
+      }
+      await new Promise((resolve) => setTimeout(resolve, GAME_WATCH_INTERVAL_MS))
+    }
+  } finally {
+    watching = false
   }
 }
 
@@ -75,8 +113,6 @@ async function leaveParty() {
   }
 }
 
-const emit = defineEmits<{ started: [gameId: string] }>()
-
 async function startCoop() {
   busy.value = true
   error.value = null
@@ -97,7 +133,7 @@ async function startCoop() {
   }
 }
 
-// Party state lives in server memory with no push channel — a member joining
+// Party state lives in Neon with no push channel — a member joining
 // or leaving is invisible until something re-reads /api/party/status. Poll
 // lightly while the panel is mounted so the roster stays honest.
 let pollTimer: ReturnType<typeof setInterval> | null = null
@@ -108,6 +144,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  unmounted = true
   if (pollTimer) clearInterval(pollTimer)
   pollTimer = null
 })

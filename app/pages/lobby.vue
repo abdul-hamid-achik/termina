@@ -82,6 +82,35 @@ function onMatchFound(gameId: string) {
   gameStore.playerId = authStore.user?.id ?? null
 }
 
+/** Consecutive `idle` polls tolerated while we believe we are searching. One or
+ *  two are normal: the match formed (our queue row is gone) but the request that
+ *  is starting it has not written the live_games row yet. A longer run means we
+ *  genuinely have neither a queue row nor a game (a dropped match/requeue). */
+const IDLE_POLLS_BEFORE_GIVING_UP = 5
+let idlePolls = 0
+
+function handleQueueIdle() {
+  idlePolls += 1
+  if (idlePolls < IDLE_POLLS_BEFORE_GIVING_UP) return
+  lobbyLog.warn('Queue poll idle while searching — giving up', { idlePolls })
+  queuePolling.stop()
+  lobbyStore.reset()
+  lobbyStore.setError('you dropped out of the queue')
+}
+
+function beginPolling() {
+  idlePolls = 0
+  queuePolling.start({
+    onFound: onMatchFound,
+    onSearching: ({ queueSize, botFillDue }) => {
+      idlePolls = 0
+      lobbyStore.playersInQueue = queueSize
+      lobbyStore.botsFilling = botFillDue
+    },
+    onIdle: handleQueueIdle,
+  })
+}
+
 async function joinQueue() {
   lobbyStore.clearError()
   try {
@@ -96,16 +125,21 @@ async function joinQueue() {
     lobbyStore.playersInQueue = res.queueSize
     lobbyStore.queueStatus = 'searching'
     lobbyStore.queueTime = 0
-    queuePolling.start({
-      onFound: onMatchFound,
-      onSearching: ({ queueSize, botFillDue }) => {
-        lobbyStore.playersInQueue = queueSize
-        lobbyStore.botsFilling = botFillDue
-      },
-    })
+    beginPolling()
   } catch (err: unknown) {
     lobbyLog.error('Queue join failed', err)
-    const e = err as { data?: { message?: string }; message?: string }
+    const e = err as {
+      data?: { message?: string }
+      message?: string
+      statusCode?: number
+      response?: { status?: number }
+    }
+    // 503 = "match found but the game could not be started — you are still in
+    // the queue"; 409 = already queued / already in a game (another tab, or the
+    // join raced a match). Server-side we ARE queued or in a game, so adopt
+    // that state (resume polling / jump to the game) instead of just erroring.
+    const status = e?.statusCode ?? e?.response?.status
+    if ((status === 503 || status === 409) && (await recoverQueueState())) return
     lobbyStore.setError(
       `could not join queue — ${e?.data?.message ?? e?.message ?? 'unknown error'}`,
     )
@@ -167,7 +201,9 @@ watch(
   () => syncBed(),
 )
 
-async function recoverQueueState() {
+/** Adopt the server's view of this player: jump to a live game, or resume
+ *  polling when queued. Resolves true when it did either. */
+async function recoverQueueState(): Promise<boolean> {
   try {
     const res = await $fetch<{
       status: 'idle' | 'searching' | 'found'
@@ -177,21 +213,19 @@ async function recoverQueueState() {
     }>('/api/queue/status-neon')
     if (res.status === 'found' && res.gameId) {
       onMatchFound(res.gameId)
-    } else if (res.status === 'searching') {
+      return true
+    }
+    if (res.status === 'searching') {
       lobbyStore.queueStatus = 'searching'
       lobbyStore.playersInQueue = res.queueSize ?? 0
       lobbyStore.botsFilling = res.botFillDue ?? false
-      queuePolling.start({
-        onFound: onMatchFound,
-        onSearching: ({ queueSize, botFillDue }) => {
-          lobbyStore.playersInQueue = queueSize
-          lobbyStore.botsFilling = botFillDue
-        },
-      })
+      beginPolling()
+      return true
     }
   } catch (err) {
     lobbyLog.warn('Queue status recovery failed', err)
   }
+  return false
 }
 
 // Navigate to /play once a game ID is set (quick-match found, or a party

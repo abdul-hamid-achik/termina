@@ -58,7 +58,7 @@ describe('Lobby Store', () => {
 
       await store.joinQueue('quick_3v3')
 
-      expect(mockFetch).toHaveBeenCalledWith('/api/queue/join', {
+      expect(mockFetch).toHaveBeenCalledWith('/api/queue/join-neon', {
         method: 'POST',
         body: { mode: 'quick_3v3' },
       })
@@ -70,10 +70,29 @@ describe('Lobby Store', () => {
 
       await store.joinQueue()
 
-      expect(mockFetch).toHaveBeenCalledWith('/api/queue/join', {
+      expect(mockFetch).toHaveBeenCalledWith('/api/queue/join-neon', {
         method: 'POST',
         body: { mode: 'ranked_5v5' },
       })
+    })
+
+    it('only ever calls routes that exist (-neon), never the deleted /api/queue/join', async () => {
+      mockFetch.mockResolvedValue({ success: true, queueSize: 1 })
+      const store = useLobbyStore()
+      await store.joinQueue()
+      for (const [url] of mockFetch.mock.calls) {
+        expect(url).toMatch(/^\/api\/queue\/[a-z-]+-neon$/)
+      }
+    })
+
+    it('adopts the game straight away when the join itself completed a match', async () => {
+      mockFetch.mockResolvedValue({ success: true, queueSize: 0, gameId: 'q_instant' })
+      const store = useLobbyStore()
+
+      await store.joinQueue('1v1')
+
+      expect(store.gameId).toBe('q_instant')
+      expect(store.queueStatus).toBe('starting')
     })
 
     it('throws on API failure', async () => {
@@ -116,7 +135,7 @@ describe('Lobby Store', () => {
         }),
       )
       // the recovery status endpoint then reports that active game
-      mockFetch.mockResolvedValueOnce({ status: 'game_starting', gameId: 'game-live' })
+      mockFetch.mockResolvedValueOnce({ status: 'found', gameId: 'game-live' })
 
       // Should NOT throw — the 409 is turned into a rejoin, not an error
       await store.joinQueue()
@@ -160,6 +179,20 @@ describe('Lobby Store', () => {
   })
 
   describe('leaveQueue', () => {
+    it('calls the live leave-neon route (no mode needed — one queue row per player)', async () => {
+      mockFetch.mockResolvedValue({ success: true, queueSize: 1 })
+      const store = useLobbyStore()
+      await store.joinQueue('quick_3v3')
+      mockFetch.mockClear()
+      mockFetch.mockResolvedValue({ success: true })
+
+      await store.leaveQueue()
+
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+      expect(mockFetch.mock.calls[0]![0]).toBe('/api/queue/leave-neon')
+      expect(mockFetch.mock.calls[0]![1]).toMatchObject({ method: 'POST' })
+    })
+
     it('resets state after leaving', async () => {
       mockFetch.mockResolvedValue({ success: true, queueSize: 1 })
       const store = useLobbyStore()
@@ -427,6 +460,13 @@ describe('Lobby Store', () => {
   })
 
   describe('recoverState', () => {
+    it('polls the live status-neon route', async () => {
+      mockFetch.mockResolvedValue({ status: 'idle' })
+      const store = useLobbyStore()
+      await store.recoverState()
+      expect(mockFetch).toHaveBeenCalledWith('/api/queue/status-neon')
+    })
+
     it('resets a stuck pre-game store when the server reports idle (cancelled lobby)', async () => {
       const store = useLobbyStore()
       // Simulate being frozen on the draft screen after a missed cancel.
@@ -441,77 +481,30 @@ describe('Lobby Store', () => {
       expect(store.lobbyId).toBeNull()
     })
 
-    it('recovers searching state from server', async () => {
+    it('recovers searching state from server (queueSize + botFillDue)', async () => {
       const store = useLobbyStore()
 
-      mockFetch.mockResolvedValue({
-        status: 'searching',
-        playersInQueue: 7,
-        estimatedWaitSeconds: 30,
-      })
+      mockFetch.mockResolvedValue({ status: 'searching', queueSize: 7, botFillDue: true })
 
       const result = await store.recoverState()
 
       expect(result).toBe('searching')
       expect(store.queueStatus).toBe('searching')
       expect(store.playersInQueue).toBe(7)
-      expect(store.estimatedWaitSeconds).toBe(30)
+      expect(store.botsFilling).toBe(true)
     })
 
-    it('recovers lobby state by calling matchFound', async () => {
+    it('recovers a found game into the starting state', async () => {
       const store = useLobbyStore()
 
-      mockFetch.mockResolvedValue({
-        status: 'lobby',
-        lobbyId: 'lobby-abc',
-        team: 'audit',
-        players: [{ playerId: 'p1', team: 'audit', heroId: null }],
-        phase: 'picking',
-      })
+      mockFetch.mockResolvedValue({ status: 'found', gameId: 'game-xyz' })
 
       const result = await store.recoverState()
 
-      expect(result).toBe('lobby')
-      expect(store.lobbyId).toBe('lobby-abc')
-      expect(store.team).toBe('audit')
-      expect(store.queueStatus).toBe('found')
-    })
-
-    it('uses usernames (not raw playerIds) for the recovered roster', async () => {
-      const store = useLobbyStore()
-
-      mockFetch.mockResolvedValue({
-        status: 'lobby',
-        lobbyId: 'lobby-abc',
-        team: 'chaff',
-        players: [
-          { playerId: 'github_7379966', username: 'alice', team: 'chaff', heroId: null },
-          // No username (e.g. a bot or pre-username record) → falls back to playerId
-          { playerId: 'bot_1', team: 'chaff', heroId: null },
-        ],
-        phase: 'picking',
-      })
-
-      await store.recoverState()
-
-      expect(store.teamRoster[0]!.name).toBe('alice')
-      expect(store.teamRoster[0]!.name).not.toBe('github_7379966')
-      expect(store.teamRoster[1]!.name).toBe('bot_1')
-    })
-
-    it('recovers game_starting state', async () => {
-      const store = useLobbyStore()
-
-      mockFetch.mockResolvedValue({
-        status: 'game_starting',
-        gameId: 'game-xyz',
-      })
-
-      const result = await store.recoverState()
-
-      expect(result).toBe('game_starting')
+      expect(result).toBe('found')
       expect(store.gameId).toBe('game-xyz')
       expect(store.queueStatus).toBe('starting')
+      expect(store.countdown).toBeGreaterThan(0)
     })
 
     it('returns null on errors silently', async () => {
@@ -653,84 +646,6 @@ describe('Lobby Store', () => {
       store.startCountdown(5)
       vi.advanceTimersByTime(5000)
       expect(store.countdown).toBe(0)
-    })
-  })
-
-  describe('recoverState (one-shot page-refresh recovery)', () => {
-    it('returns null and changes nothing when the server reports idle', async () => {
-      mockFetch.mockResolvedValue({ status: 'idle' })
-      const store = useLobbyStore()
-      const result = await store.recoverState()
-      expect(result).toBeNull()
-      expect(store.queueStatus).toBe('idle')
-    })
-
-    it('recovers a game_starting status into the starting countdown', async () => {
-      mockFetch.mockResolvedValue({ status: 'game_starting', gameId: 'game_42' })
-      const store = useLobbyStore()
-      await store.recoverState()
-      expect(store.gameId).toBe('game_42')
-      expect(store.queueStatus).toBe('starting')
-      expect(store.countdown).toBeGreaterThan(0)
-    })
-
-    it('recovers a lobby already in the starting phase (picks + countdown)', async () => {
-      mockFetch.mockResolvedValue({
-        status: 'lobby',
-        lobbyId: 'lobby_1',
-        team: 'chaff',
-        players: [{ playerId: 'p1', team: 'chaff', heroId: 'echo' }],
-        phase: 'starting',
-      })
-      const store = useLobbyStore()
-      await store.recoverState()
-      expect(store.queueStatus).toBe('starting')
-      expect(store.pickedHeroes['p1']).toBe('echo')
-    })
-
-    it('recovers a lobby still picking via matchFound', async () => {
-      mockFetch.mockResolvedValue({
-        status: 'lobby',
-        lobbyId: 'lobby_2',
-        team: 'audit',
-        players: [{ playerId: 'p2', team: 'audit', heroId: null }],
-        phase: 'picking',
-      })
-      const store = useLobbyStore()
-      await store.recoverState()
-      expect(store.lobbyId).toBe('lobby_2')
-      expect(store.queueStatus).toBe('found') // matchFound, pre-1500ms transition
-    })
-
-    it('does not bounce a drafting player back to found on a repeat recovery poll', async () => {
-      mockFetch.mockResolvedValue({
-        status: 'lobby',
-        lobbyId: 'lobby_3',
-        team: 'audit',
-        players: [{ playerId: 'p2', team: 'audit', heroId: null }],
-        phase: 'picking',
-      })
-      const store = useLobbyStore()
-      store.queueStatus = 'picking' // already in the draft (past the found splash)
-
-      await store.recoverState() // the 3s recovery poll fires again
-
-      // matchFound is idempotent — the player stays drafting, not reset to found
-      expect(store.queueStatus).toBe('picking')
-      expect(store.lobbyId).toBe('lobby_3')
-    })
-
-    it('recovers a searching status back into the queue', async () => {
-      mockFetch.mockResolvedValue({
-        status: 'searching',
-        playersInQueue: 4,
-        estimatedWaitSeconds: 12,
-      })
-      const store = useLobbyStore()
-      await store.recoverState()
-      expect(store.queueStatus).toBe('searching')
-      expect(store.playersInQueue).toBe(4)
-      expect(store.estimatedWaitSeconds).toBe(12)
     })
   })
 })

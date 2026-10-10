@@ -81,6 +81,18 @@ describe('GET /api/ready', () => {
     expect(result.missingColumns).toContain('players.tutorial_completed')
   })
 
+  it('reports not-ready when the parties / party_members tables are missing', async () => {
+    const { handler, columns } = await freshReadyHandler()
+    execute.mockResolvedValue(
+      rowsFor(columns.filter((c) => c.table !== 'parties' && c.table !== 'party_members')),
+    )
+    const result = await handler(makeEvent())
+    expect(responseStatus).toBe(503)
+    expect(result.status).toBe('schema_drift')
+    expect(result.missingColumns).toContain('parties.leader_id')
+    expect(result.missingColumns).toContain('party_members.player_id')
+  })
+
   it('(c) a failing check is NOT cached — fixing the schema makes the next probe ready', async () => {
     const { handler, columns } = await freshReadyHandler()
 

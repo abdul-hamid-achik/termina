@@ -100,4 +100,30 @@ describe('GET /api/queue/status-neon', () => {
     expect(startFormedMatchMock).toHaveBeenCalledWith(match)
     expect(result).toEqual({ status: 'found', gameId: 'q_9' })
   })
+
+  // Defect: a poll that forms a match EXCLUDING the poller used to drop it
+  // (rows deleted, game never started -> matched players stranded).
+  it('starts a match that formed without the poller and keeps the poller searching', async () => {
+    const match = {
+      mode: '1v1',
+      players: [],
+      bots: [],
+      roster: [{ playerId: 'other', username: 'o', mmr: 1000, mode: '1v1' }],
+    }
+    checkQueueStatusNeonMock.mockResolvedValue({ status: 'formed_other', match, queueSize: 5 })
+    joinedAtRow = { joinedAt: new Date(Date.now() - 1000) }
+
+    const result = await handler(makeEvent())
+
+    expect(startFormedMatchMock).toHaveBeenCalledWith(match)
+    expect(result).toEqual({ status: 'searching', queueSize: 5, botFillDue: false })
+  })
+
+  it('does not 503 a poller outside the match when that match fails to start', async () => {
+    const match = { mode: '1v1', players: [], bots: [], roster: [] }
+    checkQueueStatusNeonMock.mockResolvedValue({ status: 'formed_other', match, queueSize: 5 })
+    startFormedMatchMock.mockRejectedValue(new Error('boom'))
+    joinedAtRow = { joinedAt: new Date(Date.now() - 1000) }
+    await expect(handler(makeEvent())).resolves.toMatchObject({ status: 'searching' })
+  })
 })

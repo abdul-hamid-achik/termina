@@ -17,7 +17,7 @@ const authHandler = (await import('../../../server/middleware/auth')).default as
   event: H3Event,
 ) => Promise<unknown>
 
-const event = {} as H3Event
+const event = { method: 'GET' } as H3Event
 
 describe('server auth middleware', () => {
   beforeEach(() => {

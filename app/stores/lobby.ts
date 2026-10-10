@@ -13,9 +13,6 @@ export const useLobbyStore = defineStore('lobby', () => {
   const estimatedWaitSeconds = ref(0)
   const queueRoster = ref<{ username: string; mmrBracket: string }[]>([])
   const matchSize = ref(10)
-  // Remember which queue mode we joined so leaveQueue can target the right
-  // Redis queue keys — leaving with the wrong/default mode leaks the entry.
-  const queuedMode = ref<'ranked_5v5' | 'quick_3v3' | '1v1'>('ranked_5v5')
   const botsFilling = ref(false)
   const botsCount = ref(0)
   const lobbyId = ref<string | null>(null)
@@ -93,12 +90,20 @@ export const useLobbyStore = defineStore('lobby', () => {
 
   async function joinQueue(mode: 'ranked_5v5' | 'quick_3v3' | '1v1' = 'ranked_5v5') {
     clearError()
-    queuedMode.value = mode
     try {
-      const res = await $fetch<{ success: boolean; queueSize: number }>('/api/queue/join', {
-        method: 'POST',
-        body: { mode },
-      })
+      const res = await $fetch<{ success: boolean; queueSize: number; gameId?: string }>(
+        '/api/queue/join-neon',
+        {
+          method: 'POST',
+          body: { mode },
+        },
+      )
+      // This very join completed (or bot-filled) a roster and the game is
+      // already running — no queue to sit in.
+      if (res.gameId) {
+        _adoptGame(res.gameId)
+        return
+      }
       playersInQueue.value = res.queueSize
       queueStatus.value = 'searching'
       queueTime.value = 0
@@ -111,7 +116,7 @@ export const useLobbyStore = defineStore('lobby', () => {
       // gameStore.gameId watcher in lobby.vue navigates to /play).
       if (_errorStatus(err) === 409) {
         const recovered = await recoverState()
-        if (recovered === 'game_starting') return
+        if (recovered === 'found') return
       }
       lastError.value = `could not join queue — ${_errorReason(err)}`
       throw err
@@ -144,84 +149,57 @@ export const useLobbyStore = defineStore('lobby', () => {
 
   async function leaveQueue() {
     try {
-      await $fetch('/api/queue/leave', { method: 'POST', body: { mode: queuedMode.value } })
+      // One queue row per player (player_id is the PK), so no mode is needed.
+      await $fetch('/api/queue/leave-neon', { method: 'POST' })
     } catch {
       // Ignore errors on leave
     }
     _reset()
   }
 
+  /** Point the store (and the game store, whose gameId the lobby page
+   *  watches to navigate to /play) at a running game. */
+  function _adoptGame(id: string) {
+    gameId.value = id
+    const gameStore = useGameStore()
+    gameStore.gameId = id
+    allPicksComplete()
+    if (countdown.value <= 0) startCountdown(3)
+  }
+
   /** One-shot HTTP recovery for page refresh — not polled. */
-  async function recoverState() {
+  async function recoverState(): Promise<'found' | 'searching' | null> {
     try {
       const res = await $fetch<
         | { status: 'idle' }
-        | { status: 'searching'; playersInQueue: number; estimatedWaitSeconds: number }
-        | {
-            status: 'lobby'
-            lobbyId: string
-            team: TeamId
-            players: {
-              playerId: string
-              username?: string
-              team: TeamId
-              heroId: string | null
-            }[]
-            phase: string
-          }
-        | { status: 'game_starting'; gameId: string }
-      >('/api/queue/status')
+        | { status: 'searching'; queueSize: number; botFillDue?: boolean }
+        | { status: 'found'; gameId: string }
+      >('/api/queue/status-neon')
 
       lobbyLog.debug('Recovery result', { status: res.status })
 
-      if (res.status === 'idle') {
-        // Server says we're in nothing — if the store is still showing a
-        // pre-game phase (e.g. a cancel WS message was missed while
-        // disconnected), reset back to find-match instead of staying frozen.
-        if (queueStatus.value !== 'idle') {
-          const note = lastAnnouncement.value
-          _reset()
-          lastAnnouncement.value = note // keep any "cancelled" toast across reset
-        }
-        return null
-      } else if (res.status === 'game_starting') {
-        gameId.value = res.gameId
-        // Also set gameStore.gameId so the lobby.vue navigation watcher triggers
-        const gameStore = useGameStore()
-        gameStore.gameId = res.gameId
-        allPicksComplete()
-        if (countdown.value <= 0) startCountdown(3)
-      } else if (res.status === 'lobby') {
-        lobbyId.value = res.lobbyId
-        setTeamInfo(
-          res.team,
-          res.players.map((p) => ({
-            playerId: p.playerId,
-            name: p.username ?? p.playerId,
-            heroId: p.heroId,
-            team: p.team,
-          })),
-        )
-        for (const p of res.players) {
-          if (p.heroId) {
-            pickedHeroes.value = { ...pickedHeroes.value, [p.playerId]: p.heroId }
-          }
-        }
-        if (res.phase === 'starting') {
-          allPicksComplete()
-          if (countdown.value <= 0) startCountdown(3)
-        } else {
-          matchFound(res.lobbyId)
-        }
-      } else if (res.status === 'searching') {
+      if (res.status === 'found') {
+        _adoptGame(res.gameId)
+        return 'found'
+      }
+      if (res.status === 'searching') {
         queueStatus.value = 'searching'
-        playersInQueue.value = res.playersInQueue
-        estimatedWaitSeconds.value = res.estimatedWaitSeconds
+        playersInQueue.value = res.queueSize
+        botsFilling.value = res.botFillDue ?? false
         queueTime.value = 0
         _startQueueTimer()
+        return 'searching'
       }
 
-      return res.status !== 'searching' ? res.status : 'searching'
+      // Server says we're in nothing — if the store is still showing a
+      // pre-game phase (e.g. a cancel message was missed), reset back to
+      // find-match instead of staying frozen.
+      if (queueStatus.value !== 'idle') {
+        const note = lastAnnouncement.value
+        _reset()
+        lastAnnouncement.value = note // keep any "cancelled" toast across reset
+      }
+      return null
     } catch {
       // No active session — stay idle
       return null

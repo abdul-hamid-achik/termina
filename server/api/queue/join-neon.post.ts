@@ -1,7 +1,13 @@
 import { eq } from 'drizzle-orm'
 import { useDb } from '~~/server/db'
 import { players } from '~~/server/db/schema'
-import { joinQueue, isPlayerInQueue, type QueueMode } from '~~/server/game/matchmaking/queueNeon'
+import {
+  joinQueue,
+  isPlayerInQueue,
+  queueSize,
+  rosterIncludes,
+  type QueueMode,
+} from '~~/server/game/matchmaking/queueNeon'
 import { startFormedMatch } from '~~/server/game/matchmaking/matchStart'
 import { findLiveGameForPlayer } from '~~/server/game/liveGame'
 import { checkScopedRateLimit } from '~~/server/utils/RateLimiter'
@@ -67,22 +73,58 @@ export default defineEventHandler(async (event) => {
     .where(eq(players.id, playerId))
     .limit(1)
 
-  const result = await joinQueue({
-    playerId,
-    username: player?.username ?? (session.user?.username as string | undefined) ?? playerId,
-    mmr: player?.mmr ?? 1000,
-    mode,
-  })
+  let result: Awaited<ReturnType<typeof joinQueue>>
+  try {
+    result = await joinQueue({
+      playerId,
+      username: player?.username ?? (session.user?.username as string | undefined) ?? playerId,
+      mmr: player?.mmr ?? 1000,
+      mode,
+    })
+  } catch (err) {
+    // The isPlayerInQueue pre-check above is check-then-insert; a concurrent
+    // join by the same player loses on the PK unique-violation. That is a
+    // client conflict (409), not a server fault.
+    if ((err as { statusCode?: number } | null)?.statusCode === 409) {
+      throw createError({ statusCode: 409, message: 'Already in queue' })
+    }
+    throw err
+  }
 
   if (!result.matched) {
     return { success: true, queueSize: result.queueSize }
   }
 
-  const started = await startFormedMatch(result.match)
+  // A formed match is ALWAYS started — its queue rows are already deleted, so
+  // dropping it would strand every matched player. But it is not necessarily
+  // the joiner's match (a straggler fill / MMR window can exclude them): only a
+  // joiner who is IN the roster gets its gameId; otherwise they are still queued.
+  const joinerInMatch = rosterIncludes(result.match, playerId)
+
+  // startFormedMatch requeues the matched players itself when the start fails
+  // (their rows were deleted when the match formed) — here we just surface it.
+  let started: Awaited<ReturnType<typeof startFormedMatch>>
+  try {
+    started = await startFormedMatch(result.match)
+  } catch (err) {
+    matchLog.error('Live game start failed (from join) — players requeued', {
+      mode,
+      error: err instanceof Error ? err.message : String(err),
+    })
+    // Someone else's match failing to start is not the joiner's failure: they
+    // are still queued and the failed match's players were requeued.
+    if (!joinerInMatch) return { success: true, queueSize: await queueSize(mode) }
+    throw createError({
+      statusCode: 503,
+      message: 'Match found but the game could not be started — you are still in the queue',
+    })
+  }
   matchLog.info('Live game started for a Neon-formed match (from join)', {
     gameId: started.gameId,
     mode,
     playerCount: result.match.roster.length,
+    joinerInMatch,
   })
+  if (!joinerInMatch) return { success: true, queueSize: await queueSize(mode) }
   return { success: true, queueSize: 0, gameId: started.gameId }
 })

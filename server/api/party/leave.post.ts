@@ -12,6 +12,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 503, message: 'Game server not ready' })
   }
 
-  leaveParty(playerId)
-  return { success: true, party: getPartyByPlayer(playerId) ?? null }
+  await leaveParty(playerId)
+  return { success: true, party: (await getPartyByPlayer(playerId)) ?? null }
 })

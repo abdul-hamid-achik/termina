@@ -1,5 +1,5 @@
-import { randomBytes } from 'node:crypto'
-import { eq } from 'drizzle-orm'
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
+import { and, eq } from 'drizzle-orm'
 import { useDb } from '~~/server/db'
 import { authTokens } from '~~/server/db/schema'
 
@@ -36,16 +36,34 @@ async function createToken(
 }
 
 /** Consume a token of the given purpose → playerId, or null if missing,
- *  expired, or issued for a different purpose (single-use — always deletes
- *  on read, whether or not it was still valid). */
+ *  expired, or issued for a different purpose. Single-use: the row is deleted
+ *  only when BOTH the token and its purpose match (one atomic DELETE ...
+ *  RETURNING), so presenting e.g. a verify token to the reset endpoint does
+ *  not burn it. A matching-purpose but expired row is still deleted (inert). */
 async function consumeToken(token: string, purpose: TokenPurpose): Promise<string | null> {
   if (!token) return null
   const db = useDb()
-  const rows = await db.delete(authTokens).where(eq(authTokens.token, token)).returning()
+  const rows = await db
+    .delete(authTokens)
+    .where(and(eq(authTokens.token, token), eq(authTokens.purpose, purpose)))
+    .returning()
   const row = rows[0]
-  if (!row || row.purpose !== purpose) return null
+  if (!row) return null
   if (row.expiresAt.getTime() < Date.now()) return null
   return row.playerId
+}
+
+/**
+ * Constant-time comparison of a presented secret against the expected one.
+ * Both sides are hashed first so differing lengths neither throw nor leak
+ * the expected length through timing. Returns false for a missing/empty
+ * `provided`.
+ */
+export function secretsMatch(provided: string | null | undefined, expected: string): boolean {
+  if (!provided) return false
+  const a = createHash('sha256').update(provided).digest()
+  const b = createHash('sha256').update(expected).digest()
+  return timingSafeEqual(a, b)
 }
 
 export function createResetToken(playerId: string): Promise<string> {

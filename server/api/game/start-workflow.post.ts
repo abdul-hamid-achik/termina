@@ -1,4 +1,5 @@
 import { startLiveGame } from '~~/server/game/liveGame'
+import { secretsMatch } from '~~/server/utils/authTokens'
 import type { LiveGameRoster, LiveGameRosterPlayer } from '~~/server/db/schema'
 import type { GameMode, TeamId } from '~~/shared/types/game'
 
@@ -15,10 +16,11 @@ interface StartWorkflowBody {
  * its runGame workflow (server/workflows/gameTick.ts). Gated behind
  * WORKFLOW_START_KEY rather than session auth — this is meant to be called
  * server-side from the matchmaking/lobby handoff, not directly by a
- * browser. Mirrors the spike routes' `?key=` gate
- * (server/routes/spike-workflow.*.ts) for now; a real service-to-service
- * call (or folding this into the lobby → game-ready path) is follow-up work
- * once that handoff is built for the all-Vercel cutover.
+ * browser. server/middleware/auth.ts lists this path as public (no session
+ * exists for a server-to-server call) precisely because THIS handler fails
+ * closed on the key. The key is accepted via the `x-workflow-start-key`
+ * header ONLY (never `?key=` — secrets in URLs land in access logs) and is
+ * compared in constant time.
  *
  * The live_games-row-creation + start(runGame,[gameId]) logic itself lives
  * in server/game/liveGame.ts's startLiveGame — shared with the tutorial/
@@ -30,8 +32,8 @@ export default defineEventHandler(async (event) => {
   if (!expected) {
     throw createError({ statusCode: 503, message: 'WORKFLOW_START_KEY not configured' })
   }
-  const provided = getRequestHeader(event, 'x-workflow-start-key') ?? getQuery(event).key
-  if (provided !== expected) {
+  const provided = getRequestHeader(event, 'x-workflow-start-key')
+  if (!secretsMatch(provided, expected)) {
     throw createError({ statusCode: 403, message: 'workflow start key required' })
   }
 

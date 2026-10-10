@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const player = await Effect.runPromise(runtime.dbService.getPlayer(playerId))
-  const result = joinParty(code, { playerId, username, mmr: player?.mmr ?? 1000 })
+  const result = await joinParty(code, { playerId, username, mmr: player?.mmr ?? 1000 })
   if (!result.success) {
     throw createError({ statusCode: 400, message: result.error ?? 'Could not join party' })
   }
