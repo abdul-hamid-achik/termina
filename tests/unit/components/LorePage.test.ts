@@ -3,6 +3,8 @@ import { mount } from '@vue/test-utils'
 import { ref, computed } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import LorePage from '~~/app/pages/lore.vue'
+import { TERMINAL_HP } from '~~/shared/constants/balance'
+import { STRUCTURE_LABELS } from '~~/shared/constants/world'
 
 // lore.vue uses Nuxt auto-imports (useHead, $fetch, navigateTo) via the
 // useStartTutorial composable; the SFC compiler leaves these as globals under
@@ -68,6 +70,27 @@ describe('lore page — the TERMINA frame', () => {
     const text = mountLore().text()
     expect(text).toContain('CYCLE')
     expect(text).toContain('Terminal')
+  })
+
+  it('does not claim a single instruction per cycle; states one MAIN order plus standing orders', () => {
+    const text = mountLore().text()
+    expect(text).not.toContain('one instruction per cycle')
+    expect(text).toContain('one main order per cycle')
+    expect(text).toContain('keeps standing until you replace it')
+  })
+
+  it('states the win condition exactly: Terminal HP, T3 firewall, ICE falls in order', () => {
+    const text = mountLore().text()
+    const black = STRUCTURE_LABELS.ice[3]
+    expect(text).toContain(`(${TERMINAL_HP} INTEG)`)
+    expect(text).toContain(`any one of its crew's three ${black} is down`)
+    expect(text).toContain('T1, T2, then')
+  })
+
+  it('draws the cycle diagram as five operators, not one player with five orders', () => {
+    const caption = mountLore().get('[data-testid="cycle-diagram"] figcaption').text()
+    expect(caption).toContain('5 different operators')
+    expect(caption).not.toMatch(/five instructions/i)
   })
 
   it('no longer frames operatives as processes given form, nor the world as THE GRID', () => {

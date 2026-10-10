@@ -4,7 +4,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import CastPage from '~~/app/pages/cast.vue'
 import { HEROES } from '~~/shared/constants/heroes'
 import { getTalentTree, talentUnlockLevel } from '~~/shared/constants/talents'
-import { ULTIMATE_UNLOCK_LEVEL } from '~~/shared/constants/balance'
+import { ULTIMATE_UNLOCK_LEVEL, CYCLE_DURATION_MS } from '~~/shared/constants/balance'
 
 // heroes.vue leans on Nuxt auto-imports (ref/computed/watch/lifecycle hooks,
 // useHead, useRoute, $fetch, navigateTo); the SFC compiler leaves them as
@@ -59,6 +59,15 @@ async function selectHero(wrapper: ReturnType<typeof mountHeroes>, name: string)
   const btn = wrapper.findAll('[data-testid="hero-pick"]').find((b) => b.text().includes(name))
   await btn!.trigger('click')
 }
+
+describe('heroes page — cycle clock', () => {
+  it('derives the cycle length from the engine constant', () => {
+    const seconds = CYCLE_DURATION_MS / 1000
+    const text = mountHeroes().text()
+    expect(text).toContain(`ADVANCE CYCLE (${seconds}s)`)
+    expect(text).toContain(`${seconds}-second cycle clock`)
+  })
+})
 
 describe('heroes page — decision content', () => {
   it('marks the easy heroes as beginner picks in the grid', () => {

@@ -26,6 +26,8 @@ import {
   REGEN_CACHE_HEAL_PERCENT,
   BURN_HP_THRESHOLD,
   STRIP_HP_THRESHOLD,
+  SURRENDER_MIN_CYCLE,
+  SURRENDER_VOTE_THRESHOLD,
   BURN_SCRIP_RATIO,
   BURN_XP_RATIO,
   WAVE_SCRIP_MIN,
@@ -35,6 +37,8 @@ import {
   LINE_UNIT_HP,
 } from '~~/shared/constants/balance'
 import { talentUnlockLevel } from '~~/shared/constants/talents'
+import { STRUCTURE_LABELS } from '~~/shared/constants/world'
+import { ZONE_MAP } from '~~/shared/constants/zones'
 import { getAbilityLevel } from '~~/server/game/heroes/_base'
 import { useCommands } from '~~/app/composables/useCommands'
 import { routeGameKey } from '~~/app/utils/gameKeys'
@@ -315,7 +319,13 @@ describe('learn page', () => {
     it('teaches stripping as its own concept, with the burn mirror', () => {
       const text = mountLearn().text()
       expect(text).toContain('Stripping & Burning')
-      expect(text).toContain('Only the killing blow pays scrip')
+      // The old copy ("only the killing blow pays scrip") contradicted the
+      // engine: inside the window every swing claims, and same-cycle claimants
+      // SPLIT the payload (ActionResolver's wave-swing batch + waveKills payout).
+      expect(text).not.toContain('Only the killing blow pays scrip')
+      expect(text).toContain('ANY swing that cycle')
+      expect(text).toContain('SPLITS the payload')
+      expect(text).not.toMatch(/hit for 30.70/)
       expect(text).toContain(`${LINE_UNIT_HP} INTEG`)
       // The strip window is the rule a player actually acts on. Asserting the
       // NUMBER (not just the word) is the point: the page used to teach
@@ -324,7 +334,7 @@ describe('learn page', () => {
       expect(text).toContain(
         `${Math.round(STRIP_HP_THRESHOLD * 100)}% of the INTEG it spawned with`,
       )
-      expect(text).toContain(`${Math.round(BURN_HP_THRESHOLD * 100)}% INTEG`)
+      expect(text).toContain(`${Math.round(BURN_HP_THRESHOLD * 100)}% of its spawn INTEG`)
       // Burn reward is derived, not asserted as prose.
       const burnGold = Math.floor(((WAVE_SCRIP_MIN + WAVE_SCRIP_MAX) / 2) * BURN_SCRIP_RATIO)
       expect(text).toContain(`${burnGold}sc and ${Math.floor(WAVE_XP * BURN_XP_RATIO)} XP`)
@@ -353,6 +363,66 @@ describe('learn page', () => {
     const levels = ([10, 15, 20, 25] as const).map(talentUnlockLevel)
     expect(text).toContain(`Reaching levels ${levels.slice(0, 3).join(', ')} and ${levels[3]}`)
     expect(text).not.toContain('Reaching levels 10, 15, 20 and 25')
+  })
+
+  /**
+   * REGRESSION: the guide said "you queue ONE action per cycle". The engine
+   * allows one MAIN order plus separate item / talent / buyback / surrender
+   * slots (GameLoop.actionSlot), and move/attack orders STAND until replaced.
+   */
+  it('teaches one MAIN order per cycle, the extra slots, and standing orders', () => {
+    const text = mountLearn().text()
+    expect(text).not.toContain('You queue ONE action per cycle')
+    expect(text).toContain('ONE main order per cycle')
+    for (const slot of ['item use', 'talent pick', 'buyback', 'surrender']) {
+      expect(text).toContain(slot)
+    }
+    expect(text).toContain('STAND until replaced')
+  })
+
+  /**
+   * The win condition, exactly: Terminal HP, firewalled until ANY ONE of the
+   * team's T3 (BLACK ICE) falls, ICE falls T1 -> T2 -> T3, surrender gate.
+   */
+  it('states the win condition exactly (Terminal, T3 firewall, ICE order, surrender)', () => {
+    const text = mountLearn().text()
+    const black = STRUCTURE_LABELS.ice[3]
+    expect(text).toContain(`Destroy the enemy Terminal (${TERMINAL_HP} INTEG) to win`)
+    expect(text).toContain(`firewalled until any one of that team's three ${black} falls`)
+    expect(text).toContain('T1 then T2 then T3')
+    expect(text).toContain(`from cycle ${SURRENDER_MIN_CYCLE}`)
+    // The command-table row states the same gate, in minutes.
+    expect(text).toContain(
+      `Vote to forfeit (from cycle ${SURRENDER_MIN_CYCLE}, ${(SURRENDER_MIN_CYCLE * 4) / 60} min`,
+    )
+    expect(text).toContain(`${Math.round(SURRENDER_VOTE_THRESHOLD * 100)}% of its human players`)
+  })
+
+  it('has no "A ice" grammar slip and documents the terminal target', () => {
+    const text = mountLearn().text()
+    expect(text).not.toMatch(/\bA ice\b/)
+    expect(text).toContain('An ICE kill splits')
+    expect(text).toContain('attack terminal')
+  })
+
+  it('only names hyphenated zone ids that exist in the zone registry', () => {
+    // Tag-stripped HTML (spaces between elements): text() glues adjacent table
+    // cells together, which would fuse two ids into one fake token.
+    const text = mountLearn()
+      .html()
+      .replace(/<[^>]+>/g, ' ')
+    // silt-team-side is the naming PATTERN the page explains, not a zone id.
+    const patterns = new Set(['silt-team-side'])
+    const ids = new Set<string>()
+    for (const m of text.matchAll(
+      /\b(?:cache|silt|rookery|landing|hollow|seawall|coldstore|shallows)(?:-[a-z0-9]+)+/g,
+    )) {
+      if (!patterns.has(m[0])) ids.add(m[0])
+    }
+    expect(ids.size).toBeGreaterThan(5)
+    for (const id of ids) {
+      expect({ id, real: id in ZONE_MAP }).toEqual({ id, real: true })
+    }
   })
 
   it('teaches the team-relative terminal/anchor shortcuts', () => {

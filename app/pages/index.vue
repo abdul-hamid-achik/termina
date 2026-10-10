@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { HERO_IDS, HEROES } from '~~/shared/constants/heroes'
-import { CYCLE_DURATION_MS } from '~~/shared/constants/balance'
-import { cycleFrameLine } from '~~/shared/constants/world'
+import { CYCLE_DURATION_MS, TERMINAL_HP } from '~~/shared/constants/balance'
+import { cycleFrameLine, STRUCTURE_LABELS } from '~~/shared/constants/world'
 import { useStartTutorial } from '~/composables/useStartTutorial'
 import { useAuthStore } from '~/stores/auth'
 
@@ -42,6 +42,10 @@ const pillars = [
   { n: '02', text: cycleFrameLine(tickSeconds) },
   { n: '03', text: `${heroCount} operators, four postures: BREACH, HOLD, ROAM, HARDLINE.` },
   { n: '04', text: 'No feed off ground you do not hold — tap the routes, or move blind.' },
+  {
+    n: '05',
+    text: `Win by destroying the enemy Terminal (${TERMINAL_HP} INTEG). It is firewalled until one of its three ${STRUCTURE_LABELS.ice[3]} falls, and a route's ICE falls T1, T2, T3 in order.`,
+  },
 ]
 </script>
 
@@ -99,7 +103,7 @@ const pillars = [
         <p class="max-w-[460px] px-2 text-[0.8rem] leading-relaxed text-text-dim">
           <ScrambleText
             wrap
-            text="No download, no reflexes, no queue."
+            text="No download, no reflexes, no waiting on a full lobby."
             :speed="800"
             :delay="1100"
           />

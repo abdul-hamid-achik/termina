@@ -2,7 +2,8 @@
 import { HEROES } from '~~/shared/constants/heroes'
 import { POSTURE_META, POSTURE_ORDER } from '~~/shared/constants/postures'
 import { CAST } from '~~/shared/constants/cast'
-import { CITY, CREWS, FACTION_META } from '~~/shared/constants/world'
+import { CITY, CREWS, FACTION_META, STRUCTURE_LABELS } from '~~/shared/constants/world'
+import { TERMINAL_HP } from '~~/shared/constants/balance'
 import { heroPlaystyleTags } from '~~/shared/heroPlaystyle'
 import HeroLoreCard from '~/components/lore/HeroLoreCard.vue'
 import LoreBeat from '~/components/lore/LoreBeat.vue'
@@ -116,8 +117,10 @@ const BEATS = [
       <CycleDiagram />
       <p>
         It was built that way to end a latency arms race that was killing people over ten metres of
-        ground. Now nobody is faster than anybody. You get one instruction per cycle.
-        <span class="text-text-primary">So does everyone else.</span>
+        ground. Now nobody is faster than anybody. You get one main order per cycle; using an item,
+        picking a talent, buying back and conceding ride their own slots. A walk or a target you set
+        keeps standing until you replace it.
+        <span class="text-text-primary">Everyone else has the same clock.</span>
       </p>
       <p class="border-l-2 border-chaff/40 pl-3 text-text-primary">
         It is the fairest thing in the city, and a company owns it.
@@ -128,7 +131,7 @@ const BEATS = [
       <p>
         You are not in the city. You are on a terminal, and the terminal is your deck. Everything
         you know about the ground arrives as text — a route, a depth, a list of contacts. Everything
-        you do leaves as one typed instruction, queued into the next cycle.
+        you do leaves as a typed instruction, queued into the next cycle.
       </p>
       <p class="text-text-muted">
         You will never see the street. You will see what the street reports.
@@ -162,9 +165,11 @@ const BEATS = [
 
     <LoreBeat id="ground" index="05" title="THE GROUND">
       <p>
-        Each crew keeps one <span class="text-text-primary">Terminal</span> alive. Bring the other
-        crew's Terminal down and the ground is yours. Everything between the two is three routes and
-        the ICE standing on them.
+        Each crew keeps one <span class="text-text-primary">Terminal</span> alive ({{ TERMINAL_HP }}
+        INTEG). Bring the other crew's Terminal down and the ground is yours. Everything between the
+        two is three routes and the ICE standing on them: it falls in order, T1, T2, then the
+        {{ STRUCTURE_LABELS.ice[3] }} at the end. A Terminal stays firewalled until any one of its
+        crew's three {{ STRUCTURE_LABELS.ice[3] }} is down.
       </p>
       <p>
         The units that walk those routes every cycle are traffic, not scenery. Every one of them is

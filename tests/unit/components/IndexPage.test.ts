@@ -8,6 +8,8 @@ import ParallaxLayer from '~~/app/components/ui/ParallaxLayer.vue'
 import ScrambleText from '~~/app/components/ui/ScrambleText.vue'
 import MarqueeStrip from '~~/app/components/ui/MarqueeStrip.vue'
 import { HERO_IDS, HEROES } from '~~/shared/constants/heroes'
+import { TERMINAL_HP } from '~~/shared/constants/balance'
+import { STRUCTURE_LABELS } from '~~/shared/constants/world'
 
 // index.vue uses Nuxt auto-imports ($fetch, navigateTo) in startTutorial; the
 // SFC compiler leaves these as globals under plain @vitejs/plugin-vue, so we
@@ -67,6 +69,17 @@ describe('index (landing) page', () => {
     for (const posture of ['BREACH', 'HOLD', 'ROAM', 'HARDLINE']) {
       expect(text).toContain(posture)
     }
+  })
+
+  it('states the win condition exactly, from the constants', () => {
+    const text = mountIndex().text()
+    expect(text).toContain(`destroying the enemy Terminal (${TERMINAL_HP} INTEG)`)
+    expect(text).toContain(`firewalled until one of its three ${STRUCTURE_LABELS.ice[3]} falls`)
+    expect(text).toContain('T1, T2, T3 in order')
+  })
+
+  it('does not promise "no queue" — quick-match is a queue with bots filling after a wait', () => {
+    expect(mountIndex().text()).not.toContain('no queue')
   })
 
   it('does not advertise the unimplemented scan command', () => {

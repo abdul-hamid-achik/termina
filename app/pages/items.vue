@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ITEMS, ITEM_CATEGORIES } from '~~/shared/constants/items'
+import { MAX_ITEMS } from '~~/shared/constants/balance'
 import type { ItemCategoryId } from '~~/shared/types/items'
 import type { HeroRole } from '~~/shared/types/hero'
 import { recommendedItemsForRole } from '~~/shared/constants/itemBuilds'
@@ -12,7 +13,7 @@ import { ROLE_LABELS, ITEM_CLASS_PRIMERS, CITY } from '~~/shared/constants/world
 
 useHead({ title: 'Items · TERMINA' })
 
-const MAX_SLOTS = 6
+const MAX_SLOTS = MAX_ITEMS
 
 type Filter = ItemCategoryId | 'all'
 const activeCategory = ref<Filter>('all')

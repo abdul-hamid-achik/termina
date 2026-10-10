@@ -18,10 +18,9 @@ import { CYCLE_DURATION_MS } from '~~/shared/constants/balance'
  * that carries the meaning — rather than by hiding the diagram.
  */
 const CYCLE_MS = CYCLE_DURATION_MS
-const SLOTS = 5
-
-/** The instructions the fictional crews queue, in the order they arrive. */
+/** One main order from each of five different operators, in the order they arrive. */
 const QUEUE = ['move seawall', 'attack wave:0', 'cast q', 'tap coldstore', 'buy edge_kit'] as const
+const SLOTS = QUEUE.length
 
 const elapsed = ref(0)
 const committed = ref(false)
@@ -77,7 +76,8 @@ onUnmounted(() => {
     data-testid="cycle-diagram"
   >
     <figcaption class="sr-only">
-      A four-second cycle: five instructions queue, then all commit together in no order.
+      A {{ CYCLE_MS / 1000 }}-second cycle: orders from {{ SLOTS }} different operators queue, then
+      all commit together in no order.
     </figcaption>
 
     <!-- The queue filling -->

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { HEROES } from '~~/shared/constants/heroes'
+import { CYCLE_DURATION_MS } from '~~/shared/constants/balance'
 import { POSTURE_META } from '~~/shared/constants/postures'
 import { CAST } from '~~/shared/constants/cast'
 import { getTalentTree, talentUnlockLevel, type TalentTier } from '~~/shared/constants/talents'
@@ -16,6 +17,7 @@ import type { ConsoleSlot } from '~/composables/useTrainingConsole'
 useHead({ title: 'Dry Run · TERMINA' })
 
 const allHeroes = Object.values(HEROES)
+const cycleSeconds = CYCLE_DURATION_MS / 1000
 
 // Deep-link support: /cast?hero=daemon preselects that hero (e.g. from a lore
 // card's TRAIN link), so reading a hero's story flows straight into its kit.
@@ -151,7 +153,8 @@ const {
       <h1 class="text-lg font-bold tracking-widest text-chaff">&gt;_ DRY RUN</h1>
       <p class="mt-1 text-[0.78rem] text-text-dim">
         A safe dry-run of every kit. Pick an operator, cast its abilities, and watch the real
-        outcomes resolve on the 4-second scheduler — learn the heroes before you queue.
+        outcomes resolve on the {{ cycleSeconds }}-second cycle clock — learn the heroes before you
+        queue.
       </p>
     </header>
 
@@ -377,7 +380,7 @@ const {
         </p>
 
         <!-- Talents: the match's only permanent build choice, previously shown
-             for the first time mid-fight on the 4-second clock. -->
+             for the first time mid-fight on the cycle clock. -->
         <div v-if="talentTree" class="mt-2 flex flex-col gap-2" data-testid="hero-talents">
           <div class="border-b border-border pb-1">
             <h3 class="text-[0.85rem] font-bold tracking-wide text-gold">TALENTS</h3>
@@ -456,7 +459,7 @@ const {
           </div>
           <div class="mt-1 flex flex-wrap gap-2">
             <AsciiButton label="CAST COMBO (C)" variant="primary" @click="castCombo" />
-            <AsciiButton label="ADVANCE CYCLE (4s)" @click="advanceCycle" />
+            <AsciiButton :label="`ADVANCE CYCLE (${cycleSeconds}s)`" @click="advanceCycle" />
             <AsciiButton label="RESET" variant="ghost" @click="reset" />
           </div>
           <p class="text-[0.6rem] leading-snug text-text-dim" data-testid="console-refill-note">

@@ -4,7 +4,7 @@ A text-based MOBA you play right in your browser — deep 5v5 strategy where
 **reading the board beats reflexes**. No downloads, no waiting on a queue:
 jump into a match against bots any time (a guided tutorial shows you the ropes),
 or queue for ranked when you're ready. Built for players who love MOBA depth but
-want it **accessible and at their own pace** — every command is one keystroke,
+want it **accessible and at their own pace** — every command is one typed line,
 every cycle is a decision.
 
 **▶ Play it live: [www.terminamoba.com](https://www.terminamoba.com)** — or learn first: [meet the cast](https://www.terminamoba.com/cast) · [browse items](https://www.terminamoba.com/items) · [learn the commands](https://www.terminamoba.com/learn) · [read the lore](https://www.terminamoba.com/lore)
@@ -12,25 +12,25 @@ every cycle is a decision.
 ## 🎮 Features
 
 ### Core Gameplay
-- **5v5 Strategic Battles** - Batch combat with 4-second cycles
-- **18 Unique Heroes** - Programming-themed champions with distinct abilities
-- **40+ Items** - Complete item system with passives and actives
-- **Draft Phase** - Alternating hero picks (snake draft)
-- **Talent Trees** - Binary choices at levels 10/15/20/25 for build diversity
+- **5v5 Strategic Battles** - Batch combat with 4-second cycles: every instruction commits at once, in no order
+- **18 Unique Heroes** - Programming-themed operators with distinct abilities
+- **47 Items** - Complete item system with passives and actives
+- **Assigned Heroes** - Quick-match assigns heroes round-robin and bots fill empty slots after about ten seconds; there is no pick/ban draft (yet)
+- **Talent Trees** - Four binary choices per hero (tiers named 10/15/20/25), unlocking at hero levels 3/6/9/12
+- **Win Condition** - Destroy the enemy Terminal. It is firewalled until any one of that team's three T3 BLACK ICE falls, and a route's ICE falls in order, T1 then T2 then T3
 
 ### Strategic Mechanics
-- **Burn System** - Burn allied waves below 50% HP to deny the enemy scrip/XP
-- **Buyback** - Instant respawn for scrip (100 + 25×level)
-- **Surrender Voting** - 60% majority required after 15 minutes
-- **Vision Game** - Ward placement + missing enemy detection
-- **Cooldown Tracking** - See enemy ability timers
+- **One main order per cycle** - Item use, talent picks, buyback and surrender ride their own slots; a move or an attack order keeps standing until replaced
+- **Strip & Burn** - Waves at or below 35% of their spawn INTEG go to any swing (same-cycle claimants split the payload); burn your own wave at or below 50% to deny the enemy
+- **Buyback** - Instant respawn for scrip (100 + 25×level + 10×deaths)
+- **Surrender Voting** - 60% of a team's human players, from cycle 225 (15 minutes)
+- **Vision Game** - Fog of war, camtap/sniffer placement, and a `missing` team callout
+- **Cooldown Tracking** - See visible enemy ability timers
 
-### Anti-Cheat & Fair Play
-- **Leaver Detection** - AFK detection after 2 minutes
-- **Low-Priority Queue** - Penalty system for repeat leavers
-- **Rate Limiting** - 5 actions/second, 10 burst
-- **Vision Validation** - Prevent map hacks
-- **Stat Validation** - Detect impossible states
+### Fair Play
+- **AFK Takeover** - A player idle for 30 cycles (about 2 minutes) is replaced by a bot for the rest of the match
+- **Rate Limiting** - 5 actions/second, 10 burst, enforced server-side
+- **Server-side Validation** - Every action is validated against engine state; clients only ever receive vision-filtered state
 
 ### Infrastructure
 - **State Persistence** - each game's state lives in a Postgres row, updated every tick under a CAS guard — no separate snapshot/recovery step
@@ -131,29 +131,37 @@ See `.env.example` for the complete list (incl. `WORKFLOW_START_KEY`).
 
 **Movement:**
 ```
-move <zone>          # Move to adjacent zone
+move <zone>          # Walk to any zone; you auto-path one zone per cycle
 ```
 
 **Combat:**
 ```
-attack <target>      # Attack hero/wave/ice
-cast <q|w|e|r>       # Use ability
-burn <wave_index>   # Burn allied wave (<50% HP)
+attack [target]      # hero:<name> | wave:<n> | ice:<zone> | tenant | terminal
+cast <q|w|e|r> [target]   # Use ability
+burn [wave:<n>]      # Burn your own wave (at or below 50% of its spawn INTEG)
 ```
 
 **Items:**
 ```
-buy <item>           # Purchase item (in shop)
-sell <slot>          # Sell item (slot 0-5)
+buy <item>           # Purchase item (in your base or fountain)
+sell <item>          # Sell an item for 50% of its cost
 use <item>           # Use item active
+```
+
+**Map & objectives:**
+```
+tap <zone>           # Place a camtap or sniffer
+grab                 # Pick up the cache in your zone
+backup               # Pick up the Backup in the Tenant pit
+harden               # Make your team's ICE invulnerable for a few cycles
 ```
 
 **Strategy:**
 ```
 buyback              # Instant respawn (when dead)
-surrender yes|no     # Vote to surrender
-missing <enemy>      # Ping missing enemy
-select_talent <tier> <id>  # Choose talent at level 10/15/20/25
+surrender confirm    # Vote to surrender (surrender cancel retracts it)
+missing <enemy>      # Team callout: this enemy is missing
+talent <10|15|20|25> <left|right>   # Choose a talent (tier names, not levels)
 ```
 
 **Communication:**
@@ -164,11 +172,11 @@ chat team <message>  # Send to team only
 
 ### Game Flow
 
-1. **Queue** - Join ranked_5v5, quick_3v3, or 1v1
-2. **Draft** - Alternating hero picks (snake draft)
-3. **Laning** - Last-hit waves, burn, harass
+1. **Queue** - Join a ranked 5v5, quick 3v3 or 1v1 queue, or launch a practice game against bots
+2. **Assignment** - Heroes are assigned round-robin; bots fill empty slots after about ten seconds
+3. **Laning** - Last-hit (strip) waves, burn your own, harass
 4. **Mid Game** - Team fights, objectives, ICE
-5. **Late Game** - the Tenant, stacked waves, base race
+5. **Late Game** - the Tenant, stacked waves, break a T3 and take the Terminal
 
 ---
 
@@ -176,31 +184,24 @@ chat team <message>  # Send to team only
 
 ### Talent Trees
 
-Each hero has 8 talents (2 choices × 4 tiers):
+Each hero has 8 talents (2 choices × 4 tiers), tailored to that hero. The four
+tiers are *named* 10, 15, 20 and 25 (the numbers you type), but they unlock at
+hero levels **3, 6, 9 and 12**. Each pick is permanent; the other side of the
+tier is gone for the match. Tiers mix stat bonuses, cooldown and damage
+upgrades, and — at the top tier — a few "exotic" upgrades that change how an
+ability works (a chance to cast twice, spell lifesteal, a global ultimate, an
+area bonus). Browse every hero's tree on the `/cast` page.
 
-**Level 10** - Stat bonuses (+15 Attack or +200 HP)
-**Level 15** - Ability enhancements (+damage or -cooldown)
-**Level 20** - Major power spikes (+30% damage or +25% resist)
-**Level 25** - Exotic upgrades: a few heroes get a mechanical transform — e.g.
-Echo's _Double Echo_ / Lambda's _Double Cast_ (Q has a 25% chance to fire twice),
-Daemon's _Soul Siphon_ (ability damage heals you), Regex's _Global Backtracking_
-(R can target a hero in any zone), and Null's _Cascading Dereference_ (R also hits
-adjacent zones). The rest are large numeric bonuses
-
-Example (Echo):
 ```
-Level 10: +15 Attack Damage OR +200 HP
-Level 15: Echo Stun +0.5s OR -2s Echo Location CD
-Level 20: +30% Echo Damage OR +15% Magic Resist
-Level 25: Double Echo (Q casts twice, 25%) OR +250 Max HP
+talent 10 left       # pick the left option of the first tier (hero level 3)
 ```
 
-### Deny Mechanics
+### Strip & Burn
 
-- **When**: Allied wave below 50% HP
-- **Reward**: 50% scrip + 50% XP
-- **Prevention**: Enemy gets nothing
-- **Command**: `burn <wave_index>`
+- **Strip window**: an enemy wave unit at or below 35% of its spawn INTEG goes down to *any* swing that cycle; everyone who swings the same cycle claims it together and splits the payload
+- **Outside the window**: only a swing that would kill the unit outright claims it
+- **Burn**: your own wave at or below 50% of its spawn INTEG; you keep 50% of the scrip and XP, the enemy gets nothing
+- **Commands**: `attack wave:<n>` and `burn wave:<n>` (indices count living waves in your zone, so they shift every cycle)
 
 ### Buyback System
 
@@ -209,13 +210,10 @@ Level 25: Double Echo (Q casts twice, 25%) OR +250 Max HP
 - **Effect**: Instant respawn at fountain, full HP/MP
 - **Command**: `buyback`
 
-### Leaver Penalties
+### AFK Takeover
 
 - **Detection**: 30 cycles (2 minutes) without actions
-- **Penalty**: +10 leaver score per incident
-- **Threshold**: 30 score = low-priority queue
-- **Clear**: Complete 3 low-priority games
-- **Decay**: -1 point per day
+- **Effect**: a bot takes over the slot for the rest of the match (no reclaim) and the abandon is recorded
 
 ---
 
@@ -232,7 +230,7 @@ bun run test:components    # component (happy-dom)
 bun run typecheck          # nuxt typecheck
 ```
 
-~2,860 Vitest tests across the engine, all 18 heroes, items, matchmaking,
+Thousands of Vitest tests across the engine, all 18 heroes, items, matchmaking,
 services, stores, and composables. Projects live in `test.projects` in
 `vitest.config.ts`; single file: `npx vitest run tests/unit/engine/GameLoop.test.ts`.
 The **integration** project includes real-Postgres `DatabaseService` tests
@@ -277,8 +275,8 @@ cairn spec heal   tests/e2e/flows/profile_view.yml
 reusable `actions/login.yml` (registers a fresh user through the /login Register
 tab), `cairntrace.config.yml`, and a gitignored `runs/` artifact root.
 `lobby_queue` is tagged `partial`: it covers the idle→searching→cancel UI journey
-for a solo queuer (a real match needs 10 players, so the draft→game handoff isn't
-exercised in-browser).
+for a solo queuer (the queue→game handoff isn't exercised in-browser; that path is
+covered by the unit and gameplay suites).
 
 **Auth & isolation:** flows authenticate for real — `actions/login.yml` registers
 a username/password account through the /login Register tab (which logs you in on
@@ -356,66 +354,44 @@ tvault -p termina-local run -- bun run dev   # local dev with secrets injected
 
 1. Create hero definition in `shared/constants/heroes.ts`
 2. Implement abilities in `server/game/heroes/`
-3. Add talent tree in `server/game/heroes/talent-trees.ts`
+3. Add the talent tree in `shared/constants/talents.ts`
 4. Write tests in `tests/unit/heroes/`
 
 ### Adding a New Item
 
-1. Add to `server/game/items/registry.ts`
-2. Implement active/passive in `server/game/items/effects.ts`
-3. Add to shop in `shared/constants/items.ts`
-4. Write tests
+1. Define it in `shared/constants/items.ts` (the shop reads from there)
+2. Wire its passive/active behavior in the engine (`server/game/items/shop.ts` for buying/selling/using, `server/game/engine/` for effects)
+3. Write tests
 
 ### Adding a New Game Mode
 
 1. Add mode to `shared/types/game.ts`
 2. Implement matchmaking in `server/game/matchmaking/queueNeon.ts`
 3. Adjust rules in `server/game/engine/GameLoop.ts`
-4. Update frontend in `app/pages/play/`
+4. Update frontend in `app/pages/play.vue` and `app/pages/lobby.vue`
 
 ---
 
 ## 📈 Performance
 
-### Current Capabilities
-- **Tick Rate**: 4 seconds (250ms planned for future)
-- **Players per Game**: 10 (5v5)
-- **Concurrent Games**: ~50 per server instance (estimate — slow cycles are
-  logged with their duration so the real ceiling is observable)
-- **Memory**: ~100MB per active game
-
-### Optimization Roadmap
-- [~] Delta compression for state updates (partial: top-level field diff;
-  per-entity dirty-tracking is the remaining work)
-- [ ] Vision calculation caching
-- [ ] Horizontal scaling (sharding) — single-instance today
-- [ ] Database read replicas
-- [ ] Event batching
+- **Cycle length**: 4 seconds, driven one tick at a time by Vercel Workflow
+- **Players per game**: up to 10 (5v5), human or bot
+- **State**: one `live_games` row per game in Neon, updated under a CAS guard each tick; slow cycles are logged with their duration
 
 ---
 
 ## 🛡️ Security
 
-### Implemented
-- ✅ Authentication required (no bot bypass)
-- ✅ Rate limiting (5 actions/sec)
-- ✅ Vision validation (no map hacks)
-- ✅ Cooldown validation (no CDR hacks)
-- ✅ Stat validation (no HP/MP hacks)
-- ✅ Input sanitization (XSS prevention)
-
-### Best Practices
-- Never trust client input
-- Validate all actions server-side
-- Use Effect-TS for type safety
-- Log all suspicious activity
-- Regular security audits
+- Authentication required (no bot bypass)
+- Rate limiting (5 actions/sec, 10 burst)
+- Vision-filtered state: clients never receive enemies they cannot see
+- Every action is validated server-side against engine state
 
 ---
 
 ## 📝 License
 
-MIT License - See LICENSE file for details
+No open-source license is included in this repository.
 
 ---
 
@@ -435,21 +411,6 @@ MIT License - See LICENSE file for details
 
 ---
 
-## 🎉 Credits
-
-**Created by**: TERMINA Team
-**Inspired by**: Dota 2, League of Legends, Chess
-**Built with**: Love, Effect-TS, and lots of coffee
-
----
-
 ## 📞 Support
 
-- **Discord**: [Join our server]
-- **GitHub**: [Open an issue]
-- **Email**: support@termina.game
-
----
-
-**Version**: 1.0.0  
-**Last Updated**: June 2026
+- **Email**: support@terminamoba.com

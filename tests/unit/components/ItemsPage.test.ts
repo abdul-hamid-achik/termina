@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils'
 import { ref, computed } from 'vue'
 import ItemsPage from '~~/app/pages/items.vue'
 import { ITEMS } from '~~/shared/constants/items'
+import { MAX_ITEMS } from '~~/shared/constants/balance'
 import type { HeroRole } from '~~/shared/types/hero'
 const ROLE_ORDER: HeroRole[] = ['carry', 'mage', 'assassin', 'tank', 'support', 'offlaner']
 import { recommendedItemsForRole } from '~~/shared/constants/itemBuilds'
@@ -39,6 +40,13 @@ function mountItems() {
     },
   })
 }
+
+describe('items page — loadout cap', () => {
+  it('caps the sandbox loadout at the engine inventory size, not a hardcoded 6', () => {
+    const wrapper = mountItems()
+    expect(wrapper.get('[data-testid="loadout-slots"]').text()).toBe(`0 / ${MAX_ITEMS}`)
+  })
+})
 
 describe('items page — build guidance', () => {
   it('renders the canonical build order for the default role, in order', () => {

@@ -57,6 +57,7 @@ import {
   WAVE_XP_SHARED,
 } from '~~/shared/constants/balance'
 import { talentUnlockLevel } from '~~/shared/constants/talents'
+import { STRUCTURE_LABELS } from '~~/shared/constants/world'
 import { RANK_TIERS } from '~~/shared/constants/ranks'
 import { useStartTutorial } from '~/composables/useStartTutorial'
 
@@ -76,6 +77,7 @@ const heroCount = HERO_IDS.length
 const wardCost = ITEMS.camtap!.cost
 const surrenderMinutes = (SURRENDER_MIN_CYCLE * tickSeconds) / 60
 const surrenderPercent = Math.round(SURRENDER_VOTE_THRESHOLD * 100)
+const t3Label = STRUCTURE_LABELS.ice[3]
 const buybackCooldownMinutes = (BUYBACK_COOLDOWN_CYCLES * tickSeconds) / 60
 const glyphCooldownMinutes = (HARDEN_COOLDOWN_CYCLES * tickSeconds) / 60
 
@@ -133,7 +135,7 @@ const quickStart = [
   {
     step: '6',
     title: 'Fight & Push',
-    desc: 'Use abilities on enemies and raze a route to its T3 ICE — that exposes the enemy Terminal. Destroy it to win.',
+    desc: 'Use abilities on enemies and take the ICE on a route down in order, T1 to T3 — one fallen T3 lifts the firewall on the enemy Terminal. Destroy it to win.',
   },
 ]
 
@@ -144,7 +146,7 @@ const movementGuide = [
       'The map is divided into zones (fountain, base, routes, silt, crossings)',
       `You walk one zone per cycle (${tickSeconds} seconds) — but you can order a move to ANY zone and your hero auto-paths there, cycle by cycle`,
       'Type move <zone-id> to move (e.g., move rookery-terminal, move coldstore-t3-chaff), or tap any zone on the map',
-      'Issuing any new action cancels the walk; a new move order redirects it',
+      'A new move order redirects the walk. Any other main order (attack, cast, buy…) or an item use ends it; a talent pick, buyback or surrender leaves it alone',
       'Shortcut: mv is the same as move (e.g., mv coldstore-t2-chaff)',
     ],
   },
@@ -247,7 +249,7 @@ const commands = [
   },
   {
     cmd: 'surrender confirm',
-    desc: `Vote to forfeit (after ${surrenderMinutes} min; ${surrenderPercent}% of team must agree)`,
+    desc: `Vote to forfeit (from cycle ${SURRENDER_MIN_CYCLE}, ${surrenderMinutes} min; ${surrenderPercent}% of your team's human players must agree). surrender cancel retracts your vote`,
     example: 'surrender confirm',
     shortcuts: '—',
   },
@@ -293,6 +295,11 @@ const targeting = [
     desc: 'Target Tenant — only from inside the pit. Killing him drops the Backup',
     example: 'attack tenant',
   },
+  {
+    format: 'terminal',
+    desc: 'Target the enemy Terminal — from inside the enemy base, once one of their T3 ICE has fallen',
+    example: 'attack terminal',
+  },
   { format: 'self', desc: 'Target yourself (for self-cast abilities)', example: 'cast w self' },
   { format: '<hero-name>', desc: 'Shorthand for hero: prefix', example: 'attack daemon' },
 ]
@@ -328,7 +335,7 @@ const concepts = [
   {
     term: 'Cycles',
     icon: '>',
-    desc: `TERMINA commits every instruction at once, ${tickSeconds} seconds wide — one cycle. You queue ONE action per cycle. The action window is ${actionWindowSeconds} seconds; your command resolves when the cycle commits.`,
+    desc: `TERMINA commits every instruction at once, ${tickSeconds} seconds wide — one cycle. You give ONE main order per cycle (move, attack, cast, buy, burn, tap…); an item use, a talent pick, buyback and surrender each ride their own slot and do not spend it. The action window is ${actionWindowSeconds} seconds; your orders resolve when the cycle commits. Two orders STAND until replaced: a move keeps auto-walking you toward its destination, and an attack on a hero, ICE or the Tenant keeps swinging at it each cycle. A wave hit never stands — every last-hit is its own decision.`,
   },
   {
     term: 'Scrip & Items',
@@ -348,12 +355,12 @@ const concepts = [
   {
     term: 'ICE',
     icon: '!',
-    desc: `Each lane has 3 ice tiers per side: T1 ${ICE_HP_T1} INTEG, T2 ${ICE_HP_T2} INTEG, T3 ${ICE_HP_T3} INTEG. ICE hit for ${ICE_ATTACK} and prioritize heroes who attack under them, then waves. A ice kill splits ${ICE_SCRIP}sc among allies in the zone.`,
+    desc: `Each route has 3 ICE tiers per side: T1 ${ICE_HP_T1} INTEG, T2 ${ICE_HP_T2} INTEG, T3 ${ICE_HP_T3} INTEG (${t3Label}). They fall in order: T2 cannot be hit until T1 in that route is down, T3 not until T2 is. ICE hit for ${ICE_ATTACK} and prioritize heroes who attack under them, then waves. An ICE kill splits ${ICE_SCRIP}sc among allies in the zone.`,
   },
   {
     term: 'The Terminal',
     icon: '@',
-    desc: `Each base houses its team's Terminal (${TERMINAL_HP} INTEG). It is invulnerable until at least one of that team's T3 ice falls; once exposed, heroes and waves in the base can attack it.`,
+    desc: `Each base houses its team's Terminal (${TERMINAL_HP} INTEG). It is firewalled — it cannot be damaged — until ANY ONE of that team's three T3 ICE (${t3Label}) has fallen. Once it is exposed, heroes and waves in that base can attack it.`,
   },
   {
     term: 'Levels & XP',
@@ -373,7 +380,7 @@ const concepts = [
   {
     term: 'Stripping & Burning',
     icon: '/',
-    desc: `Only the killing blow pays scrip: chip a wave to 1 INTEG and someone on your route takes it, you get nothing. You do NOT have to out-damage a wave unit to take it — a line unit spawns with ${LINE_UNIT_HP} INTEG and grows all match, while you hit for 30–70 once per cycle. Instead, wait for the window: once a unit is at or below ${stripHpPercent}% of the INTEG it spawned with, it is carrying more than it can defend and attack wave:0 takes the payload outright, for ${WAVE_SCRIP}sc and ${WAVE_XP} XP (allies in the zone share ${WAVE_XP_SHARED} XP, so standing on the route is never worth zero). The ActionRow says which: STRIP means a unit is in the window right now, HIT means you would only be chipping. Burning is the mirror on your own side — once one of YOUR units drops below ${burnHpPercent}% INTEG, burn wave:0 takes it out so the enemy gets nothing, and you keep ${burnGold}sc and ${burnXp} XP. Prefer STRIP / BURN on the ActionRow (or look then attack wave:N) over guessing an index: wave:N counts the living waves in your zone, so N shifts every cycle as waves die and waves spawn.`,
+    desc: `Chip damage pays nothing by itself — scrip goes to whoever CLAIMS the unit. You do NOT have to out-damage a wave unit to claim it: a line unit spawns with ${LINE_UNIT_HP} INTEG and grows all match, while one swing per cycle is only your attack stat. Instead, wait for the window: once a unit is at or below ${stripHpPercent}% of the INTEG it spawned with, it is carrying more than it can defend and ANY swing that cycle takes the payload — ${WAVE_SCRIP}sc and ${WAVE_XP} XP (allies in the zone share ${WAVE_XP_SHARED} XP, so standing on the route is never worth zero). If several of you swing in the same cycle, everyone who swung claims it together and SPLITS the payload. Outside the window only a swing that would kill the unit outright claims it. The ActionRow says which: STRIP means a unit is in the window right now, HIT means you would only be chipping. Burning is the mirror on your own side — once one of YOUR units is at or below ${burnHpPercent}% of its spawn INTEG, burn wave:0 takes it out so the enemy gets nothing, and you keep ${burnGold}sc and ${burnXp} XP (split if several of you burn it). Prefer STRIP / BURN on the ActionRow (or look then attack wave:N) over guessing an index: wave:N counts the living waves in your zone, so N shifts every cycle as waves die and waves spawn.`,
   },
   {
     term: 'Death & Respawn',
@@ -393,7 +400,7 @@ const concepts = [
   {
     term: 'Win Condition',
     icon: 'W',
-    desc: `Destroying any of a team's T3 ice exposes their Terminal (${TERMINAL_HP} INTEG) in their base. Destroy the enemy Terminal to win. Teams may also surrender after ${surrenderMinutes} minutes with a ${surrenderPercent}% vote.`,
+    desc: `Destroy the enemy Terminal (${TERMINAL_HP} INTEG) to win. It is firewalled until any one of that team's three ${t3Label} falls, and the ICE on a route falls in order, T1 then T2 then T3. A team can also surrender from cycle ${SURRENDER_MIN_CYCLE} (${surrenderMinutes} minutes), once ${surrenderPercent}% of its human players vote to (bots do not vote; the tutorial has no minimum).`,
   },
   {
     term: 'BREACH',
@@ -403,7 +410,7 @@ const concepts = [
   {
     term: 'Two slots',
     icon: '=',
-    desc: 'Each cycle has two slots: MAIN (move, attack, cast, buy, burn, tap) and RIG (use <item>). An item active and an ability can fire in the SAME cycle — that is the combo. The HUD shows MAIN and RIG as open or committed.',
+    desc: 'Each cycle has two slots you will use all the time: MAIN (move, attack, cast, buy, burn, tap) and RIG (use <item>). An item active and an ability can fire in the SAME cycle — that is the combo. The HUD shows MAIN and RIG as open or committed. A talent pick, buyback and a surrender vote have slots of their own, so they never cost you your MAIN order.',
   },
   {
     term: 'Matchmaking',
@@ -447,7 +454,7 @@ const postureGroups = POSTURE_ORDER.map((posture) => ({
       <h1 class="text-lg font-bold tracking-widest text-chaff">&gt;_ HOW TO PLAY</h1>
       <p class="mt-1 text-[0.78rem] text-text-dim">
         Everything you need before your first match — movement, commands, targeting, and the
-        concepts that win games on the 4-second scheduler.
+        concepts that win games on the {{ tickSeconds }}-second cycle clock.
       </p>
     </header>
 

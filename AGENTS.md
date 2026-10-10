@@ -1,12 +1,24 @@
 # Termina — Agent & Contributor Guide
 
-> **`CLAUDE.md` and `AGENTS.md` are kept identical.** Claude Code reads `CLAUDE.md`; other agent tools read `AGENTS.md`. Edit one, then copy it to the other (`cp CLAUDE.md AGENTS.md`) so they never drift.
+> **`AGENTS.md` is the single source of truth.** `CLAUDE.md` is a one-line `@AGENTS.md` import so Claude Code loads this same file. Edit only `AGENTS.md`; never put content in `CLAUDE.md`.
 
-This file provides guidance to Claude Code (claude.ai/code) and any other AI/contributor working in this repository.
+This file provides guidance to any AI agent or contributor working in this repository.
+
+Private working notes (plans, playability findings, handoffs, ADRs) live in the owner's Obsidian vault at `~/notes/projects/termina/` — never in the repo, and never linked from public docs.
 
 ## What This Is
 
-Termina is a text-based multiplayer MOBA (5v5) played through a terminal-inspired browser UI. Frontend is Nuxt 4 + Vue 3 + Pinia 3 (Tailwind 4). Backend is Nitro with Effect-TS for the game engine, PostgreSQL via Drizzle, and Redis. The game runs on 4-second ticks with deterministic action resolution. Tooling is oxc-based: **oxlint** (lint), **oxfmt** (format), **knip** (dead-code), with lefthook git hooks. Runtime is Bun.
+Termina is a text-based multiplayer MOBA (5v5) played through a terminal-inspired browser UI. Frontend is Nuxt 4 + Vue 3 + Pinia 3 (Tailwind 4). Backend is Nitro with Effect-TS for the game engine, Neon PostgreSQL via Drizzle, Vercel Workflow for the per-game clock and Ably for realtime (no Redis, no WebSockets). The game runs on 4-second cycles with deterministic action resolution. Tooling is oxc-based: **oxlint** (lint), **oxfmt** (format), **knip** (dead-code), with lefthook git hooks. Runtime is Bun.
+
+## How the game plays (code-verified 2026-10-10)
+
+- **Win**: destroy the enemy **Terminal** (`TERMINAL_HP` 6000, `server/game/engine/TerminalSystem.ts`). It is firewalled until ANY one of that team's three T3 ICE (BLACK ICE) falls; ICE in a route must fall T1 → T2 → T3 (`canAttackIce`). Surrender: from `SURRENDER_MIN_CYCLE` (225) with 60% of the team's humans; tutorial has no minimum.
+- **Map**: 32 zones (`shared/constants/zones.ts`). Three routes (SEAWALL / COLDSTORE / SHALLOWS), each `T3-T2-T1-cross-T1-T2-T3` between `rookery-terminal` (chaff base, shop) and `landing-terminal` (audit base, shop); each base has an `-anchor` (fountain). Four Silt camp zones, two cache spots on the river, and the `hollow` (Tenant pit). Base-to-base is 8 hops. Subset maps in `shared/constants/maps.ts`: `two_lane` (22, quick 3v3), `one_lane` (11, tutorial/1v1).
+- **Orders**: per cycle a player gets ONE main order plus separate item-use, talent, buyback and surrender slots. A `move` to any reachable zone is a standing auto-path (one hop per cycle, BFS); an `attack` on a hero/ICE/Tenant is a standing order. ICE gates attacks, never movement.
+- **BREACH (the core combat rule)**: code damage into a CLOSED (not breached) hero is halved and hard control (stun/silence/root/taunt/fear) fails. `breach <hero>` costs 50 BW, opens the target for 5 cycles, 10-cycle cooldown. AIRGAP grants immunity. Damage: kinetic vs plate and code vs ice both `dmg×100/(100+armor)`; black is raw.
+- **Economy**: start 600 scrip, +4/cycle passive. STRIP a wave unit at ≤35% of its spawn INTEG (40 scrip, 75 for a breach unit; same-cycle claimants split). BURN your own unit at ≤50% (you keep half). Kill 200 + 50/streak × comeback; assist 100 split; ICE 500 split; Tenant 600. Shop only in your own base/anchor; 6 slots; sell 50%. Buyback `100 + 25×level + 10×deaths`, 90-cycle cooldown.
+- **NPCs**: waves every 8 cycles per route per crew — 3 line + 1 sweep, a breach unit every 5th wave, +35% per 50 cycles (cap 4×). ICE hits 120/cycle. Silt dwellers and caches every 60 cycles. The Tenant (5000 INTEG) drops BACKUP: an instant in-place revive buff.
+- **Progression**: Q/W/E ranks at levels 1/3/5/7, R at 6/12/18, max level 25. Talent tiers are NAMED 10/15/20/25 but unlock at levels 3/6/9/12 (`TALENT_UNLOCK_LEVEL`). Respawn `3 + (level-1)` cycles.
 
 ## WORLD (settled — do not invent lore)
 
@@ -47,7 +59,7 @@ Player-facing names live in ONE module so copy cannot drift. TeamId is
 BLACK ICE). Objectives: THE TENANT (its pit is the Hollow), BACKUP (the
 drop), caches (five buff types), CAMTAP/SNIFFER (vision), HARDEN (team ICE
 invulnerability), BURN (the last-hit-your-own wave verb), SCRIP (currency).
-The Silt holds five camps: STUB/WATCHDOG/WARDEN/ORPHAN/ZOMBIE. Wave
+The Silt (four camp zones) spawns five dweller types: STUB/WATCHDOG/WARDEN/ORPHAN/ZOMBIE. Wave
 units are asymmetric by crew — chaff fields mule/script/picket, audit
 fields guard/sweeper/auditor (WAVE_UNIT_LABELS keyed by team+role). Items
 partition into five cyberware classes: STREET / CHROME / HARDWARE / DECK /
@@ -121,17 +133,22 @@ bun run preview
 
 ### Game Loop Pipeline (server/game/engine/)
 
-Each cycle (4s) runs this pipeline in `processCycle`:
-1. Bot AI decides actions → `submitAction()`
-2. Drain action queue (1 action per player per cycle)
-3. Validate actions via `validateAction()` — rejected ones return with reason
-4. Resolve in phases: instant abilities → movement → attacks/casts → passives/cooldowns → buy/sell
-5. WaveAI + IceAI
-6. Spawn waves, distribute scrip, handle respawns, fountain healing, deaths, level ups
-7. Check win condition
-8. Broadcast vision-filtered state to each player via `filterStateForPlayer()`
+Each cycle (4s) runs this pipeline in `processCycle` (`GameLoop.ts`; the numbered comments in the code are the source of truth):
+0. Bot AI decides actions → `submitAction()`
+1. Drain the in-process queue; deliberate orders cancel a standing walk/attack; standing orders (auto-path `moveTarget`, `attackTarget`) are re-issued as synthesized actions
+1.5. Special actions: buyback, surrender vote, talent pick
+2. Validate via `validateAction()` — rejections carry a reason (the third identical one escalates with a help pointer)
+3. `resolveActions` phases: anti-cheat filter → taunt override → item actives → instant stuns/silences → movement → burns → attacks → targeted casts → passives → shop → post-shop (breach, harden, pickups, strip awards, ICE kills, wards)
+3.4–3.7. Tutorial advance/graduation, ICE-kill tracking, in-combat flags, Socket traps, harden expiry
+4–5.7. NPC AI (waves, Silt, ICE, Tenant), Terminal vulnerability recompute
+6–10.6. Spawns, cache/ward expiry, passive scrip, respawns, fountain, DoTs, buff tick
+11–13. Deaths + kill credit, hero passives, level-ups, win check
+13.5. Day/night; every 60 cycles AFK takeover
+14. Merge events onto state (they ride inside `cycle_state`)
 
-`processCycle` itself is transport-agnostic (pure `GameState` in, `GameState` + events out) — it is now driven by **Vercel Workflow**, one tick at a time, rather than a long-lived in-process loop. See `server/workflows/gameTick.ts` (the thin, statically-bundled workflow body — `runGame`, sleeps to the next 4s boundary, chains a continuation every 250 ticks) and `gameTickCore.ts` (the heavy step bodies, loaded via dynamic import: reads/writes the `live_games` row in Neon under a CAS guard, drains `pending_actions`, calls `processCycle`, publishes the result to Ably).
+Randomness is deterministic: one `mulberry32(mix(rngSeed, cycle))` per cycle; a replay is `(roster, rngSeed, actionLog)` re-run through `processCycle`.
+
+`processCycle` itself is transport-agnostic (pure `GameState` in, `GameState` + events out) — it is driven by **Vercel Workflow**, one tick at a time. `server/workflows/gameTick.ts` is the thin, statically-bundled workflow body (`runGame` claims a `runEpoch` stored in the state jsonb so a duplicate run exits as `stale`, sleeps to its 4s grid, chains a continuation every 250 ticks). `gameTickCore.ts` holds the heavy step bodies, loaded via dynamic import: `runOneTick` reads the `live_games` row, rehydrates the per-instance registries (heroes, bots — including AFK-converted `aiControlled` humans), reads `pending_actions`, calls `processCycle`, CAS-writes `WHERE cycle = loaded` (and epoch matches), deletes the consumed `pending_actions` only after the CAS wins, then publishes the fog-filtered result per player to Ably. Broadcast happens here, not in `processCycle`.
 
 ### Effect-TS Service Pattern
 
@@ -139,28 +156,28 @@ Each cycle (4s) runs this pipeline in `processCycle`:
 
 ### Realtime Flow (Ably)
 
-The client's `useGameChannel` composable (selected via `useGameTransport()`) subscribes to a per-player Ably channel (`game:{gameId}:p:{playerId}`), authenticated by a short-lived token minted at `POST /api/auth/ably-token` (`server/utils/ablyToken.ts`). Each `gameTickStep` publishes that tick's vision-filtered `cycle_state` to Ably over REST (`server/utils/ablyRest.ts`) — there is no persistent server-side connection registry (no `PeerRegistry`/`WebSocketService`) because nothing needs to track "who's connected to what": Ably owns delivery. Outbound player actions go the other way, over plain HTTP: `POST /api/game/action` writes to the `pending_actions` table, drained by the next tick.
+The client's `useGameChannel` composable (selected via `useGameTransport()`) subscribes to a per-player Ably channel (`game:{gameId}:p:{playerId}`), authenticated by a 1-hour subscribe-only TokenRequest minted at `POST /api/auth/ably-token` (`mintAblyTokenRequest` in `server/utils/ablyToken.ts`; Ably owns reconnect, the composable only mirrors connection state). Each `gameTickStep` publishes that tick's vision-filtered `cycle_state` to Ably over REST (`server/utils/ablyRest.ts`) — there is no persistent server-side connection registry (no `PeerRegistry`/`WebSocketService`) because nothing needs to track "who's connected to what": Ably owns delivery. Outbound player actions go the other way, over plain HTTP: `POST /api/game/action` stamps the order with the `forCycle` it targets and writes to `pending_actions` only if that cycle is still open (one conditional insert); late/future orders and orders for an ended game return `accepted:false`.
 
 ### State Flow (Client)
 
 Ably `cycle_state` messages → `useGameChannel` → `routeServerMessage` (`app/utils/gameMessageRouter.ts`) → Pinia stores:
 - `game.ts` store: cycle state, player state, scoreboard, events
-- `lobby.ts` store: queue status (Neon-backed quick-match only — the 5v5 draft/pick UI it also owns is currently unreachable; see `app/pages/lobby.vue`)
+- `lobby.ts` store: queue status via the `-neon` queue routes (the 5v5 draft/pick UI it also owns is unreachable; `app/pages/lobby.vue` drives the queue through `useQueuePolling`)
 - `auth.ts` store: session via `nuxt-auth-utils`
 
 `gameStore.playerId` = OAuth session user ID (e.g., `github_7379966`). This same ID is used as the key in `GameState.players` on the server.
 
 ### Map Topology
 
-Zones are defined in `shared/constants/zones.ts` with `adjacentTo` arrays. Movement validation checks `areAdjacent()` — players can only move one zone per cycle. Fountain is only adjacent to base.
+Zones are defined in `shared/constants/zones.ts` with symmetric `adjacentTo` arrays. A `move` to ANY zone of the game's map with a path is valid (`findPath` in `shared/pathfinding.ts`, BFS gated on the game's live zone set); the hero walks one hop per cycle until arrival. The client mirrors the BFS for previews. Anchor (fountain) is only adjacent to its base.
 
 ### Vision System
 
-`VisionCalculator.filterStateForPlayer()` computes visible zones per player (own zone + adjacent, camtaps, ICE, allies). Enemies outside vision are returned as `FoggedPlayer` (minimal info only).
+`VisionCalculator.filterStateForPlayer()` computes visible zones per player: own zone + adjacent, allies, own ICE, home zones, camtap/sniffer wards, Ping's tracepath, Tracer Dust, and `revealed` buffs. Night drops one neighbouring zone (enemy side first). Enemies outside vision are returned as `FoggedPlayer` (hero/level/KDA only). ICE, Terminals, caches, the Tenant and BACKUP are always visible.
 
 ## Deployment
 
-Production is **all-Vercel** (the DigitalOcean split was demolished after cutover — no `infra/` Pulumi program, no Dockerfile, no DOCR image, no `deploy.yml` anymore):
+Production is **all-Vercel** (the DigitalOcean split was demolished after cutover — no `infra/` Pulumi program, no Dockerfile, no DOCR image, no `deploy.yml` anymore; a leftover `termina-ws` App Platform app, its registry repo and `NUXT_PUBLIC_WS_URL` were deleted on 2026-10-10):
 
 - **Vercel** hosts everything: the Nuxt frontend (SSR + `/api/*` routes, same-origin — no cross-origin proxy needed) at `www.terminamoba.com`, backed by **Neon Postgres** (via the Vercel Marketplace integration). `NUXT_PUBLIC_API_URL` exists only for a hypothetical future origin split and is empty in prod.
 - **Git auto-build is `preview` only** (`vercel.json`). A push to `main` does not create a deployment. Ship production by promoting the Preview artifact, then merging for history:
@@ -171,9 +188,9 @@ Production is **all-Vercel** (the DigitalOcean split was demolished after cutove
   ```
 
   Promote does not rebuild. If Preview baked `NUXT_PUBLIC_*` or other build-time env that Production must not serve, use `vercel deploy --prod --scope the-lacanians` from that SHA. Changelog / `AGENTS.md` / `CLAUDE.md` / `.github` commits are skipped by `ignoreCommand`.
-- **Vercel Workflow DevKit** (`workflow/nuxt` module) drives each game's 4s tick — see the Game Loop Pipeline section above. `POST /api/game/start-workflow` (internal, `WORKFLOW_START_KEY`-gated) or the tutorial/practice/matchmaking paths (`server/game/liveGame.ts`'s `startLiveGame`) create the `live_games` row and kick off the first tick.
+- **Vercel Workflow DevKit** (`workflow/nuxt` module) drives each game's 4s tick — see the Game Loop Pipeline section above. `POST /api/game/start-workflow` (internal: public in the session middleware, gated only by the `x-workflow-start-key` header compared timing-safe) or the tutorial/practice/matchmaking paths (`server/game/liveGame.ts`'s `startLiveGame`) create the `live_games` row and kick off the first tick.
 - **Ably** is the realtime transport (Realtime for client subscriptions, REST for server-side publish) — see the Realtime Flow section above. Requires `ABLY_API_KEY`.
-- **Matchmaking** is Neon-backed (`server/game/matchmaking/queueNeon.ts`, `queue_entries` table) — event-driven match formation (no background sweep; a Vercel serverless function can't keep one warm). The Redis sorted-set queue and its WS-pushed lobby/draft flow (`lobby.ts`) are gone; a quick-match goes straight from "searching" to a running game with bots autofilled and heroes round-robin-assigned, no pick screen. A Neon-backed draft is an open follow-up, not yet built.
+- **Matchmaking** is Neon-backed (`server/game/matchmaking/queueNeon.ts`, `queue_entries` table) — event-driven match formation (no background sweep; a Vercel serverless function can't keep one warm). A quick-match goes straight from "searching" to a running game with bots autofilled and heroes round-robin-assigned, no pick screen. If the game fails to start, the formed players are requeued with their original `joinedAt`. A Neon-backed draft is an open follow-up, not yet built. Parties are Neon-backed (`parties` + `party_members` tables, `party.ts` async under `pg_advisory_xact_lock(hashtext('parties'))`, max 5, oldest member promoted on leave, parties older than 6h swept on create). Queue and co-op bots get `difficultyForMmr(avg human MMR)`; practice bots stay `easy`.
 - **Auth tokens** (password reset, email verification) are Neon-backed (`auth_tokens` table, `server/utils/authTokens.ts`) — single-use, `DELETE ... RETURNING` on redemption. No Redis TTL keys anymore.
 - **Secrets**: local dev secrets live in the tvault project `termina-local` (run: `tvault -p termina-local run -- bun run dev`; localhost-callback GitHub OAuth app + docker Postgres only — no local Redis either). Prod secrets are Vercel environment variables, managed via the tvault project `termina` for reference/backup. Always pass `-p` to tvault — bare `tvault run` uses whatever project is currently active.
 - **Auth invariant**: `NUXT_SESSION_PASSWORD` must stay stable across deploys (rotating it invalidates every live session cookie).
@@ -197,7 +214,8 @@ Production is **all-Vercel** (the DigitalOcean split was demolished after cutove
 - **Font imports** go in `app/assets/css/terminal.css` via `@import`, not in `nuxt.config.ts` `css` array (prevents SSR 404s)
 - **`<ClientOnly>`** is needed around auth-conditional UI in layouts (Nuxt 4 loads layouts async, causing hydration mismatches)
 - **`processCycle` validates actions once in production** — GameLoop validates up front (catching rejections for player feedback); `resolveActions` only re-validates in dev/test as a divergence assertion ("GameLoop should have filtered this — a divergence is a bug"). It used to validate twice; the redundant production pass was removed
-- **Bot IDs** start with `bot_` prefix — checked via `isBot()` from BotManager
+- **Bot IDs** start with `bot_` prefix — checked via `isBot()` from BotManager. But an AFK-converted human keeps their id and is a bot only by registry membership: use `isGameBot`/`getBotPlayerIds` for "who does the AI drive", and remember the registry is per-instance and rebuilt every tick by `rehydrateRegistries` (from `roster` + `aiControlled` players in state)
+- **Every per-process Map is per-instance on serverless** (rate limiter buckets, anti-cheat history, bot registries, rejection escalation). Anything that must survive across ticks belongs in the `live_games.state` jsonb or a table
 - **knip config is `knip.config.ts`, NOT `knip.json`** — knip resolves `knip.json` first, so adding one shadows the tuned config and explodes findings. Unused exports/types are advisory `warn`; unused files/deps fail the gate
 - **oxfmt formats everything by default** — its `.oxfmtrc.json` `ignorePatterns` MUST exclude `tests/e2e/**` (stamped cairntrace YAML — reformatting breaks the contractHash), `server/db/migrations/**`, and `**/*.{md,yml,yaml}`
 - **Type augmentations go in `shared/types/*.d.ts`** (e.g. the `#auth-utils` `User` augmentation) — Nuxt 4's split tsconfigs don't load `server/types/*.d.ts` as global augmentations, but `shared/**/*.d.ts` is in both the app and server include
@@ -219,14 +237,16 @@ Expert in the server-side game loop and combat systems.
 **Key files**:
 
 - `GameLoop.ts` — `processCycle` (the pure per-tick pipeline, driven by Vercel Workflow — see the Game Loop Pipeline section above), `submitAction`/`submitReplayAction` (the in-process action queue a tick drains)
-- `ActionResolver.ts` — `validateAction`, `resolveActions` (phase-ordered: instant → move → attack → passive → buy)
+- `ActionResolver.ts` — `validateAction`, `resolveActions` (phase order in the Game Loop Pipeline section above). Every consumed-but-ineffective order must push a one-line reason to `rejected` — never a bare `continue`
 - `StateManager.ts` — `createPlayerState`, `createInitialGameState`, in-memory Effect service
 - `VisionCalculator.ts` — `filterStateForPlayer`, fog-of-war per team
 - `DamageCalculator.ts` — kinetic/code/black damage formulas (plate/ice mitigation)
 - R4 combat lexicon: damage types kinetic/code/black; mitigation plate/ice; pools INTEG/BW; immunity AIRGAP; access state BREACH (code halved into closed targets; hard control fails until breached)
-- `CombatResolver.ts` — `resolvePhysicalHit` unified NPC→hero damage path (wraps `_base.dealDamage`); `computeBladeMailReflect` single reflect formula
+- `CombatResolver.ts` — `resolveKineticHit` unified NPC→hero damage path (wraps `_base.dealDamage`); `computeSpitePlateReflect` single reflect formula
+- `TerminalSystem.ts` — the win condition: `resolveTerminalAttack` (derives vulnerability from live ICE state, so a T3 and the Terminal can fall in the same cycle), `checkTerminalWin`
+- `SurrenderSystem.ts`, `BuybackSystem.ts`, `TrapSystem.ts` (Socket's Listen traps), `replayArtifact.ts` (replay row + `reconstructReplay`)
 - `ScripDistributor.ts` — passive scrip, kill bounties, last-hit rewards
-- `WaveAI.ts`, `IceAI.ts` — NPC behavior each cycle
+- `WaveAI.ts`, `IceAI.ts` — NPC behavior each cycle. Wave-vs-wave damage is simultaneous (a unit downed earlier in the same pass still lands its blow) — the batch clock is canon
 - `NeutralAI.ts` — Silt dweller spawning, attacking heroes
 - `TenantAI.ts` — the Tenant's attacks, death handling, backup drops
 - `CacheAI.ts` — cache spawning, buffs, pickup
@@ -234,12 +254,13 @@ Expert in the server-side game loop and combat systems.
 **Mechanics**:
 
 - Harden/Fortification — team-wide ICE invulnerability (5 cycle duration, 300 cycle cooldown). Command: `harden`. Key files: ActionResolver.ts (harden phase), GameLoop.ts (expiration)
-- Day/Night Cycle — time-based vision system (Day: 300 ticks, Night: 240 ticks, night vision penalty: -1 zone). Key files: GameLoop.ts (time progression), VisionCalculator.ts (penalty)
+- Day/Night Cycle — time-based vision system (Day: 300 cycles, Night: 240 cycles, night vision penalty: -1 zone). Key files: GameLoop.ts (time progression), VisionCalculator.ts (penalty)
 - TP Scroll Channeling — teleport with interrupt (2 cycle channel, cancels on damage/movement). Key files: \_base.ts (channeling completion), ActionResolver.ts (cancellation)
-- Sniffers — true sight mechanic, reveals invisible units (75sc cost, 240 cycle duration). Key files: VisionCalculator.ts (true sight), zones.ts (ward types)
-- Backup Resurrection — instant revive at death location with full HP/MP. Key files: GameLoop.ts (backup check in handleDeaths)
+- Sniffers — true sight mechanic, reveals invisible units (75sc cost, `SNIFFER_DURATION_CYCLES` = 30). Camtaps last 45 cycles; 3 wards per team. Key files: VisionCalculator.ts (true sight), map/zones.ts (`placeWard`)
+- Backup Resurrection — instant revive at death location with full INTEG/BW. Key files: GameLoop.ts (backup check in handleDeaths)
+- Item active cooldowns — always the buff id `item_cd_${itemId}` via `itemCooldownId()` in `server/game/items/shop.ts` (legacy Dota-era ids once made 13 actives cooldown-free)
 
-**Conventions**: Immutable state updates via spread. All engine functions return `Effect.Effect<...>`. Game state is `Record<string, PlayerState>` keyed by playerId. One action per player per cycle.
+**Conventions**: Immutable state updates via spread. All engine functions return `Effect.Effect<...>`. Game state is `Record<string, PlayerState>` keyed by playerId. One MAIN action per player per cycle, plus separate item/talent/buyback/surrender slots (`GameLoop.ts` slot table).
 
 ### hero-designer
 
@@ -252,7 +273,7 @@ Expert in hero definitions, abilities, and game balance.
 - `shared/constants/heroes.ts` — `HEROES` registry, `HERO_IDS` list
 - `shared/constants/postures.ts` — `POSTURE_META` / `POSTURE_ORDER` (the player-facing axis)
 - `shared/constants/cast.ts` — `CAST` (the 18 operators as people: realName, origin, bio, handleRationale, kitReading)
-- `server/game/heroes/_base.ts` — `levelUpHero`, `processDoTs`, `tickAllBuffs`
+- `server/game/heroes/_base.ts` — `levelUpHero`, `processDoTs`, `cycleAllBuffs`, `resolveAbility` (cast gates), `applyBuff` (hard-control BREACH gate), `dealDamage` (mitigation order)
 - `server/game/heroes/<name>.ts` — individual hero definitions (18 heroes)
 
 **Hero data model**: POSTURE (BREACH/HOLD/ROAM/HARDLINE) is the player-facing
@@ -264,7 +285,9 @@ consume it — never surface it as the primary label. Operator portraits live in
 script (the no-scripts/ rule stands). Hero ids never change (B1a); typed forms
 are normalised (`nullref`/`null-ref` resolve to `null_ref`).
 
-**Balance ranges**: INTEG 400–800, BW 150–400, attack 30–70, plate 2–6 (tanks up to 8), ice 12–25. Each hero has `attackType: 'kinetic' | 'code'` (basic attack damage type). Abilities have cooldownTicks, bwCost (BW cost per ability rank), effects array with damage/heal/stun/silence/root/slow/shield/dot/buff/debuff/teleport/reveal/taunt/fear/execute types.
+**Balance ranges** (actuals): INTEG 440–750, BW 250–420, attack 38–65, plate 1–8 (mages 1, tanks 7–8), ice 12–25. Each hero has `attackType: 'kinetic' | 'code'` (basic attack damage type; 8 kinetic, 10 code). Abilities have `cooldownCycles`, `bwCost` with optional per-rank `bwCostByLevel`, effects array with damage/heal/stun/silence/root/slow/shield/dot/buff/debuff/teleport/reveal/taunt/fear/execute types.
+
+**Text must match code**: an ability description promises exactly what the resolver does (team checks included — ally-only abilities reject enemies, and the client `validateCommand`/`CommandInput`/`situationalActions` mirrors move with them). Hard control on a CLOSED target is reported honestly in the event, not as applied. Control durations follow the engine convention: `cyclesRemaining: 2` gates exactly one of the target's actions. Talent tiers are named 10/15/20/25 and unlock at levels 3/6/9/12; talent cooldown reductions are in cycles.
 
 **Mechanics constants** (balance.ts): HARDEN_DURATION_CYCLES = 5, HARDEN_COOLDOWN_CYCLES = 300, DAY_DURATION_CYCLES = 300, NIGHT_DURATION_CYCLES = 240, NIGHT_VISION_PENALTY = 1, SNIFFER_DURATION_CYCLES = 30.
 
@@ -280,7 +303,7 @@ Expert in the Vue 3 game UI, stores, and Ably realtime integration.
 - `composables/useCommands.ts` — command parsing (`move`, `attack`, `cast`, `buy`, etc.) and autocomplete
 - `composables/useServerUrl.ts` — `useApiOrigin`/`rewriteApiRequest`, a same-origin/cross-origin API fetch transform kept for a hypothetical future origin split (empty/no-op today); paired with `app/plugins/api-origin.client.ts`
 - `stores/game.ts` — `updateFromCycle`, player state, scoreboard, events
-- `stores/lobby.ts` — queue flow; only `idle`/`searching` are reachable on the live (Neon quick-match) path today — `found`/`picking`/`banning`/`starting` (the 5v5 draft/ban UI, `HeroPicker.vue`) have no current trigger, kept for a future Neon-backed draft
+- `stores/lobby.ts` — queue/draft state; its HTTP helpers point at the `-neon` routes, but `pages/lobby.vue` drives the live queue through `useQueuePolling` directly, so the store's `found`/`picking`/`banning` states (the 5v5 draft/ban UI, `HeroPicker.vue`) have no current trigger — kept for a future Neon-backed draft
 - `stores/auth.ts` — session via `nuxt-auth-utils`; OAuth via `navigateTo('/api/auth/<provider>', { external: true })`
 - `components/game/GameScreen.vue` — terminal shell: STREAM + TRACE + status lines + ActionRow + prompt
 - `components/game/TraceRail.vue` — route as hop depth, contacts, both terminals (replaces the 2D board)
@@ -301,12 +324,12 @@ Expert in the Neon-backed queue and live-game start-up.
 
 - `queueNeon.ts` — `joinQueue`, `leaveQueue`, `tryFormMatchNeon` (Postgres `queue_entries` table + `pg_advisory_xact_lock`, no background sweep — event-driven: forms a match inline on join, and opportunistically again on a status poll)
 - `matchStart.ts` — `assignQuickMatchRoster` (round-robin heroes, alternate teams by MMR-sorted index — no pick screen), `startFormedMatch`
-- `party.ts` — in-memory co-op party (create/join/leave, leader-only start); `server/api/party/start-coop.post.ts` starts the live game directly (party on chaff, bots fill the rest — no draft)
+- `party.ts` — Neon-backed co-op party (create/join/leave, leader-only start); `server/api/party/start-coop.post.ts` starts the live game directly (party on chaff, bots fill the rest — no draft)
 - `elo.ts` — `calculateMmrChange`, `teamAverageMmr`
 - `server/game/liveGame.ts` — `startLiveGame` (seeds the `live_games` row + kicks off the first Workflow tick), shared by the tutorial/practice, quick-match, and party co-op paths
 - `server/api/queue/join-neon.post.ts`, `leave-neon.post.ts`, `status-neon.get.ts` — the HTTP endpoints `useQueuePolling` (client) actually calls
 
-**Flow**: Join → `tryFormMatchNeon` forms a roster (bot-backfilled after a 10s wait) → `startLiveGame` seeds `live_games` and starts the Workflow tick → the client's poll (`GET /api/queue/status-neon`) sees `{status: 'found', gameId}` and navigates to `/play`. No lobby, no hero pick/ban screen — heroes are round-robin assigned. The DO-era Redis sorted-set queue (`queue.ts`) and its WS-pushed snake-draft lobby (`lobby.ts`, ban phase 2-per-side R/D/R/D) are gone; a Neon-backed draft is an open follow-up (`queueNeon.ts`'s doc comment), not yet built.
+**Flow**: Join → `tryFormMatchNeon` forms a roster (bot-backfilled after a 10s wait, checked on the next join/poll; MMR-window stragglers are backfilled too) → `startLiveGame` seeds `live_games` and starts the Workflow tick → the client's poll (`GET /api/queue/status-neon`) sees `{status: 'found', gameId}` and navigates to `/play`. No lobby, no hero pick/ban screen — heroes are round-robin assigned. The DO-era Redis sorted-set queue (`queue.ts`) and its WS-pushed snake-draft lobby (`lobby.ts`, ban phase 2-per-side R/D/R/D) are gone; a Neon-backed draft is an open follow-up (`queueNeon.ts`'s doc comment), not yet built.
 
 ### services
 
@@ -320,8 +343,8 @@ Expert in the DatabaseService layer, Ably realtime plumbing, and the Vercel Work
 - `LeaverSystem.ts` — AFK detection (`detectAFKPlayers`, `shouldConvertAFK`) — pure GameState logic `GameLoop.ts`'s `processCycle` calls directly. The Redis-backed leaver-penalty ledger (score/low-priority queue) was already dead before the cutover and is gone; the in-memory "deliberate client input" ledger (`markClientInput`/`msSinceClientInput`) has no live producer since the DO-era WS route that used to stamp it is gone — every AFK check degrades to the "disconnected" branch until an Ably-presence signal is wired back in
 - `game-server.ts` — minimal boot plugin: `registerAllHeroes()` + resolves `DatabaseServiceLive` once into `getGameRuntime().dbService` (read by most API routes as their "is the DB layer up" gate). Everything Redis/fiber/reaper/spectator/finalize-intent that used to live here died with the DO-era in-process game server
 - `server/workflows/gameTick.ts` — the THIN, statically-bundled workflow body (`runGame`, `shouldChainAt`) — Workflow DevKit forbids Node-module imports anywhere in a workflow module's static import graph, so this file must stay clean
-- `server/workflows/gameTickCore.ts` — the heavy step bodies (loaded via dynamic `import()` inside `gameTick.ts`'s steps): `runOneTick` (CAS-guarded tick against `live_games`), `finalizeGame`, `rehydrateRegistries`
-- `ablyToken.ts` / `ablyRest.ts` — per-player token auth (`mintAblyToken`) and server→client publish (`ablyPublishBatch`)
+- `server/workflows/gameTickCore.ts` — the heavy step bodies (loaded via dynamic `import()` inside `gameTick.ts`'s steps): `claimRun` (stamps `state.runEpoch`), `runOneTick` (CAS + epoch-guarded tick against `live_games`; consumed `pending_actions` deleted only after the CAS wins), `finalizeGame` (records the match; practice games record nothing except `markTutorialCompleted` on a real graduation; throws on a failed record so Workflow retries), `rehydrateRegistries`. No new columns for tick bookkeeping — use the state jsonb (deploys never run `db:push`)
+- `ablyToken.ts` / `ablyRest.ts` — per-player token auth (`mintAblyTokenRequest`) and server→client publish (`ablyPublishBatch`)
 
 **Pattern**: `DatabaseService` uses `Context.Tag` + `Layer.succeed` for DI, resolved once at boot. Everything else uses `Effect.gen`/`Effect.runPromise` as a thin typed-error wrapper, not for DI — there is no long-lived runtime to attach a service layer to on a per-tick Workflow step. Bot filtering via `isBot()` prevents publishing Ably messages to bot players.
 
@@ -354,10 +377,10 @@ Expert in NPC bot behavior and lane assignment.
 
 **Key files**:
 
-- `BotManager.ts` — `registerBots`, `getBotPlayerIds`, `getBotLane`, `isBot`, `cleanupGame`
-- `BotAI.ts` — `decideBotAction` (lane-based movement, attack priority, ability usage)
+- `BotManager.ts` — `registerBots` (also re-registers `aiControlled` humans, lane from `laneForZone`), `getBotPlayerIds`, `isGameBot`, `convertToBot`, `getBotLane`, `isBot`, `cleanupGame`, `BOT_DIFFICULTY_CONFIGS`
+- `BotAI.ts` — `decideBotAction`: dead → buyback; shop/sell in base; retreat tiers; calm-cycle objectives (harden, talent, ward, defend ICE, Tenant, BACKUP); fights (combat items, combos, abilities, burn, lowest-INTEG target); otherwise Terminal, shopping trip, wave, ICE, rotate, Silt, advance with lane support
 
-**Conventions**: Bot IDs use `bot_` prefix. Bots are assigned lanes on game creation. `decideBotAction` runs per-bot before draining the player action queue each cycle. Bots never receive realtime (Ably) messages.
+**Conventions**: Bot IDs use `bot_` prefix. Bots are assigned lanes on game creation (max 2 per lane per team). `decideBotAction` runs per-bot before draining the player action queue each cycle. Bots never receive realtime (Ably) messages. Queue/co-op bots get `difficultyForMmr(average human MMR)` (<900 easy, <1400 medium, <2000 hard, else unfair); practice/tutorial bots are `easy` and pinned to COLDSTORE. `lastHitAccuracy`/`reactionDelayTicks` are intentionally unwired (wiring lastHitAccuracy broke bot forward progress).
 
 ### map-systems
 
@@ -367,9 +390,10 @@ Expert in zone topology, wave spawning, ICE, and vision (camtaps/sniffers).
 
 **Key files**:
 
-- `shared/constants/zones.ts` — 32 zones with `adjacentTo` arrays (fountain → base → T3 → T2 → T1 → river)
-- `topology.ts` — `areAdjacent`, `findPath` (BFS), `getDistance`
-- `spawner.ts` — `spawnCreepWaves` (every 8 ticks: 3 melee + 1 ranged, siege every 5th wave), `spawnRunes` (every 60 ticks), `spawnNeutralCreeps` (every 60 ticks)
-- `zones.ts` — `initializeZoneStates`, `initializeTowers`, `placeWard`, `removeExpiredWards`
+- `shared/constants/zones.ts` — 32 zones with symmetric `adjacentTo` arrays (anchor → base → T3 → T2 → T1 → cross); `isShopZoneFor`
+- `shared/constants/maps.ts` — `default_5v5`, `two_lane`, `one_lane`; `mapIdForMode`; `shared/constants/lanes.ts` — `LANE_ROUTES`
+- `shared/pathfinding.ts` — `findPath` (BFS, used by server and client); `topology.ts` re-exports it with `areAdjacent`, `getDistance`
+- `spawner.ts` — `spawnWaveUnits` (every 8 cycles, per route per crew: 3 line + 1 sweep, a breach unit every 5th wave, spawned at T3), `spawnCaches` (every 60 cycles at `cache-seawall`/`cache-shallows`, one of 5 buffs), Tenant `initializeTenant`/`respawnTenant`. Silt dwellers spawn in `server/game/engine/NeutralAI.ts` (`spawnSiltDwellers`, every 60 cycles, 4 camp zones, max 4 live per camp)
+- `zones.ts` — `initializeZoneStates`, `initializeIce`, `placeWard`, `removeExpiredWards`, `canAttackIce` (tier order)
 
-**Map layout**: 3 routes (top/mid/bot), 4 Silt zones, 2 cache spots, the Hollow, 2 bases + fountains. Each route has 3 ICE tiers per side with a crossing in between.
+**Map layout**: 3 routes (SEAWALL/COLDSTORE/SHALLOWS), 4 Silt zones, 2 cache spots, the Hollow, 2 bases + anchors. Each route has 3 ICE tiers per side with a crossing in between. 18 ICE total.
