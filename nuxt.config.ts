@@ -31,7 +31,7 @@ export default defineNuxtConfig({
   // workflow/nuxt: Vercel Workflow DevKit — drives each game's 4s tick
   // (server/workflows/gameTick.ts), replacing the DO-era in-process game
   // loop fiber. All-Vercel cutover is complete; this is load-bearing on main.
-  modules: ['@pinia/nuxt', 'nuxt-auth-utils', 'workflow/nuxt'],
+  modules: ['@pinia/nuxt', 'nuxt-auth-utils', 'workflow/nuxt', '@vercel/analytics/nuxt'],
   css: ['~/assets/css/terminal.css'],
   vite: {
     plugins: [tailwindcss()],
